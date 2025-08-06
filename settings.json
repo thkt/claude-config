@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "MAX_THINKING_TOKENS": "31999",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "8192"
+  },
+  "includeCoAuthoredBy": false,
+  "permissions": {
+    "allow": [
+      "Bash(gemini:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(wc:*)",
+      "Bash(tree:*)",
+      "Bash(rg:*)",
+      "Read",
+      "Read(*)",
+      "Grep",
+      "Grep(*)",
+      "LS",
+      "LS(*)",
+      "Glob",
+      "Glob(*)",
+      "NotebookRead",
+      "NotebookRead(*)",
+      "TodoWrite",
+      "TodoWrite(*)",
+      "ListMcpResourcesTool",
+      "ListMcpResourcesTool(*)",
+      "ReadMcpResourceTool",
+      "ReadMcpResourceTool(*)",
+      "mcp__github__get_me",
+      "mcp__github__get_me(*)",
+      "mcp__github__get_issue",
+      "mcp__github__get_issue(*)",
+      "mcp__github__get_issue_comments",
+      "mcp__github__get_issue_comments(*)",
+      "mcp__github__get_pull_request",
+      "mcp__github__get_pull_request(*)",
+      "mcp__github__get_pull_request_comments",
+      "mcp__github__get_pull_request_comments(*)",
+      "mcp__github__get_pull_request_files",
+      "mcp__github__get_pull_request_files(*)",
+      "mcp__github__get_pull_request_reviews",
+      "mcp__github__get_pull_request_reviews(*)",
+      "mcp__github__get_pull_request_status",
+      "mcp__github__get_pull_request_status(*)",
+      "mcp__github__get_file_contents",
+      "mcp__github__get_file_contents(*)",
+      "mcp__github__get_code_scanning_alert",
+      "mcp__github__get_code_scanning_alert(*)",
+      "mcp__github__list_code_scanning_alerts",
+      "mcp__github__list_code_scanning_alerts(*)",
+      "mcp__github__list_commits",
+      "mcp__github__list_commits(*)",
+      "mcp__github__list_issues",
+      "mcp__github__list_issues(*)",
+      "mcp__github__list_pull_requests",
+      "mcp__github__list_pull_requests(*)",
+      "mcp__github__search_code",
+      "mcp__github__search_code(*)",
+      "mcp__github__search_issues",
+      "mcp__github__search_issues(*)",
+      "mcp__github__search_repositories",
+      "mcp__github__search_repositories(*)",
+      "mcp__github__search_users",
+      "mcp__github__search_users(*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__resolve-library-id(*)",
+      "mcp__context7__get-library-docs",
+      "mcp__context7__get-library-docs(*)",
+      "WebFetch",
+      "WebFetch(*)",
+      "WebSearch",
+      "WebSearch(*)",
+      "mcp__markitdown__convert_to_markdown",
+      "mcp__markitdown__convert_to_markdown(*)",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_snapshot(*)"
+    ],
+    "deny": [
+      "Bash(sudo:*)",
+      "Bash(rm:*)",
+      "Bash(rm -rf:*)",
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(git reset:*)",
+      "Bash(git rebase:*)",
+      "Read(.env.*)",
+      "Read(id_rsa)",
+      "Read(id_ed25519)",
+      "Read(**/*token*)",
+      "Read(**/*key*)",
+      "Write(.env*)",
+      "Write(**/secrets/**)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(nc:*)",
+      "Bash(npm install:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm remove:*)",
+      "Bash(psql:*)",
+      "Bash(mysql:*)",
+      "Bash(mongod:*)"
+    ]
+  },
+  "model": "opus",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo -n '{\"additional_context\": \"' && echo -n 'AI Operation Principles:\\n' && (cat ~/.claude/rules/core/AI_OPERATION_PRINCIPLES.md 2>/dev/null | sed 's/\"/\\\\\"/g' | sed ':a;N;$!ba;s/\\n/\\\\n/g' || echo 'File not found') && echo -n '\\n\\nPre-Task Check:\\n' && (cat ~/.claude/rules/core/PRE_TASK_CHECK.md 2>/dev/null | sed 's/\"/\\\\\"/g' | sed ':a;N;$!ba;s/\\n/\\\\n/g' || echo 'File not found') && echo '\"}'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay -volume 0.1 ~/.claude/sounds/ds_mama.mp3"
+          },
+          {
+            "type": "command",
+            "command": "osascript -e \"display notification \\\"作業が完了しました。\\\" with title \\\"Claude Code\\\"\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE_PATH=$(jq -r '.tool_input.file_path') && [ -n \"$(tail -c1 \"$FILE_PATH\")\" ] && echo >> \"$FILE_PATH\""
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay -volume 0.1 ~/.claude/sounds/ds_mail.mp3"
+          },
+          {
+            "type": "command",
+            "command": "osascript -e \"display notification \\\"Claude Code が呼んでいます。\\\" with title \\\"Claude Code\\\"\""
+          }
+        ]
+      }
+    ]
+  },
+  "feedbackSurveyState": {
+    "lastShownTime": 1754443386135
+  }
+}
