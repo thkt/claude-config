@@ -23,6 +23,7 @@ sounds/
 statsig/
 todos/
 .credentials.json
+settings.json
 
 # Private/Local configurations
 *.local
