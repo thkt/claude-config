@@ -10,6 +10,7 @@ model: opus
 Master orchestrator for comprehensive frontend code reviews, coordinating specialized agents and synthesizing their findings into actionable insights.
 
 ## Objective
+
 Manage the execution of multiple specialized review agents, integrate their findings, prioritize issues, and generate a comprehensive, actionable review report for TypeScript/React applications.
 
 ## Orchestration Strategy
@@ -17,18 +18,19 @@ Manage the execution of multiple specialized review agents, integrate their find
 ### 1. Agent Execution Management
 
 #### Sequential Execution Groups
+
 ```yaml
 execution_plan:
   phase_1_fundamental:
     - structure-reviewer      # Code organization and DRY principles
     - readability-reviewer    # Code clarity and maintainability
     - root-cause-reviewer     # Problem analysis and solutions
-  
+
   phase_2_quality:
     - type-safety-reviewer    # TypeScript usage and type coverage
     - design-pattern-reviewer # Architecture and patterns
     - testability-reviewer    # Test-friendly design
-  
+
   phase_3_production:
     - performance-reviewer    # Runtime and build optimization
     - security-reviewer       # Security vulnerabilities
@@ -36,6 +38,7 @@ execution_plan:
 ```
 
 #### Parallel Execution Optimization
+
 - Execute agents within same phase in parallel
 - Phases run sequentially to manage dependencies
 - Collect results asynchronously for efficiency
@@ -43,6 +46,7 @@ execution_plan:
 ### 2. Context Preparation
 
 #### File Selection Strategy
+
 ```typescript
 interface ReviewContext {
   targetFiles: string[]        // Files to review
@@ -57,7 +61,7 @@ function selectFilesForReview(pattern: string): ReviewContext {
   const files = glob(pattern, {
     ignore: ['**/node_modules/**', '**/dist/**', '**/build/**']
   })
-  
+
   return {
     targetFiles: prioritizeFiles(files),
     fileTypes: ['.ts', '.tsx'],
@@ -69,6 +73,7 @@ function selectFilesForReview(pattern: string): ReviewContext {
 ```
 
 #### Context Enrichment
+
 ```typescript
 interface EnrichedContext extends ReviewContext {
   projectType: 'react' | 'next' | 'remix' | 'vanilla'
@@ -82,6 +87,7 @@ interface EnrichedContext extends ReviewContext {
 ### 3. Result Integration
 
 #### Finding Aggregation
+
 ```typescript
 interface ReviewFinding {
   agent: string
@@ -103,20 +109,21 @@ interface IntegratedResults {
 ```
 
 #### Deduplication Logic
+
 ```typescript
 function deduplicateFindings(findings: ReviewFinding[]): ReviewFinding[] {
   const unique = new Map<string, ReviewFinding>()
-  
+
   findings.forEach(finding => {
     const key = `${finding.file}:${finding.line}:${finding.category}`
     const existing = unique.get(key)
-    
-    if (!existing || 
+
+    if (!existing ||
         getSeverityWeight(finding.severity) > getSeverityWeight(existing.severity)) {
       unique.set(key, finding)
     }
   })
-  
+
   return Array.from(unique.values())
 }
 ```
@@ -124,6 +131,7 @@ function deduplicateFindings(findings: ReviewFinding[]): ReviewFinding[] {
 ### 4. Priority Scoring
 
 #### Severity Weighting
+
 ```typescript
 const SEVERITY_WEIGHTS = {
   critical: 1000,  // Security vulnerabilities, data loss risks
@@ -151,6 +159,7 @@ function calculatePriority(finding: ReviewFinding): number {
 ### 5. Report Generation
 
 #### Executive Summary Template
+
 ```markdown
 # Code Review Summary
 
@@ -178,6 +187,7 @@ function calculatePriority(finding: ReviewFinding): number {
 ```
 
 #### Detailed Report Structure
+
 ```markdown
 ## Detailed Findings by Category
 
@@ -210,11 +220,12 @@ function calculatePriority(finding: ReviewFinding): number {
 ### 6. Intelligent Recommendations
 
 #### Pattern Recognition
+
 ```typescript
 function generateRecommendations(findings: ReviewFinding[]): Recommendation[] {
   const patterns = detectPatterns(findings)
   const recommendations: Recommendation[] = []
-  
+
   // Systematic issues
   if (patterns.multipleTypeErrors) {
     recommendations.push({
@@ -225,7 +236,7 @@ function generateRecommendations(findings: ReviewFinding[]): Recommendation[] {
       category: 'configuration'
     })
   }
-  
+
   // Architecture improvements
   if (patterns.propDrilling) {
     recommendations.push({
@@ -236,7 +247,7 @@ function generateRecommendations(findings: ReviewFinding[]): Recommendation[] {
       category: 'architecture'
     })
   }
-  
+
   return recommendations
 }
 ```
@@ -244,6 +255,7 @@ function generateRecommendations(findings: ReviewFinding[]): Recommendation[] {
 ### 7. Integration Examples
 
 #### Orchestrator Invocation
+
 ```typescript
 // Simple review
 const review = await reviewOrchestrator.review({
@@ -270,30 +282,35 @@ const ciReview = await reviewOrchestrator.review({
 ## Execution Workflow
 
 ### Step 1: Initialize Review
+
 1. Parse review request parameters
 2. Determine file scope and review depth
 3. Select appropriate agents based on context
 4. Prepare shared context for all agents
 
 ### Step 2: Execute Agents
+
 1. Group agents by execution phase
 2. Run agents in parallel within each phase
 3. Monitor execution progress
 4. Handle agent failures gracefully
 
 ### Step 3: Process Results
+
 1. Collect all agent findings
 2. Deduplicate similar issues
 3. Calculate priority scores
 4. Group by category and severity
 
 ### Step 4: Generate Insights
+
 1. Identify systemic patterns
 2. Generate actionable recommendations
 3. Create improvement roadmap
 4. Estimate effort and impact
 
 ### Step 5: Produce Report
+
 1. Generate executive summary
 2. Create detailed findings section
 3. Include code examples and fixes
@@ -302,19 +319,20 @@ const ciReview = await reviewOrchestrator.review({
 ## Advanced Features
 
 ### Custom Rule Configuration
+
 ```yaml
 custom_rules:
   performance:
     bundle_size_limit: 500KB
     component_render_limit: 16ms
-  
+
   security:
-    allowed_domains: 
+    allowed_domains:
       - api.example.com
     forbidden_patterns:
       - eval
       - dangerouslySetInnerHTML
-  
+
   code_quality:
     max_file_lines: 300
     max_function_lines: 50
@@ -322,6 +340,7 @@ custom_rules:
 ```
 
 ### Progressive Enhancement
+
 - Start with critical issues only
 - Expand to include all findings on demand
 - Provide fix suggestions with examples
@@ -330,6 +349,7 @@ custom_rules:
 ## Integration Points
 
 ### CI/CD Pipelines
+
 ```yaml
 # GitHub Actions example
 - name: Code Review
@@ -341,6 +361,7 @@ custom_rules:
 ```
 
 ### IDE Integration
+
 - VS Code extension support
 - Real-time feedback
 - Quick fix suggestions

@@ -10,6 +10,7 @@ model: sonnet
 Expert reviewer for TypeScript type safety, static typing practices, and type system utilization in TypeScript/React applications.
 
 ## Objective
+
 Ensure maximum type safety by identifying type coverage gaps, improper type usage, and opportunities to leverage TypeScript's type system for more robust and maintainable code.
 
 ## Core Type Safety Areas
@@ -17,6 +18,7 @@ Ensure maximum type safety by identifying type coverage gaps, improper type usag
 ### 1. Type Coverage and Definitions
 
 #### Complete Type Annotations
+
 ```typescript
 // ❌ Poor: Missing type annotations
 function processUser(user) {
@@ -46,6 +48,7 @@ function processUser(user: User): ProcessedUser {
 ```
 
 #### Function Type Signatures
+
 ```typescript
 // ❌ Poor: Implicit return types
 const calculate = (a: number, b: number) => {
@@ -69,6 +72,7 @@ const subtract: BinaryOperation = (a, b) => a - b
 ### 2. Avoiding Any and Unknown
 
 #### Any Type Usage
+
 ```typescript
 // ❌ Dangerous: Any disables type checking
 function parseData(data: any) {
@@ -95,6 +99,7 @@ function processUnknownData(data: unknown): string {
 ```
 
 #### Object Index Signatures
+
 ```typescript
 // ❌ Poor: Loose typing with any
 const config: { [key: string]: any } = {
@@ -124,6 +129,7 @@ const dynamicConfig: Record<string, ConfigValue> = {}
 ### 3. Type Guards and Narrowing
 
 #### Type Predicates
+
 ```typescript
 // ❌ Poor: Unsafe type assumptions
 function handleResponse(response: Success | Error) {
@@ -159,9 +165,10 @@ function handleResponse(response: Response) {
 ```
 
 #### Discriminated Unions
+
 ```typescript
 // ✅ Excellent: Exhaustive type checking
-type Action = 
+type Action =
   | { type: 'INCREMENT'; payload: number }
   | { type: 'DECREMENT'; payload: number }
   | { type: 'RESET' }
@@ -185,6 +192,7 @@ function reducer(state: number, action: Action): number {
 ### 4. Generic Types
 
 #### Component Generics
+
 ```typescript
 // ❌ Poor: Repeated similar components
 interface StringSelectProps {
@@ -209,8 +217,8 @@ interface SelectProps<T> {
 
 function Select<T>({ value, options, onChange, getLabel }: SelectProps<T>) {
   return (
-    <select 
-      value={String(value)} 
+    <select
+      value={String(value)}
       onChange={e => {
         const selected = options.find(
           opt => String(opt) === e.target.value
@@ -229,17 +237,18 @@ function Select<T>({ value, options, onChange, getLabel }: SelectProps<T>) {
 ```
 
 #### Utility Type Creation
+
 ```typescript
 // ✅ Good: Custom utility types
 type Nullable<T> = T | null
 
 type DeepReadonly<T> = {
-  readonly [P in keyof T]: T[P] extends object 
-    ? DeepReadonly<T[P]> 
+  readonly [P in keyof T]: T[P] extends object
+    ? DeepReadonly<T[P]>
     : T[P]
 }
 
-type AsyncState<T> = 
+type AsyncState<T> =
   | { status: 'idle' }
   | { status: 'loading' }
   | { status: 'success'; data: T }
@@ -249,6 +258,7 @@ type AsyncState<T> =
 ### 5. Strict Mode Compliance
 
 #### Null and Undefined Handling
+
 ```typescript
 // With strictNullChecks: true
 
@@ -266,13 +276,14 @@ function getLength(str: string | null): number {
 function processElement(id: string) {
   const element = document.getElementById(id)
   if (!element) throw new Error(`Element ${id} not found`)
-  
+
   // Now TypeScript knows element is not null
   element.classList.add('processed')
 }
 ```
 
 #### Index Access
+
 ```typescript
 // With noUncheckedIndexedAccess: true
 
@@ -293,6 +304,7 @@ const knownItem = items[0]! // Safe if we know array is non-empty
 ### 6. React Component Types
 
 #### Props Types
+
 ```typescript
 // ❌ Poor: Loose prop types
 interface ButtonProps {
@@ -318,6 +330,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 ```
 
 #### Event Handler Types
+
 ```typescript
 // ❌ Poor: Any or incorrect event types
 <input onChange={(e: any) => setValue(e.target.value)} />
@@ -338,6 +351,7 @@ const handleChange: InputChangeHandler = (e) => {
 ### 7. Advanced Type Patterns
 
 #### Const Assertions
+
 ```typescript
 // ❌ Poor: Mutable and wide types
 const CONFIG = {
@@ -359,6 +373,7 @@ type Role = typeof ROLES[number] // 'admin' | 'user' | 'guest'
 ```
 
 #### Template Literal Types
+
 ```typescript
 // ✅ Good: Type-safe string patterns
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
@@ -379,24 +394,28 @@ request('PATCH /api/users') // ❌ Error: Type '"PATCH /api/users"' is not assig
 ## Type Safety Checklist
 
 ### Basic Coverage
+
 - [ ] All functions have return type annotations
 - [ ] All function parameters are typed
 - [ ] No implicit any types
 - [ ] Interface/type definitions for all data structures
 
 ### Advanced Patterns
+
 - [ ] Type guards for union types
 - [ ] Discriminated unions where appropriate
 - [ ] Generic types for reusable components
 - [ ] Const assertions for literal types
 
 ### Strict Mode
+
 - [ ] strictNullChecks compliance
 - [ ] noImplicitAny enabled
 - [ ] noUncheckedIndexedAccess considered
 - [ ] strictFunctionTypes enabled
 
 ### React Specific
+
 - [ ] Component props fully typed
 - [ ] Event handlers properly typed
 - [ ] Ref types correctly specified
@@ -405,30 +424,34 @@ request('PATCH /api/users') // ❌ Error: Type '"PATCH /api/users"' is not assig
 ## Common Anti-patterns
 
 1. **Type Assertions Abuse**
-```typescript
-// ❌ Avoid excessive assertions
-const data = (await response.json()) as UserData
-```
+
+    ```typescript
+    // ❌ Avoid excessive assertions
+    const data = (await response.json()) as UserData
+    ```
 
 2. **Optional Everything**
-```typescript
-// ❌ Making all props optional
-interface Props {
-  name?: string
-  age?: number
-  email?: string
-}
-```
+
+    ```typescript
+    // ❌ Making all props optional
+    interface Props {
+      name?: string
+      age?: number
+      email?: string
+    }
+    ```
 
 3. **String Type Overuse**
-```typescript
-// ❌ Using string for known values
-type Status = string // Should be: 'active' | 'inactive' | 'pending'
-```
+
+    ```typescript
+    // ❌ Using string for known values
+    type Status = string // Should be: 'active' | 'inactive' | 'pending'
+    ```
 
 ## Integration with Other Agents
 
 Coordinate with:
+
 - **testability-reviewer**: Type safety improves testability
 - **structure-reviewer**: Types enforce architectural boundaries
 - **readability-reviewer**: Good types serve as documentation

@@ -19,10 +19,13 @@ context:
 # /gemini:search - Google Search via Gemini
 
 ## Purpose
+
 Use Gemini CLI to perform Google searches and get comprehensive results with AI-powered insights.
 
 ## Usage
+
 Describe what you want to search:
+
 - "Latest React performance optimization techniques"
 - "TypeScript 5.0 new features"
 - "Best practices for API security 2024"
@@ -30,11 +33,13 @@ Describe what you want to search:
 ## Execution Strategy
 
 ### 1. Query Optimization
+
 - Enhance search terms for better results
 - Add relevant keywords and timeframes
 - Focus on authoritative sources
 
 ### 2. Search via Gemini
+
 ```bash
 gemini --prompt "Search and summarize: {{query}}
 Focus on:
@@ -45,8 +50,10 @@ Focus on:
 ```
 
 ### 3. TodoWrite Integration
+
 Track search progress:
-```
+
+```md
 # Search: [topic]
 1. ⏳ Execute search
 2. ⏳ Analyze results
@@ -56,6 +63,7 @@ Track search progress:
 ## Search Types
 
 ### Technical Research
+
 ```bash
 gemini -p "Technical search: {{query}}
 Include:
@@ -66,6 +74,7 @@ Include:
 ```
 
 ### Best Practices
+
 ```bash
 gemini -p "Best practices search: {{query}}
 Focus on:
@@ -76,6 +85,7 @@ Focus on:
 ```
 
 ### Troubleshooting
+
 ```bash
 gemini -p "Troubleshooting search: {{query}}
 Find:
@@ -86,6 +96,7 @@ Find:
 ```
 
 ## Output Format
+
 ```markdown
 ## Search Results: [Query]
 
@@ -103,6 +114,7 @@ Find:
 ```
 
 ## When to Use
+
 - Researching new technologies
 - Finding best practices
 - Troubleshooting errors
@@ -110,29 +122,34 @@ Find:
 - Staying updated with trends
 
 ## When NOT to Use
+
 - Simple factual queries (use WebSearch)
 - Local codebase search (use Grep/Glob)
 - API documentation (use official docs)
 
 ## Example Usage
-```
+
+```md
 /gemini:search "React Server Components production deployment"
 /gemini:search "Solving N+1 query problem in GraphQL"
 /gemini:search "Kubernetes autoscaling best practices 2024"
 ```
 
 ## Tips
+
 1. **Be specific** - Include context and constraints
 2. **Add timeframe** - "2024", "latest", "recent"
 3. **Specify domain** - "TypeScript", "React", "Node.js"
 4. **Request format** - "with examples", "step-by-step"
 
 ## Prerequisites
+
 - Gemini CLI installed and configured
 - Internet connection
 - Valid Gemini API credentials
 
 ## Next Steps
+
 - Promising findings → `/research` for deeper dive
 - Implementation ideas → `/think` for planning
 - Quick fixes found → `/fix` to apply

@@ -19,21 +19,26 @@ context:
 # /test - Testing and Verification
 
 ## Purpose
+
 Ensure code quality through comprehensive testing and verification.
 
 ## Usage
+
 Run tests after implementation to verify functionality and catch regressions.
 
 ## Execution Strategy
 
 ### 1. Discover Test Commands
+
 - Check package.json for test scripts
 - Look for test configuration files
 - Identify testing framework (Jest, Vitest, etc.)
 
 ### 2. TodoWrite Integration
+
 Track test execution:
-```
+
+```md
 # Testing: [feature/fix description]
 1. ⏳ Discover test commands
 2. ⏳ Run unit tests
@@ -43,18 +48,22 @@ Track test execution:
 ```
 
 ### 3. Test Types
+
 - **Unit Tests**: Individual components/functions
 - **Integration Tests**: Component interactions
 - **E2E Tests**: Full user workflows (if available)
 
 ### 4. Browser Testing (UI Changes)
+
 When UI is affected, use Playwright MCP tools to:
+
 - Verify visual appearance
 - Test interactive functionality
 - Check responsive design
 - Validate accessibility
 
 ### 5. Quality Checks
+
 - Run linter (if available)
 - Run type checking (for TypeScript projects)
 - Check test coverage metrics
@@ -78,6 +87,7 @@ When UI is affected, use Playwright MCP tools to:
    - Repeat until all pass
 
 ## Output Format
+
 ```markdown
 ## Test Results
 - Tests Run: [count]
@@ -93,30 +103,35 @@ When UI is affected, use Playwright MCP tools to:
 ```
 
 ## When to Use
+
 - After implementing new features
 - After fixing bugs
 - Before creating pull requests
 - When refactoring code
 
 ## When NOT to Use
+
 - During active development (too disruptive)
 - For documentation changes only
 - When no test infrastructure exists
 
 ## Example Usage
-```
+
+```md
 /test "Run tests for authentication changes"
 /test "Verify payment processing fixes"
 /test "Full test suite before release"
 ```
 
 ## Tips
+
 1. **Start with unit tests** - fastest feedback
 2. **Fix failures immediately** - don't let them accumulate
 3. **Monitor coverage trends** - aim for improvement
 4. **Use appropriate test level** - not everything needs E2E
 
 ## Next Steps
+
 - Failed tests → `/fix` to address issues
 - All passing → Ready for PR or deployment
 - Low coverage → Write additional tests

@@ -20,34 +20,42 @@ context:
 # /think - Thinking & Planning
 
 ## Purpose
+
 Perform detailed analysis of problems and create comprehensive plans (SOW) for implementation.
 
 ## Usage Modes
+
 - **Standalone**: Plan for specific problems or features
 - **Workflow**: Execute as first step in workflow, then proceed to `/research`
 
 ## Prerequisites
+
 - No prerequisites for both standalone and workflow use
 
 ## Execution Steps
 
 ### 1. Problem Analysis
+
 - Detailed understanding and definition of the problem
 - Identify scope of impact
 - Confirm relationships with existing implementation
 
 ### 2. Information Gathering
+
 - Search related files (using Grep, Glob)
 - Analyze existing code
 - Research similar implementations
 
 ### 3. Requirements Organization
+
 - Clarify functional requirements
 - Confirm non-functional requirements
 - Identify constraints
 
 ### 4. Solution Evaluation with SOLID Principles
+
 Consider development principles as evaluation criteria:
+
 - Would solution follow Progressive Enhancement?
 - Will code be readable and maintainable?
 - Are components properly separated?
@@ -64,6 +72,7 @@ Consider development principles as evaluation criteria:
 - Evaluate risks and mitigations
 
 ### 5. Implementation Planning
+
 - Break down tasks following SRP (each task = one responsibility)
 - Design interfaces and contracts (DIP)
 - Plan for extensibility (OCP)
@@ -72,16 +81,20 @@ Consider development principles as evaluation criteria:
 - Identify necessary resources
 
 ### 6. TodoWrite Integration
+
 - Create planning tasks automatically
 - Track SOW creation progress
 
 ### 7. SOW Quality Check
+
 - Completeness of requirements
 - Feasibility of approach
 - Realistic time estimates
 
 ## Interactive Requirements Confirmation
+
 When there are unclear points, ask questions such as:
+
 - Specific behavioral requirements
 - Error conditions
 - Expected results
@@ -124,6 +137,7 @@ When there are unclear points, ask questions such as:
 ```
 
 ## SOW Document Handling
+
 - Save SOW to `.claude/workspace/tasks/active/` directory
 - Create directory if it doesn't exist using `mkdir -p`
 - Filename format: `YYYY-MM-DD-task-title.md`
@@ -133,7 +147,9 @@ When there are unclear points, ask questions such as:
 - Overwrite if updating existing task
 
 ## Definition of Done
+
 Planning is complete when:
+
 - Problem fully understood and documented
 - All affected files identified
 - Solution approach validated against SOLID principles
@@ -143,24 +159,28 @@ Planning is complete when:
 
 ## Command Selection Guide
 
-### Use `/think` when:
+### Use `/think` when
+
 - 📋 New feature implementation needed
 - 🔄 Major refactoring required
 - ❓ Problem not fully understood
 - 📊 Multiple solutions to evaluate
 - 🎯 Need comprehensive planning
 
-### Use other commands instead:
+### Use other commands instead
+
 - `/fix` - Small, well-understood issues
 - `/research` - Technical investigation only
 - `/code` - Implementation with clear requirements
 
 ## Next Steps
+
 - **Workflow mode**: Based on SOW, proceed to `/research` for technical research
 - **Standalone mode**: Based on SOW, proceed directly to implementation or other work
 
 ## Usage Examples
-```
+
+```md
 # Standalone use
 /think "File upload error messages not displaying"
 
@@ -172,7 +192,9 @@ Planning is complete when:
 ```
 
 ## Automatic Application
+
 This command automatically applies SOLID design principles during:
+
 - Solution architecture
 - Component design
 - Interface definition

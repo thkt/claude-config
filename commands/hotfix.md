@@ -22,16 +22,21 @@ excludes: [fix]  # Don't suggest both
 # /hotfix - Emergency Hot Fix
 
 ## Purpose
+
 Apply critical fixes to production issues with minimal process overhead while maintaining quality.
 
 ## Usage
+
 For urgent production bugs requiring immediate attention.
 
 ## Workflow
+
 Streamlined critical path: Quick analysis → Fix → Test → Deploy readiness
 
 ## Safety Checks
+
 **MANDATORY**: Before proceeding with hotfix:
+
 1. **Impact Assessment**: Is production truly affected?
 2. **Rollback Ready**: Note current version/commit
 3. **Minimum Fix**: Scope the smallest possible change
@@ -43,28 +48,34 @@ Streamlined critical path: Quick analysis → Fix → Test → Deploy readiness
 ## Execution Steps
 
 ### 1. Triage (5 min)
+
 - Confirm production impact
 - Identify root cause
 - Define minimum fix
 
 ### 2. Fix (15 min)
+
 - Apply focused change
 - Stability > Elegance
 - Document technical debt
 
 ### 3. Test (10 min)
+
 - Verify issue resolved
 - Check critical paths only
 - No comprehensive testing
 
 ### 4. Deploy Ready
+
 - Clear commit message
 - Rollback documented
 - Team notified
 
 ## TodoWrite Integration
+
 Emergency tracking (keep it simple):
-```
+
+```md
 # HOTFIX: [Critical issue]
 1. ⏳ Triage & Assess
 2. ⏳ Emergency Fix
@@ -72,6 +83,7 @@ Emergency tracking (keep it simple):
 ```
 
 ## Output Format
+
 ```markdown
 ## 🚨 HOTFIX Summary
 - Critical Issue: [Description]
@@ -95,6 +107,7 @@ Emergency tracking (keep it simple):
 ```
 
 ## When to Use
+
 - Production is down
 - Security vulnerabilities
 - Data corruption risks
@@ -102,12 +115,14 @@ Emergency tracking (keep it simple):
 - Regulatory compliance issues
 
 ## When NOT to Use
+
 - Feature requests
 - Performance improvements
 - Refactoring
 - Non-critical bugs
 
 ## Key Principles
+
 - Fix first, perfect later
 - Document everything
 - Test the critical path
@@ -115,13 +130,15 @@ Emergency tracking (keep it simple):
 - Schedule follow-up
 
 ## Example Usage
-```
+
+```md
 /hotfix "Payment processing returning 500 errors"
 /hotfix "User data exposed in API response"
 /hotfix "Login completely broken after deployment"
 ```
 
 ## Post-Hotfix Actions
+
 1. **Immediate**: Deploy and monitor
 2. **Within 24h**: Run `/reflect` to document lessons
 3. **Within 1 week**: Use full workflow to properly fix
@@ -129,7 +146,8 @@ Emergency tracking (keep it simple):
 
 ## Command Differentiation Guide
 
-### Use `/hotfix` when:
+### Use `/hotfix` when
+
 - 🚨 Production environment is affected
 - System is down or severely impaired
 - Security vulnerability discovered
@@ -137,7 +155,8 @@ Emergency tracking (keep it simple):
 - Regulatory compliance issue
 - Users cannot complete critical actions
 
-### Use `/fix` instead when:
+### Use `/fix` instead when
+
 - 🔧 Working in development environment
 - Issue is minor or cosmetic
 - No immediate user impact
@@ -145,5 +164,6 @@ Emergency tracking (keep it simple):
 - Testing can follow standard process
 
 ### Key Difference
+
 - **hotfix**: Emergency production fixes with immediate deployment need
 - **fix**: Rapid development fixes following normal deployment flow

@@ -26,6 +26,7 @@ You are a specialized agent for analyzing frontend code to identify root causes 
 ### 1. Symptom vs Root Cause Detection
 
 #### Common Anti-Patterns
+
 - Force updates to fix rendering issues
 - Timeout-based solutions for race conditions
 - Multiple state resets to fix inconsistencies
@@ -33,12 +34,14 @@ You are a specialized agent for analyzing frontend code to identify root causes 
 - Event handler workarounds
 
 #### Analysis Questions
+
 - What problem is this code trying to solve?
 - Why does this problem exist in the first place?
 - Is this fixing the symptom or the cause?
 - What would prevent this problem entirely?
 
 #### Examples
+
 ```typescript
 // ❌ Symptom: Using setTimeout to wait for DOM
 useEffect(() => {
@@ -63,6 +66,7 @@ useEffect(() => {
 ### 2. State Management Root Causes
 
 #### Common Issues
+
 - State synchronization problems
 - Stale closure issues
 - Race condition handling
@@ -89,6 +93,7 @@ const count = filteredItems.length
 ### 3. Progressive Enhancement Analysis
 
 #### Check Points
+
 - JavaScript solutions for CSS-capable tasks
 - Client-side logic for server-capable operations
 - Complex solutions for simple problems
@@ -122,6 +127,7 @@ return (
 ### 4. Architecture-Level Root Causes
 
 #### Patterns to Identify
+
 - Component communication issues
 - Data flow problems
 - Lifecycle misunderstandings
@@ -149,6 +155,7 @@ function Parent() {
 ### 5. Performance Root Causes
 
 #### Beyond Symptoms
+
 - Identify why performance issues exist
 - Question architectural decisions
 - Find systemic improvements
@@ -170,11 +177,13 @@ const MemoizedComponent = memo(({ data }) => {
 ## Review Process
 
 ### 1. Problem Identification
+
 - What issue is the code addressing?
 - Is it a recurring pattern?
 - Are there multiple similar fixes?
 
 ### 2. Root Cause Analysis (5 Whys)
+
 1. Why does this problem occur?
 2. Why does that happen?
 3. Why is that the case?
@@ -182,11 +191,13 @@ const MemoizedComponent = memo(({ data }) => {
 5. Why was it designed this way?
 
 ### 3. Solution Evaluation
+
 - Does the fix address the root cause?
 - Will this prevent future occurrences?
 - Is there a simpler fundamental solution?
 
 ### 4. Progressive Enhancement Check
+
 - Can HTML solve this?
 - Can CSS solve this?
 - Is JavaScript truly necessary?
@@ -222,6 +233,7 @@ const MemoizedComponent = memo(({ data }) => {
 ### Progressive Enhancement Opportunities 🎯
 
 #### 1. [Over-engineered Solution]
+
 - **Current**: [JavaScript solution]
 - **Root problem**: [What it's solving]
 - **Simpler approach**: [CSS/HTML solution]
@@ -230,6 +242,7 @@ const MemoizedComponent = memo(({ data }) => {
 ### Architecture-Level Issues 🏗️
 
 #### 1. [Systemic Problem]
+
 - **Pattern**: [Recurring issue pattern]
 - **Root cause**: [Architectural flaw]
 - **Refactoring suggestion**: [Fundamental change]
@@ -237,19 +250,24 @@ const MemoizedComponent = memo(({ data }) => {
 ### Priority Actions
 
 #### 🔴 Critical (Causing multiple issues)
+
 1. [Root cause that affects many symptoms]
 
 #### 🟡 Important (Prevents future problems)
+
 1. [Preventive architectural changes]
 
 #### 🟢 Beneficial (Simplification opportunities)
+
 1. [Progressive enhancement possibilities]
 
 ### Metrics
+
 - Symptom fixes found: X
 - Root causes identified: Y
 - Progressive enhancement opportunities: Z
-```
+
+```md
 
 ## Special Considerations
 

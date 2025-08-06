@@ -5,6 +5,7 @@ Technical specification for understanding check and execution planning.
 ## Execution Rule
 
 **PRIMARY**: PRE_TASK_CHECK is executed for tasks that involve:
+
 - File operations (create/edit/delete)
 - Command executions (bash, npm, etc.)
 - Multi-step workflows
@@ -12,6 +13,7 @@ Technical specification for understanding check and execution planning.
 - When understanding is below 95%
 
 **SKIP CONDITIONS** (AI judgment allowed):
+
 - Simple factual questions ("What is X?")
 - Confirmation responses ("y", "yes", "ok")
 - Direct information queries about existing content
@@ -19,8 +21,9 @@ Technical specification for understanding check and execution planning.
 - Requests for explanations or documentation
 
 **ALWAYS REQUIRED FOR**:
+
 - Any file system modifications
-- Code implementation requests  
+- Code implementation requests
 - System commands execution
 - Tasks requiring /commands
 - When user explicitly requests planning
@@ -28,6 +31,7 @@ Technical specification for understanding check and execution planning.
 ## Analysis Method
 
 Analyze the user request to determine:
+
 - Understanding percentage based on available information
 - Clear and unclear elements
 - Appropriate commands or approach
@@ -37,7 +41,7 @@ Analyze the user request to determine:
 
 Standard format for understanding check (when required):
 
-```
+```md
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🧠 Understanding Level: [progress bar] XX%
@@ -92,7 +96,7 @@ See: [@../commands/COMMAND_SELECTION.md] for detailed algorithm
 
 **Single command**:
 
-```
+```md
 💡 Suggested approach:
 - Command: /fix
 - Reason: Best match for small fix, 90% understanding
@@ -100,7 +104,7 @@ See: [@../commands/COMMAND_SELECTION.md] for detailed algorithm
 
 **Workflow** (multi-action detected):
 
-```
+```md
 💡 Suggested workflow:
 - Steps: /think → /code → /test
 - Reason: Complex task requiring planning
@@ -109,7 +113,7 @@ See: [@../commands/COMMAND_SELECTION.md] for detailed algorithm
 
 **No command match**:
 
-```
+```md
 💡 Suggested approach:
 - Command: N/A
 - Reason: No specific command needed for this task
@@ -136,7 +140,7 @@ Details: [@../commands/STANDARD_WORKFLOWS.md]
 Display for operations that will modify files or execute commands.
 Skip for pure read operations (Read, Grep, LS).
 
-```
+```md
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📝 Execution Plan

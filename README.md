@@ -5,6 +5,7 @@ A comprehensive configuration system for Claude AI with custom commands, develop
 ## 🎯 Overview
 
 This repository contains personal configurations for Claude AI, including:
+
 - Custom slash commands for systematic development workflows
 - Development principles (SOLID, DRY, TDD/RGRC)
 - Progressive Enhancement and code readability guidelines
@@ -12,7 +13,7 @@ This repository contains personal configurations for Claude AI, including:
 
 ## 📁 Structure
 
-```
+```txt
 .claude/
 ├── CLAUDE.md              # Main configuration (AI reads this)
 ├── COMMANDS.md            # Command reference (English)
@@ -43,20 +44,23 @@ This repository contains personal configurations for Claude AI, including:
 ### Installation
 
 1. Clone this repository to your home directory:
-```bash
-git clone https://github.com/YOUR_USERNAME/claude-config.git ~/.claude
-```
+
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/claude-config.git ~/.claude
+   ```
 
 2. Or if you already have a `.claude` directory, back it up first:
-```bash
-mv ~/.claude ~/.claude.backup
-git clone https://github.com/YOUR_USERNAME/claude-config.git ~/.claude
-```
+
+   ```bash
+   mv ~/.claude ~/.claude.backup
+   git clone https://github.com/YOUR_USERNAME/claude-config.git ~/.claude
+   ```
 
 ## 📝 Available Commands
 
 ### Core Development Commands
-| Command | Purpose | 
+
+| Command | Purpose |
 |---------|---------|
 | `/think` | Planning & SOW creation |
 | `/research` | Investigation without implementation |
@@ -65,12 +69,14 @@ git clone https://github.com/YOUR_USERNAME/claude-config.git ~/.claude
 | `/review` | Code review via agents |
 
 ### Quick Action Commands
+
 | Command | Purpose | Environment |
 |---------|---------|-------------|
 | `/fix` | Quick bug fixes | 🔧 Development |
 | `/hotfix` | Emergency production fixes | 🚨 Production |
 
 ### External Tool Commands
+
 | Command | Purpose | Requires |
 |---------|---------|----------|
 | `/gemini:search` | Google search via Gemini | Gemini CLI |
@@ -78,17 +84,20 @@ git clone https://github.com/YOUR_USERNAME/claude-config.git ~/.claude
 ## 🔄 Standard Workflows
 
 ### Feature Development
-```
+
+```txt
 /think → /research → /code → /test
 ```
 
 ### Bug Investigation & Fix
-```
+
+```txt
 /research → /fix
 ```
 
 ### Emergency Response
-```
+
+```txt
 /hotfix (standalone for critical issues)
 ```
 
@@ -101,12 +110,14 @@ git clone https://github.com/YOUR_USERNAME/claude-config.git ~/.claude
 ## 🛠️ Key Features
 
 ### Development Principles
+
 - **Progressive Enhancement**: CSS-first approach, build simple → enhance
 - **Code Readability**: Based on "The Art of Readable Code"
 - **Container/Presentational**: React component pattern
 - **SOLID, DRY, TDD/RGRC**: Industry best practices
 
 ### Safety Features
+
 - File deletion uses trash (`~/.Trash/`) instead of permanent deletion
 - Pre-task understanding checks for complex operations
 - User confirmation required for file modifications

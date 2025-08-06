@@ -3,6 +3,7 @@
 **デフォルトアプローチ**: 最大の再利用性のためにロジックをUIから分離
 
 ## コア哲学
+
 - **Container**: ロジックとデータ取得
 - **Presentational**: UIと表示のみ
 - **Propsのみ**: PresentationalコンポーネントはProps経由でデータを受け取る
@@ -11,19 +12,22 @@
 ## コンポーネントの役割
 
 ### Containerコンポーネント
+
 - データを取得（API、ストア、フック）
 - 状態を管理
 - ビジネスロジックを処理
 - レイアウト/ポジショニングスタイルのみを制御
 
 ### Presentationalコンポーネント
+
 - Props経由でデータを受け取る
 - 直接的なデータ取得なし
 - 装飾的なスタイルを処理
 - 完全に再利用可能
 
 ## ディレクトリ構造
-```
+
+```txt
 src/
 ├── containers/
 │   └── TodoContainer/
@@ -38,6 +42,7 @@ src/
 ## 実装例
 
 ### フック付きContainer
+
 ```tsx
 // TodoContainer/index.tsx
 import { useTodos } from '@/hooks/useTodos';
@@ -45,7 +50,7 @@ import { TodoList } from '@/components/TodoList';
 
 export const TodoContainer = () => {
   const todos = useTodos();
-  
+
   return (
     <div className="p-4 max-w-4xl mx-auto"> {/* レイアウトのみ */}
       <TodoList todos={todos} />
@@ -54,7 +59,8 @@ export const TodoContainer = () => {
 };
 ```
 
-### Presentationalコンポーネント
+### Presentational コンポーネント
+
 ```tsx
 // TodoList/index.tsx
 type TodoListProps = {
@@ -77,12 +83,14 @@ export const TodoList = ({ todos }: TodoListProps) => {
 ## スタイルの責任
 
 ### Containerスタイル
+
 - レイアウト（grid、flexbox）
 - スペーシング（margin、padding）
 - ポジショニング（absolute、z-index）
 - サイジング（width、max-width）
 
 ### Presentationalスタイル
+
 - 色と背景
 - ボーダーとシャドウ
 - タイポグラフィ
@@ -90,6 +98,7 @@ export const TodoList = ({ todos }: TodoListProps) => {
 - トランジション
 
 ## アンチパターン
+
 ```tsx
 // ❌ 避ける: Presentationalがデータを取得
 export const TodoList = () => {
@@ -110,12 +119,14 @@ export const TodoContainer = () => {
 ```
 
 ## 利点
+
 - **テスト**: ロジックとUIを別々にテスト
 - **再利用性**: 同じコンポーネント、異なるデータソース
 - **保守性**: 変更が1つのレイヤーに分離
 - **明確性**: 関心の明確な分離
 
 ## 覚えておくこと
+
 - ContainerはデータをUIに接続
 - PresentationalコンポーネントはPropsのみ
 - Presentationalコンポーネントを純粋に保つ

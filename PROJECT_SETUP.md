@@ -11,6 +11,7 @@ It's recommended to set up hooks in your project's `.claude/settings.json` to au
 #### Example Configurations
 
 **For projects using Biome:**
+
 ```json
 {
   "hooks": {
@@ -24,6 +25,7 @@ It's recommended to set up hooks in your project's `.claude/settings.json` to au
 ```
 
 **For projects using Prettier + ESLint:**
+
 ```json
 {
   "hooks": {
@@ -37,6 +39,7 @@ It's recommended to set up hooks in your project's `.claude/settings.json` to au
 ```
 
 **For Deno projects:**
+
 ```json
 {
   "hooks": {
@@ -50,6 +53,7 @@ It's recommended to set up hooks in your project's `.claude/settings.json` to au
 ```
 
 **For Python projects with Black:**
+
 ```json
 {
   "hooks": {
@@ -77,6 +81,7 @@ It's recommended to set up hooks in your project's `.claude/settings.json` to au
 ### Troubleshooting
 
 If hooks are blocking your edits:
+
 1. Check the command syntax
 2. Ensure the formatter is installed
 3. Temporarily disable hooks by removing/renaming `.claude/settings.json`
@@ -87,7 +92,8 @@ If hooks are blocking your edits:
 ### Recommended .gitignore Entries
 
 Add these to your project's `.gitignore`:
-```
+
+```md
 # Claude Code temporary files
 .claude/logs/
 .claude/workspace/tasks/active/
@@ -96,7 +102,8 @@ Add these to your project's `.gitignore`:
 ### Workspace Structure
 
 Consider creating:
-```
+
+```txt
 .claude/
 ├── settings.json      # Project-specific Claude Code settings
 ├── workspace/         # Project knowledge base
