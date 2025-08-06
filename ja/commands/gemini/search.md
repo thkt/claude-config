@@ -53,7 +53,7 @@ gemini --prompt "検索して要約: {{query}}
 
 検索進捗を追跡：
 
-```
+```md
 # 検索: [トピック]
 1. ⏳ 検索実行
 2. ⏳ 結果分析
@@ -129,7 +129,7 @@ gemini -p "トラブルシューティング検索: {{query}}
 
 ## 使用例
 
-```
+```md
 /gemini:search "React Server Components本番デプロイ"
 /gemini:search "GraphQLのN+1クエリ問題の解決"
 /gemini:search "Kubernetes自動スケーリングベストプラクティス2024"

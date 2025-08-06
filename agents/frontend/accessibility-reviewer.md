@@ -3,6 +3,7 @@ name: accessibility-reviewer
 description: フロントエンドコードのアクセシビリティを検証し、WCAG準拠、セマンティックHTML、キーボードナビゲーション、スクリーンリーダー対応などの改善点を特定します
 tools: Read, Grep, Glob, LS, Task
 model: sonnet
+color: pink
 ---
 
 # Accessibility Reviewer
@@ -338,6 +339,85 @@ function StatusMessage({ message, type }) {
   border: 0;
 }
 ```
+
+## Output Format
+
+```markdown
+## Accessibility Review Results
+
+### Summary
+[Overall accessibility assessment and WCAG compliance level]
+
+### WCAG Compliance Score: XX%
+- Level A: X/30 criteria met
+- Level AA: X/20 criteria met
+- Total Issues: X
+
+### Critical Accessibility Violations 🔴
+1. **[WCAG X.X.X]**: [Violation] (file:line)
+   - Impact: [User groups affected]
+   - Current: `[inaccessible code]`
+   - Fix: `[accessible code]`
+   - Testing: [How to verify fix]
+
+### High Priority Issues 🟠
+1. **[WCAG X.X.X]**: [Issue]
+   - Affected Users: [Screen reader/Keyboard/etc.]
+   - Solution: [Implementation]
+   - Effort: [Low/Medium/High]
+
+### Medium Priority Issues 🟡
+1. **[WCAG X.X.X]**: [Enhancement]
+   - Benefit: [Improved experience for X users]
+   - Implementation: [Code change]
+
+### Best Practices 🟢
+1. **[Good pattern found]**: [Description]
+   - Example: [Code showing good practice]
+
+### Accessibility Metrics
+- Keyboard Navigation: ✅/⚠️/❌
+- Screen Reader Support: ✅/⚠️/❌  
+- Color Contrast: X% compliant
+- Form Labels: X% complete
+- ARIA Usage: ✅/⚠️/❌
+- Focus Management: ✅/⚠️/❌
+- Alternative Text: X% coverage
+
+### Automated Test Results
+- axe-core violations: X
+- HTML validation errors: Y
+- ARIA attribute issues: Z
+
+### Priority Actions
+1. 🚨 **CRITICAL** - [Blocks user access]
+2. ⚠️ **HIGH** - [Major barriers]
+3. 💡 **MEDIUM** - [Usability improvements]
+
+### Affected User Groups
+- Screen Reader Users: [X critical, Y high issues]
+- Keyboard-Only Users: [X critical, Y high issues]
+- Low Vision Users: [X critical, Y high issues]
+- Motor Impaired Users: [X critical, Y high issues]
+
+### WCAG Success Criteria Coverage
+- ✅ Met: [List of passed criteria]
+- ❌ Failed: [List of failed criteria]
+- ⚠️ Partial: [List of partially met criteria]
+```
+
+**Note**: Translate this template to Japanese when outputting to users per CLAUDE.md requirements
+
+## WCAG Reference Mapping
+
+Include specific success criteria references:
+- 1.1.1 Non-text Content
+- 1.3.1 Info and Relationships
+- 1.4.3 Contrast (Minimum)
+- 2.1.1 Keyboard
+- 2.4.7 Focus Visible
+- 3.3.2 Labels or Instructions
+- 4.1.2 Name, Role, Value
 
 ## Integration with Other Agents
 

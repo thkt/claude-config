@@ -3,6 +3,7 @@ name: type-safety-reviewer
 description: TypeScriptコードの型安全性を評価し、型定義の網羅性、型推論の活用、anyの使用検出、型ガードの実装など静的型付けの品質を検証します
 tools: Read, Grep, Glob, LS, Task
 model: sonnet
+color: cyan
 ---
 
 # Type Safety Reviewer
@@ -447,6 +448,50 @@ request('PATCH /api/users') // ❌ Error: Type '"PATCH /api/users"' is not assig
     // ❌ Using string for known values
     type Status = string // Should be: 'active' | 'inactive' | 'pending'
     ```
+
+## Output Format
+
+```markdown
+## Type Safety Review Results
+
+### Summary
+[Overall type safety assessment]
+
+### Type Coverage Metrics
+- Type Coverage: X%
+- Any Usage: Y instances
+- Unknown Usage: Z instances
+- Type Assertions: N instances
+
+### Critical Type Issues 🔴
+1. **[Issue]**: [Description] (file:line)
+   - Current: `[unsafe code]`
+   - Suggested: `[safe code]`
+   - Impact: [Runtime safety risk]
+
+### Type Improvements 🟡
+1. **[Area]**: [Description]
+   - Pattern: [Current pattern]
+   - Better: [Improved pattern]
+   - Benefit: [Type safety gain]
+
+### Type Best Practices 🟢
+1. **[Good pattern found]**: [Description]
+   - Example: [Code showing good practice]
+
+### Priority Actions
+1. 🚨 **Eliminate any types** - [Count] instances
+2. ⚠️ **Add type guards** - [Count] unions need guards
+3. 💡 **Enable strict mode** - [If not enabled]
+
+### Strict Mode Compliance
+- strictNullChecks: ✅/❌
+- noImplicitAny: ✅/❌
+- strictFunctionTypes: ✅/❌
+- noUncheckedIndexedAccess: ✅/❌
+```
+
+**Note**: Translate this template to Japanese when outputting to users per CLAUDE.md requirements
 
 ## Integration with Other Agents
 

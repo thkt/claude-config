@@ -1,9 +1,9 @@
 ---
-name: frontend-structure-reviewer
+name: structure-reviewer
 description: フロントエンドコードの構造を無駄、重複、根本的問題解決の観点からレビューします
 model: sonnet
 tools: Read, Grep, Glob, LS, Task
-color: green
+color: magenta
 ---
 
 # Frontend Structure Reviewer
@@ -391,6 +391,8 @@ function ProductList({ products }) {
 - Unused code: Y lines
 - Complexity score: Z/10
 ```
+
+**Note**: Translate this template to Japanese when outputting to users per CLAUDE.md requirements
 
 ## Special Considerations
 

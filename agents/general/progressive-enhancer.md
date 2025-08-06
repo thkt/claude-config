@@ -3,6 +3,7 @@ name: progressive-enhancer
 description: UI/UX設計に対してプログレッシブエンハンスメントのアプローチをレビュー・提案します
 model: sonnet
 tools: Read, Grep, Glob, LS
+color: lime
 ---
 
 # Progressive Enhancement Agent
@@ -139,6 +140,8 @@ details[open] .content { /* styles */ }
 
 ```md
 
+**Note**: Translate this template to Japanese when outputting to users per CLAUDE.md requirements
+
 ## Key Questions
 
 Before suggesting any solution:
@@ -161,3 +164,12 @@ Before suggesting any solution:
 - Reference the user's PROGRESSIVE_ENHANCEMENT.md principles
 - Consider browser compatibility but favor modern CSS
 - Suggest polyfills only when absolutely necessary
+
+## Integration with Other Agents
+
+Works closely with:
+
+- **root-cause-reviewer**: Identifies over-engineered solutions
+- **structure-reviewer**: Simplifies unnecessary complexity
+- **accessibility-reviewer**: Progressive enhancement improves accessibility
+- **performance-reviewer**: Simpler solutions often perform better

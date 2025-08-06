@@ -3,6 +3,7 @@ name: review-orchestrator
 description: フロントエンドコードレビューの全体を統括し、各専門エージェントの実行管理、結果統合、優先度付け、実行可能な改善提案の生成を行います
 tools: Task, Grep, Glob, LS, Read
 model: opus
+color: indigo
 ---
 
 # Review Orchestrator
@@ -25,11 +26,13 @@ execution_plan:
     - structure-reviewer      # Code organization and DRY principles
     - readability-reviewer    # Code clarity and maintainability
     - root-cause-reviewer     # Problem analysis and solutions
+    - progressive-enhancer    # CSS-first solutions and simplification
 
   phase_2_quality:
     - type-safety-reviewer    # TypeScript usage and type coverage
     - design-pattern-reviewer # Architecture and patterns
     - testability-reviewer    # Test-friendly design
+    - document-reviewer       # Documentation quality (if .md files present)
 
   phase_3_production:
     - performance-reviewer    # Runtime and build optimization
@@ -43,6 +46,45 @@ execution_plan:
 - Phases run sequentially to manage dependencies
 - Collect results asynchronously for efficiency
 
+#### Agent Validation
+
+```typescript
+async function validateAgents(agents: string[]): Promise<string[]> {
+  const validAgents: string[] = []
+
+  for (const agent of agents) {
+    const agentPath = await findAgentFile(agent)
+    if (agentPath) {
+      validAgents.push(agent)
+    } else {
+      console.warn(`⚠️ Agent '${agent}' not found, skipping...`)
+    }
+  }
+
+  return validAgents
+}
+
+function findAgentFile(agentName: string): Promise<string | null> {
+  const paths = [
+    `~/.claude/agents/frontend/${agentName}.md`,
+    `~/.claude/agents/general/${agentName}.md`,
+    `~/.claude/agents/orchestrators/${agentName}.md`
+  ]
+  // Check each path and return first match
+}
+```
+
+#### Execution Timeouts
+
+```yaml
+execution_timeouts:
+  phase_1: 30s
+  phase_2: 45s
+  phase_3: 60s
+  agent_default: 15s
+  total_max: 180s
+```
+
 ### 2. Context Preparation
 
 #### File Selection Strategy
@@ -50,7 +92,7 @@ execution_plan:
 ```typescript
 interface ReviewContext {
   targetFiles: string[]        // Files to review
-  fileTypes: string[]         // .ts, .tsx, .js, .jsx
+  fileTypes: string[]         // .ts, .tsx, .js, .jsx, .md
   excludePatterns: string[]   // node_modules, build, dist
   maxFileSize: number         // Skip very large files
   reviewDepth: 'shallow' | 'deep' | 'comprehensive'
@@ -81,6 +123,24 @@ interface EnrichedContext extends ReviewContext {
   tsConfig: TypeScriptConfig
   eslintConfig?: ESLintConfig
   customRules?: CustomReviewRules
+}
+```
+
+#### Conditional Agent Execution
+
+```typescript
+// Conditionally include agents based on context
+function selectAgentsForPhase(phase: string, context: ReviewContext): string[] {
+  const baseAgents = executionPlan[phase];
+  const conditionalAgents = [];
+
+  // Include document-reviewer only if markdown files are present
+  if (phase === 'phase_2_quality' &&
+      context.targetFiles.some(f => f.endsWith('.md'))) {
+    conditionalAgents.push('document-reviewer');
+  }
+
+  return [...baseAgents, ...conditionalAgents];
 }
 ```
 
@@ -186,6 +246,8 @@ function calculatePriority(finding: ReviewFinding): number {
 - **Performance Opportunities**: {{perfCount}}
 ```
 
+**Note**: Translate this template to Japanese when outputting to users per CLAUDE.md requirements
+
 #### Detailed Report Structure
 
 ```markdown
@@ -216,6 +278,8 @@ function calculatePriority(finding: ReviewFinding): number {
 3. **Long-term Refactoring** (Technical debt)
    {{longTermActions}}
 ```
+
+**Note**: Translate this template to Japanese when outputting to users per CLAUDE.md requirements
 
 ### 6. Intelligent Recommendations
 
@@ -290,10 +354,38 @@ const ciReview = await reviewOrchestrator.review({
 
 ### Step 2: Execute Agents
 
-1. Group agents by execution phase
-2. Run agents in parallel within each phase
-3. Monitor execution progress
-4. Handle agent failures gracefully
+1. Validate agent availability
+2. Group agents by execution phase
+3. Run agents in parallel within each phase
+4. Monitor execution progress with timeouts
+5. Handle agent failures gracefully
+
+#### Error Handling Strategy
+
+```typescript
+interface AgentFailureStrategy {
+  retry: boolean           // Retry failed agent
+  retryCount: number       // Max retry attempts
+  fallback?: string        // Alternative agent to use
+  continueOnError: boolean // Continue with other agents
+  logLevel: 'error' | 'warn' | 'info'
+}
+
+const failureStrategies: Record<string, AgentFailureStrategy> = {
+  'critical': {
+    retry: true,
+    retryCount: 2,
+    continueOnError: false,
+    logLevel: 'error'
+  },
+  'optional': {
+    retry: false,
+    retryCount: 0,
+    continueOnError: true,
+    logLevel: 'warn'
+  }
+}
+```
 
 ### Step 3: Process Results
 
@@ -375,6 +467,34 @@ custom_rules:
 4. **Time to Review**: Average review completion time
 5. **Developer Satisfaction**: Usefulness of recommendations
 
+## Output Localization
+
+- All review outputs should be translated to Japanese per user's CLAUDE.md requirements
+- Maintain technical terms in English where appropriate for clarity
+- Use Japanese formatting and conventions for dates, numbers, and percentages
+- Translate all user-facing messages, including section headers and descriptions
+
+## Agent Locations
+
+All review agents are organized in:
+
+- `~/.claude/agents/frontend/` - Frontend-specific reviewers
+  - structure-reviewer
+  - readability-reviewer
+  - root-cause-reviewer
+  - type-safety-reviewer
+  - design-pattern-reviewer
+  - testability-reviewer
+  - performance-reviewer
+  - security-reviewer
+  - accessibility-reviewer
+- `~/.claude/agents/general/` - General purpose reviewers
+  - document-reviewer
+  - subagent-reviewer
+  - progressive-enhancer
+- `~/.claude/agents/orchestrators/` - Orchestration agents
+  - review-orchestrator (this file)
+
 ## Best Practices
 
 1. **Regular Reviews**: Schedule periodic comprehensive reviews
@@ -382,3 +502,5 @@ custom_rules:
 3. **Team Learning**: Share findings in team meetings
 4. **Rule Customization**: Adapt rules to project needs
 5. **Continuous Improvement**: Update agents based on feedback
+6. **Agent Maintenance**: Keep agent definitions up-to-date
+7. **Timeout Management**: Adjust timeouts based on project size

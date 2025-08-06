@@ -47,6 +47,7 @@ Automatically select relevant agents based on scope:
 - **Security**: security-reviewer for all code types
 - **Quality**: readability, structure, type-safety reviewers
 - **Architecture**: root-cause, testability reviewers
+- **Documentation**: document-reviewer for .md, README, API docs
 
 ### 3. TodoWrite Integration
 
@@ -96,12 +97,12 @@ Use `review-orchestrator` agent to:
 ### Core Reviewers
 
 - `review-orchestrator` - Coordinates all review activities
-- `frontend-structure-reviewer` - Code organization and patterns
-- `frontend-root-cause-reviewer` - Deep problem analysis
+- `structure-reviewer` - Code organization and patterns
+- `root-cause-reviewer` - Deep problem analysis
 
 ### Quality Reviewers
 
-- `frontend-readability-reviewer` - Code clarity and maintainability
+- `readability-reviewer` - Code clarity and maintainability
 - `type-safety-reviewer` - TypeScript and type coverage
 - `testability-reviewer` - Test design and coverage
 
@@ -112,6 +113,7 @@ Use `review-orchestrator` agent to:
 - `performance-reviewer` - Performance bottlenecks
 - `design-pattern-reviewer` - Architecture and patterns
 - `progressive-enhancer` - Progressive enhancement approach
+- `document-reviewer` - Technical documentation quality
 
 ## Output Format
 

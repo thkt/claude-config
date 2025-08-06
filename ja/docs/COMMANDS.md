@@ -110,8 +110,11 @@
 ```txt
 .claude/
 ├── CLAUDE.md          # グローバルルール
-├── COMMANDS.md        # 英語版（このファイル）
-├── COMMANDS_JP.md     # 日本語版
+├── docs/
+│   └── COMMANDS.md    # 英語版
+├── ja/
+│   └── docs/
+│       └── COMMANDS.md    # 日本語版（このファイル）
 ├── commands/          # コマンド定義
 │   ├── code.md
 │   ├── fix.md

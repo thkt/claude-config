@@ -43,8 +43,8 @@
 
 ### コマンドリファレンス
 
-- コマンドリスト（英語版）: [@~/.claude/COMMANDS.md](../COMMANDS.md)
-- コマンドリスト（日本語版）: [@~/.claude/COMMANDS_JP.md](../COMMANDS_JP.md)
+- コマンドリスト（英語版）: [@~/.claude/docs/COMMANDS.md](../docs/COMMANDS.md)
+- コマンドリスト（日本語版）: [@~/.claude/ja/docs/COMMANDS.md](./docs/COMMANDS.md)
 
 ### 参考
 

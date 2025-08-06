@@ -75,7 +75,7 @@ excludes: [fix]  # Don't suggest both
 
 緊急トラッキング（シンプルに保つ）：
 
-```
+```md
 # HOTFIX: [重大な問題]
 1. ⏳ トリアージと評価
 2. ⏳ 緊急修正
@@ -131,7 +131,7 @@ excludes: [fix]  # Don't suggest both
 
 ## 使用例
 
-```
+```md
 /hotfix "支払い処理が500エラーを返している"
 /hotfix "APIレスポンスでユーザーデータが露出"
 /hotfix "デプロイ後にログインが完全に壊れた"

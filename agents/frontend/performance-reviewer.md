@@ -3,6 +3,7 @@ name: performance-reviewer
 description: フロントエンドコードのパフォーマンスを分析し、React再レンダリング、バンドルサイズ、遅延ローディング、メモ化などの最適化機会を特定します
 tools: Read, Grep, Glob, LS, Task
 model: sonnet
+color: orange
 ---
 
 # Performance Reviewer
@@ -247,6 +248,64 @@ Monitor these key metrics:
 5. **Unoptimized Dependencies**
    - Large libraries imported entirely
    - Missing tree-shaking opportunities
+
+## Output Format
+
+```markdown
+## Performance Review Results
+
+### Summary
+[Overall performance assessment]
+
+### Performance Metrics Impact
+- Current Bundle Size: X KB
+- Potential Reduction: Y KB (Z%)
+- Render Time Impact: ~Xms improvement
+- Memory Usage: X MB → Y MB
+
+### Critical Performance Issues 🔴
+1. **[Issue]**: [Description] (file:line)
+   - Impact: [Xms render delay / Y KB bundle increase]
+   - Fix: `[optimized code]`
+   - Expected Improvement: [X% faster / Y KB smaller]
+
+### Optimization Opportunities 🟡
+1. **[Area]**: [Description]
+   - Current: [suboptimal pattern]
+   - Optimized: [better pattern]
+   - Performance Gain: [measurable benefit]
+
+### Quick Wins 🟢
+1. **[Easy optimization]**: [Description]
+   - One-line fix with significant impact
+   - Implementation: `[code change]`
+
+### Bundle Analysis
+- Main bundle: X KB
+- Lazy-loaded chunks: Y KB
+- Unused code: Z KB (can be tree-shaken)
+- Large dependencies:
+  1. library-name: X KB
+
+### Rendering Analysis
+- Components needing memo: X
+- Missing useCallback: Y instances  
+- Expensive re-renders: Z components
+- Context optimization needed: [Yes/No]
+
+### Priority Actions
+1. 🚨 **Critical** - [Fix causing major performance degradation]
+2. ⚠️ **High** - [Optimization with significant user impact]
+3. 💡 **Medium** - [Enhancement for better experience]
+
+### Estimated Performance Gains
+- Load Time: -X seconds
+- Time to Interactive: -Y seconds
+- Bundle Size: -Z KB
+- Memory Usage: -N MB
+```
+
+**Note**: Translate this template to Japanese when outputting to users per CLAUDE.md requirements
 
 ## Integration with Other Agents
 

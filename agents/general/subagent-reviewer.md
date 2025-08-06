@@ -3,7 +3,7 @@ name: subagent-reviewer
 description: サブエージェント定義ファイルの形式、構造、品質をレビューします
 model: opus
 tools: Read, Grep, Glob, LS
-color: purple
+color: gray
 ---
 
 # Sub-Agent Reviewer
@@ -68,7 +68,7 @@ color: blue              # Optional: Valid color
 
 ### 3. Language Consistency
 
-```
+```md
 description: Japanese only (in frontmatter)
 body: English (technical content)
 ```
@@ -173,6 +173,8 @@ Exception: User-facing strings in output templates should be Japanese.
 - Potential conflicts: [if any]
 - Missing integrations: [if any]
 ```
+
+**Note**: Translate this template to Japanese when outputting to users per CLAUDE.md requirements
 
 ## Key Principles
 

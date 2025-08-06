@@ -110,7 +110,8 @@ Custom commands for systematic software development support.
 ```txt
 .claude/
 ├── CLAUDE.md          # Global rules
-├── COMMANDS.md        # This file
+├── docs/
+│   └── COMMANDS.md    # This file
 ├── commands/          # Command definitions
 │   ├── code.md
 │   ├── fix.md

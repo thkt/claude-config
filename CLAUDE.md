@@ -43,8 +43,8 @@
 
 ### Commands Reference
 
-- Command list: [@~/.claude/COMMANDS.md](./COMMANDS.md)
-- Japanese version: [@~/.claude/COMMANDS_JP.md](./COMMANDS_JP.md)
+- Command list: [@~/.claude/docs/COMMANDS.md](./docs/COMMANDS.md)
+- Japanese version: [@~/.claude/ja/docs/COMMANDS.md](./ja/docs/COMMANDS.md)
 
 ### Reference
 

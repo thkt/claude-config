@@ -16,8 +16,13 @@ This repository contains personal configurations for Claude AI, including:
 ```txt
 .claude/
 ├── CLAUDE.md              # Main configuration (AI reads this)
-├── COMMANDS.md            # Command reference (English)
-├── COMMANDS_JP.md         # Command reference (Japanese)
+├── README.md              # This file - Quick start guide
+├── docs/                  # Documentation
+│   ├── ARCHITECTURE.md   # System architecture
+│   ├── COMMANDS.md       # Command reference (English)
+│   ├── MODEL_SELECTION.md # Model selection guidelines
+│   ├── AGENT_USAGE.md    # Agent usage documentation
+│   └── PROJECT_SETUP.md  # Project setup guide
 ├── commands/              # Command definitions
 │   ├── code.md           # TDD/RGRC implementation
 │   ├── fix.md            # Quick bug fixes
@@ -124,10 +129,12 @@ This repository contains personal configurations for Claude AI, including:
 
 ## 📚 Documentation
 
-- [Commands Reference (English)](./COMMANDS.md)
-- [Commands Reference (Japanese)](./COMMANDS_JP.md)
+- [Commands Reference (English)](./docs/COMMANDS.md)
+- [Commands Reference (Japanese)](./ja/docs/COMMANDS.md)
+- [System Architecture](./docs/ARCHITECTURE.md)
 - [Configuration Guide](./CLAUDE.md)
 - [Japanese Configuration](./ja/CLAUDE.md)
+- [Project Setup](./docs/PROJECT_SETUP.md)
 
 ## 🤝 Contributing
 

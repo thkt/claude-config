@@ -1,5 +1,5 @@
 ---
-name: frontend-root-cause-reviewer
+name: root-cause-reviewer
 description: フロントエンドコードの根本的な問題を分析し、表面的な対処療法ではなく本質的な解決策を提案します
 model: opus
 tools: Read, Grep, Glob, LS, Task
@@ -268,6 +268,8 @@ const MemoizedComponent = memo(({ data }) => {
 - Progressive enhancement opportunities: Z
 
 ```md
+
+**Note**: Translate this template to Japanese when outputting to users per CLAUDE.md requirements
 
 ## Special Considerations
 

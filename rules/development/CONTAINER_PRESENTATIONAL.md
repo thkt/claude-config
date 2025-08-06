@@ -59,7 +59,7 @@ export const TodoContainer = () => {
 };
 ```
 
-### Presentational Component
+### Presentational Component Example
 
 ```tsx
 // TodoList/index.tsx

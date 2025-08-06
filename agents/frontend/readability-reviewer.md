@@ -1,9 +1,9 @@
 ---
-name: frontend-readability-reviewer
+name: readability-reviewer
 description: フロントエンドコード（TypeScript/React）の可読性を「The Art of Readable Code」の原則とフロントエンド特有の観点からレビューします
 model: sonnet
 tools: Read, Grep, Glob, LS, Task
-color: blue
+color: cyan
 ---
 
 # Frontend Readability Reviewer
@@ -336,6 +336,8 @@ const Component = () => {
 ### Quick Wins
 - [Simple changes with big impact]
 ```
+
+**Note**: Translate this template to Japanese when outputting to users per CLAUDE.md requirements
 
 ## Special Considerations
 
