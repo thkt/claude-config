@@ -1,0 +1,33 @@
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Workspace and temporary files
+workspace/
+*.log
+*.tmp
+*.temp
+
+# Claude specific
+ide/
+projects/
+shell-snapshots/
+sounds/
+statsig/
+todos/
+.credentials.json
+
+# Private/Local configurations
+*.local
+.env
+
+# Cache
+.cache/
+*.cache
