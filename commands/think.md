@@ -27,18 +27,14 @@ Perform detailed problem analysis with dynamic project understanding, risk asses
 
 ### Current Branch & Changes
 
-Check current git branch:
-
 ```bash
-git branch --show-current
+!`git branch --show-current 2>/dev/null || echo "Not in a git repository"`
 ```
 
 ### Recent Related Commits
 
-Find related commits by topic:
-
 ```bash
-git log --oneline -10 --grep="[topic]"
+!`git log --oneline -5 2>/dev/null || echo "No recent commits"`
 ```
 
 ### Project Complexity Metrics

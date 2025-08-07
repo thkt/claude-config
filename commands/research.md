@@ -25,46 +25,66 @@ Investigate codebase with dynamic discovery, parallel search execution, and conf
 
 ## Dynamic Project Discovery
 
-### Project Structure
-
-Use tree or ls to explore:
+### Recent Commit History
 
 ```bash
-tree -L 2 -I 'node_modules|dist|build|coverage|.git' | head -20
-# or
-ls -la
+!`git log --oneline -10 2>/dev/null || echo "Not a git repository"`
 ```
 
 ### Technology Stack
 
-Check package.json for frameworks:
-
 ```bash
-cat package.json | grep -E '"(react|vue|angular|next|nuxt|svelte|express|fastify|nest)"'
+!`ls -la package.json pyproject.toml go.mod Cargo.toml pom.xml build.gradle 2>/dev/null | head -5 || echo "No standard project files found"`
 ```
 
-### Language Distribution
-
-Find source file types:
+### Modified Files
 
 ```bash
-find . -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.py" -o -name "*.go" \) -not -path "*/node_modules/*" | sed 's/.*\.//' | sort | uniq -c | sort -rn
+!`git diff --name-only HEAD~1 2>/dev/null | head -10 || echo "No recent changes"`
 ```
 
-### Dependencies Analysis
-
-List main dependencies:
+### Documentation Files
 
 ```bash
-cat package.json | jq -r '.dependencies | keys[]' | head -10
+!`find . -type f -name "*.md" -not -path "*/node_modules/*" | head -10 || echo "No documentation found"`
+```
+
+### Core File Count
+
+```bash
+!`find . -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" \) -not -path "*/node_modules/*" | wc -l | xargs -I {} echo "Core files: {}"`
+```
+
+## Quick Context Analysis
+
+### Test Framework Detection
+
+```bash
+!`grep -E "jest|mocha|vitest|pytest|unittest" package.json 2>/dev/null | head -3 || echo "No test framework detected"`
+```
+
+### API Endpoints
+
+```bash
+!`grep -r "app.get\|app.post\|app.put\|app.delete\|router." --include="*.js" --include="*.ts" | head -10 || echo "No API endpoints found"`
 ```
 
 ### Configuration Files
 
-Locate config files:
+```bash
+!`ls -la .env* .config* *.config.* 2>/dev/null | head -10 || echo "No configuration files found"`
+```
+
+### Package Dependencies
 
 ```bash
-ls -la *.config.* *.json *.yml *.yaml | grep -v node_modules
+!`cat package.json 2>/dev/null | grep -E '"dependencies"|"devDependencies"' -A 10 || echo "No package.json found"`
+```
+
+### Recent Issues/TODOs
+
+```bash
+!`grep -r "TODO\|FIXME\|HACK" --include="*.ts" --include="*.tsx" --include="*.js" | head -10 || echo "No TODOs found"`
 ```
 
 ## Hierarchical Research Process

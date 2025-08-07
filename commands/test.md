@@ -1,6 +1,6 @@
 ---
 name: test
-description: 実装コードの品質を包括的なテストで保証
+description: Ensure code quality with comprehensive testing and validation
 priority: high
 suitable_for:
   scale: [small, medium, large]
@@ -17,44 +17,36 @@ context:
   test_results: "analyzed"
 ---
 
-# /test - Advanced Testing & Verification
+# /test - Advanced Testing & Validation
 
 ## Purpose
 
-Ensure code quality through comprehensive testing with dynamic discovery, hierarchical analysis, and coverage metrics.
+Ensure code quality with comprehensive testing featuring dynamic discovery, hierarchical analysis, and coverage metrics.
 
 ## Dynamic Test Discovery
 
 ### Available Test Scripts
 
-List available test-related npm scripts:
-
 ```bash
-npm run 2>&1 | grep -E "test|spec|check|lint|type"
+!`npm run 2>&1 | grep -E "test|spec|check|lint|type" || echo "No npm scripts found"`
 ```
 
 ### Package Manager Detection
 
-Detect which package manager is used:
-
 ```bash
-ls package-lock.json yarn.lock pnpm-lock.yaml 2>/dev/null | head -1
+!`ls package-lock.json yarn.lock pnpm-lock.yaml 2>/dev/null | head -1 || echo "package.json"`
 ```
 
 ### Test Framework Detection
 
-Identify test frameworks:
-
 ```bash
-cat package.json | grep -E "jest|vitest|mocha|jasmine|karma|cypress|playwright"
+!`cat package.json 2>/dev/null | grep -E "jest|vitest|mocha|jasmine|karma|cypress|playwright" || echo "No test framework detected"`
 ```
 
-### Test Files Count
-
-Count test files:
+### Test File Count
 
 ```bash
-find . -type f \( -name "*.test.*" -o -name "*.spec.*" \) -not -path "*/node_modules/*" | wc -l
+!`find . -type f \( -name "*.test.*" -o -name "*.spec.*" \) -not -path "*/node_modules/*" 2>/dev/null | wc -l || echo "0"`
 ```
 
 ## Hierarchical Testing Process
@@ -63,16 +55,16 @@ find . -type f \( -name "*.test.*" -o -name "*.spec.*" \) -not -path "*/node_mod
 
 Use Task agent to:
 
-1. Detect testing infrastructure and frameworks
+1. Detect test infrastructure and frameworks
 2. Identify test file patterns and locations
 3. Discover available test commands and scripts
-4. Check for coverage configuration
+4. Check coverage configuration
 
 ### Phase 2: Parallel Test Execution
 
-Execute test suites concurrently when possible:
+Run test suites concurrently when possible:
 
-- **Unit Tests**: Fastest feedback on component logic
+- **Unit Tests**: Fastest feedback for component logic
 - **Integration Tests**: API and service interactions
 - **E2E Tests**: Critical user paths (if configured)
 - **Quality Checks**: Linting, type checking, formatting
@@ -81,7 +73,7 @@ Execute test suites concurrently when possible:
 
 Analyze results with confidence scoring:
 
-1. **Failure Analysis**: Root cause identification
+1. **Failure Analysis**: Identify root causes
 2. **Coverage Metrics**: Line, branch, function coverage
 3. **Performance Data**: Test execution times
 4. **Flaky Test Detection**: Intermittent failures
@@ -90,10 +82,10 @@ Analyze results with confidence scoring:
 
 ### Quick Test (1-2 min)
 
-Focus on changed files only:
+Focus only on changed files:
 
 ```bash
-npm test -- --findRelatedTests $(git diff --name-only HEAD)
+!`npm test -- --findRelatedTests $(git diff --name-only HEAD) 2>/dev/null || echo "Quick test not available"`
 ```
 
 Command: `/test --quick`
@@ -103,9 +95,7 @@ Command: `/test --quick`
 Run main test suite:
 
 ```bash
-npm test
-# or yarn test
-# or pnpm test
+!`npm test 2>&1 || yarn test 2>&1 || pnpm test 2>&1`
 ```
 
 Command: `/test` (default)
@@ -115,18 +105,17 @@ Command: `/test` (default)
 Full test suite with coverage:
 
 ```bash
-npm test -- --coverage --verbose
-# or npm run test:all
+!`npm test -- --coverage --verbose 2>&1 || npm run test:all 2>&1`
 ```
 
 Command: `/test --full`
 
 ### Watch Mode
 
-For development iteration:
+For development iterations:
 
 ```bash
-npm test -- --watch
+!`npm test -- --watch 2>&1 &`
 ```
 
 Command: `/test --watch`
@@ -135,10 +124,8 @@ Command: `/test --watch`
 
 ### Current Coverage
 
-View coverage metrics:
-
 ```bash
-cat coverage/coverage-summary.json | grep -E "lines|statements|functions|branches"
+!`cat coverage/coverage-summary.json 2>/dev/null | grep -E "lines|statements|functions|branches" || echo "No coverage data available"`
 ```
 
 ### Coverage Trends
@@ -162,24 +149,24 @@ Track coverage changes:
 
 ## Test Result Analysis
 
-### Failure Categorization
+### Failure Classification
 
 ```markdown
 ## Test Results Summary
-- Total Tests: [count]
-- ✅ Passed: [count] ([percentage]%)
-- ❌ Failed: [count]
-- ⏭️ Skipped: [count]
+- Total Tests: [number]
+- ✅ Passed: [number] ([percentage]%)
+- ❌ Failed: [number]
+- ⏭️ Skipped: [number]
 - ⏱️ Duration: [time]
 
-## Failed Tests Analysis
+## Failed Test Analysis
 ### Category: [Unit|Integration|E2E]
 #### Test: [test name]
 - **File**: path/to/test.js:42
 - **Failure Type**: [Assertion|Timeout|Error]
-- **Root Cause**: [Analysis]
+- **Root Cause**: [analysis]
 - **Confidence**: 0.95
-- **Fix Suggestion**: [Specific solution]
+- **Fix Suggestion**: [specific solution]
 
 ## Coverage Report
 - 📊 Line Coverage: [percentage]% (↑/↓ from main)
@@ -191,41 +178,34 @@ Track coverage changes:
 [List of important untested code]
 
 ## Performance Metrics
-- Slowest Tests: [Top 5 with times]
-- Flaky Tests: [Intermittent failures]
-- Test Efficiency: [Tests per second]
+- Slowest Tests: [top 5 with times]
+- Flaky Tests: [intermittent failures]
+- Test Efficiency: [tests per second]
 ```
 
 ## Quality Checks Integration
 
 ### Linting
 
-Run linter:
-
 ```bash
-npm run lint
+!`npm run lint 2>&1 || echo "Linter not configured"`
 ```
 
 ### Type Checking
 
-Check types:
-
 ```bash
-npm run type-check
-# or npx tsc --noEmit
+!`npm run type-check 2>&1 || npx tsc --noEmit 2>&1 || echo "Type checking not available"`
 ```
 
-### Format Checking
-
-Check formatting:
+### Format Check
 
 ```bash
-npm run format:check
+!`npm run format:check 2>&1 || echo "Formatter not configured"`
 ```
 
 ## Browser Testing for UI Changes
 
-When UI components are modified:
+When UI components change:
 
 1. Use Playwright MCP tools for visual testing
 2. Verify responsive design breakpoints
@@ -239,11 +219,11 @@ Automatic task tracking:
 ```markdown
 # Testing: [Target Description]
 1. ⏳ Discover test infrastructure (1 min)
-2. ⏳ Execute unit tests (parallel)
-3. ⏳ Execute integration tests (if exists)
+2. ⏳ Run unit tests (parallel)
+3. ⏳ Run integration tests (if exists)
 4. ⏳ Analyze failures and root causes
 5. ⏳ Generate coverage report
-6. ⏳ Run quality checks (lint, type-check)
+6. ⏳ Execute quality checks (lint, type check)
 7. ⏳ Summarize results and recommendations
 ```
 
@@ -254,7 +234,7 @@ Automatic task tracking:
 Determine which tests to run based on changes:
 
 ```bash
-npm test -- --findRelatedTests $(git diff --cached --name-only)
+!`npm test -- --findRelatedTests $(git diff --cached --name-only) 2>/dev/null`
 ```
 
 ### Mutation Testing
@@ -262,7 +242,7 @@ npm test -- --findRelatedTests $(git diff --cached --name-only)
 For critical code paths (if configured):
 
 ```bash
-npm run test:mutation
+!`npm run test:mutation 2>/dev/null || echo "Mutation testing not configured"`
 ```
 
 ### Performance Regression Testing
@@ -322,14 +302,14 @@ npm test -- --coverage --threshold 80
 
 ```bash
 /test
-# Runs standard test suite with coverage
+# Run standard test suite with coverage
 ```
 
 ### Quick Feedback
 
 ```bash
 /test --quick
-# Tests only changed files
+# Test only changed files
 ```
 
 ### Pre-PR Validation
@@ -343,14 +323,14 @@ npm test -- --coverage --threshold 80
 
 ```bash
 /test "authentication tests"
-# Runs tests matching pattern
+# Run tests matching pattern
 ```
 
 ### With Coverage Goals
 
 ```bash
 /test --coverage 90
-# Ensures 90% coverage threshold
+# Ensure 90% coverage threshold
 ```
 
 ## Best Practices
@@ -359,7 +339,7 @@ npm test -- --coverage --threshold 80
 2. **Fix Immediately**: Don't accumulate test debt
 3. **Monitor Trends**: Track coverage over time
 4. **Optimize Suite**: Remove redundant tests
-5. **Document Failures**: Keep failure patterns log
+5. **Document Failures**: Keep failure pattern log
 6. **Parallelize**: Run independent tests concurrently
 
 ## Exclusion Rules
@@ -384,4 +364,4 @@ npm test -- --coverage --threshold 80
 - **Low Coverage** → Add tests for critical paths
 - **Performance Issues** → Optimize slow tests
 - **Flaky Tests** → Investigate and stabilize
-- **All Passing** → Ready for PR/deployment
+- **All Green** → Ready for PR/deployment

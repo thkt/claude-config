@@ -34,34 +34,26 @@ For simple fixes that don't require extensive planning or research.
 
 ### Recent Changes Analysis
 
-View recent changes:
-
 ```bash
-git diff HEAD~1 --stat | head -5
+!`git diff HEAD~1 --stat 2>/dev/null | head -5 || echo "No recent changes"`
 ```
 
 ### Test Status Check
 
-Count available test files:
-
 ```bash
-npm test -- --listTests | grep -E "(test|spec)" | wc -l
+!`npm test -- --listTests 2>/dev/null | grep -E "(test|spec)" | wc -l | xargs -I {} echo "Available test files: {}" || echo "No tests found"`
 ```
 
 ### Quality Commands Discovery
 
-Find quality check scripts:
-
 ```bash
-npm run 2>&1 | grep -E "lint|type|check|test" | head -5
+!`npm run 2>&1 | grep -E "lint|type|check|test" | head -5 || echo "No quality scripts"`
 ```
 
 ### Related Files Detection
 
-List modified files:
-
 ```bash
-git ls-files --modified | head -5
+!`git ls-files --modified 2>/dev/null | head -5 || echo "No modified files"`
 ```
 
 ## Hierarchical Fix Process

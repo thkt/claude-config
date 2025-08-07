@@ -39,42 +39,32 @@ Perform code implementation with real-time test feedback, dynamic quality discov
 
 ### Current Implementation State
 
-Check git status:
-
 ```bash
-git status --porcelain | head -10
+!`git status --porcelain 2>/dev/null | head -10 || echo "Not a git repository"`
 ```
 
 ### Quality Commands Available
 
-Find quality scripts:
-
 ```bash
-npm run 2>&1 | grep -E "lint|type|check|test|format"
+!`npm run 2>&1 | grep -E "lint|type|check|test|format" || echo "No quality scripts found"`
 ```
 
 ### Test Framework Detection
 
-Detect test framework:
-
 ```bash
-cat package.json | grep -E '"(jest|vitest|mocha|cypress|playwright)"'
+!`cat package.json 2>/dev/null | grep -E '"(jest|vitest|mocha|cypress|playwright)"' || echo "No test framework detected"`
 ```
 
 ### Code Conventions
 
-Check code style configs:
-
 ```bash
-ls -la .eslintrc* .prettierrc* tsconfig.json
+!`ls -la .eslintrc* .prettierrc* tsconfig.json 2>/dev/null || echo "No lint configs found"`
 ```
 
 ### Recent Related Changes
 
-Find related commits:
-
 ```bash
-git log --oneline -5 --grep="[feature]"
+!`git log --oneline -5 --grep="[feature]" 2>/dev/null || echo "No related commits"`
 ```
 
 ## Implementation Principles
