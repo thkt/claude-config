@@ -379,6 +379,7 @@ fetch('https://api.example.com/data')
 ## OWASP Top 10 Mapping
 
 Map findings to OWASP Top 10 2021:
+
 - A01: Broken Access Control
 - A02: Cryptographic Failures
 - A03: Injection

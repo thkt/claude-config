@@ -93,7 +93,7 @@ If hooks are blocking your edits:
 
 Add these to your project's `.gitignore`:
 
-```md
+```markdown
 # Claude Code temporary files
 .claude/logs/
 .claude/workspace/tasks/active/

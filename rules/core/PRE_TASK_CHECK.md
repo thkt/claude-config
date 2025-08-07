@@ -41,7 +41,7 @@ Analyze the user request to determine:
 
 Standard format for understanding check (when required):
 
-```md
+```markdown
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🧠 Understanding Level: [progress bar] XX%
@@ -96,7 +96,7 @@ See: [@../commands/COMMAND_SELECTION.md] for detailed algorithm
 
 **Single command**:
 
-```md
+```markdown
 💡 Suggested approach:
 - Command: /fix
 - Reason: Best match for small fix, 90% understanding
@@ -104,7 +104,7 @@ See: [@../commands/COMMAND_SELECTION.md] for detailed algorithm
 
 **Workflow** (multi-action detected):
 
-```md
+```markdown
 💡 Suggested workflow:
 - Steps: /think → /code → /test
 - Reason: Complex task requiring planning
@@ -113,7 +113,7 @@ See: [@../commands/COMMAND_SELECTION.md] for detailed algorithm
 
 **No command match**:
 
-```md
+```markdown
 💡 Suggested approach:
 - Command: N/A
 - Reason: No specific command needed for this task
@@ -140,7 +140,7 @@ Details: [@../commands/STANDARD_WORKFLOWS.md]
 Display for operations that will modify files or execute commands.
 Skip for pure read operations (Read, Grep, LS).
 
-```md
+```markdown
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📝 Execution Plan

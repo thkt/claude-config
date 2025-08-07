@@ -270,7 +270,7 @@ const MemoizedComponent = memo(({ data }) => {
 - Root causes identified: Y
 - Progressive enhancement opportunities: Z
 
-```md
+```markdown
 
 **Note**: Translate this template to Japanese when outputting to users per CLAUDE.md requirements
 

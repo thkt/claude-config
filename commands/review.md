@@ -26,25 +26,33 @@ Orchestrate multiple specialized review agents with dynamic context analysis, hi
 ## Dynamic Context Analysis
 
 ### Git Status
+
 Check git status:
+
 ```bash
 git status --porcelain
 ```
 
 ### Files Changed
+
 List changed files:
+
 ```bash
 git diff --name-only HEAD
 ```
 
 ### Recent Commits
+
 View recent commits:
+
 ```bash
 git log --oneline -10
 ```
 
 ### Change Statistics
+
 Show change statistics:
+
 ```bash
 git diff --stat HEAD
 ```
@@ -52,20 +60,26 @@ git diff --stat HEAD
 ## Hierarchical Review Process
 
 ### Phase 1: Context Discovery
+
 Use Task agent to:
+
 1. Analyze repository structure and technology stack
 2. Identify review scope (changed files, directories)
 3. Detect code patterns and existing quality standards
 4. Determine applicable review categories
 
 ### Phase 2: Parallel Specialized Reviews
+
 Launch multiple review agents concurrently:
+
 - Each agent focuses on specific aspect
 - Independent execution for efficiency
 - Collect raw findings with confidence scores
 
 ### Phase 3: Filtering and Consolidation
+
 Apply multi-level filtering:
+
 1. **Confidence Filter**: Only issues with >0.7 confidence
 2. **False Positive Filter**: Apply exclusion rules
 3. **Deduplication**: Merge similar findings
@@ -74,16 +88,19 @@ Apply multi-level filtering:
 ## Review Agents and Their Focus
 
 ### Core Architecture Reviewers
+
 - `review-orchestrator`: Coordinates all review activities
 - `structure-reviewer`: Code organization, DRY violations, coupling
 - `root-cause-reviewer`: Deep problem analysis, architectural debt
 
 ### Quality Assurance Reviewers
+
 - `readability-reviewer`: Code clarity, naming, complexity
 - `type-safety-reviewer`: TypeScript coverage, any usage, type assertions
 - `testability-reviewer`: Test design, mocking, coverage gaps
 
 ### Specialized Domain Reviewers
+
 - `security-reviewer`: Vulnerabilities, auth issues, data exposure
 - `accessibility-reviewer`: WCAG compliance, keyboard navigation, ARIA
 - `performance-reviewer`: Bottlenecks, bundle size, rendering issues
@@ -94,6 +111,7 @@ Apply multi-level filtering:
 ## Exclusion Rules
 
 ### Automatic Exclusions (False Positive Prevention)
+
 1. **Style Issues**: Formatting, indentation (handled by linters)
 2. **Minor Naming**: Unless severely misleading
 3. **Test Files**: Focus on production code unless requested
@@ -104,6 +122,7 @@ Apply multi-level filtering:
 8. **Missing Features**: vs actual bugs/issues
 
 ### Context-Aware Exclusions
+
 - Framework-specific patterns (React/Angular/Vue idioms)
 - Project conventions (detected from existing code)
 - Language-specific safety (memory-safe languages)
@@ -151,7 +170,9 @@ Apply multi-level filtering:
 ## Review Strategies
 
 ### Quick Review (2-3 min)
+
 Focus areas:
+
 - Security vulnerabilities
 - Critical bugs
 - Breaking changes
@@ -160,7 +181,9 @@ Focus areas:
 Command: `/review --quick`
 
 ### Standard Review (5-7 min)
+
 Includes Quick + :
+
 - Performance issues
 - Type safety problems
 - Test coverage gaps
@@ -169,7 +192,9 @@ Includes Quick + :
 Command: `/review` (default)
 
 ### Deep Review (10+ min)
+
 Comprehensive analysis:
+
 - All standard checks
 - Root cause analysis
 - Technical debt assessment
@@ -179,7 +204,9 @@ Comprehensive analysis:
 Command: `/review --deep`
 
 ### Focused Review
+
 Target specific areas:
+
 - `/review --security` - Security focus
 - `/review --performance` - Performance focus
 - `/review --accessibility` - A11y focus
@@ -188,6 +215,7 @@ Target specific areas:
 ## TodoWrite Integration
 
 Automatic task creation:
+
 ```markdown
 # Code Review: [Target]
 1. ⏳ Context discovery and scope analysis
@@ -200,6 +228,7 @@ Automatic task creation:
 ## Custom Review Instructions
 
 Support for project-specific rules:
+
 - `.claude/review-rules.md` - Project conventions
 - `.claude/exclusions.md` - Custom exclusions
 - `.claude/review-focus.md` - Priority areas
@@ -207,19 +236,25 @@ Support for project-specific rules:
 ## Advanced Features
 
 ### Incremental Reviews
+
 Compare against baseline:
+
 ```bash
 git diff origin/main...HEAD --name-only
 ```
 
 ### Pattern Detection
+
 Identify recurring issues:
+
 - Similar problems across files
 - Systemic architectural issues
 - Common anti-patterns
 
 ### Learning Mode
+
 Track and improve:
+
 - False positive patterns
 - Project-specific idioms
 - Team preferences
@@ -227,30 +262,35 @@ Track and improve:
 ## Usage Examples
 
 ### Basic Review
+
 ```bash
 /review
 # Reviews all changed files with standard depth
 ```
 
 ### Targeted Review
+
 ```bash
 /review "authentication module"
 # Focuses on auth-related code
 ```
 
 ### Security Audit
+
 ```bash
 /review --security --deep
 # Comprehensive security analysis
 ```
 
 ### Pre-PR Review
+
 ```bash
 /review --compare main
 # Reviews changes against main branch
 ```
 
 ### Component Review
+
 ```bash
 /review "src/components" --accessibility
 # A11y review of components directory
@@ -268,17 +308,20 @@ Track and improve:
 ## Integration Points
 
 ### Pre-commit Hook
+
 ```bash
 claude review --quick || exit 1
 ```
 
 ### CI/CD Pipeline
+
 ```yaml
 - name: Code Review
   run: claude review --security --performance
 ```
 
 ### PR Comments
+
 Results formatted for GitHub/GitLab comments
 
 ## Next Steps After Review

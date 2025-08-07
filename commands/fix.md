@@ -33,25 +33,33 @@ For simple fixes that don't require extensive planning or research.
 ## Dynamic Problem Context
 
 ### Recent Changes Analysis
+
 View recent changes:
+
 ```bash
 git diff HEAD~1 --stat | head -5
 ```
 
 ### Test Status Check
+
 Count available test files:
+
 ```bash
 npm test -- --listTests | grep -E "(test|spec)" | wc -l
 ```
 
 ### Quality Commands Discovery
+
 Find quality check scripts:
+
 ```bash
 npm run 2>&1 | grep -E "lint|type|check|test" | head -5
 ```
 
 ### Related Files Detection
+
 List modified files:
+
 ```bash
 git ls-files --modified | head -5
 ```
@@ -59,20 +67,26 @@ git ls-files --modified | head -5
 ## Hierarchical Fix Process
 
 ### Phase 1: Problem Analysis (Confidence Target: 0.85)
+
 Dynamic root cause identification:
+
 1. **Issue Detection**: Analyze symptoms and error patterns
 2. **Impact Scope**: Determine affected files and components
 3. **Root Cause**: Identify why not just what
 4. **Fix Strategy**: Choose simplest effective approach
 
 ### Phase 2: Targeted Implementation (Confidence Target: 0.90)
+
 Apply fix with confidence scoring:
+
 - **High Confidence (>0.9)**: Direct fix implementation
 - **Medium (0.7-0.9)**: Add defensive checks
 - **Low (<0.7)**: Research before fixing
 
 ### Phase 3: Parallel Verification (Confidence Target: 0.95)
+
 Simultaneous quality checks:
+
 ```typescript
 // Execute in parallel, not sequentially
 const checks = [
@@ -87,6 +101,7 @@ const checks = [
 ### 1. Dynamic Problem Analysis
 
 #### Issue Classification
+
 ```markdown
 ## Problem Analysis (Confidence: X.XX)
 ### Category: [UI/Logic/Performance/Type/Test]
@@ -97,6 +112,7 @@ const checks = [
 ```
 
 #### Recent Context
+
 ```bash
 git log --oneline -5 --grep="fix"
 ```
@@ -104,6 +120,7 @@ git log --oneline -5 --grep="fix"
 ### 2. Smart Implementation
 
 #### Fix Approach Selection
+
 ```markdown
 ## Fix Strategy (Confidence: X.XX)
 ### Selected Approach: [Name]
@@ -114,6 +131,7 @@ git log --oneline -5 --grep="fix"
 ```
 
 #### Progressive Enhancement Check
+
 ```markdown
 ## CSS-First Analysis
 - Can CSS solve this? [Yes/No]
@@ -124,7 +142,9 @@ git log --oneline -5 --grep="fix"
 ### 3. Real-time Verification
 
 #### Parallel Quality Execution
+
 Run quality checks in parallel:
+
 ```bash
 npm test -- --findRelatedTests | grep -E "PASS|FAIL" | head -5
 npm run lint | tail -3
@@ -132,6 +152,7 @@ npm run type-check | tail -3
 ```
 
 #### Regression Check
+
 ```bash
 npm test -- --onlyChanged | grep -E "Test Suites:"
 ```
@@ -200,7 +221,7 @@ If any metric has confidence < 0.8, continue improving.
 
 ### Solution Applied
 - **Approach**: [Fix strategy used]
-- **Files Modified**: 
+- **Files Modified**:
   - `path/to/file.ts` - [What changed]
   - `path/to/test.ts` - [Test updates]
 - **Progressive Enhancement**: [CSS-first approach used?]
@@ -221,9 +242,11 @@ If any metric has confidence < 0.8, continue improving.
 | **Overall** | **0.91** | **HIGH CONFIDENCE** |
 
 ### Performance Impact
-```bash
-git diff HEAD --stat | tail -3
-```
+
+    ```bash
+    git diff HEAD --stat | tail -3
+    ```
+
 - Lines changed: XX
 - Files affected: X
 - Complexity: Low
@@ -232,6 +255,7 @@ git diff HEAD --stat | tail -3
 ## Decision Framework
 
 ### When to Use `/fix` (Confidence Check)
+
 ```markdown
 ✅ High Confidence Scenarios (>0.85)
 - Single-file fixes with clear scope
@@ -255,7 +279,9 @@ git diff HEAD --stat | tail -3
 ```
 
 ### Automatic Command Switching
+
 If confidence drops below 0.6 during analysis:
+
 ```markdown
 ## Low Confidence Detected
 ### Issue: Fix scope exceeds /fix capabilities
@@ -271,19 +297,22 @@ Switch command? (Y/n)
 ## Example Usage with Confidence
 
 ### High Confidence Fix
-```md
+
+```markdown
 /fix "Fix button alignment issue in header"
 # Confidence: 0.92 - CSS-first solution available
 ```
 
 ### Medium Confidence Fix
-```md
+
+```markdown
 /fix "Resolve state update not triggering re-render"
 # Confidence: 0.75 - May need investigation
 ```
 
 ### Auto-escalation Example
-```md
+
+```markdown
 /fix "Optimize database query performance"
 # Confidence: 0.45 - Suggests /research → /think instead
 ```
@@ -291,15 +320,18 @@ Switch command? (Y/n)
 ## Next Steps Based on Outcome
 
 ### Success Path (Confidence >0.9)
+
 - Document learnings
 - Add regression test
 - Update related documentation
 
 ### Partial Success (Confidence 0.7-0.9)
+
 - Review with `/research` for completeness
 - Consider follow-up `/fix` for remaining issues
 
 ### Escalation Path (Confidence <0.7)
+
 ```markdown
 ## Recommended Workflow
 Based on analysis, suggesting:
@@ -311,19 +343,25 @@ Based on analysis, suggesting:
 ## Advanced Features
 
 ### Pattern Learning
+
 Track successful fixes for similar issues:
+
 ```bash
 git log --grep="fix" --oneline | grep -i "[similar keyword]" | head -3
 ```
 
 ### Auto-discovery
+
 Find related issues that might need fixing:
+
 ```bash
 grep -r "TODO\|FIXME\|HACK" --include="*.ts" --include="*.tsx" | head -5
 ```
 
 ### Quality Trend
+
 Monitor fix impact on codebase health:
+
 ```bash
 npm run lint | grep -E "problems\|warnings"
 ```

@@ -2,7 +2,7 @@
 
 ## ディレクトリ構造と配置
 
-```
+```txt
 ~/.claude/
 ├── docs/
 │   ├── MODEL_SELECTION.md      # モデル選択ガイドライン
@@ -34,25 +34,25 @@
 ```mermaid
 graph TB
     CMD["/review コマンド"] --> RO[review-orchestrator]
-    
+
     RO --> P1[Phase 1: 基礎]
     RO --> P2[Phase 2: 品質]
     RO --> P3[Phase 3: 本番]
-    
+
     P1 --> SR[structure-reviewer]
     P1 --> RR[readability-reviewer]
     P1 --> RCR[root-cause-reviewer]
     P1 --> PE[progressive-enhancer]
-    
+
     P2 --> TSR[type-safety-reviewer]
     P2 --> DPR[design-pattern-reviewer]
     P2 --> TR[testability-reviewer]
     P2 -.->|.mdファイル時| DR[document-reviewer]
-    
+
     P3 --> PR[performance-reviewer]
     P3 --> SEC[security-reviewer]
     P3 --> AR[accessibility-reviewer]
-    
+
     RO --> INT[結果統合]
     INT --> OUT[レビュー結果出力]
 ```
@@ -60,7 +60,8 @@ graph TB
 ## エージェント間の関係性
 
 ### 協調関係
-```
+
+```txt
 ┌─────────────────────────────────────────┐
 │         review-orchestrator             │
 │              (統括・調整)                │
@@ -105,6 +106,7 @@ graph TB
 ## 色コード凡例
 
 ### 機能別グループ
+
 - **🔵 青系 (cyan/indigo)**: 明瞭性・統括
 - **🔴 赤系 (red/magenta/pink)**: 構造・重要分析
 - **🟡 黄系 (yellow/orange)**: 警告・最適化
@@ -132,6 +134,7 @@ graph TB
 ## 拡張性
 
 ### 新規エージェント追加時のチェックリスト
+
 - [ ] YAMLフロントマター（name, description, tools, model, color）
 - [ ] ユニークな色の割り当て
 - [ ] 適切なディレクトリ配置（frontend/general/orchestrators）

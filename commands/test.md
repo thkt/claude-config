@@ -26,25 +26,33 @@ Ensure code quality through comprehensive testing with dynamic discovery, hierar
 ## Dynamic Test Discovery
 
 ### Available Test Scripts
+
 List available test-related npm scripts:
+
 ```bash
 npm run 2>&1 | grep -E "test|spec|check|lint|type"
 ```
 
 ### Package Manager Detection
+
 Detect which package manager is used:
+
 ```bash
 ls package-lock.json yarn.lock pnpm-lock.yaml 2>/dev/null | head -1
 ```
 
 ### Test Framework Detection
+
 Identify test frameworks:
+
 ```bash
 cat package.json | grep -E "jest|vitest|mocha|jasmine|karma|cypress|playwright"
 ```
 
 ### Test Files Count
+
 Count test files:
+
 ```bash
 find . -type f \( -name "*.test.*" -o -name "*.spec.*" \) -not -path "*/node_modules/*" | wc -l
 ```
@@ -52,21 +60,27 @@ find . -type f \( -name "*.test.*" -o -name "*.spec.*" \) -not -path "*/node_mod
 ## Hierarchical Testing Process
 
 ### Phase 1: Environment Analysis
+
 Use Task agent to:
+
 1. Detect testing infrastructure and frameworks
 2. Identify test file patterns and locations
 3. Discover available test commands and scripts
 4. Check for coverage configuration
 
 ### Phase 2: Parallel Test Execution
+
 Execute test suites concurrently when possible:
+
 - **Unit Tests**: Fastest feedback on component logic
 - **Integration Tests**: API and service interactions
 - **E2E Tests**: Critical user paths (if configured)
 - **Quality Checks**: Linting, type checking, formatting
 
 ### Phase 3: Result Analysis & Metrics
+
 Analyze results with confidence scoring:
+
 1. **Failure Analysis**: Root cause identification
 2. **Coverage Metrics**: Line, branch, function coverage
 3. **Performance Data**: Test execution times
@@ -75,7 +89,9 @@ Analyze results with confidence scoring:
 ## Test Execution Strategies
 
 ### Quick Test (1-2 min)
+
 Focus on changed files only:
+
 ```bash
 npm test -- --findRelatedTests $(git diff --name-only HEAD)
 ```
@@ -83,7 +99,9 @@ npm test -- --findRelatedTests $(git diff --name-only HEAD)
 Command: `/test --quick`
 
 ### Standard Test (3-5 min)
+
 Run main test suite:
+
 ```bash
 npm test
 # or yarn test
@@ -93,7 +111,9 @@ npm test
 Command: `/test` (default)
 
 ### Comprehensive Test (5-10 min)
+
 Full test suite with coverage:
+
 ```bash
 npm test -- --coverage --verbose
 # or npm run test:all
@@ -102,7 +122,9 @@ npm test -- --coverage --verbose
 Command: `/test --full`
 
 ### Watch Mode
+
 For development iteration:
+
 ```bash
 npm test -- --watch
 ```
@@ -112,18 +134,23 @@ Command: `/test --watch`
 ## Coverage Metrics
 
 ### Current Coverage
+
 View coverage metrics:
+
 ```bash
 cat coverage/coverage-summary.json | grep -E "lines|statements|functions|branches"
 ```
 
 ### Coverage Trends
+
 Track coverage changes:
+
 - Compare against main branch
 - Monitor coverage trajectory
 - Identify uncovered critical paths
 
 ### Coverage Thresholds
+
 ```json
 {
   "lines": 80,
@@ -136,6 +163,7 @@ Track coverage changes:
 ## Test Result Analysis
 
 ### Failure Categorization
+
 ```markdown
 ## Test Results Summary
 - Total Tests: [count]
@@ -171,20 +199,26 @@ Track coverage changes:
 ## Quality Checks Integration
 
 ### Linting
+
 Run linter:
+
 ```bash
 npm run lint
 ```
 
 ### Type Checking
+
 Check types:
+
 ```bash
 npm run type-check
 # or npx tsc --noEmit
 ```
 
 ### Format Checking
+
 Check formatting:
+
 ```bash
 npm run format:check
 ```
@@ -192,6 +226,7 @@ npm run format:check
 ## Browser Testing for UI Changes
 
 When UI components are modified:
+
 1. Use Playwright MCP tools for visual testing
 2. Verify responsive design breakpoints
 3. Check accessibility compliance
@@ -200,6 +235,7 @@ When UI components are modified:
 ## TodoWrite Integration
 
 Automatic task tracking:
+
 ```markdown
 # Testing: [Target Description]
 1. ⏳ Discover test infrastructure (1 min)
@@ -214,24 +250,31 @@ Automatic task tracking:
 ## Advanced Features
 
 ### Test Impact Analysis
+
 Determine which tests to run based on changes:
+
 ```bash
 npm test -- --findRelatedTests $(git diff --cached --name-only)
 ```
 
 ### Mutation Testing
+
 For critical code paths (if configured):
+
 ```bash
 npm run test:mutation
 ```
 
 ### Performance Regression Testing
+
 Track test suite performance over time:
+
 - Identify slow tests
 - Monitor memory usage
 - Detect performance regressions
 
 ### Test Reliability Scoring
+
 - Track flaky test frequency
 - Calculate test confidence scores
 - Prioritize test maintenance
@@ -239,12 +282,14 @@ Track test suite performance over time:
 ## Failure Recovery Strategies
 
 ### Immediate Actions
+
 1. **Isolate Failure**: Run single test in isolation
 2. **Debug Mode**: Run with verbose output
 3. **Check Dependencies**: Verify test environment
 4. **Review Changes**: Compare with last passing state
 
 ### Root Cause Analysis
+
 - Stack trace analysis
 - Assertion failure patterns
 - Environment dependencies
@@ -253,17 +298,20 @@ Track test suite performance over time:
 ## CI/CD Integration
 
 ### Pre-commit Hook
+
 ```bash
 npm test -- --bail --findRelatedTests
 ```
 
 ### PR Validation
+
 ```yaml
 - name: Test Suite
   run: npm test -- --coverage --ci
 ```
 
 ### Deployment Gate
+
 ```bash
 npm test -- --coverage --threshold 80
 ```
@@ -271,30 +319,35 @@ npm test -- --coverage --threshold 80
 ## Usage Examples
 
 ### Basic Testing
+
 ```bash
 /test
 # Runs standard test suite with coverage
 ```
 
 ### Quick Feedback
+
 ```bash
 /test --quick
 # Tests only changed files
 ```
 
 ### Pre-PR Validation
+
 ```bash
 /test --full
 # Comprehensive testing before PR
 ```
 
 ### Specific Test Suite
+
 ```bash
 /test "authentication tests"
 # Runs tests matching pattern
 ```
 
 ### With Coverage Goals
+
 ```bash
 /test --coverage 90
 # Ensures 90% coverage threshold
@@ -312,6 +365,7 @@ npm test -- --coverage --threshold 80
 ## Exclusion Rules
 
 ### Auto-Skip Patterns
+
 1. **Generated Files**: dist/, build/, coverage/
 2. **Dependencies**: node_modules/, vendor/
 3. **Documentation**: *.md files (unless docs tests exist)
@@ -319,6 +373,7 @@ npm test -- --coverage --threshold 80
 5. **Mock Data**: Test fixtures and stubs
 
 ### Context-Aware Skipping
+
 - Skip E2E in CI when not needed
 - Skip slow tests in watch mode
 - Skip integration tests in quick mode

@@ -540,6 +540,7 @@ Based on the codebase analysis:
 ## Reference to User Rules
 
 Always consider:
+
 - [@~/.claude/rules/development/CONTAINER_PRESENTATIONAL.md] for component separation
 - [@~/.claude/rules/development/PROGRESSIVE_ENHANCEMENT.md] for simplicity
 - [@~/.claude/rules/development/READABLE_CODE.md] for clarity

@@ -48,18 +48,21 @@
 ## 実行フェーズ
 
 ### Phase 1: 基礎レビュー
+
 1. structure-reviewer - コード構造とDRY原則
 2. readability-reviewer - コード明瞭性と保守性
 3. root-cause-reviewer - 問題分析と解決策
 4. progressive-enhancer - CSS-firstアプローチと簡素化
 
 ### Phase 2: 品質レビュー
+
 1. type-safety-reviewer - TypeScript使用と型カバレッジ
 2. design-pattern-reviewer - アーキテクチャとパターン
 3. testability-reviewer - テストしやすい設計
 4. document-reviewer - ドキュメント品質（.mdファイルがある場合）
 
 ### Phase 3: 本番対応レビュー
+
 1. performance-reviewer - ランタイムとビルド最適化
 2. security-reviewer - セキュリティ脆弱性
 3. accessibility-reviewer - WCAG準拠と使いやすさ
@@ -67,11 +70,13 @@
 ## コマンドとの統合
 
 ### `/review` コマンド
+
 - 全レビューエージェントを自動的に選択・実行
 - ファイルタイプに応じて適切なエージェントを選択
 - .mdファイルがある場合はdocument-reviewerを自動追加
 
 ### 条件付き実行
+
 ```typescript
 // .mdファイルがある場合のみdocument-reviewerを実行
 if (context.targetFiles.some(f => f.endsWith('.md'))) {
@@ -82,10 +87,12 @@ if (context.targetFiles.some(f => f.endsWith('.md'))) {
 ## 未使用エージェントの活用提案
 
 ### document-reviewer
+
 - **現在**: `/review`コマンドで.mdファイル検出時に自動実行
 - **将来**: ドキュメント変更時の自動トリガー
 
 ### subagent-reviewer
+
 - **用途**: エージェント定義ファイルの検証
 - **提案**: `/review-agents` コマンドの新設
 
@@ -109,6 +116,7 @@ if (context.targetFiles.some(f => f.endsWith('.md'))) {
 ## 出力フォーマット
 
 全エージェントは以下のルールに従います：
+
 1. **テンプレート**: 英語で定義
 2. **出力**: 日本語に翻訳（CLAUDE.md P1ルール）
 3. **メトリクス**: 定量的評価を含む

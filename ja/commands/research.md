@@ -26,7 +26,9 @@ context:
 ## 動的プロジェクト発見
 
 ### プロジェクト構造
+
 以下のコマンドで探索：
+
 ```bash
 tree -L 2 -I 'node_modules|dist|build|coverage|.git' | head -20
 # または
@@ -34,25 +36,33 @@ ls -la
 ```
 
 ### 技術スタック
+
 package.jsonでフレームワークをチェック：
+
 ```bash
 cat package.json | grep -E '"(react|vue|angular|next|nuxt|svelte|express|fastify|nest)"'
 ```
 
 ### 言語分布
+
 ソースファイルタイプを検索：
+
 ```bash
 find . -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.py" -o -name "*.go" \) -not -path "*/node_modules/*" | sed 's/.*\.//' | sort | uniq -c | sort -rn
 ```
 
 ### 依存関係分析
+
 主要な依存関係をリスト：
+
 ```bash
 cat package.json | jq -r '.dependencies | keys[]' | head -10
 ```
 
 ### 設定ファイル
+
 設定ファイルを検索：
+
 ```bash
 ls -la *.config.* *.json *.yml *.yaml | grep -v node_modules
 ```
@@ -60,21 +70,27 @@ ls -la *.config.* *.json *.yml *.yaml | grep -v node_modules
 ## 階層的調査プロセス
 
 ### フェーズ1: スコープ発見
+
 プロジェクトを分析して理解：
+
 1. **アーキテクチャ**: プロジェクト構造とパターンを特定
 2. **技術**: フレームワーク、ライブラリ、ツールを検出
 3. **規約**: コーディング標準と実践を認識
 4. **エントリーポイント**: メインファイル、エクスポート、APIを見つける
 
 ### フェーズ2: 並列調査
+
 効率のために検索を同時実行：
+
 - **パターン検索**: 複数のgrep操作を並列で
 - **ファイル発見**: 同時グロブパターン
 - **依存関係追跡**: 並列インポート分析
 - **ドキュメントスキャン**: 並行README/docs読み込み
 
 ### フェーズ3: 統合とスコアリング
+
 信頼度レベルで結果を統合：
+
 1. **信頼度スコアリング**: 各結果を評価（0.0-1.0）
 2. **パターン認識**: 繰り返しテーマを特定
 3. **関係マッピング**: 関連コンポーネントを接続
@@ -83,7 +99,9 @@ ls -la *.config.* *.json *.yml *.yaml | grep -v node_modules
 ## 調査戦略
 
 ### クイックスキャン（1-2分）
+
 表面レベルの理解：
+
 ```bash
 find . -type f -name "*.md" -not -path "*/node_modules/*" | head -5 | xargs head -20
 ```
@@ -91,7 +109,9 @@ find . -type f -name "*.md" -not -path "*/node_modules/*" | head -5 | xargs head
 コマンド: `/research --quick`
 
 ### 標準調査（3-5分）
+
 深さと幅のバランス：
+
 - コアアーキテクチャの理解
 - 主要パターンの特定
 - 主要依存関係の分析
@@ -99,7 +119,9 @@ find . -type f -name "*.md" -not -path "*/node_modules/*" | head -5 | xargs head
 コマンド: `/research` (デフォルト)
 
 ### ディープダイブ（5-10分）
+
 包括的な調査：
+
 - 完全なアーキテクチャマッピング
 - すべてのパターンと関係
 - 完全な依存関係グラフ
@@ -108,7 +130,9 @@ find . -type f -name "*.md" -not -path "*/node_modules/*" | head -5 | xargs head
 コマンド: `/research --deep`
 
 ### フォーカス調査
+
 特定領域をターゲット：
+
 - `/research --auth` - 認証システム
 - `/research --api` - API構造
 - `/research --state` - 状態管理
@@ -117,6 +141,7 @@ find . -type f -name "*.md" -not -path "*/node_modules/*" | head -5 | xargs head
 ## 効率的な検索パターン
 
 ### 並列実行例
+
 ```typescript
 // 逐次ではなく、これらを同時に実行
 const searches = [
@@ -128,7 +153,9 @@ const searches = [
 ```
 
 ### スマートパターン選択
+
 初期発見に基づく：
+
 - **Reactプロジェクト**: フック、コンポーネント、コンテキストを検索
 - **APIプロジェクト**: ルート、コントローラー、ミドルウェアを検索
 - **ライブラリプロジェクト**: エクスポート、型、テストを検索
@@ -136,6 +163,7 @@ const searches = [
 ## 信頼度ベースの結果
 
 ### 結果の分類
+
 ```markdown
 ## 高信頼度の結果 (> 0.8)
 ### 認証システム
@@ -162,6 +190,7 @@ const searches = [
 ## TodoWrite統合
 
 自動タスク追跡：
+
 ```markdown
 # 調査: [トピック]
 1. ⏳ プロジェクト構造を発見（30秒）
@@ -175,13 +204,16 @@ const searches = [
 ## Taskエージェントの使用
 
 ### Taskエージェントを使用する場合
+
 `general-purpose`エージェントを使用：
+
 - **複雑な調査**: 10以上の関連検索
 - **探索的分析**: 未知の構造
 - **関係マッピング**: 接続の理解
 - **履歴調査**: Git履歴分析
 
 ### Taskエージェント例
+
 ```typescript
 Task({
   subagent_type: "general-purpose",
@@ -199,25 +231,33 @@ Task({
 ## 高度な機能
 
 ### 相互参照分析
+
 異なる領域間で結果を接続：
+
 ```bash
 grep -l "AuthController" **/*.ts | xargs grep -l "UserService"
 ```
 
 ### インポート依存関係グラフ
+
 モジュール依存関係を追跡：
+
 ```bash
 grep -h "^import.*from" **/*.ts | sed "s/.*from ['\"]\.\/\(.*\)['\"].*/\1/" | sort | uniq -c | sort -rn | head -10
 ```
 
 ### パターン頻度分析
+
 一般的なパターンを特定：
+
 ```bash
 grep -oh "use[A-Z][a-zA-Z]*" **/*.tsx | sort | uniq -c | sort -rn | head -10
 ```
 
 ### 履歴コンテキスト
+
 進化を理解：
+
 ```bash
 git log --oneline --since="3 months ago" --pretty=format:"%h %s" | head -10
 ```
@@ -280,11 +320,13 @@ git log --oneline --since="3 months ago" --pretty=format:"%h %s" | head -10
 ## 永続的なドキュメント
 
 重要な結果について、以下に保存：
+
 ```bash
 .claude/workspace/research/YYYY-MM-DD-[topic].md
 ```
 
 含める内容：
+
 - アーキテクチャ図（ASCII）
 - 依存関係グラフ
 - 主要コードスニペット
@@ -293,24 +335,28 @@ git log --oneline --since="3 months ago" --pretty=format:"%h %s" | head -10
 ## 使用例
 
 ### クイック調査
+
 ```bash
 /research --quick "API構造"
 # API組織の高速概要
 ```
 
 ### 標準調査
+
 ```bash
 /research "認証実装"
 # 認証システムのバランスの取れた調査
 ```
 
 ### ディープ調査
+
 ```bash
 /research --deep "完全なデータフロー"
 # UIからデータベースまでの包括的分析
 ```
 
 ### フォーカス調査
+
 ```bash
 /research --state "Redux実装"
 # ターゲットを絞った状態管理調査
@@ -328,11 +374,13 @@ git log --oneline --since="3 months ago" --pretty=format:"%h %s" | head -10
 ## パフォーマンスのヒント
 
 ### 検索の最適化
+
 - 特定のグロブを使用: `**/*`ではなく`**/*.controller.ts`
 - 可能な場合は深さを制限: `-maxdepth 3`
 - 無関係を除外: `-not -path "*/test/*"`
 
 ### 効率的なパターン
+
 - 関連検索をバッチ処理
 - 10以上の操作にはTaskエージェントを使用
 - 一般的なクエリ結果をキャッシュ

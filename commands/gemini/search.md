@@ -53,7 +53,7 @@ Focus on:
 
 Track search progress:
 
-```md
+```markdown
 # Search: [topic]
 1. ⏳ Execute search
 2. ⏳ Analyze results
@@ -129,7 +129,7 @@ Find:
 
 ## Example Usage
 
-```md
+```markdown
 /gemini:search "React Server Components production deployment"
 /gemini:search "Solving N+1 query problem in GraphQL"
 /gemini:search "Kubernetes autoscaling best practices 2024"

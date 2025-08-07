@@ -38,31 +38,41 @@ Perform code implementation with real-time test feedback, dynamic quality discov
 ## Dynamic Project Context
 
 ### Current Implementation State
+
 Check git status:
+
 ```bash
 git status --porcelain | head -10
 ```
 
 ### Quality Commands Available
+
 Find quality scripts:
+
 ```bash
 npm run 2>&1 | grep -E "lint|type|check|test|format"
 ```
 
 ### Test Framework Detection
+
 Detect test framework:
+
 ```bash
 cat package.json | grep -E '"(jest|vitest|mocha|cypress|playwright)"'
 ```
 
 ### Code Conventions
+
 Check code style configs:
+
 ```bash
 ls -la .eslintrc* .prettierrc* tsconfig.json
 ```
 
 ### Recent Related Changes
+
 Find related commits:
+
 ```bash
 git log --oneline -5 --grep="[feature]"
 ```
@@ -92,27 +102,33 @@ This ensures that code first works (TDD), then becomes clean and maintainable (S
 #### Enhanced RGRC Cycle with Real-time Feedback
 
 1. **Red Phase** (Confidence Target: 0.9)
+
    ```bash
    npm test -- --testNamePattern="[current test]" | grep -E "FAIL|PASS"
    ```
+
    - Write failing test with clear intent
    - Verify failure reason matches expectation
    - Document understanding via test assertions
    - **Exit Criteria**: Test fails for expected reason
 
 2. **Green Phase** (Confidence Target: 0.7)
+
    ```bash
    npm test -- --watch --testNamePattern="[current test]"
    ```
+
    - Minimal implementation to pass
    - Quick solutions acceptable
    - Focus on functionality over form
    - **Exit Criteria**: Test passes consistently
 
 3. **Refactor Phase** (Confidence Target: 0.95)
+
    ```bash
    npm test | tail -5 | grep -E "Passing|Failing"
    ```
+
    - Apply SOLID principles
    - Remove duplication (DRY)
    - Improve naming and structure
@@ -141,7 +157,7 @@ Real-time tracking with confidence scoring:
 1.1 ✅ Write failing test [C: 0.95] ✓ 2 min
 1.2 ✅ Verify correct failure [C: 0.9] ✓ 30 sec
 
-### Green Phase (Active: 14:26) 
+### Green Phase (Active: 14:26)
 1.3 ❌ Implement registration logic [C: 0.7] ⏱️ 3 min
 1.4 ⏳ Test passes consistently [C: pending]
 
@@ -184,14 +200,18 @@ Apply during Refactor phase:
 ## Hierarchical Implementation Process
 
 ### Phase 1: Context Discovery & Planning
+
 Analyze with confidence scoring:
+
 1. **Code Context**: Understand existing patterns (C: 0.0-1.0)
 2. **Dependencies**: Verify required libraries available
 3. **Conventions**: Detect and follow project standards
 4. **Test Structure**: Identify test patterns to follow
 
 ### Phase 2: Parallel Quality Execution
+
 Run quality checks simultaneously:
+
 ```typescript
 // Execute these in parallel, not sequentially
 const qualityChecks = [
@@ -203,7 +223,9 @@ const qualityChecks = [
 ```
 
 ### Phase 3: Confidence-Based Decisions
+
 Make implementation choices based on evidence:
+
 - **High Confidence (>0.8)**: Proceed with implementation
 - **Medium (0.5-0.8)**: Add defensive checks
 - **Low (<0.5)**: Research before implementing
@@ -220,48 +242,60 @@ Follow the RGRC cycle defined above:
 ### 3. Dynamic Quality Checks
 
 #### Automatic Discovery
+
 ```bash
 cat package.json | jq -r '.scripts | to_entries[] | select(.key | test("lint|type|check|test|format")) | .key' | head -10
 ```
 
 #### Parallel Execution
+
 ```markdown
 ## Quality Check Results
 ### Linting (Confidence: 0.95)
-```bash
-npm run lint | tail -5
-```
+
+      ```bash
+      npm run lint | tail -5
+      ```
+
 - Status: ✅ Passing
 - Issues: 0 errors, 2 warnings
 - Time: 1.2s
 
 ### Type Checking (Confidence: 0.98)
-```bash
-npm run type-check | tail -5
-```
+
+      ```bash
+      npm run type-check | tail -5
+      ```
+
 - Status: ✅ All types valid
 - Files checked: 47
 - Time: 3.4s
 
 ### Tests (Confidence: 0.92)
-```bash
-npm test -- --passWithNoTests | grep -E "Tests:|Snapshots:"
-```
+
+      ```bash
+      npm test -- --passWithNoTests | grep -E "Tests:|Snapshots:"
+      ```
+
 - Status: ✅ 45/45 passing
 - Coverage: 82%
 - Time: 8.7s
 
 ### Format Check (Confidence: 0.90)
-```bash
-npm run format:check | tail -3
-```
+
+      ```bash
+      npm run format:check | tail -3
+      ```
+
 - Status: ⚠️ 3 files need formatting
 - Auto-fixable: Yes
 - Time: 0.8s
+
 ```
 
 #### Quality Score Calculation
-```
+
+```text
 Overall Quality Score: (L*0.3 + T*0.3 + Test*0.3 + F*0.1) = 0.93
 Confidence Level: HIGH - Ready for commit
 ```
@@ -275,25 +309,33 @@ Confidence Level: HIGH - Ready for commit
 ## Advanced Features
 
 ### Real-time Test Monitoring
+
 Watch test results during development:
+
 ```bash
 npm test -- --watch --coverage
 ```
 
 ### Code Complexity Analysis
+
 Track complexity during implementation:
+
 ```bash
 npx complexity-report src/ | grep -E "Complexity|Maintainability"
 ```
 
 ### Performance Profiling
+
 For performance-critical code:
+
 ```bash
 npm run profile
 ```
 
 ### Security Scanning
+
 Automatic vulnerability detection:
+
 ```bash
 npm audit --production | grep -E "found|Severity"
 ```
@@ -301,6 +343,7 @@ npm audit --production | grep -E "found|Severity"
 ## Implementation Patterns
 
 ### Pattern Selection by Confidence
+
 ```markdown
 ## Available Patterns (Choose based on context)
 
@@ -330,6 +373,7 @@ npm audit --production | grep -E "found|Severity"
 ## Risk Mitigation
 
 ### Common Implementation Risks
+
 | Risk | Probability | Impact | Mitigation | Confidence |
 |------|------------|--------|------------|------------|
 | Breaking existing tests | Medium | High | Run full suite before/after | 0.95 |
@@ -376,6 +420,7 @@ If confidence < 0.8 on any critical metric, continue improving.
 ## Decision Framework
 
 ### When Implementation Confidence is Low
+
 ```markdown
 ## Low Confidence Detected (< 0.7)
 ### Issue: [Uncertain about implementation approach]
@@ -384,11 +429,11 @@ Options:
 1. **Research More** (/research)
    - Time: +30 min
    - Confidence gain: +0.3
-   
+
 2. **Prototype First**
-   - Time: +15 min  
+   - Time: +15 min
    - Confidence gain: +0.2
-   
+
 3. **Consult Documentation**
    - Time: +10 min
    - Confidence gain: +0.15
@@ -397,6 +442,7 @@ Recommendation: Option 1 for complex features
 ```
 
 ### Quality Gate Failures
+
 ```markdown
 ## Quality Gate Failed
 ### Issue: Coverage dropped below 80%
@@ -415,24 +461,28 @@ Proceeding without resolution? (y/N)
 ## Usage Examples
 
 ### Basic Implementation
+
 ```bash
 /code "Add user authentication"
 # Standard TDD implementation
 ```
 
 ### With Confidence Threshold
+
 ```bash
 /code --confidence 0.9 "Critical payment logic"
 # Requires 90% confidence before proceeding
 ```
 
 ### Fast Mode (Skip Some Checks)
+
 ```bash
 /code --fast "Simple UI update"
 # Minimal quality checks for low-risk changes
 ```
 
 ### With Specific Pattern
+
 ```bash
 /code --pattern repository "Database access layer"
 # Use repository pattern for implementation

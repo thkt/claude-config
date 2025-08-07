@@ -51,7 +51,7 @@ execution_plan:
 ```typescript
 async function validateAgents(agents: string[]): Promise<string[]> {
   const validAgents: string[] = []
-  
+
   for (const agent of agents) {
     const agentPath = await findAgentFile(agent)
     if (agentPath) {
@@ -60,7 +60,7 @@ async function validateAgents(agents: string[]): Promise<string[]> {
       console.warn(`⚠️ エージェント '${agent}' が見つかりません。スキップします...`)
     }
   }
-  
+
   return validAgents
 }
 
@@ -133,13 +133,13 @@ interface EnrichedContext extends ReviewContext {
 function selectAgentsForPhase(phase: string, context: ReviewContext): string[] {
   const baseAgents = executionPlan[phase];
   const conditionalAgents = [];
-  
+
   // マークダウンファイルが存在する場合のみdocument-reviewerを含める
-  if (phase === 'phase_2_quality' && 
+  if (phase === 'phase_2_quality' &&
       context.targetFiles.some(f => f.endsWith('.md'))) {
     conditionalAgents.push('document-reviewer');
   }
-  
+
   return [...baseAgents, ...conditionalAgents];
 }
 ```
@@ -466,6 +466,7 @@ custom_rules:
 ## エージェントの場所
 
 すべてのレビューエージェントは以下に整理されています：
+
 - `~/.claude/agents/frontend/` - フロントエンド専用レビューアー
   - structure-reviewer
   - readability-reviewer

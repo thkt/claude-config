@@ -71,7 +71,7 @@ color: blue              # Optional: Valid color
 
 ### 3. Language Consistency
 
-```md
+```markdown
 description: Japanese only (in frontmatter)
 body: English (technical content)
 ```

@@ -380,7 +380,7 @@ function StatusMessage({ message, type }) {
 
 ### Accessibility Metrics
 - Keyboard Navigation: ✅/⚠️/❌
-- Screen Reader Support: ✅/⚠️/❌  
+- Screen Reader Support: ✅/⚠️/❌
 - Color Contrast: X% compliant
 - Form Labels: X% complete
 - ARIA Usage: ✅/⚠️/❌
@@ -414,6 +414,7 @@ function StatusMessage({ message, type }) {
 ## WCAG Reference Mapping
 
 Include specific success criteria references:
+
 - 1.1.1 Non-text Content
 - 1.3.1 Info and Relationships
 - 1.4.3 Contrast (Minimum)

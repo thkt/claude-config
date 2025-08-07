@@ -75,7 +75,7 @@ Streamlined critical path: Quick analysis → Fix → Test → Deploy readiness
 
 Emergency tracking (keep it simple):
 
-```md
+```markdown
 # HOTFIX: [Critical issue]
 1. ⏳ Triage & Assess
 2. ⏳ Emergency Fix
@@ -131,7 +131,7 @@ Emergency tracking (keep it simple):
 
 ## Example Usage
 
-```md
+```markdown
 /hotfix "Payment processing returning 500 errors"
 /hotfix "User data exposed in API response"
 /hotfix "Login completely broken after deployment"

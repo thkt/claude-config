@@ -38,31 +38,41 @@ context:
 ## 動的プロジェクトコンテキスト
 
 ### 現在の実装状態
+
 Gitステータスを確認:
+
 ```bash
 git status --porcelain 2>/dev/null | head -10
 ```
 
 ### 利用可能な品質コマンド
+
 品質スクリプトを確認:
+
 ```bash
 npm run 2>&1 | grep -E "lint|type|check|test|format"
 ```
 
 ### テストフレームワーク検出
+
 package.jsonをチェック:
+
 ```bash
 cat package.json 2>/dev/null | grep -E '"(jest|vitest|mocha|cypress|playwright)"'
 ```
 
 ### コード規約
+
 設定ファイルを確認:
+
 ```bash
 ls -la .eslintrc* .prettierrc* tsconfig.json 2>/dev/null
 ```
 
 ### 最近の関連変更
+
 関連コミットを表示:
+
 ```bash
 git log --oneline -5 --grep="[feature]" 2>/dev/null
 ```
@@ -93,9 +103,11 @@ git log --oneline -5 --grep="[feature]" 2>/dev/null
 
 1. **Redフェーズ** (信頼度目標: 0.9)
    テストを実行して失敗を確認:
+
    ```bash
    npm test -- --testNamePattern="[現在のテスト]" 2>&1 | grep -E "FAIL|PASS"
    ```
+
    - 明確な意図で失敗するテストを書く
    - 失敗理由が期待と一致することを確認
    - テストアサーションで理解を文書化
@@ -103,9 +115,11 @@ git log --oneline -5 --grep="[feature]" 2>/dev/null
 
 2. **Greenフェーズ** (信頼度目標: 0.7)
    ウォッチモードでテストを実行:
+
    ```bash
    npm test -- --watch --testNamePattern="[現在のテスト]" 2>&1 &
    ```
+
    - パスするための最小実装
    - クイックソリューション許容
    - 形式より機能性に集中
@@ -113,9 +127,11 @@ git log --oneline -5 --grep="[feature]" 2>/dev/null
 
 3. **Refactorフェーズ** (信頼度目標: 0.95)
    テスト結果を確認:
+
    ```bash
    npm test 2>&1 | tail -5 | grep -E "Passing|Failing"
    ```
+
    - SOLID原則を適用
    - 重複を削除（DRY）
    - 命名と構造を改善
@@ -144,7 +160,7 @@ git log --oneline -5 --grep="[feature]" 2>/dev/null
 1.1 ✅ 失敗するテストを書く [C: 0.95] ✓ 2分
 1.2 ✅ 正しい失敗を確認 [C: 0.9] ✓ 30秒
 
-### Greenフェーズ (アクティブ: 14:26) 
+### Greenフェーズ (アクティブ: 14:26)
 1.3 ❌ 登録ロジックを実装 [C: 0.7] ⏱️ 3分
 1.4 ⏳ テストが一貫してパス [C: 保留]
 
@@ -187,14 +203,18 @@ Refactorフェーズで適用：
 ## 階層的実装プロセス
 
 ### フェーズ1: コンテキスト発見と計画
+
 信頼度スコアリングで分析：
+
 1. **コードコンテキスト**: 既存パターンを理解 (C: 0.0-1.0)
 2. **依存関係**: 必要なライブラリが利用可能か確認
 3. **規約**: プロジェクト標準を検出して従う
 4. **テスト構造**: 従うべきテストパターンを特定
 
 ### フェーズ2: 並列品質実行
+
 品質チェックを同時実行：
+
 ```typescript
 // 逐次ではなく、これらを並列で実行
 const qualityChecks = [
@@ -206,7 +226,9 @@ const qualityChecks = [
 ```
 
 ### フェーズ3: 信頼度ベースの決定
+
 証拠に基づいて実装選択を行う：
+
 - **高信頼度 (>0.8)**: 実装を進める
 - **中程度 (0.5-0.8)**: 防御的チェックを追加
 - **低 (<0.5)**: 実装前に調査
@@ -223,49 +245,60 @@ const qualityChecks = [
 ### 3. 動的品質チェック
 
 #### 自動発見
+
 品質スクリプトを発見:
+
 ```bash
 cat package.json 2>/dev/null | jq -r '.scripts | to_entries[] | select(.key | test("lint|type|check|test|format")) | .key' | head -10
 ```
 
 #### 並列実行
+
 ```markdown
 ## 品質チェック結果
 ### リント (信頼度: 0.95)
-```bash
-npm run lint 2>&1 | tail -5
-```
+      ```bash
+      npm run lint 2>&1 | tail -5
+      ```
+
 - ステータス: ✅ パス中
 - 問題: 0エラー、2警告
 - 時間: 1.2秒
 
 ### 型チェック (信頼度: 0.98)
-```bash
-npm run type-check 2>&1 | tail -5
-```
+
+      ```bash
+      npm run type-check 2>&1 | tail -5
+      ```
+
 - ステータス: ✅ すべての型が有効
 - チェックファイル: 47
 - 時間: 3.4秒
 
 ### テスト (信頼度: 0.92)
-```bash
-npm test -- --passWithNoTests 2>&1 | grep -E "Tests:|Snapshots:"
-```
+
+      ```bash
+      npm test -- --passWithNoTests 2>&1 | grep -E "Tests:|Snapshots:"
+      ```
+
 - ステータス: ✅ 45/45 パス中
 - カバレッジ: 82%
 - 時間: 8.7秒
 
 ### フォーマットチェック (信頼度: 0.90)
-```bash
-npm run format:check 2>&1 | tail -3
-```
+
+      ```bash
+      npm run format:check 2>&1 | tail -3
+      ```
+
 - ステータス: ⚠️ 3ファイルにフォーマットが必要
 - 自動修正可能: はい
 - 時間: 0.8秒
 ```
 
 #### 品質スコア計算
-```
+
+```txt
 総合品質スコア: (L*0.3 + T*0.3 + Test*0.3 + F*0.1) = 0.93
 信頼度レベル: 高 - コミット準備完了
 ```
@@ -279,25 +312,33 @@ npm run format:check 2>&1 | tail -3
 ## 高度な機能
 
 ### リアルタイムテスト監視
+
 開発中のテスト結果を監視：
+
 ```bash
 npm test -- --watch --coverage 2>&1 &
 ```
 
 ### コード複雑度分析
+
 実装中の複雑度を追跡：
+
 ```bash
 npx complexity-report src/ 2>/dev/null | grep -E "Complexity|Maintainability"
 ```
 
 ### パフォーマンスプロファイリング
+
 パフォーマンスクリティカルなコード用：
+
 ```bash
 npm run profile 2>/dev/null
 ```
 
 ### セキュリティスキャン
+
 自動脆弱性検出：
+
 ```bash
 npm audit --production 2>&1 | grep -E "found|Severity"
 ```
@@ -305,6 +346,7 @@ npm audit --production 2>&1 | grep -E "found|Severity"
 ## 実装パターン
 
 ### 信頼度によるパターン選択
+
 ```markdown
 ## 利用可能なパターン（コンテキストに基づいて選択）
 
@@ -334,6 +376,7 @@ npm audit --production 2>&1 | grep -E "found|Severity"
 ## リスク軽減
 
 ### 一般的な実装リスク
+
 | リスク | 確率 | 影響 | 軽減策 | 信頼度 |
 |-------|------|------|--------|--------|
 | 既存テストの破壊 | 中 | 高 | 前後で完全スイート実行 | 0.95 |
@@ -380,6 +423,7 @@ npm audit --production 2>&1 | grep -E "found|Severity"
 ## 決定フレームワーク
 
 ### 実装信頼度が低い場合
+
 ```markdown
 ## 低信頼度検出 (< 0.7)
 ### 問題: [実装アプローチが不確実]
@@ -388,11 +432,11 @@ npm audit --production 2>&1 | grep -E "found|Severity"
 1. **さらに調査** (/research)
    - 時間: +30分
    - 信頼度向上: +0.3
-   
+
 2. **最初にプロトタイプ**
-   - 時間: +15分  
+   - 時間: +15分
    - 信頼度向上: +0.2
-   
+
 3. **ドキュメント参照**
    - 時間: +10分
    - 信頼度向上: +0.15
@@ -401,6 +445,7 @@ npm audit --production 2>&1 | grep -E "found|Severity"
 ```
 
 ### 品質ゲート失敗
+
 ```markdown
 ## 品質ゲート失敗
 ### 問題: カバレッジが80%未満に低下
@@ -419,24 +464,28 @@ npm audit --production 2>&1 | grep -E "found|Severity"
 ## 使用例
 
 ### 基本実装
+
 ```bash
 /code "ユーザー認証を追加"
 # 標準TDD実装
 ```
 
 ### 信頼度閾値付き
+
 ```bash
 /code --confidence 0.9 "重要な支払いロジック"
 # 続行前に90%の信頼度が必要
 ```
 
 ### 高速モード（一部チェックをスキップ）
+
 ```bash
 /code --fast "シンプルなUI更新"
 # 低リスク変更用の最小品質チェック
 ```
 
 ### 特定パターン付き
+
 ```bash
 /code --pattern repository "データベースアクセスレイヤー"
 # 実装にリポジトリパターンを使用

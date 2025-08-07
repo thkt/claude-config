@@ -141,7 +141,7 @@ details[open] .content { /* styles */ }
 - Improved maintainability
 - Enhanced accessibility
 
-```md
+```markdown
 
 **Note**: Translate this template to Japanese when outputting to users per CLAUDE.md requirements
 

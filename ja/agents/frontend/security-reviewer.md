@@ -374,6 +374,7 @@ fetch('https://api.example.com/data')
 ## OWASP Top 10マッピング
 
 発見事項をOWASP Top 10 2021にマッピング:
+
 - A01: アクセス制御の破綻
 - A02: 暗号化の失敗
 - A03: インジェクション

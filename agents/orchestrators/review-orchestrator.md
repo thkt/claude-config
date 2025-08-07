@@ -143,7 +143,7 @@ async function validateAndLoadAgents(agents: AgentMetadata[]): Promise<AgentMeta
 async function executeWithDependencies(agent: AgentMetadata, completedAgents: Set<string>): Promise<void> {
   // Check if all dependencies are satisfied
   const dependenciesMet = agent.dependencies.every(dep => completedAgents.has(dep))
-  
+
   if (!dependenciesMet) {
     console.log(`⏸️ Waiting for dependencies: ${agent.dependencies.filter(d => !completedAgents.has(d)).join(', ')}`)
     return
@@ -153,7 +153,7 @@ async function executeWithDependencies(agent: AgentMetadata, completedAgents: Se
   const timeout = agent.max_execution_time * 1000
   return Promise.race([
     executeAgent(agent),
-    new Promise((_, reject) => 
+    new Promise((_, reject) =>
       setTimeout(() => reject(new Error(`Timeout: ${agent.name}`)), timeout)
     )
   ])
@@ -165,15 +165,15 @@ async function executeWithDependencies(agent: AgentMetadata, completedAgents: Se
 ```typescript
 async function executeParallelGroup(group: AgentMetadata[]): Promise<Map<string, any>> {
   const results = new Map<string, any>()
-  
+
   // Start all agents in parallel
   const promises = group.map(async (agent) => {
     try {
       agent.status = 'running'
       agent.startTime = Date.now()
-      
+
       const result = await executeWithTimeout(agent)
-      
+
       agent.status = 'completed'
       agent.endTime = Date.now()
       agent.result = result
@@ -187,7 +187,7 @@ async function executeParallelGroup(group: AgentMetadata[]): Promise<Map<string,
 
   // Wait for all to complete (or timeout)
   await Promise.allSettled(promises)
-  
+
   return results
 }
 ```

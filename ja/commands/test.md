@@ -26,25 +26,33 @@ context:
 ## 動的テスト発見
 
 ### 利用可能なテストスクリプト
+
 テストスクリプトを一覧表示:
+
 ```bash
 npm run 2>&1 | grep -E "test|spec|check|lint|type"
 ```
 
 ### パッケージマネージャー検出
+
 ロックファイルを確認:
+
 ```bash
 ls package-lock.json yarn.lock pnpm-lock.yaml 2>/dev/null | head -1
 ```
 
 ### テストフレームワーク検出
+
 package.jsonからテストフレームワークを検出:
+
 ```bash
 cat package.json 2>/dev/null | grep -E "jest|vitest|mocha|jasmine|karma|cypress|playwright"
 ```
 
 ### テストファイル数
+
 テストファイルをカウント:
+
 ```bash
 find . -type f \( -name "*.test.*" -o -name "*.spec.*" \) -not -path "*/node_modules/*" 2>/dev/null | wc -l
 ```
@@ -52,21 +60,27 @@ find . -type f \( -name "*.test.*" -o -name "*.spec.*" \) -not -path "*/node_mod
 ## 階層的テストプロセス
 
 ### フェーズ1: 環境分析
+
 Taskエージェントを使用して：
+
 1. テストインフラとフレームワークを検出
 2. テストファイルパターンと場所を特定
 3. 利用可能なテストコマンドとスクリプトを発見
 4. カバレッジ設定を確認
 
 ### フェーズ2: 並列テスト実行
+
 可能な場合はテストスイートを同時実行：
+
 - **ユニットテスト**: コンポーネントロジックの最速フィードバック
 - **統合テスト**: APIとサービスの相互作用
 - **E2Eテスト**: 重要なユーザーパス（設定されている場合）
 - **品質チェック**: リント、型チェック、フォーマット
 
 ### フェーズ3: 結果分析とメトリクス
+
 信頼度スコアリングで結果を分析：
+
 1. **失敗分析**: 根本原因の特定
 2. **カバレッジメトリクス**: ライン、ブランチ、関数カバレッジ
 3. **パフォーマンスデータ**: テスト実行時間
@@ -75,7 +89,9 @@ Taskエージェントを使用して：
 ## テスト実行戦略
 
 ### クイックテスト（1-2分）
+
 変更されたファイルのみに焦点：
+
 ```bash
 npm test -- --findRelatedTests $(git diff --name-only HEAD) 2>/dev/null
 ```
@@ -83,7 +99,9 @@ npm test -- --findRelatedTests $(git diff --name-only HEAD) 2>/dev/null
 コマンド: `/test --quick`
 
 ### 標準テスト（3-5分）
+
 メインテストスイートを実行：
+
 ```bash
 npm test 2>&1 || yarn test 2>&1 || pnpm test 2>&1
 ```
@@ -91,7 +109,9 @@ npm test 2>&1 || yarn test 2>&1 || pnpm test 2>&1
 コマンド: `/test` (デフォルト)
 
 ### 包括的テスト（5-10分）
+
 カバレッジ付きフルテストスイート：
+
 ```bash
 npm test -- --coverage --verbose 2>&1 || npm run test:all 2>&1
 ```
@@ -99,7 +119,9 @@ npm test -- --coverage --verbose 2>&1 || npm run test:all 2>&1
 コマンド: `/test --full`
 
 ### ウォッチモード
+
 開発イテレーション用：
+
 ```bash
 npm test -- --watch 2>&1 &
 ```
@@ -109,18 +131,23 @@ npm test -- --watch 2>&1 &
 ## カバレッジメトリクス
 
 ### 現在のカバレッジ
+
 カバレッジサマリーを表示:
+
 ```bash
 cat coverage/coverage-summary.json 2>/dev/null | grep -E "lines|statements|functions|branches"
 ```
 
 ### カバレッジトレンド
+
 カバレッジの変化を追跡：
+
 - mainブランチとの比較
 - カバレッジ軌跡の監視
 - 未カバーの重要パスの特定
 
 ### カバレッジ閾値
+
 ```json
 {
   "lines": 80,
@@ -133,6 +160,7 @@ cat coverage/coverage-summary.json 2>/dev/null | grep -E "lines|statements|funct
 ## テスト結果分析
 
 ### 失敗の分類
+
 ```markdown
 ## テスト結果サマリー
 - 総テスト数: [数]
@@ -168,19 +196,25 @@ cat coverage/coverage-summary.json 2>/dev/null | grep -E "lines|statements|funct
 ## 品質チェック統合
 
 ### リント
+
 リンターを実行:
+
 ```bash
 npm run lint 2>&1
 ```
 
 ### 型チェック
+
 TypeScript型チェックを実行:
+
 ```bash
 npm run type-check 2>&1 || npx tsc --noEmit 2>&1
 ```
 
 ### フォーマットチェック
+
 コードフォーマットをチェック:
+
 ```bash
 npm run format:check 2>&1
 ```
@@ -188,6 +222,7 @@ npm run format:check 2>&1
 ## UI変更のブラウザテスト
 
 UIコンポーネントが変更された場合：
+
 1. Playwright MCPツールでビジュアルテスト
 2. レスポンシブデザインのブレークポイントを検証
 3. アクセシビリティコンプライアンスをチェック
@@ -196,6 +231,7 @@ UIコンポーネントが変更された場合：
 ## TodoWrite統合
 
 自動タスク追跡：
+
 ```markdown
 # テスト: [ターゲット説明]
 1. ⏳ テストインフラを発見（1分）
@@ -210,24 +246,31 @@ UIコンポーネントが変更された場合：
 ## 高度な機能
 
 ### テスト影響分析
+
 変更に基づいて実行するテストを決定：
+
 ```bash
 npm test -- --findRelatedTests $(git diff --cached --name-only) 2>/dev/null
 ```
 
 ### ミューテーションテスト
+
 重要なコードパス用（設定されている場合）：
+
 ```bash
 npm run test:mutation 2>/dev/null
 ```
 
 ### パフォーマンス回帰テスト
+
 テストスイートのパフォーマンスを経時的に追跡：
+
 - 遅いテストを特定
 - メモリ使用量を監視
 - パフォーマンス回帰を検出
 
 ### テスト信頼性スコアリング
+
 - 不安定なテストの頻度を追跡
 - テスト信頼度スコアを計算
 - テストメンテナンスを優先順位付け
@@ -235,12 +278,14 @@ npm run test:mutation 2>/dev/null
 ## 失敗回復戦略
 
 ### 即座のアクション
+
 1. **失敗を分離**: 単一テストを分離して実行
 2. **デバッグモード**: 詳細出力で実行
 3. **依存関係チェック**: テスト環境を検証
 4. **変更をレビュー**: 最後の成功状態と比較
 
 ### 根本原因分析
+
 - スタックトレース分析
 - アサーション失敗パターン
 - 環境依存関係
@@ -249,17 +294,20 @@ npm run test:mutation 2>/dev/null
 ## CI/CD統合
 
 ### Pre-commitフック
+
 ```bash
 npm test -- --bail --findRelatedTests
 ```
 
 ### PR検証
+
 ```yaml
 - name: Test Suite
   run: npm test -- --coverage --ci
 ```
 
 ### デプロイメントゲート
+
 ```bash
 npm test -- --coverage --threshold 80
 ```
@@ -267,30 +315,35 @@ npm test -- --coverage --threshold 80
 ## 使用例
 
 ### 基本テスト
+
 ```bash
 /test
 # カバレッジ付き標準テストスイートを実行
 ```
 
 ### クイックフィードバック
+
 ```bash
 /test --quick
 # 変更されたファイルのみをテスト
 ```
 
 ### PR前検証
+
 ```bash
 /test --full
 # PR前の包括的テスト
 ```
 
 ### 特定のテストスイート
+
 ```bash
 /test "認証テスト"
 # パターンに一致するテストを実行
 ```
 
 ### カバレッジ目標付き
+
 ```bash
 /test --coverage 90
 # 90%のカバレッジ閾値を確保
@@ -308,6 +361,7 @@ npm test -- --coverage --threshold 80
 ## 除外ルール
 
 ### 自動スキップパターン
+
 1. **生成ファイル**: dist/, build/, coverage/
 2. **依存関係**: node_modules/, vendor/
 3. **ドキュメント**: *.mdファイル（docsテストが存在しない限り）
@@ -315,6 +369,7 @@ npm test -- --coverage --threshold 80
 5. **モックデータ**: テストフィクスチャとスタブ
 
 ### コンテキスト認識スキップ
+
 - 不要な時はCIでE2Eをスキップ
 - ウォッチモードで遅いテストをスキップ
 - クイックモードで統合テストをスキップ

@@ -535,6 +535,7 @@ function Component({ items }) {
 ## ユーザールールへの参照
 
 常に考慮:
+
 - [@~/.claude/rules/development/CONTAINER_PRESENTATIONAL.md] コンポーネント分離のため
 - [@~/.claude/rules/development/PROGRESSIVE_ENHANCEMENT.md] シンプリシティのため
 - [@~/.claude/rules/development/READABLE_CODE.md] 明確性のため

@@ -33,25 +33,33 @@ excludes: [hotfix]  # Don't suggest both
 ## 動的問題コンテキスト
 
 ### 最近の変更分析
+
 最近の変更を確認:
+
 ```bash
 git diff HEAD~1 --stat 2>/dev/null | head -5
 ```
 
 ### テストステータスチェック
+
 テストファイル数を確認:
+
 ```bash
 npm test -- --listTests 2>/dev/null | grep -E "(test|spec)" | wc -l | xargs -I {} echo "利用可能なテストファイル: {}"
 ```
 
 ### 品質コマンド発見
+
 品質スクリプトを確認:
+
 ```bash
 npm run 2>&1 | grep -E "lint|type|check|test" | head -5
 ```
 
 ### 関連ファイル検出
+
 変更されたファイルを一覧表示:
+
 ```bash
 git ls-files --modified 2>/dev/null | head -5
 ```
@@ -59,20 +67,26 @@ git ls-files --modified 2>/dev/null | head -5
 ## 階層的修正プロセス
 
 ### フェーズ1: 問題分析 (信頼度目標: 0.85)
+
 動的根本原因特定：
+
 1. **問題検出**: 症状とエラーパターンを分析
 2. **影響範囲**: 影響を受けるファイルとコンポーネントを特定
 3. **根本原因**: 何ではなくなぜを特定
 4. **修正戦略**: 最もシンプルで効果的なアプローチを選択
 
 ### フェーズ2: ターゲット実装 (信頼度目標: 0.90)
+
 信頼度スコアリングで修正を適用：
+
 - **高信頼度 (>0.9)**: 直接修正実装
 - **中程度 (0.7-0.9)**: 防御的チェックを追加
 - **低 (<0.7)**: 修正前に調査
 
 ### フェーズ3: 並列検証 (信頼度目標: 0.95)
+
 同時品質チェック：
+
 ```typescript
 // 逐次ではなく並列で実行
 const checks = [
@@ -87,6 +101,7 @@ const checks = [
 ### 1. 動的問題分析
 
 #### 問題分類
+
 ```markdown
 ## 問題分析 (信頼度: X.XX)
 ### カテゴリ: [UI/ロジック/パフォーマンス/型/テスト]
@@ -97,7 +112,9 @@ const checks = [
 ```
 
 #### 最近のコンテキスト
+
 最近の修正コミットを表示:
+
 ```bash
 git log --oneline -5 --grep="fix" 2>/dev/null
 ```
@@ -105,6 +122,7 @@ git log --oneline -5 --grep="fix" 2>/dev/null
 ### 2. スマート実装
 
 #### 修正アプローチ選択
+
 ```markdown
 ## 修正戦略 (信頼度: X.XX)
 ### 選択したアプローチ: [名称]
@@ -115,6 +133,7 @@ git log --oneline -5 --grep="fix" 2>/dev/null
 ```
 
 #### プログレッシブエンハンスメントチェック
+
 ```markdown
 ## CSSファースト分析
 - CSSで解決可能？ [はい/いいえ]
@@ -125,19 +144,25 @@ git log --oneline -5 --grep="fix" 2>/dev/null
 ### 3. リアルタイム検証
 
 #### 並列品質実行
+
 テスト、リント、型チェックを実行:
+
 ```bash
 npm test -- --findRelatedTests 2>&1 | grep -E "PASS|FAIL" | head -5
 ```
+
 ```bash
 npm run lint 2>&1 | tail -3
 ```
+
 ```bash
 npm run type-check 2>&1 | tail -3
 ```
 
 #### リグレッションチェック
+
 変更されたテストを実行:
+
 ```bash
 npm test -- --onlyChanged 2>&1 | grep -E "Test Suites:"
 ```
@@ -206,7 +231,7 @@ npm test -- --onlyChanged 2>&1 | grep -E "Test Suites:"
 
 ### 適用したソリューション
 - **アプローチ**: [使用した修正戦略]
-- **変更ファイル**: 
+- **変更ファイル**:
   - `path/to/file.ts` - [何が変更されたか]
   - `path/to/test.ts` - [テスト更新]
 - **プログレッシブエンハンスメント**: [CSSファーストアプローチ使用？]
@@ -230,9 +255,11 @@ npm test -- --onlyChanged 2>&1 | grep -E "Test Suites:"
 ```bash
 git diff HEAD --stat | tail -3
 ```
+
 - 変更行数: XX
 - 影響ファイル: X
 - 複雑度: 低
+
 ```
 
 ## 決定フレームワーク
@@ -261,7 +288,9 @@ git diff HEAD --stat | tail -3
 ```
 
 ### 自動コマンド切り替え
+
 分析中に信頼度が0.6を下回った場合：
+
 ```markdown
 ## 低信頼度検出
 ### 問題: 修正スコープが/fixの能力を超えています
@@ -277,19 +306,22 @@ git diff HEAD --stat | tail -3
 ## 信頼度付き使用例
 
 ### 高信頼度修正
-```md
+
+```markdown
 /fix "ヘッダーのボタン配置の問題を修正"
 # 信頼度: 0.92 - CSSファーストソリューション利用可能
 ```
 
 ### 中信頼度修正
-```md
+
+```markdown
 /fix "状態更新が再レンダリングをトリガーしない問題を解決"
 # 信頼度: 0.75 - 調査が必要かもしれません
 ```
 
 ### 自動エスカレーション例
-```md
+
+```markdown
 /fix "データベースクエリパフォーマンスを最適化"
 # 信頼度: 0.45 - /research → /think を提案
 ```
@@ -297,15 +329,18 @@ git diff HEAD --stat | tail -3
 ## 結果に基づく次のステップ
 
 ### 成功パス (信頼度 >0.9)
+
 - 学びを文書化
 - リグレッションテストを追加
 - 関連ドキュメントを更新
 
 ### 部分的成功 (信頼度 0.7-0.9)
+
 - 完全性のため `/research` でレビュー
 - 残りの問題にフォローアップ `/fix` を検討
 
 ### エスカレーションパス (信頼度 <0.7)
+
 ```markdown
 ## 推奨ワークフロー
 分析に基づいて提案：
@@ -317,19 +352,25 @@ git diff HEAD --stat | tail -3
 ## 高度な機能
 
 ### パターン学習
+
 類似問題の成功した修正を追跡：
+
 ```bash
 git log --grep="fix" --oneline | head -3
 ```
 
 ### 自動発見
+
 修正が必要な関連問題を見つける：
+
 ```bash
 grep -r "TODO\|FIXME\|HACK" --include="*.ts" --include="*.tsx" | head -5
 ```
 
 ### 品質トレンド
+
 コードベースの健全性への修正影響を監視：
+
 ```bash
 npm run lint 2>&1 | grep -E "problems\|warnings"
 ```
