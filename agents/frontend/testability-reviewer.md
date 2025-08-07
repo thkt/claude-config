@@ -4,6 +4,9 @@ description: コードのテスタビリティを評価し、テスト可能な�
 tools: Read, Grep, Glob, LS, Task
 model: sonnet
 color: green
+max_execution_time: 30
+dependencies: []
+parallel_group: quality
 ---
 
 # Testability Reviewer

@@ -4,6 +4,9 @@ description: React設計パターンの適切な使用を検証し、コンポ�
 tools: Read, Grep, Glob, LS, Task
 model: sonnet
 color: purple
+max_execution_time: 45
+dependencies: []
+parallel_group: quality
 ---
 
 # Design Pattern Reviewer

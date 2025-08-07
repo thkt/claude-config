@@ -4,6 +4,9 @@ description: README、API仕様書、ルールファイルなどの技術文書�
 model: sonnet
 tools: Task, Read, Grep, Glob, LS
 color: brown
+max_execution_time: 30
+dependencies: []
+parallel_group: optional
 ---
 
 # Document Reviewer

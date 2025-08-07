@@ -4,6 +4,9 @@ description: フロントエンドコードのアクセシビリティを検証�
 tools: Read, Grep, Glob, LS, Task
 model: sonnet
 color: pink
+max_execution_time: 45
+dependencies: []
+parallel_group: production
 ---
 
 # Accessibility Reviewer

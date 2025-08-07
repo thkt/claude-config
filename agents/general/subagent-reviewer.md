@@ -4,6 +4,9 @@ description: サブエージェント定義ファイルの形式、構造、品�
 model: opus
 tools: Read, Grep, Glob, LS
 color: gray
+max_execution_time: 30
+dependencies: []
+parallel_group: optional
 ---
 
 # Sub-Agent Reviewer

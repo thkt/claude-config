@@ -4,6 +4,9 @@ description: フロントエンドコード（TypeScript/React）の可読性を
 model: sonnet
 tools: Read, Grep, Glob, LS, Task
 color: cyan
+max_execution_time: 30
+dependencies: []
+parallel_group: foundation
 ---
 
 # Frontend Readability Reviewer

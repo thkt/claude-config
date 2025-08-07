@@ -4,6 +4,9 @@ description: TypeScriptコードの型安全性を評価し、型定義の網羅
 tools: Read, Grep, Glob, LS, Task
 model: sonnet
 color: cyan
+max_execution_time: 45
+dependencies: []
+parallel_group: quality
 ---
 
 # Type Safety Reviewer

@@ -9,167 +9,283 @@ suitable_for:
   urgency: [low, medium]
 aliases: [code-review, cr]
 timeout: 90
+allowed-tools: Bash(git diff:*), Bash(git status:*), Bash(git log:*), Bash(git show:*), Read, Glob, Grep, LS, Task
 context:
-  files_changed: "none"
-  lines_changed: "0"
-  new_features: false
-  breaking_changes: false
+  files_changed: "dynamic"
+  lines_changed: "dynamic"
+  new_features: "detected"
+  breaking_changes: "detected"
 ---
 
-# /review - Code Review Orchestrator
+# /review - Advanced Code Review Orchestrator
 
 ## Purpose
 
-Orchestrate multiple specialized review agents to provide comprehensive code analysis.
+Orchestrate multiple specialized review agents with dynamic context analysis, hierarchical task decomposition, and confidence-based filtering.
 
-## Usage
+## Dynamic Context Analysis
 
-Simply describe what you want reviewed:
-
-- "Review the authentication code"
-- "Check accessibility in components"
-- "Security review for API endpoints"
-- "Full review of recent changes"
-
-## Execution Strategy
-
-### 1. Scope Analysis
-
-- Determine what needs review (files/directories)
-- Identify code type (frontend/backend/infrastructure)
-- Assess review depth needed
-
-### 2. Agent Selection
-
-Automatically select relevant agents based on scope:
-
-- **Frontend**: accessibility, design-pattern, performance reviewers
-- **Security**: security-reviewer for all code types
-- **Quality**: readability, structure, type-safety reviewers
-- **Architecture**: root-cause, testability reviewers
-- **Documentation**: document-reviewer for .md, README, API docs
-
-### 3. TodoWrite Integration
-
-Track review progress:
-
-```md
-# Review: [target description]
-1. ⏳ Scope analysis
-2. ⏳ Execute review agents
-3. ⏳ Consolidate findings
-4. ⏳ Generate recommendations
+### Git Status
+Check git status:
+```bash
+git status --porcelain
 ```
 
-### 4. Orchestration via Task Agent
+### Files Changed
+List changed files:
+```bash
+git diff --name-only HEAD
+```
 
-Use `review-orchestrator` agent to:
+### Recent Commits
+View recent commits:
+```bash
+git log --oneline -10
+```
 
-- Coordinate multiple review agents in parallel
-- Prioritize critical issues
-- Consolidate results into actionable report
-- Generate fix suggestions when applicable
+### Change Statistics
+Show change statistics:
+```bash
+git diff --stat HEAD
+```
 
-## Review Levels
+## Hierarchical Review Process
 
-### Quick (2-3 min)
+### Phase 1: Context Discovery
+Use Task agent to:
+1. Analyze repository structure and technology stack
+2. Identify review scope (changed files, directories)
+3. Detect code patterns and existing quality standards
+4. Determine applicable review categories
 
-- Critical issues only
-- Security vulnerabilities
-- Breaking changes
+### Phase 2: Parallel Specialized Reviews
+Launch multiple review agents concurrently:
+- Each agent focuses on specific aspect
+- Independent execution for efficiency
+- Collect raw findings with confidence scores
 
-### Standard (5-7 min)
+### Phase 3: Filtering and Consolidation
+Apply multi-level filtering:
+1. **Confidence Filter**: Only issues with >0.7 confidence
+2. **False Positive Filter**: Apply exclusion rules
+3. **Deduplication**: Merge similar findings
+4. **Prioritization**: Sort by impact and severity
 
-- All critical + high priority issues
-- Performance problems
-- Accessibility violations
-- Type safety concerns
+## Review Agents and Their Focus
 
-### Comprehensive (10+ min)
+### Core Architecture Reviewers
+- `review-orchestrator`: Coordinates all review activities
+- `structure-reviewer`: Code organization, DRY violations, coupling
+- `root-cause-reviewer`: Deep problem analysis, architectural debt
 
-- Full analysis across all dimensions
-- Root cause analysis
-- Refactoring suggestions
-- Technical debt assessment
+### Quality Assurance Reviewers
+- `readability-reviewer`: Code clarity, naming, complexity
+- `type-safety-reviewer`: TypeScript coverage, any usage, type assertions
+- `testability-reviewer`: Test design, mocking, coverage gaps
 
-## Available Review Agents
+### Specialized Domain Reviewers
+- `security-reviewer`: Vulnerabilities, auth issues, data exposure
+- `accessibility-reviewer`: WCAG compliance, keyboard navigation, ARIA
+- `performance-reviewer`: Bottlenecks, bundle size, rendering issues
+- `design-pattern-reviewer`: Pattern consistency, React best practices
+- `progressive-enhancer`: CSS-first solutions, graceful degradation
+- `document-reviewer`: README quality, API docs, inline comments
 
-### Core Reviewers
+## Exclusion Rules
 
-- `review-orchestrator` - Coordinates all review activities
-- `structure-reviewer` - Code organization and patterns
-- `root-cause-reviewer` - Deep problem analysis
+### Automatic Exclusions (False Positive Prevention)
+1. **Style Issues**: Formatting, indentation (handled by linters)
+2. **Minor Naming**: Unless severely misleading
+3. **Test Files**: Focus on production code unless requested
+4. **Generated Code**: Build outputs, vendor files
+5. **Documentation**: Unless specifically reviewing docs
+6. **Theoretical Issues**: Without concrete exploitation path
+7. **Performance Micro-optimizations**: Unless measurable impact
+8. **Missing Features**: vs actual bugs/issues
 
-### Quality Reviewers
+### Context-Aware Exclusions
+- Framework-specific patterns (React/Angular/Vue idioms)
+- Project conventions (detected from existing code)
+- Language-specific safety (memory-safe languages)
+- Environment assumptions (browser vs Node.js)
 
-- `readability-reviewer` - Code clarity and maintainability
-- `type-safety-reviewer` - TypeScript and type coverage
-- `testability-reviewer` - Test design and coverage
-
-### Specialized Reviewers
-
-- `security-reviewer` - Security vulnerabilities
-- `accessibility-reviewer` - WCAG compliance and a11y
-- `performance-reviewer` - Performance bottlenecks
-- `design-pattern-reviewer` - Architecture and patterns
-- `progressive-enhancer` - Progressive enhancement approach
-- `document-reviewer` - Technical documentation quality
-
-## Output Format
+## Output Format with Confidence Scoring
 
 ```markdown
 ## Review Summary
-- Scope: [Files/directories reviewed]
-- Issues Found: [Count by severity]
-- Immediate Actions: [Critical items]
+- Files Reviewed: [Count and list]
+- Total Issues: [Count by severity]
+- Review Coverage: [Percentage]
+- Confidence Level: [Average confidence]
 
-## Critical Issues 🚨
-[Issues requiring immediate attention]
+## Critical Issues 🚨 (Confidence > 0.9)
+### Issue #1: [Title]
+- **File**: path/to/file.ts:42
+- **Category**: security|performance|accessibility|etc
+- **Confidence**: 0.95
+- **Description**: [Detailed explanation]
+- **Impact**: [User/system impact]
+- **Recommendation**: [Specific fix with code example]
 
-## High Priority ⚠️
-[Important improvements needed]
+## High Priority ⚠️ (Confidence > 0.8)
+[Similar format...]
 
-## Recommendations 💡
-[Suggested improvements and best practices]
+## Medium Priority 💡 (Confidence > 0.7)
+[Similar format...]
 
-## Next Steps
-[Prioritized action items]
+## Improvement Opportunities
+[Lower confidence suggestions for consideration]
+
+## Metrics
+- Code Quality Score: [A-F rating]
+- Technical Debt Estimate: [Hours]
+- Test Coverage Gap: [Percentage]
+- Security Posture: [Rating]
+
+## Recommended Actions
+1. **Immediate**: [Critical fixes]
+2. **Next Sprint**: [High priority items]
+3. **Backlog**: [Nice-to-have improvements]
 ```
 
-## When to Use
+## Review Strategies
 
-- Before creating pull requests
-- After significant refactoring
-- When inheriting unfamiliar code
-- Regular quality checks
-- Security audit requirements
+### Quick Review (2-3 min)
+Focus areas:
+- Security vulnerabilities
+- Critical bugs
+- Breaking changes
+- Accessibility violations
 
-## When NOT to Use
+Command: `/review --quick`
 
-- Single file quick fixes (use `/fix`)
-- During active development (too disruptive)
-- Emergency hotfixes (use `/hotfix`)
+### Standard Review (5-7 min)
+Includes Quick + :
+- Performance issues
+- Type safety problems
+- Test coverage gaps
+- Code organization
 
-## Example Usage
+Command: `/review` (default)
 
-```md
-/review "Check the new authentication implementation"
-/review "Security review for payment processing"
-/review "Accessibility audit for checkout flow"
-/review "Full review before v2.0 release"
+### Deep Review (10+ min)
+Comprehensive analysis:
+- All standard checks
+- Root cause analysis
+- Technical debt assessment
+- Refactoring opportunities
+- Architecture evaluation
+
+Command: `/review --deep`
+
+### Focused Review
+Target specific areas:
+- `/review --security` - Security focus
+- `/review --performance` - Performance focus
+- `/review --accessibility` - A11y focus
+- `/review --architecture` - Design patterns
+
+## TodoWrite Integration
+
+Automatic task creation:
+```markdown
+# Code Review: [Target]
+1. ⏳ Context discovery and scope analysis
+2. ⏳ Execute specialized review agents (parallel)
+3. ⏳ Filter and validate findings (confidence > 0.7)
+4. ⏳ Consolidate and prioritize results
+5. ⏳ Generate actionable recommendations
 ```
 
-## Tips for Effective Reviews
+## Custom Review Instructions
 
-1. **Be specific** about what needs review
-2. **Review early** in development cycle
-3. **Focus on one area** at a time when possible
-4. **Act on critical issues** immediately
-5. **Track improvements** over time
+Support for project-specific rules:
+- `.claude/review-rules.md` - Project conventions
+- `.claude/exclusions.md` - Custom exclusions
+- `.claude/review-focus.md` - Priority areas
 
-## Next Steps
+## Advanced Features
 
-- Critical issues → `/fix` or `/hotfix`
-- Refactoring needs → `/think` then `/code`
-- Performance issues → targeted optimization
-- Test coverage → `/test` with specific focus
+### Incremental Reviews
+Compare against baseline:
+```bash
+git diff origin/main...HEAD --name-only
+```
+
+### Pattern Detection
+Identify recurring issues:
+- Similar problems across files
+- Systemic architectural issues
+- Common anti-patterns
+
+### Learning Mode
+Track and improve:
+- False positive patterns
+- Project-specific idioms
+- Team preferences
+
+## Usage Examples
+
+### Basic Review
+```bash
+/review
+# Reviews all changed files with standard depth
+```
+
+### Targeted Review
+```bash
+/review "authentication module"
+# Focuses on auth-related code
+```
+
+### Security Audit
+```bash
+/review --security --deep
+# Comprehensive security analysis
+```
+
+### Pre-PR Review
+```bash
+/review --compare main
+# Reviews changes against main branch
+```
+
+### Component Review
+```bash
+/review "src/components" --accessibility
+# A11y review of components directory
+```
+
+## Best Practices
+
+1. **Review Early**: Catch issues before they compound
+2. **Review Incrementally**: Small, frequent reviews > large, rare ones
+3. **Act on High Confidence**: Focus on >0.8 confidence issues
+4. **Track Patterns**: Identify recurring problems
+5. **Customize Rules**: Add project-specific exclusions
+6. **Iterate on Feedback**: Tune confidence thresholds
+
+## Integration Points
+
+### Pre-commit Hook
+```bash
+claude review --quick || exit 1
+```
+
+### CI/CD Pipeline
+```yaml
+- name: Code Review
+  run: claude review --security --performance
+```
+
+### PR Comments
+Results formatted for GitHub/GitLab comments
+
+## Next Steps After Review
+
+- **Critical Issues** → `/hotfix` for production issues
+- **Bugs** → `/fix` for development fixes
+- **Refactoring** → `/think` → `/code` for improvements
+- **Performance** → Targeted optimization with metrics
+- **Tests** → `/test` with coverage goals
+- **Documentation** → Update based on findings

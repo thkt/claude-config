@@ -9,169 +9,337 @@ suitable_for:
   urgency: [low, medium]
 aliases: []
 timeout: 90
+allowed-tools: Bash(find:*), Bash(tree:*), Bash(ls:*), Bash(cat package.json:*), Read, Glob, Grep, LS, Task
 context:
-  files_changed: "none"
-  lines_changed: "0"
-  new_features: false
-  breaking_changes: false
+  project_structure: "dynamic"
+  tech_stack: "discovered"
+  dependencies: "analyzed"
+  patterns: "identified"
 ---
 
-# /research - Project Understanding & Technical Research
+# /research - Advanced Project Research & Technical Investigation
 
 ## Purpose
 
-Investigate codebase, research technical solutions, or understand existing implementations without implementation commitment.
+Investigate codebase with dynamic discovery, parallel search execution, and confidence-based findings, without implementation commitment.
 
-## Usage
+## Dynamic Project Discovery
 
-For exploration, learning, and research tasks that don't require immediate implementation.
-
-## Execution Steps
-
-### 1. Context Loading
-
-- Quick project overview
-- Identify relevant areas to explore
-
-### 2. Deep Investigation
-
-Choose the appropriate approach based on complexity:
-
-#### For Simple Searches (Direct Tools)
-
-- Use `Grep` for specific patterns: "Where is UserAuth class used?"
-- Use `Glob` for file discovery: "Find all test files"
-- Use `Read` for known files: "Examine auth.config.js"
-- **IMPORTANT**: Execute multiple tools in parallel for efficiency
-  Example: Search for class definition AND its usage simultaneously
-
-#### For Complex Exploration (Task Agent)
-
-**Use Task agent with subagent_type: general-purpose when:**
-
-- Multi-step investigation needed
-- Exploratory analysis without clear search targets
-- Architectural understanding required
-
-#### Task Agent Decision Guide
-
-Use Task agent when you need:
-
-- 10+ sequential search operations
-- Context-aware exploration (understanding relationships)
-- Comprehensive mapping of a system
-
-Use direct tools when you need:
-
-- < 10 specific searches
-- Known file paths or patterns
-- Quick verification of specific items
-
-```md
-Example: Using Task agent for authentication architecture
-- Task(subagent_type="general-purpose",
-      description="Auth investigation",
-      prompt="Find and analyze all authentication-related files, security middleware, and map the complete auth flow from login to logout")
+### Project Structure
+Use tree or ls to explore:
+```bash
+tree -L 2 -I 'node_modules|dist|build|coverage|.git' | head -20
+# or
+ls -la
 ```
 
-- Search and analyze code patterns
-- Research technical documentation
-- Understand architectural decisions
-- Document findings
-
-### 3. Synthesize Findings
-
-- Consolidate results from all investigation tasks
-- Analyze the combined data to identify key patterns, dependencies, and insights
-- Structure the findings according to the standard output format
-
-### 4. Persistent Documentation (Optional)
-
-For significant findings:
-
-- Save to `.claude/workspace/research/YYYY-MM-DD-topic.md`
-- Only for discoveries that will guide future work
-- Use Write tool to persist important architectural insights
-
-## Workflow Position
-
-```txt
-[/think] → [/research] → [/code] → [/test]
-           ↑ You are here
+### Technology Stack
+Check package.json for frameworks:
+```bash
+cat package.json | grep -E '"(react|vue|angular|next|nuxt|svelte|express|fastify|nest)"'
 ```
 
-- **Input**: SOW from `/think` (if in workflow)
-- **Output**: Technical details for `/code`
-- **Standalone**: Pure exploration
+### Language Distribution
+Find source file types:
+```bash
+find . -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.py" -o -name "*.go" \) -not -path "*/node_modules/*" | sed 's/.*\.//' | sort | uniq -c | sort -rn
+```
 
-## Efficient Research Patterns
+### Dependencies Analysis
+List main dependencies:
+```bash
+cat package.json | jq -r '.dependencies | keys[]' | head -10
+```
 
-### Pattern 1: Top-Down
+### Configuration Files
+Locate config files:
+```bash
+ls -la *.config.* *.json *.yml *.yaml | grep -v node_modules
+```
 
-1. Find entry points (main files, exports)
-2. Trace down to implementations
-3. Map dependencies
+## Hierarchical Research Process
 
-### Pattern 2: Bottom-Up
+### Phase 1: Scope Discovery
+Analyze project to understand:
+1. **Architecture**: Identify project structure and patterns
+2. **Technology**: Detect frameworks, libraries, tools
+3. **Conventions**: Recognize coding standards and practices
+4. **Entry Points**: Find main files, exports, APIs
 
-1. Find core implementations
-2. Trace up to consumers
-3. Understand usage patterns
+### Phase 2: Parallel Investigation
+Execute searches concurrently for efficiency:
+- **Pattern Search**: Multiple grep operations in parallel
+- **File Discovery**: Simultaneous glob patterns
+- **Dependency Tracing**: Parallel import analysis
+- **Documentation Scan**: Concurrent README/docs reading
 
-### Pattern 3: Breadth-First
+### Phase 3: Synthesis & Scoring
+Consolidate findings with confidence levels:
+1. **Confidence Scoring**: Rate each finding (0.0-1.0)
+2. **Pattern Recognition**: Identify recurring themes
+3. **Relationship Mapping**: Connect related components
+4. **Priority Assessment**: Rank by importance
 
-1. Survey all related files
-2. Identify key patterns
-3. Deep dive into critical areas
+## Research Strategies
+
+### Quick Scan (1-2 min)
+Surface-level understanding:
+```bash
+find . -type f -name "*.md" -not -path "*/node_modules/*" | head -5 | xargs head -20
+```
+
+Command: `/research --quick`
+
+### Standard Research (3-5 min)
+Balanced depth and breadth:
+- Core architecture understanding
+- Key patterns identification
+- Main dependencies analysis
+
+Command: `/research` (default)
+
+### Deep Dive (5-10 min)
+Comprehensive investigation:
+- Complete architecture mapping
+- All patterns and relationships
+- Full dependency graph
+- Historical context (git history)
+
+Command: `/research --deep`
+
+### Focused Research
+Target specific areas:
+- `/research --auth` - Authentication system
+- `/research --api` - API structure
+- `/research --state` - State management
+- `/research --data` - Data flow
+
+## Efficient Search Patterns
+
+### Parallel Execution Example
+```typescript
+// Execute these simultaneously, not sequentially
+const searches = [
+  Grep({ pattern: "class.*Controller", glob: "**/*.ts" }),
+  Grep({ pattern: "export.*function", glob: "**/*.js" }),
+  Glob({ pattern: "**/*.test.*" }),
+  Glob({ pattern: "**/api/**" })
+];
+```
+
+### Smart Pattern Selection
+Based on initial discovery:
+- **React Project**: Search for hooks, components, context
+- **API Project**: Search for routes, controllers, middleware
+- **Library Project**: Search for exports, types, tests
+
+## Confidence-Based Findings
+
+### Finding Classification
+```markdown
+## High Confidence Findings (> 0.8)
+### Authentication System
+- **Location**: src/auth/*
+- **Type**: JWT-based
+- **Confidence**: 0.95
+- **Evidence**: Multiple JWT imports, token validation middleware
+- **Dependencies**: jsonwebtoken, bcrypt
+- **Entry Points**: auth.controller.ts, auth.middleware.ts
+
+## Medium Confidence Findings (0.5 - 0.8)
+### State Management
+- **Pattern**: Redux-like pattern detected
+- **Confidence**: 0.7
+- **Evidence**: Actions, reducers folders found
+- **Uncertainty**: Actual library unclear (Redux/MobX/Zustand?)
+
+## Low Confidence Findings (< 0.5)
+### Possible Patterns
+- May use microservices (0.4) - multiple service folders
+- Might have WebSocket support (0.3) - socket.io in dependencies
+```
+
+## TodoWrite Integration
+
+Automatic task tracking:
+```markdown
+# Research: [Topic]
+1. ⏳ Discover project structure (30 sec)
+2. ⏳ Identify technology stack (30 sec)
+3. ⏳ Execute parallel searches (2 min)
+4. ⏳ Analyze findings (1 min)
+5. ⏳ Score confidence levels (30 sec)
+6. ⏳ Synthesize report (1 min)
+```
+
+## Task Agent Usage
+
+### When to Use Task Agent
+Use `general-purpose` agent for:
+- **Complex Investigations**: 10+ related searches
+- **Exploratory Analysis**: Unknown structure
+- **Relationship Mapping**: Understanding connections
+- **Historical Research**: Git history analysis
+
+### Task Agent Example
+```typescript
+Task({
+  subagent_type: "general-purpose",
+  description: "Authentication flow analysis",
+  prompt: `Investigate the complete authentication system:
+    1. Find all auth-related files
+    2. Map the authentication flow
+    3. Identify security patterns
+    4. Trace token lifecycle
+    5. Document API endpoints
+    Return a comprehensive auth architecture report`
+})
+```
+
+## Advanced Features
+
+### Cross-Reference Analysis
+Connect findings across different areas:
+```bash
+grep -l "AuthController" **/*.ts | xargs grep -l "UserService"
+```
+
+### Import Dependency Graph
+Trace module dependencies:
+```bash
+grep -h "^import.*from" **/*.ts | sed "s/.*from ['\"]\.\/\(.*\)['\"].*/\1/" | sort | uniq -c | sort -rn | head -10
+```
+
+### Pattern Frequency Analysis
+Identify common patterns:
+```bash
+grep -oh "use[A-Z][a-zA-Z]*" **/*.tsx | sort | uniq -c | sort -rn | head -10
+```
+
+### Historical Context
+Understand evolution:
+```bash
+git log --oneline --since="3 months ago" --pretty=format:"%h %s" | head -10
+```
 
 ## Output Format
 
 ```markdown
-## Exploration Summary
-- Topic: [What was explored]
-- Key Findings:
-  - [Finding 1]
-  - [Finding 2]
-  - ...
-- Code Patterns Discovered: [List patterns]
-- Recommendations: [Next steps or insights]
-- References: [Useful links/files]
+## Research Summary
+- **Scope**: [What was researched]
+- **Duration**: [Time taken]
+- **Confidence**: [Overall confidence score]
+- **Coverage**: [% of codebase analyzed]
+
+## Key Discoveries
+
+### Architecture (Confidence: 0.9)
+- **Pattern**: [MVC/Microservices/Monolith]
+- **Structure**: [Description]
+- **Entry Points**: [Main files]
+
+### Technology Stack (Confidence: 0.95)
+- **Framework**: [React/Vue/Express/etc]
+- **Language**: [TypeScript/JavaScript]
+- **Key Libraries**: [List]
+
+### Code Patterns (Confidence: 0.85)
+- **Design Patterns**: [Observer/Factory/etc]
+- **Conventions**: [Naming/Structure]
+- **Best Practices**: [Identified patterns]
+
+## Findings by Confidence
+
+### High Confidence (>0.8)
+1. [Finding with evidence]
+2. [Finding with evidence]
+
+### Medium Confidence (0.5-0.8)
+1. [Finding with uncertainty noted]
+2. [Finding with assumptions]
+
+### Low Confidence (<0.5)
+1. [Possible pattern]
+2. [Needs verification]
+
+## Relationships Discovered
+- [Component A] → [Component B]: [Relationship type]
+- [Service X] ← [Module Y]: [Dependency]
+
+## Recommendations
+1. **Immediate Focus**: [Most important areas]
+2. **Further Investigation**: [Areas needing deeper research]
+3. **Implementation Approach**: [If moving to /code]
+
+## References
+- Key Files: [List with paths]
+- Documentation: [Links/paths]
+- External Resources: [If found]
 ```
 
-## When to Use
+## Persistent Documentation
 
-- Understanding unfamiliar codebase
-- Researching implementation options
-- Investigating bugs (before fixing)
-- Learning new libraries/frameworks
-- Architectural analysis
-
-## When NOT to Use
-
-- When you already know what to implement
-- For simple questions
-- When immediate action is required
-
-## Example Usage
-
-### Simple Research (Direct Tools)
-
-```md
-/research "Find all API endpoints"
-/research "Where is database connection configured?"
-/research "List all React components"
+For significant findings, save to:
+```bash
+.claude/workspace/research/YYYY-MM-DD-[topic].md
 ```
 
-### Complex Research (May use Task Agent)
+Include:
+- Architecture diagrams (ASCII)
+- Dependency graphs
+- Key code snippets
+- Future reference notes
 
-```md
-/research "How is authentication implemented in this project?"
-/research "Analyze the state management architecture"
-/research "Understand the complete data flow from frontend to database"
+## Usage Examples
+
+### Quick Research
+```bash
+/research --quick "API structure"
+# Fast overview of API organization
 ```
+
+### Standard Research
+```bash
+/research "authentication implementation"
+# Balanced investigation of auth system
+```
+
+### Deep Research
+```bash
+/research --deep "complete data flow"
+# Comprehensive analysis from UI to database
+```
+
+### Focused Research
+```bash
+/research --state "Redux implementation"
+# Targeted state management investigation
+```
+
+## Best Practices
+
+1. **Start Broad**: Get overview before diving deep
+2. **Parallel Search**: Execute multiple searches simultaneously
+3. **Score Confidence**: Always rate findings reliability
+4. **Document Patterns**: Note recurring themes
+5. **Map Relationships**: Connect components
+6. **Save Important Findings**: Persist for future reference
+
+## Performance Tips
+
+### Optimize Searches
+- Use specific globs: `**/*.controller.ts` not `**/*`
+- Limit depth when possible: `-maxdepth 3`
+- Exclude irrelevant: `-not -path "*/test/*"`
+
+### Efficient Patterns
+- Batch related searches together
+- Use Task agent for 10+ operations
+- Cache common queries results
 
 ## Next Steps
 
-- If planning needed: Use `/think` first
-- If issues found: Create issues or use `/fix`
-- If implementation needed: Continue with `/code`
+- **Found Issues** → `/fix` for targeted solutions
+- **Need Planning** → `/think` for architecture decisions
+- **Ready to Build** → `/code` for implementation
+- **Documentation Needed** → Create comprehensive docs

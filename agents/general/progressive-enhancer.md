@@ -4,6 +4,9 @@ description: UI/UX設計に対してプログレッシブエンハンスメン�
 model: sonnet
 tools: Read, Grep, Glob, LS
 color: lime
+max_execution_time: 30
+dependencies: []
+parallel_group: foundation
 ---
 
 # Progressive Enhancement Agent

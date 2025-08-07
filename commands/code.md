@@ -9,18 +9,20 @@ suitable_for:
   urgency: [low, medium]
 aliases: [implement, impl]
 timeout: 120
+allowed-tools: Bash(npm run:*), Bash(yarn:*), Bash(pnpm:*), Bash(make:*), Bash(git status:*), Edit, MultiEdit, Write, Read, Glob, Grep, LS, TodoWrite
 context:
-  files_changed: "any"
-  lines_changed: "any"
-  new_features: true
-  breaking_changes: true
+  files_changed: "dynamic"
+  lines_changed: "tracked"
+  test_status: "real-time"
+  quality_checks: "discovered"
+  confidence_level: "scored"
 ---
 
-# /code - Code Implementation
+# /code - Advanced Implementation with Dynamic Quality Assurance
 
 ## Purpose
 
-Perform actual code implementation based on the plan.
+Perform code implementation with real-time test feedback, dynamic quality discovery, and confidence-scored decisions.
 
 ## Usage Modes
 
@@ -32,6 +34,38 @@ Perform actual code implementation based on the plan.
 - SOW created in `/think`
 - Technical research completed in `/research`
 - For standalone use, implementation details must be clear
+
+## Dynamic Project Context
+
+### Current Implementation State
+Check git status:
+```bash
+git status --porcelain | head -10
+```
+
+### Quality Commands Available
+Find quality scripts:
+```bash
+npm run 2>&1 | grep -E "lint|type|check|test|format"
+```
+
+### Test Framework Detection
+Detect test framework:
+```bash
+cat package.json | grep -E '"(jest|vitest|mocha|cypress|playwright)"'
+```
+
+### Code Conventions
+Check code style configs:
+```bash
+ls -la .eslintrc* .prettierrc* tsconfig.json
+```
+
+### Recent Related Changes
+Find related commits:
+```bash
+git log --oneline -5 --grep="[feature]"
+```
 
 ## Implementation Principles
 
@@ -55,45 +89,71 @@ This ensures that code first works (TDD), then becomes clean and maintainable (S
 
 **Goal**: "Clean code that works" (動作するきれいなコード) - Ron Jeffries
 
-#### RGRC Cycle (Red-Green-Refactor-Commit)
+#### Enhanced RGRC Cycle with Real-time Feedback
 
-1. **Red**: Write failing test first
-   - Verify correct failure (wrong failure = wrong understanding)
-   - The test documents your understanding before implementation
+1. **Red Phase** (Confidence Target: 0.9)
+   ```bash
+   npm test -- --testNamePattern="[current test]" | grep -E "FAIL|PASS"
+   ```
+   - Write failing test with clear intent
+   - Verify failure reason matches expectation
+   - Document understanding via test assertions
+   - **Exit Criteria**: Test fails for expected reason
 
-2. **Green**: Minimal code to pass
-   - "Sins may be committed" - quick & dirty is OK here
-   - Resist adding extra features
-   - Focus on making it work, not perfect
+2. **Green Phase** (Confidence Target: 0.7)
+   ```bash
+   npm test -- --watch --testNamePattern="[current test]"
+   ```
+   - Minimal implementation to pass
+   - Quick solutions acceptable
+   - Focus on functionality over form
+   - **Exit Criteria**: Test passes consistently
 
-3. **Refactor**: Improve without breaking
-   - Remove duplication (DRY principle)
+3. **Refactor Phase** (Confidence Target: 0.95)
+   ```bash
+   npm test | tail -5 | grep -E "Passing|Failing"
+   ```
    - Apply SOLID principles
-   - Extract meaningful abstractions
-   - Keep tests green throughout
+   - Remove duplication (DRY)
+   - Improve naming and structure
+   - Extract abstractions
+   - **Exit Criteria**: All tests green, code clean
 
-4. **Commit**: Save progress (manual execution by user)
-   - Stable state ready for commit
-   - User executes git commands manually
+4. **Commit Phase** (Confidence Target: 1.0)
+   - Quality checks pass
+   - Coverage maintained/improved
+   - Ready for stable commit
+   - User executes git commands
 
-#### TodoWrite Integration for TDD
+#### Advanced TodoWrite Integration
 
-Update status at each phase start and completion:
+Real-time tracking with confidence scoring:
 
-- Phase start: Mark as ❌ (in progress)
-- Phase completion: Mark as ✅ (completed)
-- Next phase: Switch to ❌ (in progress)
+```markdown
+# Implementation: [Feature Name]
+## Scenarios (Total Confidence: 0.85)
+1. ⏳ User registration with valid email [C: 0.9]
+2. ⏳ Registration fails with invalid email [C: 0.8]
+3. ⏳ Duplicate email prevention [C: 0.85]
 
-```md
-# Scenarios
-1. ⏳ User can register with valid email
-2. ⏳ Registration fails with invalid email
+## Current RGRC Cycle - Scenario 1
+### Red Phase (Started: 14:23)
+1.1 ✅ Write failing test [C: 0.95] ✓ 2 min
+1.2 ✅ Verify correct failure [C: 0.9] ✓ 30 sec
 
-# Current RGRC (Scenario 1)
-1.1 ✅ Red: Write test for user registration
-1.2 ❌ Green: Implement minimal registration logic  ← Active
-1.3 ⏳ Refactor: Extract validation, improve naming
-1.4 ⏳ Commit: Save progress
+### Green Phase (Active: 14:26) 
+1.3 ❌ Implement registration logic [C: 0.7] ⏱️ 3 min
+1.4 ⏳ Test passes consistently [C: pending]
+
+### Refactor Phase (Pending)
+1.5 ⏳ Apply SOLID principles [C: pending]
+1.6 ⏳ Extract validation logic [C: pending]
+
+### Quality Gates
+- 🧪 Tests: 12/14 passing
+- 📊 Coverage: 78% (target: 80%)
+- 🔍 Lint: 2 warnings
+- 🔷 Types: All passing
 ```
 
 ### 2. SOLID Principles During Implementation
@@ -121,13 +181,32 @@ Apply during Refactor phase:
 - Utilize existing patterns and libraries
 - Maintain naming convention consistency
 
-## Implementation Process
+## Hierarchical Implementation Process
 
-### 1. Pre-implementation Verification
+### Phase 1: Context Discovery & Planning
+Analyze with confidence scoring:
+1. **Code Context**: Understand existing patterns (C: 0.0-1.0)
+2. **Dependencies**: Verify required libraries available
+3. **Conventions**: Detect and follow project standards
+4. **Test Structure**: Identify test patterns to follow
 
-- Reconfirm implementation plan
-- Identify necessary files
-- Verify dependencies
+### Phase 2: Parallel Quality Execution
+Run quality checks simultaneously:
+```typescript
+// Execute these in parallel, not sequentially
+const qualityChecks = [
+  Bash({ command: "npm run lint" }),
+  Bash({ command: "npm run type-check" }),
+  Bash({ command: "npm test -- --findRelatedTests" }),
+  Bash({ command: "npm run format:check" })
+];
+```
+
+### Phase 3: Confidence-Based Decisions
+Make implementation choices based on evidence:
+- **High Confidence (>0.8)**: Proceed with implementation
+- **Medium (0.5-0.8)**: Add defensive checks
+- **Low (<0.5)**: Research before implementing
 
 ### 2. Code Implementation with TDD
 
@@ -138,24 +217,54 @@ Follow the RGRC cycle defined above:
 - **Refactor**: Apply SOLID and DRY principles
 - **Commit**: Save stable state
 
-### 3. Quality Checks
+### 3. Dynamic Quality Checks
 
-**Note**: If project has hooks configured, quality checks may run automatically.
+#### Automatic Discovery
+```bash
+cat package.json | jq -r '.scripts | to_entries[] | select(.key | test("lint|type|check|test|format")) | .key' | head -10
+```
 
-**Detect project-specific quality commands:**
+#### Parallel Execution
+```markdown
+## Quality Check Results
+### Linting (Confidence: 0.95)
+```bash
+npm run lint | tail -5
+```
+- Status: ✅ Passing
+- Issues: 0 errors, 2 warnings
+- Time: 1.2s
 
-- Check CLAUDE.md or .claude/project.md first
-- Look in package.json, Makefile, README.md
-- Common patterns: lint, typecheck, test
+### Type Checking (Confidence: 0.98)
+```bash
+npm run type-check | tail -5
+```
+- Status: ✅ All types valid
+- Files checked: 47
+- Time: 3.4s
 
-**Execute quality checks using Bash tool:**
+### Tests (Confidence: 0.92)
+```bash
+npm test -- --passWithNoTests | grep -E "Tests:|Snapshots:"
+```
+- Status: ✅ 45/45 passing
+- Coverage: 82%
+- Time: 8.7s
 
-- Run detected commands (e.g., `npm run lint`, `npm run typecheck`)
-- Show output to user
-- Fix any errors or warnings found
-- Re-run until all checks pass
+### Format Check (Confidence: 0.90)
+```bash
+npm run format:check | tail -3
+```
+- Status: ⚠️ 3 files need formatting
+- Auto-fixable: Yes
+- Time: 0.8s
+```
 
-**If not found:** Ask user and suggest documenting in CLAUDE.md
+#### Quality Score Calculation
+```
+Overall Quality Score: (L*0.3 + T*0.3 + Test*0.3 + F*0.1) = 0.93
+Confidence Level: HIGH - Ready for commit
+```
 
 ### 4. Functionality Verification
 
@@ -163,28 +272,176 @@ Follow the RGRC cycle defined above:
 - Validate edge cases
 - Check performance
 
-## Key Practices
+## Advanced Features
 
-- Follow security best practices
-- Implement proper error handling
-- Consider accessibility requirements
+### Real-time Test Monitoring
+Watch test results during development:
+```bash
+npm test -- --watch --coverage
+```
 
-## Definition of Done
+### Code Complexity Analysis
+Track complexity during implementation:
+```bash
+npx complexity-report src/ | grep -E "Complexity|Maintainability"
+```
 
-Implementation is considered complete when:
+### Performance Profiling
+For performance-critical code:
+```bash
+npm run profile
+```
 
-- All planned RGRC cycles are finished
-- All tests (new and existing) are passing
-- Quality checks are clean:
-  - No lint errors/warnings (or acceptable ones documented)
-  - No type errors
-  - Code follows project conventions
-- Changes are committed with clear messages
-- TodoWrite tasks marked as completed
+### Security Scanning
+Automatic vulnerability detection:
+```bash
+npm audit --production | grep -E "found|Severity"
+```
 
-If any of these criteria are not met, continue working or document blockers before proceeding.
+## Implementation Patterns
+
+### Pattern Selection by Confidence
+```markdown
+## Available Patterns (Choose based on context)
+
+### High Confidence Patterns (>0.9)
+1. **Factory Pattern** - Object creation
+   - When: Multiple similar objects
+   - Confidence: 0.95
+   - Example in: src/factories/
+
+2. **Repository Pattern** - Data access
+   - When: Database operations
+   - Confidence: 0.92
+   - Example in: src/repositories/
+
+### Medium Confidence Patterns (0.7-0.9)
+1. **Observer Pattern** - Event handling
+   - When: Loose coupling needed
+   - Confidence: 0.85
+   - Consider: Built-in EventEmitter
+
+### Experimental Patterns (<0.7)
+1. **New architectural pattern**
+   - Confidence: 0.6
+   - Recommendation: Prototype first
+```
+
+## Risk Mitigation
+
+### Common Implementation Risks
+| Risk | Probability | Impact | Mitigation | Confidence |
+|------|------------|--------|------------|------------|
+| Breaking existing tests | Medium | High | Run full suite before/after | 0.95 |
+| Performance regression | Low | High | Profile critical paths | 0.88 |
+| Security vulnerability | Low | Critical | Security scan + review | 0.92 |
+| Inconsistent patterns | Medium | Medium | Follow existing examples | 0.90 |
+| Missing edge cases | High | Medium | Comprehensive test cases | 0.85 |
+
+## Definition of Done with Confidence Metrics
+
+Implementation complete when all metrics achieved:
+
+```markdown
+## Completion Checklist
+### Core Implementation
+- ✅ All RGRC cycles complete [C: 0.95]
+- ✅ Feature works as specified [C: 0.93]
+- ✅ Edge cases handled [C: 0.88]
+
+### Quality Metrics
+- ✅ All tests passing (47/47) [C: 1.0]
+- ✅ Coverage ≥ 80% (current: 82%) [C: 0.95]
+- ✅ Zero lint errors [C: 0.98]
+- ✅ Zero type errors [C: 1.0]
+- ⚠️ 2 lint warnings (documented) [C: 0.85]
+
+### Code Quality
+- ✅ SOLID principles applied [C: 0.90]
+- ✅ DRY - No duplication [C: 0.92]
+- ✅ Readable code standards [C: 0.88]
+- ✅ Consistent with codebase [C: 0.94]
+
+### Documentation
+- ✅ Code comments where needed [C: 0.85]
+- ✅ README updated if required [C: 0.90]
+- ✅ API docs current [C: 0.87]
+
+### Overall Confidence: 0.92 (HIGH)
+Status: ✅ READY FOR REVIEW
+```
+
+If confidence < 0.8 on any critical metric, continue improving.
+
+## Decision Framework
+
+### When Implementation Confidence is Low
+```markdown
+## Low Confidence Detected (< 0.7)
+### Issue: [Uncertain about implementation approach]
+
+Options:
+1. **Research More** (/research)
+   - Time: +30 min
+   - Confidence gain: +0.3
+   
+2. **Prototype First**
+   - Time: +15 min  
+   - Confidence gain: +0.2
+   
+3. **Consult Documentation**
+   - Time: +10 min
+   - Confidence gain: +0.15
+
+Recommendation: Option 1 for complex features
+```
+
+### Quality Gate Failures
+```markdown
+## Quality Gate Failed
+### Issue: Coverage dropped below 80%
+
+Current: 78% (-2% from main)
+Uncovered lines: src/auth/validator.ts:45-52
+
+Actions:
+1. ❌ Add tests for uncovered lines
+2. ⏳ Or document why not testable
+3. ⏳ Or adjust threshold (not recommended)
+
+Proceeding without resolution? (y/N)
+```
+
+## Usage Examples
+
+### Basic Implementation
+```bash
+/code "Add user authentication"
+# Standard TDD implementation
+```
+
+### With Confidence Threshold
+```bash
+/code --confidence 0.9 "Critical payment logic"
+# Requires 90% confidence before proceeding
+```
+
+### Fast Mode (Skip Some Checks)
+```bash
+/code --fast "Simple UI update"
+# Minimal quality checks for low-risk changes
+```
+
+### With Specific Pattern
+```bash
+/code --pattern repository "Database access layer"
+# Use repository pattern for implementation
+```
 
 ## Next Steps
 
-- **Workflow mode**: After implementation complete, proceed to `/test` for comprehensive testing
-- **Standalone mode**: Proceed to testing or other work as needed
+- **High Confidence (>0.9)** → Ready for `/test` or review
+- **Medium (0.7-0.9)** → Consider additional testing
+- **Low (<0.7)** → Need `/research` or planning
+- **Quality Issues** → Fix before proceeding
+- **All Green** → Ready for PR/commit

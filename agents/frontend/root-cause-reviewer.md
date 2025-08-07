@@ -4,6 +4,9 @@ description: フロントエンドコードの根本的な問題を分析し、�
 model: opus
 tools: Read, Grep, Glob, LS, Task
 color: red
+max_execution_time: 60
+dependencies: [structure-reviewer, readability-reviewer]
+parallel_group: sequential
 ---
 
 # Frontend Root Cause Reviewer

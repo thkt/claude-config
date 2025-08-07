@@ -4,6 +4,9 @@ description: フロントエンドコードのパフォーマンスを分析し�
 tools: Read, Grep, Glob, LS, Task
 model: sonnet
 color: orange
+max_execution_time: 60
+dependencies: [type-safety-reviewer]
+parallel_group: production
 ---
 
 # Performance Reviewer

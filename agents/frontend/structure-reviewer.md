@@ -4,6 +4,9 @@ description: フロントエンドコードの構造を無駄、重複、根本�
 model: sonnet
 tools: Read, Grep, Glob, LS, Task
 color: magenta
+max_execution_time: 30
+dependencies: []
+parallel_group: foundation
 ---
 
 # Frontend Structure Reviewer

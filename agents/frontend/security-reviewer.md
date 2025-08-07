@@ -4,6 +4,9 @@ description: フロントエンドコードのセキュリティ脆弱性を特�
 tools: Read, Grep, Glob, LS, Task
 model: sonnet
 color: yellow
+max_execution_time: 60
+dependencies: []
+parallel_group: production
 ---
 
 # Security Reviewer

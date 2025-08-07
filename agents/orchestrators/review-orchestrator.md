@@ -4,6 +4,9 @@ description: フロントエンドコードレビューの全体を統括し、�
 tools: Task, Grep, Glob, LS, Read
 model: opus
 color: indigo
+max_execution_time: 180
+dependencies: []
+parallel_group: orchestrator
 ---
 
 # Review Orchestrator
@@ -18,71 +21,175 @@ Manage the execution of multiple specialized review agents, integrate their find
 
 ### 1. Agent Execution Management
 
-#### Sequential Execution Groups
+#### Enhanced Parallel Execution Groups
 
 ```yaml
 execution_plan:
-  phase_1_fundamental:
-    - structure-reviewer      # Code organization and DRY principles
-    - readability-reviewer    # Code clarity and maintainability
-    - root-cause-reviewer     # Problem analysis and solutions
-    - progressive-enhancer    # CSS-first solutions and simplification
+  # Parallel Group 1: Independent Foundation Analysis (max 30s each)
+  parallel_group_1:
+    agents:
+      - name: structure-reviewer
+        max_execution_time: 30
+        dependencies: []
+        parallel_group: foundation
+      - name: readability-reviewer
+        max_execution_time: 30
+        dependencies: []
+        parallel_group: foundation
+      - name: progressive-enhancer
+        max_execution_time: 30
+        dependencies: []
+        parallel_group: foundation
+    execution_mode: parallel
+    group_timeout: 35  # Slightly more than individual timeout
 
-  phase_2_quality:
-    - type-safety-reviewer    # TypeScript usage and type coverage
-    - design-pattern-reviewer # Architecture and patterns
-    - testability-reviewer    # Test-friendly design
-    - document-reviewer       # Documentation quality (if .md files present)
+  # Parallel Group 2: Type & Design Analysis (max 45s each)
+  parallel_group_2:
+    agents:
+      - name: type-safety-reviewer
+        max_execution_time: 45
+        dependencies: []
+        parallel_group: quality
+      - name: design-pattern-reviewer
+        max_execution_time: 45
+        dependencies: []
+        parallel_group: quality
+      - name: testability-reviewer
+        max_execution_time: 30
+        dependencies: []
+        parallel_group: quality
+    execution_mode: parallel
+    group_timeout: 50
 
-  phase_3_production:
-    - performance-reviewer    # Runtime and build optimization
-    - security-reviewer       # Security vulnerabilities
-    - accessibility-reviewer  # WCAG compliance and usability
+  # Sequential: Root Cause (depends on foundation analysis)
+  sequential_analysis:
+    agents:
+      - name: root-cause-reviewer
+        max_execution_time: 60
+        dependencies: [structure-reviewer, readability-reviewer]
+        parallel_group: sequential
+    execution_mode: sequential
+
+  # Parallel Group 3: Production Readiness (max 60s each)
+  parallel_group_3:
+    agents:
+      - name: performance-reviewer
+        max_execution_time: 60
+        dependencies: [type-safety-reviewer]
+        parallel_group: production
+      - name: security-reviewer
+        max_execution_time: 60
+        dependencies: []
+        parallel_group: production
+      - name: accessibility-reviewer
+        max_execution_time: 45
+        dependencies: []
+        parallel_group: production
+    execution_mode: parallel
+    group_timeout: 65
+
+  # Optional: Documentation (only if .md files exist)
+  conditional_group:
+    agents:
+      - name: document-reviewer
+        max_execution_time: 30
+        dependencies: []
+        parallel_group: optional
+        condition: "*.md files present"
 ```
 
-#### Parallel Execution Optimization
+#### Parallel Execution Benefits
 
-- Execute agents within same phase in parallel
-- Phases run sequentially to manage dependencies
-- Collect results asynchronously for efficiency
+- **Speed**: 3x faster execution through parallelization
+- **Efficiency**: Independent agents run simultaneously
+- **Reliability**: Timeouts prevent hanging agents
+- **Flexibility**: Dependencies ensure correct ordering
 
-#### Agent Validation
+#### Agent Validation & Metadata
 
 ```typescript
-async function validateAgents(agents: string[]): Promise<string[]> {
-  const validAgents: string[] = []
+interface AgentMetadata {
+  name: string
+  max_execution_time: number  // seconds
+  dependencies: string[]      // agent names that must complete first
+  parallel_group: 'foundation' | 'quality' | 'production' | 'sequential' | 'optional'
+  status?: 'pending' | 'running' | 'completed' | 'failed' | 'timeout'
+  startTime?: number
+  endTime?: number
+  result?: any
+}
+
+async function validateAndLoadAgents(agents: AgentMetadata[]): Promise<AgentMetadata[]> {
+  const validatedAgents: AgentMetadata[] = []
 
   for (const agent of agents) {
-    const agentPath = await findAgentFile(agent)
+    const agentPath = await findAgentFile(agent.name)
     if (agentPath) {
-      validAgents.push(agent)
+      // Load agent metadata from file
+      const metadata = await loadAgentMetadata(agentPath)
+      validatedAgents.push({
+        ...agent,
+        ...metadata,  // File metadata overrides defaults
+        status: 'pending'
+      })
     } else {
-      console.warn(`⚠️ Agent '${agent}' not found, skipping...`)
+      console.warn(`⚠️ Agent '${agent.name}' not found, skipping...`)
     }
   }
 
-  return validAgents
+  return validatedAgents
 }
 
-function findAgentFile(agentName: string): Promise<string | null> {
-  const paths = [
-    `~/.claude/agents/frontend/${agentName}.md`,
-    `~/.claude/agents/general/${agentName}.md`,
-    `~/.claude/agents/orchestrators/${agentName}.md`
-  ]
-  // Check each path and return first match
+async function executeWithDependencies(agent: AgentMetadata, completedAgents: Set<string>): Promise<void> {
+  // Check if all dependencies are satisfied
+  const dependenciesMet = agent.dependencies.every(dep => completedAgents.has(dep))
+  
+  if (!dependenciesMet) {
+    console.log(`⏸️ Waiting for dependencies: ${agent.dependencies.filter(d => !completedAgents.has(d)).join(', ')}`)
+    return
+  }
+
+  // Execute with timeout
+  const timeout = agent.max_execution_time * 1000
+  return Promise.race([
+    executeAgent(agent),
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error(`Timeout: ${agent.name}`)), timeout)
+    )
+  ])
 }
 ```
 
-#### Execution Timeouts
+#### Parallel Execution Engine
 
-```yaml
-execution_timeouts:
-  phase_1: 30s
-  phase_2: 45s
-  phase_3: 60s
-  agent_default: 15s
-  total_max: 180s
+```typescript
+async function executeParallelGroup(group: AgentMetadata[]): Promise<Map<string, any>> {
+  const results = new Map<string, any>()
+  
+  // Start all agents in parallel
+  const promises = group.map(async (agent) => {
+    try {
+      agent.status = 'running'
+      agent.startTime = Date.now()
+      
+      const result = await executeWithTimeout(agent)
+      
+      agent.status = 'completed'
+      agent.endTime = Date.now()
+      agent.result = result
+      results.set(agent.name, result)
+    } catch (error) {
+      agent.status = error.message.includes('Timeout') ? 'timeout' : 'failed'
+      agent.endTime = Date.now()
+      console.error(`❌ ${agent.name}: ${error.message}`)
+    }
+  })
+
+  // Wait for all to complete (or timeout)
+  await Promise.allSettled(promises)
+  
+  return results
+}
 ```
 
 ### 2. Context Preparation

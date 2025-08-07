@@ -10,119 +10,323 @@ suitable_for:
   environment: development  # Development environment only
 aliases: [qf]
 timeout: 30
+allowed-tools: Bash(git diff:*), Bash(npm test:*), Bash(npm run:*), Edit, MultiEdit, Read, Grep, TodoWrite
 context:
-  files_changed: "< 3"
-  lines_changed: "< 50"
-  new_features: false
-  breaking_changes: false
+  files_changed: "dynamic"
+  lines_changed: "tracked"
+  test_status: "monitored"
+  quality_checks: "parallel"
+  confidence_level: "scored"
 excludes: [hotfix]  # Don't suggest both
 ---
 
-# /fix - Fix Small Issues
+# /fix - Advanced Quick Fix with Dynamic Analysis
 
 ## Purpose
 
-Rapidly fix small bugs or make minor improvements without full workflow overhead.
+Rapidly fix small bugs with dynamic problem detection, confidence scoring, and parallel quality verification.
 
 ## Usage
 
 For simple fixes that don't require extensive planning or research.
 
-## Workflow
+## Dynamic Problem Context
 
-Streamlined combination of:
-
-1. **Mini-think**: Quick root cause analysis
-2. **Mini-code**: Targeted implementation
-3. **Mini-test**: Focused verification
-
-## Execution Steps
-
-### 1. Quick Analysis
-
-Apply Progressive Enhancement from [@~/.claude/rules/development/PROGRESSIVE_ENHANCEMENT.md]:
-
-- Identify the specific issue and root cause
-- Check if CSS can solve it before using JS
-- Locate affected files
-- Determine minimal fix approach
-
-### 2. Implementation
-
-Follow Progressive Enhancement approach:
-
-- Apply targeted fix using simplest solution (CSS-first for UI)
-- Follow existing code patterns
-- Add/update tests if needed
-
-### 3. Verification
-
-- Run relevant tests if available
-- Verify fix resolves issue
-- Check for regressions
-
-## TodoWrite Integration
-
-Track fix progress with TodoWrite:
-
-```md
-# Fix: [Issue description]
-1. ⏳ Analysis: Identify root cause and approach
-2. ⏳ Implementation: Apply fix
-3. ⏳ Verification: Test and confirm fix
+### Recent Changes Analysis
+View recent changes:
+```bash
+git diff HEAD~1 --stat | head -5
 ```
 
-Update task status as you progress through each phase.
+### Test Status Check
+Count available test files:
+```bash
+npm test -- --listTests | grep -E "(test|spec)" | wc -l
+```
 
-## Definition of Done
+### Quality Commands Discovery
+Find quality check scripts:
+```bash
+npm run 2>&1 | grep -E "lint|type|check|test" | head -5
+```
 
-Fix is complete when:
+### Related Files Detection
+List modified files:
+```bash
+git ls-files --modified | head -5
+```
 
-- Root cause identified and addressed
-- Fix applied with minimal complexity
-- Tests pass (if applicable)
-- Quality checks clean (if project has them)
-- No regressions introduced
+## Hierarchical Fix Process
 
-## Output Format
+### Phase 1: Problem Analysis (Confidence Target: 0.85)
+Dynamic root cause identification:
+1. **Issue Detection**: Analyze symptoms and error patterns
+2. **Impact Scope**: Determine affected files and components
+3. **Root Cause**: Identify why not just what
+4. **Fix Strategy**: Choose simplest effective approach
+
+### Phase 2: Targeted Implementation (Confidence Target: 0.90)
+Apply fix with confidence scoring:
+- **High Confidence (>0.9)**: Direct fix implementation
+- **Medium (0.7-0.9)**: Add defensive checks
+- **Low (<0.7)**: Research before fixing
+
+### Phase 3: Parallel Verification (Confidence Target: 0.95)
+Simultaneous quality checks:
+```typescript
+// Execute in parallel, not sequentially
+const checks = [
+  Bash({ command: "npm test -- --findRelatedTests" }),
+  Bash({ command: "npm run lint -- --fix" }),
+  Bash({ command: "npm run type-check" })
+];
+```
+
+## Enhanced Execution with Confidence Metrics
+
+### 1. Dynamic Problem Analysis
+
+#### Issue Classification
+```markdown
+## Problem Analysis (Confidence: X.XX)
+### Category: [UI/Logic/Performance/Type/Test]
+- **Symptoms**: [Observable behavior]
+- **Evidence**: [Error messages, test failures]
+- **Root Cause**: [Why it's happening]
+- **Confidence**: [0.0-1.0 score]
+```
+
+#### Recent Context
+```bash
+git log --oneline -5 --grep="fix"
+```
+
+### 2. Smart Implementation
+
+#### Fix Approach Selection
+```markdown
+## Fix Strategy (Confidence: X.XX)
+### Selected Approach: [Name]
+- **Implementation**: [How to fix]
+- **Rationale**: [Why this approach]
+- **Risk Level**: [Low/Medium/High]
+- **Alternative**: [If confidence < 0.8]
+```
+
+#### Progressive Enhancement Check
+```markdown
+## CSS-First Analysis
+- Can CSS solve this? [Yes/No]
+- If Yes: [CSS solution]
+- If No: [Why JS is needed]
+```
+
+### 3. Real-time Verification
+
+#### Parallel Quality Execution
+Run quality checks in parallel:
+```bash
+npm test -- --findRelatedTests | grep -E "PASS|FAIL" | head -5
+npm run lint | tail -3
+npm run type-check | tail -3
+```
+
+#### Regression Check
+```bash
+npm test -- --onlyChanged | grep -E "Test Suites:"
+```
+
+## Advanced TodoWrite Integration
+
+Real-time tracking with confidence scoring:
 
 ```markdown
-## Fix Summary
-- Issue: [Brief description]
-- Files Modified: [List of files]
-- Tests Updated: [Yes/No]
-- Verification: [Passed/Failed]
+# Fix: [Issue Description]
+## Analysis Phase (Confidence: X.XX)
+1. ✅ Problem identified [C: 0.95] ✓ 2 min
+2. ❌ Root cause analysis [C: 0.85] ⏱️ Active
+3. ⏳ Fix strategy selection [C: pending]
+
+## Implementation Phase
+4. ⏳ Apply targeted fix [C: pending]
+5. ⏳ Update related tests [C: pending]
+
+## Verification Phase
+6. ⏳ Run quality checks (parallel) [C: pending]
+7. ⏳ Confirm fix resolves issue [C: pending]
+
+## Metrics
+- 🎯 Problem Clarity: 85%
+- 🔧 Fix Confidence: 90%
+- ✅ Tests Passing: 12/12
+- 📊 Coverage Impact: +2%
 ```
 
-## When to Use
+## Definition of Done with Confidence Scoring
 
-- Single-file fixes
-- Typo corrections
+```markdown
+## Fix Completion Checklist
+### Problem Resolution
+- ✅ Root cause identified [C: 0.92]
+- ✅ Fix addresses cause not symptom [C: 0.88]
+- ✅ Minimal complexity solution [C: 0.95]
+
+### Quality Metrics
+- ✅ All related tests pass [C: 1.0]
+- ✅ No new lint errors [C: 0.98]
+- ✅ Type safety maintained [C: 1.0]
+- ✅ No regressions detected [C: 0.93]
+
+### Code Standards
+- ✅ Follows existing patterns [C: 0.90]
+- ✅ Progressive Enhancement applied [C: 0.87]
+- ✅ Documentation updated if needed [C: 0.85]
+
+### Overall Confidence: 0.91 (HIGH)
+Status: ✅ FIX COMPLETE
+```
+
+If any metric has confidence < 0.8, continue improving.
+
+## Enhanced Output Format
+
+```markdown
+## 🔧 Fix Summary
+### Problem
+- **Issue**: [Description]
+- **Category**: [UI/Logic/Performance/Type]
+- **Root Cause**: [Why it happened]
+- **Confidence**: 0.XX
+
+### Solution Applied
+- **Approach**: [Fix strategy used]
+- **Files Modified**: 
+  - `path/to/file.ts` - [What changed]
+  - `path/to/test.ts` - [Test updates]
+- **Progressive Enhancement**: [CSS-first approach used?]
+
+### Verification Results
+- **Tests**: ✅ 15/15 passing
+- **Lint**: ✅ No issues
+- **Types**: ✅ All valid
+- **Coverage**: 82% (+2%)
+- **Regression**: None detected
+
+### Confidence Metrics
+| Stage | Confidence | Result |
+|-------|------------|--------|
+| Analysis | 0.88 | Root cause found |
+| Implementation | 0.92 | Clean fix applied |
+| Verification | 0.95 | All checks pass |
+| **Overall** | **0.91** | **HIGH CONFIDENCE** |
+
+### Performance Impact
+```bash
+git diff HEAD --stat | tail -3
+```
+- Lines changed: XX
+- Files affected: X
+- Complexity: Low
+```
+
+## Decision Framework
+
+### When to Use `/fix` (Confidence Check)
+```markdown
+✅ High Confidence Scenarios (>0.85)
+- Single-file fixes with clear scope
+- Test failures with obvious causes
+- Typo and naming corrections
+- CSS-solvable UI issues
 - Simple logic errors
-- Small UI adjustments (CSS-first approach)
-- Layout issues (Grid/Flexbox solutions)
-- Responsive design fixes
 - Configuration updates
 
-## When NOT to Use
+⚠️ Medium Confidence (0.6-0.85)
+- Two-file coordinated changes
+- Missing error handling
+- Performance optimizations
+- State management fixes
 
-- Multi-file refactoring
-- New feature implementation
-- Complex architectural changes
-- Issues requiring research
-
-## Example Usage
-
-```md
-/fix "Fix button alignment issue in header"
-/fix "Correct typo in error message"
-/fix "Update API endpoint URL"
+❌ Low Confidence (<0.6) - Use different command
+- Multi-file refactoring → /code
+- Unknown root cause → /research
+- New features → /think → /code
+- Production issues → /hotfix
 ```
 
-## Next Steps
+### Automatic Command Switching
+If confidence drops below 0.6 during analysis:
+```markdown
+## Low Confidence Detected
+### Issue: Fix scope exceeds /fix capabilities
 
-- If successful: Consider `/reflect` for learnings
-- If complex: Switch to full workflow starting with `/think`
+Recommended action:
+- For investigation: /research
+- For planning: /think
+- For implementation: /code
+
+Switch command? (Y/n)
+```
+
+## Example Usage with Confidence
+
+### High Confidence Fix
+```md
+/fix "Fix button alignment issue in header"
+# Confidence: 0.92 - CSS-first solution available
+```
+
+### Medium Confidence Fix
+```md
+/fix "Resolve state update not triggering re-render"
+# Confidence: 0.75 - May need investigation
+```
+
+### Auto-escalation Example
+```md
+/fix "Optimize database query performance"
+# Confidence: 0.45 - Suggests /research → /think instead
+```
+
+## Next Steps Based on Outcome
+
+### Success Path (Confidence >0.9)
+- Document learnings
+- Add regression test
+- Update related documentation
+
+### Partial Success (Confidence 0.7-0.9)
+- Review with `/research` for completeness
+- Consider follow-up `/fix` for remaining issues
+
+### Escalation Path (Confidence <0.7)
+```markdown
+## Recommended Workflow
+Based on analysis, suggesting:
+1. /research - Investigate deeper
+2. /think - Plan comprehensive solution
+3. /code - Implement with full TDD
+```
+
+## Advanced Features
+
+### Pattern Learning
+Track successful fixes for similar issues:
+```bash
+git log --grep="fix" --oneline | grep -i "[similar keyword]" | head -3
+```
+
+### Auto-discovery
+Find related issues that might need fixing:
+```bash
+grep -r "TODO\|FIXME\|HACK" --include="*.ts" --include="*.tsx" | head -5
+```
+
+### Quality Trend
+Monitor fix impact on codebase health:
+```bash
+npm run lint | grep -E "problems\|warnings"
+```
 
 ## Applied Principles
 
