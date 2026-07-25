@@ -51,7 +51,7 @@ Failure-driven, not pattern-driven. Start from "what could break?" then trace to
 
 ## Output
 
-Follow finding-schema.md. When no code is found, report "No code to review". Common guards (glob empty, tool error) follow finding-schema.md defaults.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
 
 | Field        | Value                                                     |
 | ------------ | --------------------------------------------------------- |

@@ -48,11 +48,11 @@ background: true
 
 ## キャリブレーション
 
-`~/.claude/skills/audit/references/calibration-examples.md` の REUSE セクションを参照。
+`~/.claude/agents/_lib/calibration-examples.md` の REUSE セクションを参照。
 
 ## アウトプット
 
-finding-schema.md に従う。コードが見つからないときは "No code to review" を報告する。共通ガード (glob 空、tool エラー) は finding-schema.md のデフォルトに従う。Evidence は新規コードと既存ユーティリティを `New: file:line snippet / Existing: file:line snippet` として対にする。stdlib/native カテゴリは repo 内に対がないので `Existing:` の代わりに置き換える API/機能名を書く (例: `Use: Intl.DateTimeFormat`、`Use: <input type="date">`)。
+~/.claude/agents/_lib/finding-schema.md に従う。コードが見つからないときは "No code to review" を報告する。共通ガード (glob 空、tool エラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。Evidence は新規コードと既存ユーティリティを `New: file:line snippet / Existing: file:line snippet` として対にする。stdlib/native カテゴリは repo 内に対がないので `Existing:` の代わりに置き換える API/機能名を書く (例: `Use: Intl.DateTimeFormat`、`Use: <input type="date">`)。
 
 | フィールド   | 値                                                                               |
 | ------------ | -------------------------------------------------------------------------------- |

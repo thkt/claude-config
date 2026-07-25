@@ -1,6 +1,6 @@
 # Calibration Examples
 
-Domain-specific REPORT/SKIP examples for audit reviewers. Each reviewer references this file. Principles are in `finding-schema.md`.
+Domain-specific REPORT/SKIP examples for audit reviewers. Each reviewer references this file. Principles are in `~/.claude/agents/_lib/finding-schema.md`.
 
 ## CQ (reviewer-readability)
 

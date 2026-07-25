@@ -44,11 +44,11 @@ background: true
 
 ## キャリブレーション
 
-`~/.claude/skills/audit/references/calibration-examples.md` の A11Y セクションを参照。
+`~/.claude/agents/_lib/calibration-examples.md` の A11Y セクションを参照。
 
 ## アウトプット
 
-finding-schema.md に従う。HTML が見つからないときは "No HTML to review" を報告する。a11y-specialist-skills が利用不可なら視覚のみのチェック (コントラスト、モーション) を行い、外部スキルがタイムアウトしたら完了したチェックで継続する。共通ガード (glob 結果なし、ツールエラー) は finding-schema.md のデフォルトに従う。
+~/.claude/agents/_lib/finding-schema.md に従う。HTML が見つからないときは "No HTML to review" を報告する。a11y-specialist-skills が利用不可なら視覚のみのチェック (コントラスト、モーション) を行い、外部スキルがタイムアウトしたら完了したチェックで継続する。共通ガード (glob 結果なし、ツールエラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。
 
 | フィールド   | 値                                                                                                    |
 | ------------ | ----------------------------------------------------------------------------------------------------- |

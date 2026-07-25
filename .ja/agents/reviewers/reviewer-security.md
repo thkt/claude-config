@@ -40,7 +40,7 @@ injection、auth、設定不備、依存、SSRF、taint を OWASP Top 10 ベー�
 
 ## 報告基準
 
-reviewer-security は `finding-schema.md` で定義された緩和されたバーを使う。実用性が不確実でも、具体的な修正提案がある finding は含める。純粋に推測的な項目 (具体的なトリガーなし、修正なし) は依然として除外。
+reviewer-security は `~/.claude/agents/_lib/finding-schema.md` で定義された緩和されたバーを使う。実用性が不確実でも、具体的な修正提案がある finding は含める。純粋に推測的な項目 (具体的なトリガーなし、修正なし) は依然として除外。
 
 | シグナル強度     | Severity | アクション      |
 | ---------------- | -------- | --------------- |
@@ -64,11 +64,11 @@ reviewer-security は `finding-schema.md` で定義された緩和されたバ�
 
 ## キャリブレーション
 
-`~/.claude/skills/audit/references/calibration-examples.md` の SEC セクションを参照。
+`~/.claude/agents/_lib/calibration-examples.md` の SEC セクションを参照。
 
 ## アウトプット
 
-finding-schema.md に従う。緩和された reporting bar (override)。コードが見つからないときは "No code to review" を報告する。共通ガード (glob 空、tool エラー) は finding-schema.md のデフォルトに従う。Reasoning は脅威モデルを使う。アクターの能力、攻撃ベクトル、具体的な影響。
+~/.claude/agents/_lib/finding-schema.md に従う。緩和された reporting bar (override)。コードが見つからないときは "No code to review" を報告する。共通ガード (glob 空、tool エラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。Reasoning は脅威モデルを使う。アクターの能力、攻撃ベクトル、具体的な影響。
 
 | フィールド   | 値                                                                                              |
 | ------------ | ----------------------------------------------------------------------------------------------- |

@@ -46,11 +46,11 @@ Detect hidden imports, tight coupling, mixed pure and impure code, and global mu
 
 ## Calibration
 
-See `~/.claude/skills/audit/references/calibration-examples.md` section TEST.
+See `~/.claude/agents/_lib/calibration-examples.md` section TEST.
 
 ## Output
 
-Follow finding-schema.md. When no code is found, report "No code to review". Common guards (glob empty, tool error) follow finding-schema.md defaults.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
 
 | Field        | Value                                                                                                |
 | ------------ | ---------------------------------------------------------------------------------------------------- |

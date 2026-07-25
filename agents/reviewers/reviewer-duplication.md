@@ -57,11 +57,11 @@ This reviewer uses 2+ as the unified threshold. Rule of Three from `~/.claude/ru
 
 ## Calibration
 
-See `~/.claude/skills/audit/references/calibration-examples.md` section DRY.
+See `~/.claude/agents/_lib/calibration-examples.md` section DRY.
 
 ## Output
 
-Follow finding-schema.md. When no code is found, report "No code to review". Evidence lists each occurrence as `Location N: fileN:line snippet`. Common guards (glob empty, tool error) follow finding-schema.md defaults.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Evidence lists each occurrence as `Location N: fileN:line snippet`. Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
 
 | Field        | Value                                                             |
 | ------------ | ----------------------------------------------------------------- |

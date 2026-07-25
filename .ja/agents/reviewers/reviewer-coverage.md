@@ -58,11 +58,11 @@ background: true
 
 ## キャリブレーション
 
-`~/.claude/skills/audit/references/calibration-examples.md` の TC セクションを参照。
+`~/.claude/agents/_lib/calibration-examples.md` の TC セクションを参照。
 
 ## アウトプット
 
-finding-schema.md に従う。テストが見つからないときは "No tests to review" を報告する。共通ガード (glob 結果なし、ツールエラー) は finding-schema.md のデフォルトに従う。
+~/.claude/agents/_lib/finding-schema.md に従う。テストが見つからないときは "No tests to review" を報告する。共通ガード (glob 結果なし、ツールエラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。
 
 | フィールド   | 値                                                                                              |
 | ------------ | ----------------------------------------------------------------------------------------------- |

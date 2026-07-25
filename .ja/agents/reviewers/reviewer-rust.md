@@ -95,11 +95,11 @@ finding を `documented?: No` でフラグする前に、周辺コンテキス�
 
 ## キャリブレーション
 
-`~/.claude/skills/audit/references/calibration-examples.md` の RU セクションを参照。未整備の場合 calibration は pending とし、reviewer は `verification: pending_calibration` でフラグ寄りに判断する。
+`~/.claude/agents/_lib/calibration-examples.md` の RU セクションを参照。未整備の場合 calibration は pending とし、reviewer は `verification: pending_calibration` でフラグ寄りに判断する。
 
 ## アウトプット
 
-finding-schema.md に従う。`Cargo.toml` が見つからないときは "No Rust to review" を報告する。`cargo` が利用不可ならソースのみでレビューしサマリーに注記し、workspace lints が無ければ不在を注記してデフォルト strict でレビューし、clippy がタイムアウトしたら Phase 1 の clippy 重複排除をスキップして findings を未検証マークする。共通ガード (glob 空、tool エラー) は finding-schema.md のデフォルトに従う。
+~/.claude/agents/_lib/finding-schema.md に従う。`Cargo.toml` が見つからないときは "No Rust to review" を報告する。`cargo` が利用不可ならソースのみでレビューしサマリーに注記し、workspace lints が無ければ不在を注記してデフォルト strict でレビューし、clippy がタイムアウトしたら Phase 1 の clippy 重複排除をスキップして findings を未検証マークする。共通ガード (glob 空、tool エラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。
 
 | フィールド   | 値                                                                       |
 | ------------ | ------------------------------------------------------------------------ |
