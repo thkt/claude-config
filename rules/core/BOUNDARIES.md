@@ -15,7 +15,7 @@ A sum of local optima is not a global optimum. Judge a change by its impact on t
 
 ## Readable Code
 
-Write for your later self and one teammate who shares the context. If shrinking the code makes it read easier, that is refinement; pursue it. If shrinking leaves code only you can decode, revert it. Carry intent in names, types, and test names, and treat comments as the last resort for the why and why-not code cannot hold.
+Write for your later self and one teammate who shares the context. If shrinking the code makes it read easier, that is refinement; pursue it. If shrinking leaves code only you can decode, revert it. Carry intent in names, types, and test names, and treat comments as the last resort for the why and why-not code cannot hold. Review each comment you write against ../conventions/PROSE.md § Delete Redundant Sentences and delete any line that merely restates the code below it. When a why-not holds, keep that alone rather than pairing it with the why.
 
 ## DRY
 
