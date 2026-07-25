@@ -18,6 +18,10 @@ user-invocable: false
 
 PR body is passed as a string from `/pr`. If Preview URL or How to Test is missing, return `mode: failed` with the missing field name and let `/pr` decide.
 
+## Browser engine
+
+Pass `--session pageshot --engine chrome` on every agent-browser call. The default lightpanda returns a placeholder PNG for screenshot.
+
 ## Mode Selection
 
 | Steps count | Mode       | Artifact    |

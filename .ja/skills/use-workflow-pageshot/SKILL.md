@@ -18,6 +18,10 @@ user-invocable: false
 
 PR 本文は `/pr` から文字列として渡される。Preview URL または How to Test が欠落していれば、`mode: failed` と欠落フィールド名を返し、判断は `/pr` に任せる。
 
+## ブラウザ engine
+
+すべての agent-browser 呼び出しに `--session pageshot --engine chrome` を付ける。既定の lightpanda は screenshot でプレースホルダー PNG を返す。
+
 ## モード選択
 
 | Steps の数 | モード     | 成果物      |
