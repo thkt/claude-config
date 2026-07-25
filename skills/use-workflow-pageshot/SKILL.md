@@ -20,7 +20,7 @@ PR body is passed as a string from `/pr`. If Preview URL or How to Test is missi
 
 ## Browser engine
 
-Pass `--session pageshot --engine chrome` on every agent-browser call. The default lightpanda has no graphics rendering engine, so screenshot returns a placeholder PNG with exit 0 and record runs under the same rendering limit. The engine is resolved per command and is not retained on the session, so a single call missing the flag restarts the browser on lightpanda and loses the page state built up so far. `--session pageshot` isolates this from the default session and leaves work already running on lightpanda intact.
+Pass `--session pageshot --engine chrome` on every agent-browser call. The default lightpanda returns a placeholder PNG for screenshot.
 
 ## Mode Selection
 

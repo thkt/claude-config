@@ -20,7 +20,7 @@ PR 本文は `/pr` から文字列として渡される。Preview URL または 
 
 ## ブラウザ engine
 
-すべての agent-browser 呼び出しに `--session pageshot --engine chrome` を付ける。既定の lightpanda はグラフィックレンダリングエンジンを持たず、screenshot はプレースホルダー PNG を exit 0 で返し、record も同じレンダリング制約を受ける。engine は毎コマンドの解決値で決まりセッションには保持されないため、フラグを落とした呼び出しが 1 つ混ざるだけでブラウザが lightpanda で再起動し、そこまでのページ状態が失われる。`--session pageshot` で既定セッションから隔離し、普段 lightpanda で進めている作業を壊さない。
+すべての agent-browser 呼び出しに `--session pageshot --engine chrome` を付ける。既定の lightpanda は screenshot でプレースホルダー PNG を返す。
 
 ## モード選択
 
