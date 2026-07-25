@@ -7,18 +7,18 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Read Write Edit LS
 
 # /scribe - Accumulate PR / issue / research recurring patterns into the wiki
 
-Extract the common patterns that recur across this repository's past merged PRs / closed issues and the research findings in `workspace/research/`, namely routine procedures / conventions and recurring review comments / failure patterns, verify them against the latest code, and accumulate them into `docs/wiki/`. Always propose via PR; the merge is the human approval.
+Extract the common patterns that recur across this repository's past merged PRs / closed issues and the research findings in `workspace/research/`, namely routine procedures / conventions and recurring review comments / failure patterns, verify them against the latest code, and accumulate them into `docs/wiki/`. Always propose via PR.
 
 ## Invariants
 
-| Condition              | Content                                                                                                                                                    |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Via PR                 | Never commit or push directly to the default branch                                                                                                        |
-| Progress record        | Where the previous run stopped reading is shown by the mergedAt of the last merged scribe PR. For a research file, compare that mergedAt against its mtime |
-| Threshold of 2         | A pattern with fewer than 2 pieces of evidence goes to `docs/wiki/_candidates.md`, not a page. One research file counts as one piece of evidence           |
-| Facts only             | Write only facts stated in PRs / issues and research files, plus facts verified in the current code. No guessing                                           |
-| Reference traceability | Never write `workspace/research/` file paths under `docs/wiki/`                                                                                            |
-| Worktree isolation     | Edit and commit inside an isolated worktree; never touch the user's working tree                                                                           |
+| Condition              | Content                                                                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Via PR                 | Never commit or push directly to the default branch                                                                                              |
+| Progress record        | The cursor is the mergedAt of the last merged scribe PR. For a research file, compare that mergedAt against its mtime                            |
+| Threshold of 2         | A pattern with fewer than 2 pieces of evidence goes to `docs/wiki/_candidates.md`, not a page. One research file counts as one piece of evidence |
+| Facts only             | Write only facts stated in PRs / issues and research files, plus facts verified in the current code. No guessing                                 |
+| Reference traceability | Never write `workspace/research/` file paths under `docs/wiki/`                                                                                  |
+| Worktree isolation     | Edit and commit inside an isolated worktree; never touch the user's working tree                                                                 |
 
 ## Phase 1: Preconditions and onboarding
 
@@ -41,7 +41,7 @@ Extract the common patterns that recur across this repository's past merged PRs 
 3. Read each in-scope research file in full with Read. Do not narrow by section name
 4. Triage what you read with this table. Design decisions and their history belong to `docs/decisions/` and are out of scope
 
-Write evidence as `#number` when it comes from a PR / issue, and as `(research)` when it comes from a research file. Never write the research file path.
+Write evidence as `#number` when it comes from a PR / issue, and as `(research)` when it comes from a research file.
 
 | Match                             | Operation                                                |
 | --------------------------------- | -------------------------------------------------------- |
@@ -52,12 +52,12 @@ Write evidence as `#number` when it comes from a PR / issue, and as `(research)`
 
 ## Phase 4: Cross-check against the latest code
 
-Before creating, promoting, or updating a page, cross-check each pattern against the current code. For each item that holds, add the current-code location as reference code, written as `path` + symbol name (no line numbers), and list the items dropped by verification in the PR body of `§ Phase 6: PR creation`. Never write a research file path as reference code or as evidence.
+Before creating, promoting, or updating a page, cross-check each pattern against the current code. For each item that holds, add the current-code location as reference code, written as `path` + symbol name (no line numbers), and list the items dropped by verification in the PR body of `§ Phase 6: PR creation`.
 
 | Check                                                         | When it fails                                                                 |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | Does the convention/procedure still hold in the current code? | Do not write it. If it is on an existing page, update it as no longer holding |
-| Is it already mechanically enforced by lint / hook / CI?      | Do not write it; it would duplicate management                                |
+| Is it already mechanically enforced by lint / hook / CI?      | Do not write it                                                               |
 | Do the referenced paths/commands still exist?                 | Rewrite with the current paths/commands                                       |
 
 In addition, sweep the reference code of every page under `docs/wiki/*.md`, including existing pages unrelated to this run's scope. Mechanically verify that the file exists and that the symbol name greps within the file, and for a broken reference, reread the current code and relink it. If the pattern itself no longer holds because its referent is gone, update the page as no longer holding.
