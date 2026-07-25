@@ -150,12 +150,12 @@ const commitUnit = async (unit, tests, testFiles) => {
         (testFiles.length ? `, the test files ${JSON.stringify(testFiles)}` : "") +
         `, and any other file you created or modified for this unit during this run. Never run \`git add -A\` or \`git add .\`. ` +
         (untrackedBaseline.length
-          ? `Never stage these paths: ${JSON.stringify(untrackedBaseline)} - they predate this run and would leak local notes and config into the PR. `
+          ? `Never stage these paths: ${JSON.stringify(untrackedBaseline)} - they were in the working tree before this run, and staging one leaks local notes and config into the PR. `
           : "") +
         `List anything you left unstaged in left_unstaged.\n` +
-        `Commit with \`git commit -F {tempfile}\`. The message is a Conventional Commits subject you write from the staged diff (<= 72 chars, imperative, lowercase, no trailing period), a blank line, then this block copied verbatim - add nothing, drop nothing, reword nothing:\n` +
+        `Commit with \`git commit -F {tempfile}\`. The message has three parts: a Conventional Commits subject you write yourself from the staged diff (<= 72 chars, imperative, lowercase, no trailing period), a blank line, and the following block copied verbatim. Add nothing, drop nothing, reword nothing:\n` +
         `${commitBody(unit, tests)}\n` +
-        `If the staging rules leave nothing staged, do not commit: return committed: false with the reason in left_unstaged.` +
+        `If applying the staging rules leaves nothing staged, do not commit: return committed: false with the reason in left_unstaged.` +
         (repo
           ? ` Before committing, run \`git rev-parse --show-toplevel\` and confirm the output is ${repo}; if it differs, abort without committing and report the mismatch.`
           : ""),

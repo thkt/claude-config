@@ -1025,7 +1025,7 @@ const SHIP_SCHEMA = obj(["committed", "pr_url"], {
 // remainder (cleanup edits, anything a unit commit left behind) and tolerates an empty
 // one; without them it still makes the single build commit.
 const commitInstruction = perUnitCommits
-  ? `This build already committed each implementation unit (${unitCommits.length} commit(s)). Commit whatever is still uncommitted - the cleanup edits and anything the unit commits left behind - as one Conventional Commits commit; you write the commit message. If the staging rules below leave nothing staged, skip the commit entirely and go straight to the push; that is a normal outcome, not an error. `
+  ? `This build already committed each implementation unit (${unitCommits.length} commit(s)). Commit whatever is still uncommitted - the cleanup edits and anything the unit commits left behind - as one Conventional Commits commit; you write the commit message. If applying the staging rules below leaves nothing staged, skip the commit entirely and go straight to the push; that is a normal outcome, not an error. `
   : `Turn this build's changes into a single Conventional Commits commit; you write the commit message (summarize the diff). `;
 
 const ship = await agent(

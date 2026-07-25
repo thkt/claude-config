@@ -150,12 +150,12 @@ const commitUnit = async (unit, tests, testFiles) => {
         (testFiles.length ? `、テストファイル ${JSON.stringify(testFiles)}` : "") +
         `、およびこの run でこの unit のために自分が作成 / 変更した他のファイル。\`git add -A\` と \`git add .\` は使わない。` +
         (untrackedBaseline.length
-          ? `次の path は決して stage しない: ${JSON.stringify(untrackedBaseline)} — この run より前から存在し、stage するとローカルのメモや設定が PR に漏れる。`
+          ? `次の path は決して stage しない: ${JSON.stringify(untrackedBaseline)} — この run より前から作業ツリーにあり、stage するとローカルのメモや設定が PR に漏れる。`
           : "") +
         `stage しなかったものは left_unstaged に列挙する。\n` +
-        `コミットは \`git commit -F {tempfile}\` で行う。メッセージは、staged diff から自分が書く Conventional Commits の subject (72 文字以内、命令形、小文字始まり、末尾ピリオド無し)、空行、続けて次のブロックを逐語コピー (verbatim、加えない・落とさない・言い換えない):\n` +
+        `コミットは \`git commit -F {tempfile}\` で行う。メッセージは 3 部構成。staged diff から自分で書く Conventional Commits の subject (72 文字以内、命令形、小文字始まり、末尾ピリオド無し)、空行、そして次のブロックを逐語でコピーしたもの。加えない、落とさない、言い換えない:\n` +
         `${commitBody(unit, tests)}\n` +
-        `staging 規則の結果 stage されるものが無ければコミットしない。committed: false を返し、理由を left_unstaged に書く。` +
+        `staging 規則を適用して stage されるものが残らなければコミットしない。committed: false を返し、理由を left_unstaged に書く。` +
         (repo
           ? ` コミット前に \`git rev-parse --show-toplevel\` を実行し、出力が ${repo} であることを確認する。異なる場合はコミットせず中断し、不一致を報告する。`
           : ""),
@@ -175,7 +175,7 @@ const commitUnit = async (unit, tests, testFiles) => {
   }
   const why = res ? (res.left_unstaged || []).join(" / ") : "commit agent が結果を返さなかった";
   anomalies.push({ unit: unit.id, kind: "uncommitted", notes: why });
-  log(`${unit.id}: 未コミット (${why})。working tree に残す。`);
+  log(`${unit.id}: 未コミット (${why})。作業ツリーに残す。`);
 };
 
 // 先送りの検出は agent の自己申告 (deferred) を script が anomaly 化する。緑のまま

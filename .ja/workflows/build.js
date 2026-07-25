@@ -805,8 +805,8 @@ const [diff, testPresence, conformance, structure] = await parallel([
     agent(
       anchor(
         `起点 issue に対する conformance review。spec は GitHub issue #${issueNumber} で、` +
-          `\`gh issue view ${issueNumber}\` で読む。レビュー対象は、この build が分岐点 ${diffBase} 以降に生んだ ` +
-          `もの全部 (commit 済みも未 commit も含む) なので、\`git diff ${diffBase}\` と \`git status --porcelain\` が示す ` +
+          `\`gh issue view ${issueNumber}\` で読む。レビュー対象は、分岐点 ${diffBase} 以降にこの build が生んだ変更 ` +
+          `すべて (commit 済みも未 commit も含む) なので、\`git diff ${diffBase}\` と \`git status --porcelain\` が示す ` +
           `未追跡ファイルを使う。main...HEAD は使わない。`,
       ),
       {
@@ -827,7 +827,7 @@ const [diff, testPresence, conformance, structure] = await parallel([
               (refModule.conventions?.length
                 ? `携える慣例は ${JSON.stringify(refModule.conventions)}。`
                 : "") +
-              `レビュー対象は、この build が分岐点 ${diffBase} 以降に生んだもの全部 (commit 済みも未 commit も含む) ` +
+              `レビュー対象は、分岐点 ${diffBase} 以降にこの build が生んだ変更すべて (commit 済みも未 commit も含む) ` +
               `なので、\`git diff ${diffBase}\` と \`git status --porcelain\` が示す未追跡ファイルを使う。main...HEAD は使わない。` +
               `判定の前に参照モジュールのファイルを読み、参照モジュールが実際に行っていることだけを報告する。` +
               `従っていない慣例を発明しない。`,
@@ -991,7 +991,7 @@ const SHIP_SCHEMA = obj(["committed", "pr_url"], {
 // 編集、unit commit が残したもの) だけを commit し、空でも許容する。無い場合は従来どおり
 // build 全体を 1 コミットにする。
 const commitInstruction = perUnitCommits
-  ? `この build は既に実装 unit ごとに commit 済み (${unitCommits.length} 件)。未 commit のまま残っているもの — cleanup の編集と unit commit が残したもの — を 1 つの Conventional Commits commit にまとめる。commit メッセージは自分で書く。下の stage 規則の結果 stage されるものが無ければ commit 自体を skip して push へ進む。これは異常でなく正常な結末。`
+  ? `この build は既に実装 unit ごとに commit 済み (${unitCommits.length} 件)。未 commit のまま残っているもの — cleanup の編集と unit commit が残したもの — を 1 つの Conventional Commits commit にまとめる。commit メッセージは自分で書く。下の stage 規則を適用して stage されるものが残らなければ commit 自体を skip して push へ進む。これは異常でなく正常な結末。`
   : `この build の変更を 1 つの Conventional Commits commit にまとめる。commit メッセージは自分で書く (diff を要約する)。`;
 
 const ship = await agent(

@@ -114,7 +114,7 @@ test("commit prompt が plan 由来の trailer ブロックを逐語コピー指
   assert.match(prompt, /^Tests: T-001$/m, "Tests trailer が T-NNN を運ぶ");
   assert.match(prompt, /^Seam: false$/m, "Seam trailer が載る");
   assert.match(prompt, /^Issue: #123$/m, "issue 引数が Issue trailer になる");
-  assert.match(prompt, /verbatim/, "trailer ブロックの逐語コピー指示が載る");
+  assert.match(prompt, /逐語でコピー/, "trailer ブロックの逐語コピー指示が載る");
   assert.equal(commitCalls(calls)[0].opts.model, "haiku", "commit agent は haiku 固定");
 });
 
