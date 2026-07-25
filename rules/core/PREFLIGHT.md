@@ -15,11 +15,12 @@ Read `.claude/OUTCOME.md` at task start and judge scope against the outcome. Ski
 
 ## Interpretation Clarity
 
-| Trigger                               | Action                                                    |
-| ------------------------------------- | --------------------------------------------------------- |
-| Multiple valid interpretations exist  | List all and wait for confirmation                        |
-| Task intent is unclear                | Name what is unclear and stop                             |
-| Issue URL or external spec referenced | Present plan (changes, files, TODO) and wait for approval |
+| Trigger                                              | Action                                                    |
+| ---------------------------------------------------- | --------------------------------------------------------- |
+| Interpretations differ and change the resulting work | List them all and wait for confirmation                   |
+| Interpretations differ but the work stays the same   | Decide it yourself, state the assumption, and proceed     |
+| Task intent is unclear                               | Name what is unclear and stop                             |
+| Issue URL or external spec referenced                | Present plan (changes, files, TODO) and wait for approval |
 
 ### How to ask
 
