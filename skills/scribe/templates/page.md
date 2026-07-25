@@ -4,7 +4,7 @@
 
 ## Template
 
-Each page is structured in the order内容 → 定型手順 → 参照コード → 由来 → 根拠. In参照コード, write the current-code locations verified in Phase 4 as `path` + symbol name (function / type / heading), with no line numbers. Transcribe a code excerpt only when the shape of the pattern itself is the point, up to a few lines. 由来is an optional section; write only the DRs judged Yes in Phase 5, and omit the whole section when nothing qualifies. In根拠, write the PR/issue numbers of the original discussions。
+Each page is structured in the order 内容 → 定型手順 → 参照コード → 由来 → 根拠. In 参照コード, write the current-code locations verified in Phase 4 as `path` + symbol name (function / type / heading), with no line numbers. Transcribe a code excerpt only when the shape of the pattern itself is the point, up to a few lines. 由来 is an optional section; write only the DRs judged Yes in Phase 5, and omit the whole section when nothing qualifies. In 根拠, write the PR/issue numbers of the original discussions, and write `(research)` instead of a number for anything sourced from `workspace/research/`. Never write the research file path。
 
 ```markdown
 # <共通項名>
@@ -29,4 +29,5 @@ Each page is structured in the order内容 → 定型手順 → 参照コード 
 
 - #12 何があったか1行
 - #34 何があったか1行
+- (research) 何が分かったか1行
 ```
