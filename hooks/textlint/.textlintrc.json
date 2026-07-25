@@ -14,9 +14,6 @@
         "space": ["alphabets", "numbers"]
       }
     },
-    "ja-hiragana-keishikimeishi": true,
-    "ja-hiragana-fukushi": true,
-    "ja-hiragana-hojodoushi": true,
     "ja-no-redundant-expression": true,
     "ja-no-weak-phrase": true
   }
