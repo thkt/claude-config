@@ -5,6 +5,7 @@ when_to_use: 調査して, 調べて, リサーチ, investigate, 分析して, i
 allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Task AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) WebFetch WebSearch
 model: opus
 context: fork
+background: false
 argument-hint: "[research subject or question]"
 ---
 
@@ -73,8 +74,9 @@ Explore / ugrep / bfs / Read を並列起動する。発見事項にはその場
 
 1. Phase 2 で過去調査が見つかれば、引き継いだ発見事項 / 制約を Key Findings に統合し、再検証済み / 上書き済みを示す
 2. 各発見事項が Phase 4 の記法でソースを持つことを確認する。事実は `file:line` またはコマンド出力で裏付け、不足は `unknown, requires X` とする
-3. Disconfirmation を記録する。Phase 5 実施時は `Covered by Phase 5 elimination`、省略時は scratch から実行コマンドと生出力をそのまま引用する。0 件の結果は「不在」と断じる前に「ツール誤用の可能性」とみなす
-4. Phase 3 の質問にすべて回答した、または `unknown, requires X` と記録したことを確認する
+3. 各発見事項を triage する。次のアクションを持てるのは、`$ARGUMENTS` の質問への直接回答、OUTCOME.md の Behavior / Constraints の前進 / 保護、実在の incident (issue / バグ報告) への対処のいずれかに紐づく発見のみで、紐付け先をアクション欄に明記する。紐づかない発見は次のアクションを「記録のみ」とし、発見自体は全件掲載を維持する
+4. Disconfirmation を記録する。Phase 5 実施時は `Covered by Phase 5 elimination`、省略時は scratch から実行コマンドと生出力をそのまま引用する。0 件の結果は「不在」と断じる前に「ツール誤用の可能性」とみなす
+5. Phase 3 の質問にすべて回答した、または `unknown, requires X` と記録したことを確認する
 
 ## 出力
 
@@ -89,6 +91,7 @@ Explore / ugrep / bfs / Read を並列起動する。発見事項にはその場
 | OUTCOME           | `.claude/OUTCOME.md` が存在する (Phase 1)                                                                       |
 | Prior research    | `Prior research` フィールドが埋まっている。値は slug または `none found`                                        |
 | ソース            | すべての発見事項に明示的なソース、または `unknown, requires X` 注記がある                                       |
+| triage            | すべての次のアクションに紐付け先 (質問 / OUTCOME / incident) の明記、または「記録のみ」がある                   |
 | 監査証跡          | Phase 4 の scratch を、コマンドと生出力をそのままで取得した                                                     |
 | Cross-method      | 網羅性主張に Cross-method 検証を実施した (該当する主張がある場合)                                               |
 | 一次ソース        | 動作を左右する外部仕様 claim を一次ソースと突合した、または unverified とマークした (該当する claim がある場合) |

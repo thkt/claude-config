@@ -59,22 +59,27 @@ graph TD
 
 ## Command → Skill/Agent マッピング
 
-| コマンド  | 使用 Skill                             | 使用 Agent                                                       |
-| --------- | -------------------------------------- | ---------------------------------------------------------------- |
-| `/think`  | -                                      | -                                                                |
-| `/code`   | use-workflow-tdd-cycle                 | -                                                                |
-| `/audit`  | -                                      | tier ベースの reviewer agent (3 つまたは 17 からファイル ルート) |
-| `/fix`    | use-context-root-cause-analysis        | generator-test, resolver-build                                   |
-| `/polish` | -                                      | enhancer-code                                                    |
-| `/build`  | think, code, audit, fix, polish (連鎖) | -                                                                |
+| コマンド  | 実装                       | 使用 Agent / nested call                                                                  |
+| --------- | -------------------------- | ----------------------------------------------------------------------------------------- |
+| `/think`  | `skills/think/SKILL.md`    | critic-design                                                                             |
+| `/code`   | `workflows/code.js`        | general-purpose の実装・検証 agent                                                        |
+| `/audit`  | `workflows/audit.js`       | file-routed reviewer、critic-audit、critic-evidence、enhancer-integration                 |
+| `/fix`    | `skills/fix/SKILL.md`      | generator-test、resolver-build                                                            |
+| `/polish` | `workflows/polish.js`      | general-purpose、critic-audit、enhancer-code                                               |
+| `/build`  | `workflows/build.js`       | nested workflow は code のみ。audit / polish は人間が個別起動し、fix は連鎖しない        |
 
 ## ファイル構造
 
 ```text
 skills/
-├── code/SKILL.md      # YAML frontmatter + 実行ステップ
-├── fix/SKILL.md
+├── fix/SKILL.md       # YAML frontmatter + 実行ステップ
 ├── think/SKILL.md
+└── ...
+workflows/
+├── code.js
+├── audit.js
+├── polish.js
+├── build.js
 └── ...
 ```
 
@@ -82,10 +87,10 @@ skills/
 
 | フィールド      | 必須 | 用途                             |
 | --------------- | ---- | -------------------------------- |
-| `description`   | ✓    | コマンド説明 (Skill picker 表示) |
-| `allowed-tools` | ✓    | 許可ツール                       |
-| `model`         | -    | 使用モデル (opus/sonnet/haiku)   |
-| `argument-hint` | -    | 引数入力時に表示するヒント       |
+| `description`   | Yes  | コマンド説明 (Skill picker 表示) |
+| `allowed-tools` | No   | 許可ツール                       |
+| `model`         | No   | 使用モデル (opus/sonnet/haiku)   |
+| `argument-hint` | No   | 引数入力時に表示するヒント       |
 
 ## 関連
 

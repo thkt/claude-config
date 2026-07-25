@@ -23,7 +23,7 @@ CLAUDE.md の Foundation Outcome-driven をリポジトリ単位で具体化す�
 
 ## 中身
 
-Behavior は `~/.claude/rules/conventions/VAGUE_TERMS.md` を厳格に守る。プロジェクトの存在意義と Indicators は任意項目とし、理想の方向性を示す曖昧な表現は、この 2 項目に限って許容する。
+Behavior は `~/.claude/rules/conventions/PROSE.md` を厳格に守る。プロジェクトの存在意義と Indicators は任意項目とし、理想の方向性を示す曖昧な表現は、この 2 項目に限って許容する。
 
 | セクション    | 内容                                                                             |
 | ------------- | -------------------------------------------------------------------------------- |

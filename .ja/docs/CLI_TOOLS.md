@@ -6,29 +6,31 @@ Claude Code の機能を拡張する外部 CLI ツール。
 
 ## 概要
 
-3 つの Rust CLI ツール。それぞれ Claude Code のデフォルト ツールに対する特定のギャップを埋めるために作られている。本ドキュメントは設計意図とアーキテクチャを扱う。
+4 つの Rust CLI ツール (scout, recall, sae, xr)。それぞれ Claude Code のデフォルト ツールに対する特定のギャップを埋めるために作られている。本ドキュメントは設計意図とアーキテクチャを扱う。
 
 ```mermaid
 graph LR
     subgraph Search["Information Retrieval"]
         SC[scout]
         RE[recall]
+        SAE[sae]
         XR[xr]
     end
 
     SC -->|Web + GitHub| AI[Claude Code]
     RE -->|Past Sessions| AI
+    SAE -->|esa Posts| AI
     XR -->|X/Twitter| AI
 ```
 
 ## scout
 
-Gemini Grounding と Google 検索による Web 検索とページ取得。
+Brave Search API による Web 検索とページ取得。
 
 | 観点    | 詳細                                                       |
 | ------- | ---------------------------------------------------------- |
 | Why     | WebFetch/WebSearch はトークンを消費し、Markdown 変換が弱い |
-| How     | 検索は Gemini Grounding API、ページ抽出は readability      |
+| How     | 検索は Brave Search API、ページ抽出は readability           |
 | Install | `brew install thkt/tap/scout`                              |
 | Source  | [thkt/scout](https://github.com/thkt/scout)                |
 
@@ -36,7 +38,7 @@ Gemini Grounding と Google 検索による Web 検索とページ取得。
 
 | コマンド              | 用途                                          |
 | --------------------- | --------------------------------------------- |
-| `scout search`        | Web 検索 (Gemini Grounding)                   |
+| `scout search`        | Web 検索 (Brave Search API)                   |
 | `scout fetch`         | URL をクリーンな Markdown として取得          |
 | `scout research`      | 深いリサーチ (検索 + 取得 + 編集)             |
 | `scout repo-overview` | GitHub リポジトリ概要 (stars, issues, README) |
@@ -64,13 +66,14 @@ Gemini Grounding と Google 検索による Web 検索とページ取得。
 
 ### コマンド
 
-| コマンド           | 用途                              |
-| ------------------ | --------------------------------- |
-| `recall "query"`   | セッション横断の全文検索          |
-| `recall --days N`  | 直近 N 日にフィルタ               |
-| `recall --project` | プロジェクト パスでフィルタ       |
-| `recall --source`  | ソースでフィルタ (claude / codex) |
-| `recall --reindex` | 完全インデックス再構築を強制      |
+| コマンド                                  | 用途                              |
+| ----------------------------------------- | --------------------------------- |
+| `recall search "query"`                   | セッション横断の全文検索          |
+| `recall search --days N "query"`          | 直近 N 日にフィルタ               |
+| `recall search --project <PATH> "query"`  | プロジェクト パスでフィルタ       |
+| `recall search --source <SOURCE> "query"` | ソースでフィルタ (claude / codex) |
+| `recall index`                            | 新規セッションログを増分 index    |
+| `recall rebuild`                          | 全セッションを再解析・再 index    |
 
 ### 適用条件
 
@@ -79,6 +82,18 @@ Gemini Grounding と Google 検索による Web 検索とページ取得。
 | 過去の解: `how did I fix X`           | 現セッションのみ              |
 | パターン想起: `what tool for Y`       | 既知の特定セッション ファイル |
 | プロジェクト横断: `where did I use Z` |                               |
+
+## sae
+
+esa 記事の semantic search と読み取り。`settings.json` は read-only の `search`、`status`、`get` を許可する。
+
+### コマンド
+
+| コマンド             | 用途                             |
+| -------------------- | -------------------------------- |
+| `sae search "query"` | index 済み記事の semantic search |
+| `sae status`         | 同期・index 状態の表示           |
+| `sae get <NUMBER>`   | 記事番号による取得               |
 
 ## xr
 
@@ -92,12 +107,14 @@ X/Twitter コンテンツの取得 (tweet, thread, article, user profile)。
 
 ### コマンド
 
-| コマンド                  | 用途                        |
-| ------------------------- | --------------------------- |
-| `xr tweet <url>`          | 単一ツイートの取得          |
-| `xr tweet <url> --thread` | スレッド付きツイートの取得  |
-| `xr article <url>`        | X article の取得            |
-| `xr user <screen_name>`   | ユーザー プロフィールの取得 |
+| コマンド                      | 用途                        |
+| ----------------------------- | --------------------------- |
+| `xr tweet <url>`              | 単一ツイートの取得          |
+| `xr tweet <url> --thread`     | スレッド付きツイートの取得  |
+| `xr article <url>`            | X article の取得            |
+| `xr user <screen_name>`       | ユーザー プロフィールの取得 |
+| `xr feed`                     | ホーム timeline の取得      |
+| `xr user-posts <screen_name>` | ユーザーの投稿一覧を取得    |
 
 ### 適用条件
 

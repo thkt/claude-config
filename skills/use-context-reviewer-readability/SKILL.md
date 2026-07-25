@@ -5,6 +5,7 @@ when_to_use: 可読性, 明確, 命名, 変数名, 関数名, ネスト, 関数�
 allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
 agent: reviewer-readability
 context: fork
+background: false
 user-invocable: false
 ---
 

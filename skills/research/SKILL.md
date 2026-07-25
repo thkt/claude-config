@@ -5,6 +5,7 @@ when_to_use: 調査して, 調べて, リサーチ, investigate, 分析して, i
 allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Task AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) WebFetch WebSearch
 model: opus
 context: fork
+background: false
 argument-hint: "[research subject or question]"
 ---
 
@@ -73,8 +74,9 @@ Skip the invocation only when all conditions hold, and record the skip reason in
 
 1. If Phase 2 found prior research, integrate the inherited findings / constraints into Key Findings, marking each re-verified or superseded
 2. Confirm each finding carries a source in the Phase 4 format. Back facts with `file:line` or command output; mark gaps `unknown, requires X`
-3. Record Disconfirmation. If Phase 5 ran, write `Covered by Phase 5 elimination`; if skipped, quote the command and raw output from the scratch verbatim. Treat 0 hits as possible tool misuse before absence
-4. Confirm every Phase 3 question is answered or recorded as `unknown, requires X`
+3. Triage each finding. Only a finding tied to a direct answer to the `$ARGUMENTS` question, to advancing or protecting an OUTCOME.md Behavior / Constraint, or to handling a real incident (issue / bug report) carries a Next Action, with the linkage stated in the action cell. Every other finding gets Next Action `record only`, and all findings stay listed
+4. Record Disconfirmation. If Phase 5 ran, write `Covered by Phase 5 elimination`; if skipped, quote the command and raw output from the scratch verbatim. Treat 0 hits as possible tool misuse before absence
+5. Confirm every Phase 3 question is answered or recorded as `unknown, requires X`
 
 ## Output
 
@@ -89,6 +91,7 @@ Not done until all are satisfied. An item whose Condition carries "(...)" is req
 | OUTCOME           | `.claude/OUTCOME.md` present (Phase 1)                                                             |
 | Prior research    | `Prior research` field filled with the slug or `none found`                                        |
 | Source            | Every finding has an explicit source or an `unknown, requires X` note                              |
+| Triage            | Every Next Action states its linkage (question / OUTCOME / incident) or reads `record only`        |
 | Audit trail       | Phase 4 scratch captured with commands and raw output verbatim                                     |
 | Cross-method      | Cross-method verification performed for exhaustiveness claims (when such a claim exists)           |
 | Primary source    | Load-bearing external claims verified against primary sources, or marked unverified (when present) |

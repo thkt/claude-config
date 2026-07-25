@@ -29,13 +29,15 @@ graph LR
 
 ## Skills と Agents
 
-| 観点         | Skills                       | Agents           |
-| ------------ | ---------------------------- | ---------------- |
-| 役割         | ナレッジベース (What/How)    | 実行者 (Do)      |
-| 起動         | 自動ロードまたはコマンド参照 | Task ツール経由  |
-| コンテキスト | メイン または fork           | 常に fork        |
-| 状態         | 読み取り専用                 | 可変             |
-| 出力         | 情報                         | アーティファクト |
+`dr` は DR file と index を Write/Edit で生成し、`commit` は `git commit` を実行する。そのため Skill の状態と出力は許可ツールと手順に依存する。
+
+| 観点         | Skills                             | Agents           |
+| ------------ | ---------------------------------- | ---------------- |
+| 役割         | ナレッジベースまたは手順 (What/How) | 実行者 (Do)      |
+| 起動         | 自動ロードまたはコマンド参照       | Task ツール経由  |
+| コンテキスト | メイン または fork                 | 常に fork        |
+| 状態         | 読み取りまたは変更                 | 可変             |
+| 出力         | 情報、ファイル、または実行結果     | アーティファクト |
 
 ## Skills
 
@@ -45,12 +47,14 @@ Skills は「ナレッジ モジュール」。AI がタスク実行時にドメ
 
 ### カテゴリ
 
-| カテゴリ       | Skills                                                           | 用途                                  |
-| -------------- | ---------------------------------------------------------------- | ------------------------------------- |
-| Workflow       | use-workflow-tdd-cycle, use-workflow-pageshot                    | 多段ワークフロー定義                  |
-| Context        | use-context-reviewer-\*, use-context-root-cause-analysis         | エージェント向けドメイン知識          |
-| CLI ラッパー   | use-cli-recall, use-cli-scout, use-cli-gcloud, use-cli-heptabase | CLI ツール統合                        |
-| User-invocable | think, research, code, audit, polish, feature, fix, adr 等       | スラッシュ コマンド エントリ ポイント |
+`/code`、`/audit`、`/polish` は `workflows/*.js` の Workflow であり、Skill ではない。User-invocable Skills は下表の 14 件。
+
+| カテゴリ       | Skills                                                                                                     | 用途                                  |
+| -------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Workflow       | use-workflow-tdd-cycle, use-workflow-pageshot                                                              | 多段ワークフロー定義                  |
+| Context        | use-context-reviewer-\*, use-context-root-cause-analysis                                                   | エージェント向けドメイン知識          |
+| CLI ラッパー   | use-cli-codegraph, use-cli-recall, use-cli-scout, use-cli-gcloud, use-cli-heptabase                       | CLI ツール統合                        |
+| User-invocable | census, challenge, checkout, commit, dr, fix, issue, outcome, pr, preview, research, scribe, slice, think | スラッシュ コマンド エントリ ポイント |
 
 ### ロード機構
 
@@ -89,7 +93,7 @@ skills/[skill-name]/
 name: use-workflow-tdd-cycle
 description: TDD with RGRC cycle and Baby Steps.
 when_to_use: TDD, テスト駆動, Red-Green-Refactor, Baby Steps
-allowed-tools: Read Write Edit Grep Glob
+allowed-tools: Read Write Edit Bash(ugrep:*) Bash(bfs:*)
 context: fork # fork または inline
 user-invocable: false # スラッシュ コマンドとして起動可能か
 ---
@@ -110,25 +114,28 @@ agents/
 ├── explorers/      # 探索 (explorer-feature)
 ├── generators/     # 生成 (generator-test)
 ├── resolvers/      # 問題解決 (resolver-build)
-└── reviewers/      # レビュー (15 種の専門 reviewer)
+└── reviewers/      # レビュー (18 種の専門 reviewer)
 ```
 
-### Reviewer Agents (15 種)
+### Reviewer Agents (18 種)
 
 | Agent                  | 焦点                             |
 | ---------------------- | -------------------------------- |
 | reviewer-accessibility | WCAG 2.2 適合                    |
 | reviewer-causation     | 5 Whys 根本原因分析              |
+| reviewer-conformance   | diff と spec の適合性            |
 | reviewer-coverage      | テスト カバレッジ品質            |
-| reviewer-design        | React 設計パターン               |
+| reviewer-design        | deletion test による module depth |
 | reviewer-duplication   | クロスファイル DRY 分析          |
 | reviewer-efficiency    | アルゴリズム コスト、ホット パス |
 | reviewer-operations    | エラー境界、ロギング             |
 | reviewer-progressive   | CSS-first、JS 削減               |
 | reviewer-prompt        | LLM プロンプト定義の品質         |
+| reviewer-react-pattern | React 設計パターン               |
 | reviewer-readability   | コード構造、可読性               |
 | reviewer-resilience    | 耐障害性の弱点分析               |
 | reviewer-reuse         | 既存コードの再利用機会           |
+| reviewer-rust          | Rust idiom と安全性              |
 | reviewer-security      | OWASP Top 10                     |
 | reviewer-silence       | サイレント失敗の検出             |
 | reviewer-testability   | テスト可能なコード設計           |
