@@ -1,9 +1,5 @@
-// ADR-0088: unit ごとのコミットの行動検証。commit: true のとき各 unit の完了直後に
-// commit agent が 1 回走り、メッセージ本文が plan から決定論に組み立てられた trailer
-// ブロック (Unit / Contract / Tests / Seam / Issue) を逐語コピーとして運ぶこと、staging
-// 規則 (git add -A 禁止 + untracked_baseline の never-stage) が prompt に載ること、
-// コミット失敗が stop でなく anomaly になること、commit 未指定なら既存挙動 (コミット
-// 0 回) のままであることを固定する。
+// ADR-0088 の unit ごとのコミット。コミットメッセージと staging 範囲は agent の裁量に
+// 委ねると壊れても静かなので、trailer の中身と staging 禁止事項を prompt 上で固定する。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -29,7 +25,7 @@ const plan = {
   ],
 };
 
-// tests が空の unit は直接実装 1 段。コミットは Red→Green 経路と同じ位置で走る。
+// tests が空の unit は直接実装 1 段。
 const noTestPlan = {
   test_command: "echo test",
   units: [
@@ -44,7 +40,7 @@ const noTestPlan = {
   ],
 };
 
-// commit agent の戻り値だけ差し替えられる happy stub。他の label は既定の成功を返す。
+// commit agent の戻り値だけ差し替えられる happy stub。
 const stubWith = (commitResult) => (prompt, opts) => {
   const label = opts.label ?? "";
   if (label.startsWith("commit:")) return commitResult;

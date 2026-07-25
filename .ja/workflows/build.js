@@ -463,9 +463,9 @@ const REVALIDATE_SCHEMA = obj(["results"], {
 // (両者は plan のみに依存)。drift 停止時は作成済みブランチを stopped に載せて surface する。
 phase("Revalidate");
 const preconditions = plan.preconditions || [];
-// head は分岐点を固定する。Code が unit ごとに commit するため run の途中で HEAD は分岐点
-// でなくなり、下流の \`git diff HEAD\` はすべて空を返す。可視の失敗でなく無言の pass に
-// なるので、基準を sha で持つ (ADR-0088)。
+// Code が unit ごとに commit するため run の途中で HEAD は分岐点でなくなり、下流の
+// `git diff HEAD` はすべて空を返す。可視の失敗でなく無言の pass になるので、基準を
+// 分岐点の sha で持つ (ADR-0088)。
 const BRANCH_SCHEMA = obj(["branch", "head"], {
   branch: { type: "string", description: "checkout 済みブランチ名のみ" },
   head: {
@@ -535,9 +535,8 @@ const branch = (branchRes && branchRes.branch) || "";
 // build 以前から作業ツリーにある私物を Verify の scope 逸脱から差し引き、同じ一覧を
 // commit agent の never-stage 集合にも渡す。
 const baselineUntracked = baseline && Array.isArray(baseline.untracked) ? baseline.untracked : [];
-// unit ごとの commit は分岐点 sha が使えるときだけ有効にする。無ければ HEAD が動いた後に
-// 比較対象が消えるので、scope / conformance を未検証のまま出荷せず、build 末尾 1 コミットへ
-// 退避する。
+// sha が使えないまま commit を有効にすると、HEAD が動いた後に比較対象が消え、scope /
+// conformance を未検証のまま出荷する。従来の末尾 1 コミットへ退避する。
 const startPoint = String((branchRes && branchRes.head) || "").trim();
 const perUnitCommits = /^[0-9a-f]{7,40}$/.test(startPoint);
 const diffBase = perUnitCommits ? startPoint : "HEAD";
@@ -987,9 +986,8 @@ const SHIP_SCHEMA = obj(["committed", "pr_url"], {
   notes: { type: "string" },
 });
 
-// unit ごとの commit がある場合、unit は既に履歴に入っているので Ship は残り (cleanup の
-// 編集、unit commit が残したもの) だけを commit し、空でも許容する。無い場合は従来どおり
-// build 全体を 1 コミットにする。
+// unit が既に履歴にあるとき、残余ゼロは正常な結末。空コミットを強いると Ship が
+// 失敗報告に倒れる。
 const commitInstruction = perUnitCommits
   ? `この build は既に実装 unit ごとに commit 済み (${unitCommits.length} 件)。未 commit のまま残っているもの — cleanup の編集と unit commit が残したもの — を 1 つの Conventional Commits commit にまとめる。commit メッセージは自分で書く。下の stage 規則を適用して stage されるものが残らなければ commit 自体を skip して push へ進む。これは異常でなく正常な結末。`
   : `この build の変更を 1 つの Conventional Commits commit にまとめる。commit メッセージは自分で書く (diff を要約する)。`;

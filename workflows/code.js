@@ -37,9 +37,9 @@ const anchor = (p) =>
     ? `Run every git, file, and build command from the repository at ${repo} (begin each shell command with \`cd ${repo} && \`).\n\n${p}`
     : p;
 
-// Per-unit commits are opt-in so a standalone run still leaves the working tree
-// uncommitted; build turns them on and moves its own diff base off HEAD accordingly
-// (ADR-0088). issue feeds the trailer; untracked_baseline is the never-stage set.
+// Commits are opt-in because a standalone caller has not moved its diff base off
+// HEAD. Once HEAD moves, that caller's verification silently sees an empty diff
+// (ADR-0088).
 const commitPerUnit = input.commit === true;
 const issueRef = String(input.issue || "")
   .replace(/^#/, "")
@@ -120,10 +120,9 @@ const COMMIT_SCHEMA = {
   },
 };
 
-// The message body is rendered here from the plan, never from the agent's prompt text:
-// the instruction reaching the agent carries issue-derived (untrusted) prose, and a
-// commit message is an unamendable record. Trailer form keeps the plan's anchors
-// machine-readable (git interpret-trailers / git log --format).
+// Never put the agent's prompt text in the message: the prompt carries issue-derived
+// (untrusted) prose, and a commit message becomes an unamendable record. Trailer form
+// keeps the plan's anchors machine-readable (git interpret-trailers / git log --format).
 const commitBody = (unit, tests) =>
   [
     unit.goal,
@@ -137,10 +136,10 @@ const commitBody = (unit, tests) =>
     ...(issueRef ? [`Issue: #${issueRef}`] : []),
   ].join("\n");
 
-// One commit per unit, taken while the working tree still holds only that unit's work;
-// splitting the merged tree afterwards would be an LLM guess at hunk ownership. A failed
-// commit (a blocking pre-commit gate, ADR-0064) is an anomaly, not a stop: the work stays
-// in the tree and the caller's final commit sweeps it up.
+// Taken while the working tree still holds only that unit's work; splitting the merged
+// tree afterwards would be an LLM guess at hunk ownership. A failed commit (a blocking
+// pre-commit gate, ADR-0064) does not stop the run because the work stays in the tree
+// and the caller's final commit sweeps it up.
 const commitUnit = async (unit, tests, testFiles) => {
   if (!commitPerUnit) return;
   const res = await agent(
@@ -310,8 +309,7 @@ for (const unit of units) {
     anomalies.push({ unit: unit.id, kind: "no-red", notes: red.notes });
     log(`${unit.id}: Red unconfirmed (${red.notes}). Skipping the implement step.`);
     completed.push(unit.id);
-    // The tests the Red step wrote are still in the tree, so this unit is committed too;
-    // a unit that wrote nothing comes back committed: false and is recorded as such.
+    // The implement step is skipped, but the tests the Red step wrote stay in the tree.
     await commitUnit(unit, tests, red.test_files || []);
     continue;
   }

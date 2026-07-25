@@ -486,9 +486,9 @@ const REVALIDATE_SCHEMA = obj(["results"], {
 // surfaced in the stopped return.
 phase("Revalidate");
 const preconditions = plan.preconditions || [];
-// head pins the branch point. Code commits per unit, so HEAD stops being the branch
-// point mid-run and every downstream `git diff HEAD` would come back empty - a silent
-// pass, not a visible failure (ADR-0088).
+// Code commits per unit, so HEAD stops being the branch point mid-run and every
+// downstream `git diff HEAD` comes back empty - a silent pass, not a visible failure.
+// Hold the base as the branch point's sha (ADR-0088).
 const BRANCH_SCHEMA = obj(["branch", "head"], {
   branch: { type: "string", description: "the checked-out branch name, nothing else" },
   head: {
@@ -558,9 +558,8 @@ const branch = (branchRes && branchRes.branch) || "";
 // Subtracts pre-existing clutter from Verify's scope deviations, and doubles as the
 // commit agents' never-stage set.
 const baselineUntracked = baseline && Array.isArray(baseline.untracked) ? baseline.untracked : [];
-// Per-unit commits are enabled only when the branch point is a usable sha. Without it
-// there is nothing to diff against once HEAD moves, so the run falls back to the single
-// end-of-build commit rather than shipping unverified scope / conformance.
+// Enabling commits without a usable sha loses the comparison target once HEAD moves and
+// ships scope / conformance unverified. Fall back to the single end-of-build commit.
 const startPoint = String((branchRes && branchRes.head) || "").trim();
 const perUnitCommits = /^[0-9a-f]{7,40}$/.test(startPoint);
 const diffBase = perUnitCommits ? startPoint : "HEAD";
@@ -1021,9 +1020,8 @@ const SHIP_SCHEMA = obj(["committed", "pr_url"], {
   notes: { type: "string" },
 });
 
-// With per-unit commits the units are already in history, so Ship commits only the
-// remainder (cleanup edits, anything a unit commit left behind) and tolerates an empty
-// one; without them it still makes the single build commit.
+// With the units already in history, an empty remainder is a normal outcome. Forcing a
+// commit anyway tips Ship into reporting failure.
 const commitInstruction = perUnitCommits
   ? `This build already committed each implementation unit (${unitCommits.length} commit(s)). Commit whatever is still uncommitted - the cleanup edits and anything the unit commits left behind - as one Conventional Commits commit; you write the commit message. If applying the staging rules below leaves nothing staged, skip the commit entirely and go straight to the push; that is a normal outcome, not an error. `
   : `Turn this build's changes into a single Conventional Commits commit; you write the commit message (summarize the diff). `;

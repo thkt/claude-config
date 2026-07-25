@@ -40,9 +40,8 @@ const anchor = (p) =>
     ? `すべての git / ファイル / ビルドコマンドを ${repo} のリポジトリから実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`
     : p;
 
-// unit ごとのコミットは opt-in。単独起動では working tree を未コミットのまま残し、build
-// だけが有効化して自身の diff 基準を HEAD から外す (ADR-0088)。issue は trailer に、
-// untracked_baseline は never-stage 集合になる。
+// コミットを opt-in にするのは、単独起動の呼び出し元が diff 基準を HEAD から外していない
+// ため。HEAD が動くと呼び出し元の検証が無言で空を見る (ADR-0088)。
 const commitPerUnit = input.commit === true;
 const issueRef = String(input.issue || "")
   .replace(/^#/, "")
@@ -121,9 +120,9 @@ const COMMIT_SCHEMA = {
   },
 };
 
-// メッセージ本文は agent の prompt 文でなく plan から script が組み立てる。agent に届く
-// 指示には issue 由来 (untrusted) の文が混ざり、コミットメッセージは改変不能な記録だから。
-// trailer 形式は plan のアンカーを機械可読に保つ (git interpret-trailers / git log --format)。
+// agent の prompt 文をそのまま載せない。prompt には issue 由来 (untrusted) の文が混ざり、
+// コミットメッセージは改変不能な記録になる。trailer 形式は plan のアンカーを機械可読に保つ
+// (git interpret-trailers / git log --format)。
 const commitBody = (unit, tests) =>
   [
     unit.goal,
@@ -137,10 +136,9 @@ const commitBody = (unit, tests) =>
     ...(issueRef ? [`Issue: #${issueRef}`] : []),
   ].join("\n");
 
-// unit ごとに 1 コミット。working tree がその unit の作業だけを持っている間に取る。混ざった
-// 後の分割は hunk の帰属を LLM に推測させることになる。コミット失敗 (pre-commit gate の
-// ブロック、ADR-0064) は stop でなく anomaly とし、作業はツリーに残して呼び出し元の最終
-// コミットが拾う。
+// working tree がその unit の作業だけを持っている間に取る。混ざった後の分割は hunk の帰属
+// を LLM に推測させることになる。コミット失敗 (pre-commit gate のブロック、ADR-0064) で
+// stop しないのは、作業がツリーに残り呼び出し元の最終コミットが拾うため。
 const commitUnit = async (unit, tests, testFiles) => {
   if (!commitPerUnit) return;
   const res = await agent(
@@ -315,8 +313,7 @@ for (const unit of units) {
     anomalies.push({ unit: unit.id, kind: "no-red", notes: red.notes });
     log(`${unit.id}: Red 未確認 (${red.notes})。implement step を skip する。`);
     completed.push(unit.id);
-    // Red step が書いたテストはツリーに残っているので、この unit もコミットする。何も
-    // 書いていない unit は committed: false で返り、そのまま記録される。
+    // 実装を飛ばしても Red step が書いたテストはツリーに残るので、ここもコミット対象。
     await commitUnit(unit, tests, red.test_files || []);
     continue;
   }
