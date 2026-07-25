@@ -70,15 +70,7 @@ memory を付与する必須条件は以下のとおり。付与後、project �
 
 ## 指摘の重要度
 
-reviewer- 系が advisory な指摘を列挙するときは、各指摘に下記いずれかのラベルを付ける。`/audit` やユーザーが must-fix と好みを切り分けられるようにするため。ラベルがないと Critical と Nit が混ざり、Nit の洪水で must-fix が埋もれる。
-
-独自のゲート判定を返すエージェント (critic- 系の confirmed / disputed など) は自分の方式に従い、このラベルは併用しない。
-
-| ラベル   | 意味                                                   |
-| -------- | ------------------------------------------------------ |
-| Critical | 直さないと正しさ / 安全性 / 動作が壊れる。ブロック対象 |
-| Nit      | 直すと良いが任意。スタイルや軽微な可読性               |
-| Optional | 提案。採否は実装者判断で、見送っても問題ない           |
+reviewer- 系は `~/.claude/agents/_lib/finding-schema.md` の Severity (critical / high / medium / low) に従う。独自のゲート判定を返すエージェント (critic- 系の confirmed / disputed など) は自分の方式に従う。
 
 ## 参照記法
 
