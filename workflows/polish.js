@@ -1,10 +1,16 @@
 export const meta = {
   name: "polish",
   description:
-    'Deterministic Codex review + cleanup. Codex findings always pass through a critic-audit challenge, and the triage (confirmed / disputed / downgraded / needs_context) is decided by the script, so findings are never aggregated as facts and the challenge cannot be skipped. Callable standalone or nested from build via workflow("polish").',
+    'Deterministic Codex review + cleanup. Codex findings always pass through a critic-audit challenge, and the triage (confirmed / disputed / downgraded / needs_context) is decided by the script, so findings are never aggregated as facts and the challenge cannot be skipped. After the fix, critic-audit rejudges each survivor against the post-fix diff as resolved / still_open, and still_open surfaces as reopened in the result. Callable standalone or nested from build via workflow("polish").',
   whenToUse:
-    "Headless external-lens review of a diff plus AI-slop removal. args is a scope string, or {scope, repo, mode, base}. When scope is omitted, the target is the uncommitted changes, else the diff of commits ahead of the base branch (default main) — the pushed branch diff. mode: full (default) runs review -> fix -> cleanup; review returns the challenged findings without fixing; cleanup runs only simplify + enhancer-code + test validation. For a deep internal-reviewer audit use the audit workflow.",
-  phases: [{ title: "Review" }, { title: "Challenge" }, { title: "Fix" }, { title: "Cleanup" }],
+    "Headless external-lens review of a diff plus AI-slop removal. args is a scope string, or {scope, repo, mode, base}. When scope is omitted, the target is the uncommitted changes, else the diff of commits ahead of the base branch (default main) — the pushed branch diff. mode: full (default) runs review -> fix -> rejudge -> cleanup; review returns the challenged findings without fixing; cleanup runs only simplify + enhancer-code + test validation. For a deep internal-reviewer audit use the audit workflow.",
+  phases: [
+    { title: "Review" },
+    { title: "Challenge" },
+    { title: "Fix" },
+    { title: "Rejudge" },
+    { title: "Cleanup" },
+  ],
 };
 
 // The triage table lives in the script because
@@ -41,6 +47,8 @@ const scopeNote = (diffKind) =>
     : diffKind === "branch"
       ? `The target is git diff ${base}...HEAD (the pushed branch diff). Drop any fix touching files outside the diff.`
       : "The target is git diff HEAD (staged + unstaged). Drop any fix touching files outside the diff.";
+// The fix agent does not commit, so base...HEAD cannot pick up its edits.
+const postFixDiff = (diffKind) => (diffKind === "branch" ? `git diff ${base}` : "git diff HEAD");
 
 const CODEX_SCHEMA = {
   type: "object",
@@ -104,6 +112,31 @@ const VERDICTS_SCHEMA = {
   },
 };
 
+const REJUDGE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["verdicts"],
+  properties: {
+    verdicts: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "verdict"],
+        properties: {
+          id: { type: "string" },
+          verdict: {
+            type: "string",
+            enum: ["resolved", "still_open"],
+            description: "whether the post-fix diff resolves the finding",
+          },
+          why: { type: "string" },
+        },
+      },
+    },
+  },
+};
+
 const FIX_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -144,6 +177,8 @@ let verdicts = [];
 let survivors = [];
 let needsContext = [];
 let fix = null;
+let reopened = [];
+let rejudgeNotes = "";
 
 if (mode !== "cleanup") {
   // ---- Review: external Codex lens ----
@@ -258,6 +293,45 @@ if (mode !== "cleanup") {
         effort: "high",
       },
     );
+
+    // ---- Rejudge: did the fix actually resolve each finding? ----
+    // fixed[] is the fix agent's own report, so it is not evidence of resolution.
+    phase("Rejudge");
+    const rejudged = await agent(
+      anchor(
+        `critic-audit. Read the post-fix diff (\`${postFixDiff(codex.diff_kind)}\`) and judge, per survivor, whether the finding is resolved.\n` +
+          `The verdict criteria are as follows. resolved = a change in the post-fix diff resolves the finding / still_open = the diff carries no corresponding change, or the change does not resolve the finding.\n` +
+          `Base the judgment on the diff, not on the fix agent's own report. Any survivor with no corresponding change in the diff is still_open.\n` +
+          `This diff also carries other people's changes from the base branch moving ahead. Cite only changes corresponding to the spot each survivor points at; never treat an unrelated change as evidence of resolution.\n` +
+          (scope ? `The target scope is ${scope}. Do not cite changes outside it.\n` : "") +
+          `For reference, the fix stage self-reported fixed: ${JSON.stringify(fix ? fix.fixed : [])} / stashed: ${JSON.stringify(fix ? fix.stashed : [])}.\n` +
+          `The survivors are as follows.\n${JSON.stringify(survivors)}`,
+      ),
+      {
+        agentType: "critic-audit",
+        phase: "Rejudge",
+        label: "rejudge",
+        schema: REJUDGE_SCHEMA,
+        model: "opus",
+        effort: "xhigh",
+      },
+    );
+    if (rejudged) {
+      // A verdict the agent dropped is not read as resolved.
+      const byVerdict = new Map(rejudged.verdicts.map((v) => [v.id, v]));
+      reopened = survivors
+        .filter((s) => (byVerdict.get(s.id) || {}).verdict !== "resolved")
+        .map((s) => ({
+          id: s.id,
+          severity: s.severity,
+          why: (byVerdict.get(s.id) || {}).why || "",
+        }));
+      log(`rejudge: ${reopened.length} reopened / ${survivors.length} survivors`);
+    } else {
+      // An empty array would read as "rejudged, zero reopened".
+      reopened = null;
+      rejudgeNotes = "the rejudge agent returned nothing, so resolved / still_open is undecided";
+    }
   }
 }
 
@@ -316,6 +390,8 @@ return {
   survivors: survivors.length,
   fixed: fix ? fix.fixed : [],
   stashed_fixes: fix ? fix.stashed : [],
+  reopened,
+  rejudge_notes: rejudgeNotes,
   needs_context: needsContext,
   cleanup,
 };
