@@ -18,6 +18,10 @@ user-invocable: false
 
 PR 本文は `/pr` から文字列として渡される。Preview URL または How to Test が欠落していれば、`mode: failed` と欠落フィールド名を返し、判断は `/pr` に任せる。
 
+## ブラウザ engine
+
+すべての agent-browser 呼び出しに `--session pageshot --engine chrome` を付ける。既定の lightpanda はグラフィックレンダリングエンジンを持たず、screenshot はプレースホルダー PNG を exit 0 で返し、record も同じレンダリング制約を受ける。engine は毎コマンドの解決値で決まりセッションには保持されないため、フラグを落とした呼び出しが 1 つ混ざるだけでブラウザが lightpanda で再起動し、そこまでのページ状態が失われる。`--session pageshot` で既定セッションから隔離し、普段 lightpanda で進めている作業を壊さない。
+
 ## モード選択
 
 | Steps の数 | モード     | 成果物      |
