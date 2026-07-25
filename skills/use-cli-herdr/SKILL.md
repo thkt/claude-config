@@ -1,12 +1,12 @@
 ---
-name: use-herdr-agentchat
+name: use-cli-herdr
 description: Delegate implementation to codex (coder) via the herdr-agentchat plugin and drive a two-pane conversation to completion.
 when_to_use: codex と連携, coder に委譲, coder に任せる, ペア実装, herdr で 2 agent, leader として実装依頼, agentchat, 2 ペイン会話, send で依頼
 allowed-tools: Bash Read
 user-invocable: false
 ---
 
-# use-herdr-agentchat
+# use-cli-herdr
 
 ## Prerequisite
 

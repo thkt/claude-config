@@ -33,13 +33,13 @@ graph LR
 `git commit`. Skill state and output therefore depend on the permitted tools and
 procedure.
 
-| Aspect         | Skills                          | Agents        |
-| -------------- | ------------------------------- | ------------- |
-| **Role**       | Knowledge base or procedure     | Executor (Do) |
-| **Invocation** | Auto-load or command reference  | Via Task tool |
-| **Context**    | Main or fork                    | Always fork   |
-| **State**      | Read-only or mutable            | Mutable       |
-| **Output**     | Information, files, or actions  | Artifacts     |
+| Aspect         | Skills                         | Agents        |
+| -------------- | ------------------------------ | ------------- |
+| **Role**       | Knowledge base or procedure    | Executor (Do) |
+| **Invocation** | Auto-load or command reference | Via Task tool |
+| **Context**    | Main or fork                   | Always fork   |
+| **State**      | Read-only or mutable           | Mutable       |
+| **Output**     | Information, files, or actions | Artifacts     |
 
 ## Skills
 
@@ -52,11 +52,11 @@ Skills are "knowledge modules" that provide domain-specific knowledge when AI ex
 `/code`, `/audit`, and `/polish` are workflows under `workflows/*.js`, not
 Skills. The User-invocable row lists all 14 current Skills.
 
-| Category       | Skills                                                                                                     | Purpose                          |
-| -------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| Workflow       | use-workflow-tdd-cycle, use-workflow-pageshot                                                              | Multi-phase workflow definitions |
-| Context        | use-context-reviewer-\*, use-context-root-cause-analysis                                                   | Domain knowledge for agents      |
-| CLI wrapper    | use-cli-codegraph, use-cli-recall, use-cli-scout, use-cli-gcloud, use-cli-heptabase                       | CLI tool integration             |
+| Category       | Skills                                                                                                    | Purpose                          |
+| -------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| Workflow       | use-workflow-tdd-cycle, use-workflow-pageshot                                                             | Multi-phase workflow definitions |
+| Context        | use-context-reviewer-\*, use-context-root-cause-analysis                                                  | Domain knowledge for agents      |
+| CLI wrapper    | use-cli-codegraph, use-cli-recall, use-cli-scout, use-cli-gcloud, use-cli-heptabase, use-cli-herdr        | CLI tool integration             |
 | User-invocable | census, challenge, checkout, commit, dr, fix, issue, outcome, pr, preview, research, scribe, slice, think | Slash command entry points       |
 
 ### Loading Mechanism

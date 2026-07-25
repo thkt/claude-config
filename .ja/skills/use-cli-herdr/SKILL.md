@@ -1,12 +1,12 @@
 ---
-name: use-herdr-agentchat
+name: use-cli-herdr
 description: herdr-agentchat プラグイン経由で codex (coder) に実装を委譲し、2 ペイン会話で完成まで進める。
 when_to_use: codex と連携, coder に委譲, coder に任せる, ペア実装, herdr で 2 agent, leader として実装依頼, agentchat, 2 ペイン会話, send で依頼
 allowed-tools: Bash Read
 user-invocable: false
 ---
 
-# use-herdr-agentchat
+# use-cli-herdr
 
 ## 前提
 
@@ -26,12 +26,12 @@ bash ~/.config/herdr/plugins/github/thkt.agentchat-*/actions/send.sh --reply-to 
 
 指示には対象ファイル、完了条件、書き込み範囲の制約を含める。`--reply-to leader` により coder への返信手段が本文に自動で埋め込まれる。
 
-| exit | 意味                                             | 対応                                           |
-| ---- | ------------------------------------------------ | ---------------------------------------------- |
-| 0    | coder が着手した                                 | 報告を待つ                                     |
-| 3    | 同一内容の連投                                   | 再送しない                                     |
-| 5    | coder が blocked                                 | 人間の承認待ち。送らない                       |
-| 6    | 起こせなかった (本文は入力欄に残っている可能性)  | 再送せず `herdr agent read coder` で画面を確認 |
+| exit | 意味                                               | 対応                                           |
+| ---- | -------------------------------------------------- | ---------------------------------------------- |
+| 0    | coder が着手した                                   | 報告を待つ                                     |
+| 3    | 同一内容の連投                                     | 再送しない                                     |
+| 5    | coder が blocked                                   | 人間の承認待ち。送らない                       |
+| 6    | 起こせなかった (本文は入力欄に残っている可能性)    | 再送せず `herdr agent read coder` で画面を確認 |
 | 7    | 着手を観測できず (すでに working 中なら届いている) | `herdr agent get coder` で状態確認。再送しない |
 
 ## Phase 3. 報告の受領
