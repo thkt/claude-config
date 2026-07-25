@@ -13,6 +13,7 @@
 | Default    | Miller's Law                            |
 | Default    | TDD / Baby Steps                        |
 | Default    | DRY                                     |
+| Default    | Single Source of Truth                  |
 | Default    | YAGNI Boundary                          |
 | Default    | Reuse Ordering                          |
 | Default    | Strong Inference                        |
@@ -37,6 +38,7 @@
 | 局所の改善が全体を不変 or 悪化                 | Systems Thinking        |
 | 同じ症状への修正が再発                         | Systems Thinking        |
 | 連動する呼び出し箇所 2 以上                    | YAGNI Boundary          |
+| 同じ知識の複製を作る直前 or 見つけた           | Single Source of Truth  |
 | 新規コード or 依存追加の直前                   | Reuse Ordering          |
 | 書いた後に冗長                                 | Occam's Razor           |
 | 余分なファイル or 未要求スコープ               | Overeagerness           |

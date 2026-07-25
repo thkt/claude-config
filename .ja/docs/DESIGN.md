@@ -29,7 +29,7 @@ graph TD
         SKILL[SKILLS]
         SUB[SUBAGENT]
         PLUG[PLUGIN]
-        VAGUE[VAGUE_TERMS]
+        PROSE[PROSE]
     end
 
     OPS --> PFL
@@ -109,13 +109,13 @@ AI 失敗パターン (インライン):
 
 ドキュメント、プラグイン、翻訳の一貫性。
 
-| ファイル                                           | 意図                       |
-| -------------------------------------------------- | -------------------------- |
-| [MARKDOWN](../rules/conventions/MARKDOWN.md)       | Markdown 規約              |
-| [SKILLS](../rules/conventions/SKILLS.md)           | Skill 定義の標準           |
-| [SUBAGENT](../rules/conventions/SUBAGENT.md)       | サブエージェント定義の標準 |
-| [PLUGIN](../rules/conventions/PLUGIN.md)           | プラグイン制約             |
-| [VAGUE_TERMS](../rules/conventions/VAGUE_TERMS.md) | 曖昧語の具体化             |
+| ファイル                                     | 意図                       |
+| -------------------------------------------- | -------------------------- |
+| [MARKDOWN](../rules/conventions/MARKDOWN.md) | Markdown 規約              |
+| [SKILLS](../rules/conventions/SKILLS.md)     | Skill 定義の標準           |
+| [SUBAGENT](../rules/conventions/SUBAGENT.md) | サブエージェント定義の標準 |
+| [PLUGIN](../rules/conventions/PLUGIN.md)     | プラグイン制約             |
+| [PROSE](../rules/conventions/PROSE.md)       | 語彙の具体化と文の接続     |
 
 設計理由:
 

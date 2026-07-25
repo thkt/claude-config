@@ -23,7 +23,7 @@ Prior research: {引き継いだファイルの slug、または "none found"}
 
 ## Key Findings
 
-<!-- Phase 4 の発見事項を Phase 7 で統合・ソース確認したもの。優先度の高い順に全件。事実は file:line、推論は inferred from X、未検証は unknown, requires X。 -->
+<!-- Phase 4 の発見事項を Phase 7 で統合・ソース確認・triage したもの。優先度の高い順に全件。事実は file:line、推論は inferred from X、未検証は unknown, requires X。次のアクションを持つのは triage を通過した発見のみで、紐付け先 (質問 / OUTCOME / incident) をアクション欄に添える。それ以外は「記録のみ」。 -->
 
 | 優先度   | 発見事項   | ソース   | 次のアクション   |
 | -------- | ---------- | -------- | ---------------- |

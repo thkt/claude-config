@@ -22,6 +22,14 @@ Write for your later self and one teammate who shares the context. If shrinking 
 - When one change forces all instances to change, it is the same knowledge, so apply DRY
 - When each copy could evolve independently, it is merely similar code, so do not merge
 
+## Single Source of Truth
+
+DRY decides whether two copies are the same knowledge; Single Source of Truth governs copies that a merge cannot eliminate (translation mirrors, generated files, distributed copies).
+
+- Resolve a mergeable copy with DRY, and keep it out of this management
+- When a copy must remain, designate exactly one canonical source and mark the copy with where the canonical lives
+- Edit the canonical, and let derived copies follow by generation or by mirroring in the same change unit
+
 ## YAGNI Boundary
 
 YAGNI prohibits unneeded features and speculative code paths. It does not prohibit choosing better structure at equal cost. Occam's Razor > YAGNI Boundary.

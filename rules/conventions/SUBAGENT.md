@@ -22,7 +22,7 @@ The naming pattern is lowercase + hyphens `<role>-<scope>` only. Files live in p
 
 ## YAML Frontmatter
 
-Subagents are spawned via the Task tool, not auto-loaded. Agent / AskUserQuestion / EnterPlanMode / ScheduleWakeup and similar tools do not work inside subagents, even when listed in `tools`.
+Subagents are spawned via the Task tool, not auto-loaded. AskUserQuestion / EnterPlanMode / ScheduleWakeup and similar tools do not work inside subagents, even when listed in `tools`. In contrast, Agent does work, and subagents nest up to depth 3 counting the main loop as depth 0.
 
 | Field                           | Required | Notes                                                                                                               |
 | ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------- |
