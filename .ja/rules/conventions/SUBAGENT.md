@@ -1,6 +1,8 @@
 ---
 paths:
   - ".claude/agents/**"
+  - "agents/**"
+  - ".ja/agents/**"
 ---
 
 # Subagent Conventions
