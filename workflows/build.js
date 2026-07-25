@@ -1,7 +1,7 @@
 export const meta = {
   name: "build",
   description:
-    "Autonomous end-to-end build. Taking an issue with a Plan section refined via /think + /issue as input, Load (verbatim fetch -> deterministic id collection -> extract -> validate + id cross-check) / Revalidate / Branch / Code / Cleanup / Verify / Ship run headlessly as deterministic script stages. A plan-less issue has its plan drafted by the nested draft-plan workflow (ADR-0086). Correctness checking is a comparison against the plan's own anchors (preconditions, files scope, T-NNN statements, conformance), not an open-ended defect hunt; heavy assurance (/audit, /polish review) is human-invoked on the draft PR (ADR-0085).",
+    "Autonomous end-to-end build. Taking an issue with a Plan section refined via /think + /issue as input, Load (verbatim fetch -> deterministic id collection -> extract -> validate + id cross-check) / Revalidate / Branch / Code / Cleanup / Verify / Ship run headlessly as deterministic script stages. Code commits each unit separately with the plan's instruction in trailers, and Verify / Ship work from the branch point captured at Branch rather than from HEAD (ADR-0088). A plan-less issue has its plan drafted by the nested draft-plan workflow (ADR-0086). Correctness checking is a comparison against the plan's own anchors (preconditions, files scope, T-NNN statements, conformance), not an open-ended defect hunt; heavy assurance (/audit, /polish review) is human-invoked on the draft PR (ADR-0085).",
   whenToUse:
     'Implementation of a plan-backed issue. Pass {issue, repo, base?} as args, where issue is a number ("123" / "#123") or URL, repo is the absolute path of the target repository, and base (optional) is both the PR base branch and the starting point of a fresh checkout (for the epic-branch aggregation flow); args without repo stop early as no-repo. An issue without a ## Plan section has a plan auto-drafted (goal + a11y, critic-design gated); its quality is below the /think + /issue path. Step away and come back to a draft PR with recorded assumptions, conformance findings, and deterministic verify results; out-of-scope backlog candidates are returned in the workflow result for you to file via /issue. If in-flight steering is needed, drive the phases interactively.',
   phases: [
@@ -486,8 +486,15 @@ const REVALIDATE_SCHEMA = obj(["results"], {
 // surfaced in the stopped return.
 phase("Revalidate");
 const preconditions = plan.preconditions || [];
-const BRANCH_SCHEMA = obj(["branch"], {
+// Code commits per unit, so HEAD stops being the branch point mid-run and every
+// downstream `git diff HEAD` comes back empty - a silent pass, not a visible failure.
+// Hold the base as the branch point's sha (ADR-0088).
+const BRANCH_SCHEMA = obj(["branch", "head"], {
   branch: { type: "string", description: "the checked-out branch name, nothing else" },
+  head: {
+    type: "string",
+    description: "the commit sha of `git rev-parse HEAD` after the checkout, nothing else",
+  },
 });
 // Subtracts pre-existing working-tree clutter from Verify's scope deviations.
 const UNTRACKED_SCHEMA = obj(["untracked"], {
@@ -522,7 +529,8 @@ const [reval, branchRes, baseline] = await parallel([
           (baseBranch
             ? `create it from ${baseBranch} via \`git checkout -b {name} ${baseBranch}\`. `
             : `run git checkout -b with it. `) +
-          `If already on a non-default branch, keep the current branch. Return only the branch name in the branch field.${guard}`,
+          `If already on a non-default branch, keep the current branch. Return only the branch name in the branch field. ` +
+          `Then run \`git rev-parse HEAD\` and return that sha verbatim in the head field.${guard}`,
       ),
       {
         label: "checkout",
@@ -547,6 +555,16 @@ const [reval, branchRes, baseline] = await parallel([
     ),
 ]);
 const branch = (branchRes && branchRes.branch) || "";
+// Subtracts pre-existing clutter from Verify's scope deviations, and doubles as the
+// commit agents' never-stage set.
+const baselineUntracked = baseline && Array.isArray(baseline.untracked) ? baseline.untracked : [];
+// Enabling commits without a usable sha loses the comparison target once HEAD moves and
+// ships scope / conformance unverified. Fall back to the single end-of-build commit.
+const startPoint = String((branchRes && branchRes.head) || "").trim();
+const perUnitCommits = /^[0-9a-f]{7,40}$/.test(startPoint);
+const diffBase = perUnitCommits ? startPoint : "HEAD";
+if (!perUnitCommits)
+  log("Branch point sha unavailable; committing once at Ship and diffing against HEAD.");
 if (preconditions.length) {
   if (!reval || !Array.isArray(reval.results)) {
     return {
@@ -630,6 +648,9 @@ const code =
     // happened on the plan side (think / critic-design). Do not silently track
     // code.js's default.
     model: "sonnet",
+    commit: perUnitCommits,
+    issue: issueNumber,
+    untracked_baseline: baselineUntracked,
   })) || null;
 if (!code || code.stopped) {
   return { stopped: "code-failed", detail: code };
@@ -638,8 +659,9 @@ if (!code.tests_pass || !code.gates_pass)
   log(
     `code's independent verify failed (tests=${code.tests_pass} gates=${code.gates_pass}). Advancing to Verify; it surfaces on the PR.`,
   );
+const unitCommits = Array.isArray(code.commits) ? code.commits : [];
 log(
-  `Code: ${plan.units.length} unit(s) implemented, independent verify tests=${code.tests_pass} gates=${code.gates_pass}.`,
+  `Code: ${plan.units.length} unit(s) implemented, ${unitCommits.length} unit commit(s), independent verify tests=${code.tests_pass} gates=${code.gates_pass}.`,
 );
 
 // ---- Cleanup: simplify skill + test validation ----
@@ -772,7 +794,7 @@ const [diff, testPresence, conformance, structure] = await parallel([
     agent(
       anchor(
         `List the files this build changed, mechanically; do not judge or filter. From the repository root run ` +
-          `\`git diff HEAD --name-only\` and \`git status --porcelain --untracked-files=all\`, and return files as the union of the changed paths ` +
+          `\`git diff ${diffBase} --name-only\` and \`git status --porcelain --untracked-files=all\`, and return files as the union of the changed paths ` +
           `and the untracked paths (the porcelain "??" entries), repo-root-relative, one entry per file.`,
       ),
       {
@@ -808,9 +830,9 @@ const [diff, testPresence, conformance, structure] = await parallel([
     agent(
       anchor(
         `Conformance review against the originating issue. The spec is GitHub issue #${issueNumber}: ` +
-          `read it with \`gh issue view ${issueNumber}\`. The implementation to review is the uncommitted ` +
-          `working-tree diff (this build has not committed yet), so use \`git diff HEAD\` plus the untracked ` +
-          `files shown by \`git status --porcelain\`; do not use main...HEAD (HEAD is still the branch point).`,
+          `read it with \`gh issue view ${issueNumber}\`. The implementation to review is everything this build ` +
+          `produced since its branch point ${diffBase}, committed and uncommitted alike, so use \`git diff ${diffBase}\` ` +
+          `plus the untracked files shown by \`git status --porcelain\`; do not use main...HEAD.`,
       ),
       {
         label: "conformance",
@@ -830,8 +852,9 @@ const [diff, testPresence, conformance, structure] = await parallel([
               (refModule.conventions?.length
                 ? `The conventions it carries are ${JSON.stringify(refModule.conventions)}. `
                 : "") +
-              `The implementation to review is the uncommitted working-tree diff, so use \`git diff HEAD\` plus the ` +
-              `untracked files shown by \`git status --porcelain\`; do not use main...HEAD. ` +
+              `The implementation to review is everything produced since this build's branch point ${diffBase}, ` +
+              `committed and uncommitted alike, so use \`git diff ${diffBase}\` plus the untracked files shown by ` +
+              `\`git status --porcelain\`; do not use main...HEAD. ` +
               `Read the reference module's files before judging, and report only what it actually does; ` +
               `do not invent conventions it does not follow.`,
           ),
@@ -848,7 +871,6 @@ const [diff, testPresence, conformance, structure] = await parallel([
 // Changed files stay within the plan's files or .claude/workspace/ (think's plan
 // draft). A missing diff listing is itself surfaced.
 const planFiles = new Set(plan.units.flatMap((u) => u.files));
-const baselineUntracked = baseline && Array.isArray(baseline.untracked) ? baseline.untracked : [];
 // porcelain emits a directory as a single "dir/" line, so also match by prefix.
 const preexisting = (f) =>
   baselineUntracked.some((b) => b && (f === b || f.startsWith(b.endsWith("/") ? b : `${b}/`)));
@@ -989,21 +1011,31 @@ const shipPayload = {
 };
 
 const SHIP_SCHEMA = obj(["committed", "pr_url"], {
-  committed: { type: "boolean" },
+  committed: {
+    type: "boolean",
+    description:
+      "true when the pushed branch carries this build's work, including when an empty remainder commit was correctly skipped",
+  },
   pr_url: { type: "string" },
   notes: { type: "string" },
 });
 
+// With the units already in history, an empty remainder is a normal outcome. Forcing a
+// commit anyway tips Ship into reporting failure.
+const commitInstruction = perUnitCommits
+  ? `This build already committed each implementation unit (${unitCommits.length} commit(s)). Commit whatever is still uncommitted - the cleanup edits and anything the unit commits left behind - as one Conventional Commits commit; you write the commit message. If applying the staging rules below leaves nothing staged, skip the commit entirely and go straight to the push; that is a normal outcome, not an error. `
+  : `Turn this build's changes into a single Conventional Commits commit; you write the commit message (summarize the diff). `;
+
 const ship = await agent(
   anchor(
-    `Turn this build's changes into a single Conventional Commits commit; you write the commit message (summarize the diff). ` +
+    commitInstruction +
       `Scope what you stage yourself; never use \`git add -A\` or \`git add .\`. Modifications to tracked files may be staged as they are, but stage an untracked path (a "??" line in \`git status --porcelain --untracked-files=all\`, judged per file, never per directory) only when it appears in the plan's files ${JSON.stringify([...planFiles])} or you created it during this run. ` +
       `Every other untracked path predates this build and must stay unstaged, otherwise specification documents, research notes, and local config leak into the PR. List any untracked path you left unstaged in your result.\n` +
       `Push the branch, then open a draft pull request. Its body is a human-facing part you write from a PR template, followed by deterministic fact sections rendered from data (do not hand-write the fact sections). The steps are as follows.\n` +
       `(1) Read \`language\` from \`$HOME/.claude/settings.json\` (default English if unset) and write the human-facing body in that language, keeping code, identifiers, and technical terms untranslated. Choose the PR template: the repository's if present (case-insensitive, priority \`.github/pull_request_template.md\` > \`pull_request_template.md\` > \`docs/pull_request_template.md\` > a \`PULL_REQUEST_TEMPLATE/\` directory), otherwise the bundled \`${bundled("skills/pr/templates/pr.md")}\`; read the skeleton and fold it into the body file. Fill only the human-facing sections, ordered so a reviewer grasps it fast: lead with the problem this solves and the outcome it reaches (${JSON.stringify(plan.outcome)}), then what changed and the approach, then where to focus review. No filler, no invented facts. Skip Related / Closes; the tail emits \`Closes #\`. Skip Scope / Backlog too; out-of-scope candidates do not go in the PR. Fill Design Decisions from the plan decisions (${JSON.stringify(plan.decisions || [])}) and the actual diff; omit the section if empty rather than inventing.\n` +
       `(2) write this exact JSON to a temp file.\n${JSON.stringify(shipPayload)}\n` +
       `(3) append the fact tail and open the PR as one \`&&\` chain, so a renderer failure aborts before the PR is created; from the repository root run ` +
-      `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{your commit subject}" --body-file {bodyfile}\`.\n` +
+      `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{title}" --body-file {bodyfile}\`, where {title} is your commit subject, or - if you skipped the remainder commit - a Conventional Commits subject for the branch as a whole.\n` +
       `pr-body.py exits non-zero (writing nothing) if the payload is malformed or missing a required field; if the chain fails, do not create the PR by other means. Report committed with an empty pr_url and the error instead.\n` +
       `Report the committed state and the PR url.${guard}`,
   ),
@@ -1033,6 +1065,7 @@ return {
   conformance_high: (conf.findings || []).filter((f) => f.severity === "high").length,
   structure_findings: (struct.findings || []).length,
   cleanup_tests_pass: cleanup.tests_pass,
+  unit_commits: unitCommits.length,
   backlog_candidates: backlogCandidates,
   assumptions: plan.assumptions,
   pr_url: ship.pr_url,

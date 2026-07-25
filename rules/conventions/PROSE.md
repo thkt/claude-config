@@ -61,3 +61,13 @@ Judge each sentence by what it updates: the situation (facts about the subject, 
 | Progress narration     | Announcing in place what the document is about to say or do  |
 | Self-characterization  | Declaring the document's own scope or nature                 |
 | Stance-free disclaimer | Adding a supplement without naming the misreading it rejects |
+
+## Delete Redundant Sentences
+
+Delete a sentence a reader can already read off the adjacent code, table, or heading.
+
+| Form                   | Description                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| Code restatement       | Prose repeating what the code directly below states                                              |
+| Consequence narration  | Stating what an instruction or branch leads to. Keep the instruction alone                       |
+| Measurement provenance | Recording where a number came from or what was measured. It goes stale without changing behavior |

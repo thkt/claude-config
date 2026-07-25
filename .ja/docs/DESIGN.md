@@ -109,13 +109,15 @@ AI 失敗パターン (インライン):
 
 ドキュメント、プラグイン、翻訳の一貫性。
 
-| ファイル                                     | 意図                       |
-| -------------------------------------------- | -------------------------- |
-| [MARKDOWN](../rules/conventions/MARKDOWN.md) | Markdown 規約              |
-| [SKILLS](../rules/conventions/SKILLS.md)     | Skill 定義の標準           |
-| [SUBAGENT](../rules/conventions/SUBAGENT.md) | サブエージェント定義の標準 |
-| [PLUGIN](../rules/conventions/PLUGIN.md)     | プラグイン制約             |
-| [PROSE](../rules/conventions/PROSE.md)       | 語彙の具体化と文の接続     |
+| ファイル                                       | 意図                       |
+| ---------------------------------------------- | -------------------------- |
+| [MARKDOWN](../rules/conventions/MARKDOWN.md)   | Markdown 規約              |
+| [MIRROR](../rules/conventions/MIRROR.md)       | `.ja/` 正のミラー運用      |
+| [WORKFLOWS](../rules/conventions/WORKFLOWS.md) | Workflow script の規約     |
+| [SKILLS](../rules/conventions/SKILLS.md)       | Skill 定義の標準           |
+| [SUBAGENT](../rules/conventions/SUBAGENT.md)   | サブエージェント定義の標準 |
+| [PLUGIN](../rules/conventions/PLUGIN.md)       | プラグイン制約             |
+| [PROSE](../rules/conventions/PROSE.md)         | 語彙の具体化と文の接続     |
 
 設計理由:
 
