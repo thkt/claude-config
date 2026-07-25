@@ -54,11 +54,11 @@ ErrorBoundary の欠落や blast radius、フォールバック経路を検出�
 
 ## キャリブレーション
 
-`~/.claude/skills/audit/references/calibration-examples.md` の OPS セクションを参照。
+`~/.claude/agents/_lib/calibration-examples.md` の OPS セクションを参照。
 
 ## アウトプット
 
-finding-schema.md に従う。コードが見つからないときは "No code to review" と報告する。推論では blast radius (何が壊れ、誰が気付くか) を明記する。共通ガード (glob 結果なし、ツールエラー) は finding-schema.md のデフォルトに従う。テストファイルとモックファイルは schema の Context Test (Intentional) で除外される。
+~/.claude/agents/_lib/finding-schema.md に従う。コードが見つからないときは "No code to review" と報告する。推論では blast radius (何が壊れ、誰が気付くか) を明記する。共通ガード (glob 結果なし、ツールエラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。テストファイルとモックファイルは schema の Context Test (Intentional) で除外される。
 
 | フィールド   | 値                                                                                          |
 | ------------ | ------------------------------------------------------------------------------------------- |

@@ -37,11 +37,11 @@ background: true
 
 ## キャリブレーション
 
-`~/.claude/skills/audit/references/calibration-examples.md` の PE セクションを参照。
+`~/.claude/agents/_lib/calibration-examples.md` の PE セクションを参照。
 
 ## アウトプット
 
-finding-schema.md に従う。JS が見つからないときは "No JS to review" と報告する。フレームワーク固有ならフレームワーク制約を注記し、ブラウザ互換性は caniuse で CSS 代替を確認し、MCP が利用不可ならコードのみで解析する。共通ガード (glob 結果なし、ツールエラー) は finding-schema.md のデフォルトに従う。
+~/.claude/agents/_lib/finding-schema.md に従う。JS が見つからないときは "No JS to review" と報告する。フレームワーク固有ならフレームワーク制約を注記し、ブラウザ互換性は caniuse で CSS 代替を確認し、MCP が利用不可ならコードのみで解析する。共通ガード (glob 結果なし、ツールエラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。
 
 | フィールド   | 値                                                                                            |
 | ------------ | --------------------------------------------------------------------------------------------- |

@@ -52,11 +52,11 @@ Before flagging, check execution frequency.
 
 ## Calibration
 
-See `~/.claude/skills/audit/references/calibration-examples.md` section EFF.
+See `~/.claude/agents/_lib/calibration-examples.md` section EFF.
 
 ## Output
 
-Follow finding-schema.md. When no code is found, report "No code to review". Common guards (glob empty, tool error) follow finding-schema.md defaults. Cold-path minor issues excluded unless consolidation raises severity (see schema's Context Test).
+Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults. Cold-path minor issues excluded unless consolidation raises severity (see schema's Context Test).
 
 | Field        | Value                                                                             |
 | ------------ | --------------------------------------------------------------------------------- |

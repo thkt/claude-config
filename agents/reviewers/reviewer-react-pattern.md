@@ -43,11 +43,11 @@ React components and hooks only. Non-React code is out of scope. For language-ag
 
 ## Calibration
 
-See `~/.claude/skills/audit/references/calibration-examples.md` section RP.
+See `~/.claude/agents/_lib/calibration-examples.md` section RP.
 
 ## Output
 
-Follow finding-schema.md. When no React is found, report "No React to review". Common guards (glob empty, tool error) follow finding-schema.md defaults.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no React is found, report "No React to review". Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
 
 | Field        | Value                                                                                                  |
 | ------------ | ------------------------------------------------------------------------------------------------------ |

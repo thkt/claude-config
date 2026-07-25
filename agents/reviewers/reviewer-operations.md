@@ -54,11 +54,11 @@ reviewer-silence detects whether an error is swallowed; this reviewer looks at w
 
 ## Calibration
 
-See `~/.claude/skills/audit/references/calibration-examples.md` section OPS.
+See `~/.claude/agents/_lib/calibration-examples.md` section OPS.
 
 ## Output
 
-Follow finding-schema.md. When no code is found, report "No code to review". Reasoning should name blast radius (what breaks, who notices). Common guards (glob empty, tool error) follow finding-schema.md defaults. Test files and mock files excluded via Context Test (Intentional) in schema.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Reasoning should name blast radius (what breaks, who notices). Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults. Test files and mock files excluded via Context Test (Intentional) in schema.
 
 | Field        | Value                                                                                   |
 | ------------ | --------------------------------------------------------------------------------------- |

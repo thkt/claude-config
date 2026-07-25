@@ -44,11 +44,11 @@ When browser is unavailable, run code-only analysis and note in evidence that ru
 
 ## Calibration
 
-See `~/.claude/skills/audit/references/calibration-examples.md` section A11Y.
+See `~/.claude/agents/_lib/calibration-examples.md` section A11Y.
 
 ## Output
 
-Follow finding-schema.md. When no HTML is found, report "No HTML to review". When a11y-specialist-skills is unavailable run visual-only checks (contrast, motion), and when the external skill times out continue with completed checks. Common guards (glob empty, tool error) follow finding-schema.md defaults.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no HTML is found, report "No HTML to review". When a11y-specialist-skills is unavailable run visual-only checks (contrast, motion), and when the external skill times out continue with completed checks. Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
 
 | Field        | Value                                                                                                                  |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------- |

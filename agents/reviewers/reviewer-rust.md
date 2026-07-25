@@ -95,11 +95,11 @@ If any of these records the decision rationale, downgrade `documented?` to `Part
 
 ## Calibration
 
-See `~/.claude/skills/audit/references/calibration-examples.md` section RU. If absent, calibration is pending and reviewer should err on the side of flagging with `verification: pending_calibration`.
+See `~/.claude/agents/_lib/calibration-examples.md` section RU. If absent, calibration is pending and reviewer should err on the side of flagging with `verification: pending_calibration`.
 
 ## Output
 
-Follow finding-schema.md. When no `Cargo.toml` is found, report "No Rust to review". When `cargo` is unavailable review source-only and note it in the summary, when workspace lints are missing note the absence and review against defaults, and when clippy times out skip the Phase 1 clippy dedup and mark findings unverified. Common guards (glob empty, tool error) follow finding-schema.md defaults.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no `Cargo.toml` is found, report "No Rust to review". When `cargo` is unavailable review source-only and note it in the summary, when workspace lints are missing note the absence and review against defaults, and when clippy times out skip the Phase 1 clippy dedup and mark findings unverified. Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
 
 | Field        | Value                                                                    |
 | ------------ | ------------------------------------------------------------------------ |

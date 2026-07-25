@@ -85,7 +85,7 @@ Reviewer agent (`agents/reviewers/`) required sections: title, Analysis Phases, 
 
 ## Calibration
 
-See `~/.claude/skills/audit/references/calibration-examples.md` section PQ.
+See `~/.claude/agents/_lib/calibration-examples.md` section PQ.
 
 | Scenario                                    | Verdict       | Reason                                     |
 | ------------------------------------------- | ------------- | ------------------------------------------ |
@@ -99,7 +99,7 @@ See `~/.claude/skills/audit/references/calibration-examples.md` section PQ.
 
 ## Output
 
-Follow finding-schema.md. Skip files whose type does not match and log "not prompt". Return "Empty file" for an empty file.
+Follow ~/.claude/agents/_lib/finding-schema.md. Skip files whose type does not match and log "not prompt". Return "Empty file" for an empty file.
 
 | Field      | Value                                           |
 | ---------- | ----------------------------------------------- |

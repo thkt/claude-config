@@ -42,7 +42,7 @@ For borderline cases (e.g. a wrapper that earns its keep via identity stability 
 
 ### Phase 2 Steps
 
-When Phase 1 detects the same shallow pattern in 3+ places, follow the consolidation rule in finding-schema.md. Report a single finding, list all sites in evidence (max 5, then "and N more"), and take severity from the worst case.
+When Phase 1 detects the same shallow pattern in 3+ places, follow the consolidation rule in ~/.claude/agents/_lib/finding-schema.md. Report a single finding, list all sites in evidence (max 5, then "and N more"), and take severity from the worst case.
 
 ## Distinction from related reviewers
 
@@ -55,11 +55,11 @@ When Phase 1 detects the same shallow pattern in 3+ places, follow the consolida
 
 ## Calibration
 
-See `~/.claude/skills/audit/references/calibration-examples.md` section DP.
+See `~/.claude/agents/_lib/calibration-examples.md` section DP.
 
 ## Output
 
-Follow finding-schema.md. When no modules are found, report "No modules to review". Review mixed-language targets per language and do not silently skip. Common guards (glob empty, tool error) follow finding-schema.md defaults.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no modules are found, report "No modules to review". Review mixed-language targets per language and do not silently skip. Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
 
 | Field        | Value                                                                         |
 | ------------ | ----------------------------------------------------------------------------- |

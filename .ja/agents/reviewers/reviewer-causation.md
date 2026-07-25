@@ -53,11 +53,11 @@ background: true
 
 ## キャリブレーション
 
-`~/.claude/skills/audit/references/calibration-examples.md` の RC セクションを参照。
+`~/.claude/agents/_lib/calibration-examples.md` の RC セクションを参照。
 
 ## アウトプット
 
-finding-schema.md に従う。コードが見つからないときは "No code to review" を報告する。共通ガード (glob 結果なし、ツールエラー) は finding-schema.md のデフォルトに従う。正当化カモフラージュの finding は `workaround` にマップする。コメント単体の削除を提案してはならない。消すとシグナルが消える。修正はコメントが言い訳している原因を対象とし、新規追加よりも既存の状態やメカニズムを優先する。
+~/.claude/agents/_lib/finding-schema.md に従う。コードが見つからないときは "No code to review" を報告する。共通ガード (glob 結果なし、ツールエラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。正当化カモフラージュの finding は `workaround` にマップする。コメント単体の削除を提案してはならない。消すとシグナルが消える。修正はコメントが言い訳している原因を対象とし、新規追加よりも既存の状態やメカニズムを優先する。
 
 | フィールド   | 値                                                                                     |
 | ------------ | -------------------------------------------------------------------------------------- |

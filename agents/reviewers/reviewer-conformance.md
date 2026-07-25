@@ -13,7 +13,7 @@ Decide whether the implemented diff faithfully meets the originating issue/spec,
 
 ## Scope Notes
 
-This agent is not part of the `/audit` reviewer pool. It uses the custom format below, not `finding-schema.md`.
+This agent is not part of the `/audit` reviewer pool. It uses the custom format below, not `~/.claude/agents/_lib/finding-schema.md`.
 
 Spec axis only. It checks the implemented diff against the originating spec (post-implementation).
 

@@ -40,7 +40,7 @@ Categorically unsafe constructs are reported as Critical without tracing an atta
 
 ## Reporting Bar
 
-reviewer-security uses the relaxed bar defined in `finding-schema.md`. Include a finding with a concrete fix suggestion even when exploitability is uncertain. Purely speculative items (no concrete trigger, no fix) are still excluded.
+reviewer-security uses the relaxed bar defined in `~/.claude/agents/_lib/finding-schema.md`. Include a finding with a concrete fix suggestion even when exploitability is uncertain. Purely speculative items (no concrete trigger, no fix) are still excluded.
 
 | Signal strength     | Severity | Action        |
 | ------------------- | -------- | ------------- |
@@ -64,11 +64,11 @@ reviewer-security uses the relaxed bar defined in `finding-schema.md`. Include a
 
 ## Calibration
 
-See `~/.claude/skills/audit/references/calibration-examples.md` section SEC.
+See `~/.claude/agents/_lib/calibration-examples.md` section SEC.
 
 ## Output
 
-Follow finding-schema.md. Relaxed reporting bar (override). When no code is found, report "No code to review". Common guards (glob empty, tool error) follow finding-schema.md defaults. Reasoning uses threat model. Actor capability, attack vector, concrete impact.
+Follow ~/.claude/agents/_lib/finding-schema.md. Relaxed reporting bar (override). When no code is found, report "No code to review". Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults. Reasoning uses threat model. Actor capability, attack vector, concrete impact.
 
 | Field        | Value                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |

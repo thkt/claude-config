@@ -42,7 +42,7 @@ background: true
 
 ### Phase 2 手順
 
-Phase 1 が同じ浅いパターンを 3 箇所以上で検出したら、finding-schema.md の統合ルールに従う。単一の finding として報告し、全箇所を evidence に列挙し (最大 5 件、以降は "and N more")、severity は最悪ケースから取る。
+Phase 1 が同じ浅いパターンを 3 箇所以上で検出したら、~/.claude/agents/_lib/finding-schema.md の統合ルールに従う。単一の finding として報告し、全箇所を evidence に列挙し (最大 5 件、以降は "and N more")、severity は最悪ケースから取る。
 
 ## 関連 reviewer との区別
 
@@ -55,11 +55,11 @@ Phase 1 が同じ浅いパターンを 3 箇所以上で検出したら、findin
 
 ## キャリブレーション
 
-`~/.claude/skills/audit/references/calibration-examples.md` の DP セクションを参照。
+`~/.claude/agents/_lib/calibration-examples.md` の DP セクションを参照。
 
 ## アウトプット
 
-finding-schema.md に従う。モジュールが見つからないときは "No modules to review" を報告する。混在言語の対象は言語ごとにレビューし、黙ってスキップしない。共通ガード (glob 結果なし、ツールエラー) は finding-schema.md のデフォルトに従う。
+~/.claude/agents/_lib/finding-schema.md に従う。モジュールが見つからないときは "No modules to review" を報告する。混在言語の対象は言語ごとにレビューし、黙ってスキップしない。共通ガード (glob 結果なし、ツールエラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。
 
 | フィールド   | 値                                                                             |
 | ------------ | ------------------------------------------------------------------------------ |

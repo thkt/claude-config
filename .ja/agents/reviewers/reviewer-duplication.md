@@ -57,11 +57,11 @@ background: true
 
 ## キャリブレーション
 
-`~/.claude/skills/audit/references/calibration-examples.md` の DRY セクションを参照。
+`~/.claude/agents/_lib/calibration-examples.md` の DRY セクションを参照。
 
 ## アウトプット
 
-finding-schema.md に従う。コードが見つからないときは "No code to review" と報告する。evidence は各出現を `Location N: fileN:line snippet` として列挙する。共通ガード (glob 結果なし、ツールエラー) は finding-schema.md のデフォルトに従う。
+~/.claude/agents/_lib/finding-schema.md に従う。コードが見つからないときは "No code to review" と報告する。evidence は各出現を `Location N: fileN:line snippet` として列挙する。共通ガード (glob 結果なし、ツールエラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。
 
 | フィールド   | 値                                                                |
 | ------------ | ----------------------------------------------------------------- |

@@ -1,6 +1,6 @@
 # キャリブレーション例
 
-audit reviewer 向けのドメイン別 REPORT/SKIP 例。各 reviewer がこのファイルを参照する。原則は `finding-schema.md` にある。
+audit reviewer 向けのドメイン別 REPORT/SKIP 例。各 reviewer がこのファイルを参照する。原則は `~/.claude/agents/_lib/finding-schema.md` にある。
 
 ## CQ (reviewer-readability)
 

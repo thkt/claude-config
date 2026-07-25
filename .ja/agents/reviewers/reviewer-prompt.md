@@ -85,7 +85,7 @@ reviewer エージェント (`agents/reviewers/`) の必須セクション: titl
 
 ## キャリブレーション
 
-`~/.claude/skills/audit/references/calibration-examples.md` の PQ セクションを参照。
+`~/.claude/agents/_lib/calibration-examples.md` の PQ セクションを参照。
 
 | シナリオ                                | 判定          | 理由                                             |
 | --------------------------------------- | ------------- | ------------------------------------------------ |
@@ -99,7 +99,7 @@ reviewer エージェント (`agents/reviewers/`) の必須セクション: titl
 
 ## アウトプット
 
-finding-schema.md に従う。ファイル種別が一致しないファイルはスキップし "not prompt" をログする。空ファイルは "Empty file" を返す。
+~/.claude/agents/_lib/finding-schema.md に従う。ファイル種別が一致しないファイルはスキップし "not prompt" をログする。空ファイルは "Empty file" を返す。
 
 | フィールド | 値                                              |
 | ---------- | ----------------------------------------------- |
