@@ -1,0 +1,32 @@
+---
+paths:
+  - ".claude/agents/**"
+  - ".claude/docs/**"
+  - ".claude/output-styles/**"
+  - ".claude/rules/**"
+  - ".claude/skills/**"
+  - ".claude/workflows/**"
+  - ".ja/**"
+  - "CLAUDE.md"
+  - "README.md"
+  - "agents/**"
+  - "docs/**"
+  - "output-styles/**"
+  - "rules/**"
+  - "skills/**"
+  - "workflows/**"
+---
+
+# Mirror Conventions
+
+`.ja/` と英語側ファイルの対応に関する規約 (ADR-0073)。
+
+## 正と反映
+
+`.ja/` 配下を正とし、編集は `.ja/` を起点に行ったうえで、同一コミットで英語側ファイルへ反映する。反映先は `.ja/` を除いたパス。スコープの判定も `.ja/` を除いたパスで行う。
+
+英語側は実行物であって正ではない。英語側の都合で生まれた表現を `.ja/` へ逆流させない。英語版のテストが英単語を検査するからと `.ja/` の prompt にその単語を差し込むのは違反。言語ごとの検査が要るならテストを言語ごとに分ける。
+
+## 反映の形
+
+反映の形はファイル種別でなく内容で決める。散文を運ぶファイル (Markdown と、`workflows/build.js` のような prompt を内包する script) は散文 (コメント / prompt / メッセージ文字列) を翻訳し、コード構造・識別子・stopped 値・JSON キー・schema は同一に保つ。散文を持たない script は同一コピー。翻訳対象のファイルは `cp` で同期しない。

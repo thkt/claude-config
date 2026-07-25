@@ -112,6 +112,8 @@ AI 失敗パターン (インライン):
 | ファイル                                           | 意図                       |
 | -------------------------------------------------- | -------------------------- |
 | [MARKDOWN](../rules/conventions/MARKDOWN.md)       | Markdown 規約              |
+| [MIRROR](../rules/conventions/MIRROR.md)           | `.ja/` 正のミラー運用      |
+| [WORKFLOWS](../rules/conventions/WORKFLOWS.md)     | Workflow script の規約     |
 | [SKILLS](../rules/conventions/SKILLS.md)           | Skill 定義の標準           |
 | [SUBAGENT](../rules/conventions/SUBAGENT.md)       | サブエージェント定義の標準 |
 | [PLUGIN](../rules/conventions/PLUGIN.md)           | プラグイン制約             |
