@@ -286,7 +286,7 @@ if (mode !== "cleanup") {
     );
 
     // ---- Rejudge: fix が finding を実際に解消したかの再判定 ----
-    // fixed[] は fix agent の自己申告なので、post-fix diff を読み直す critic-audit を挟む。
+    // fixed[] は fix agent の自己申告なので、それを resolved の根拠にしない。
     phase("Rejudge");
     const rejudged = await agent(
       anchor(
@@ -308,7 +308,7 @@ if (mode !== "cleanup") {
       },
     );
     if (rejudged) {
-      // agent が落とした指摘を resolved に流さないため、欠けた評決は still_open に倒す。
+      // agent が評決を落としたとき、それを resolved と読まない。
       const byVerdict = new Map(rejudged.verdicts.map((v) => [v.id, v]));
       reopened = survivors
         .filter((s) => (byVerdict.get(s.id) || {}).verdict !== "resolved")
@@ -319,7 +319,7 @@ if (mode !== "cleanup") {
         }));
       log(`rejudge: reopened ${reopened.length} / survivors ${survivors.length}`);
     } else {
-      // 空配列だと「再判定して 0 件」と読めてしまうので、未判定は null で区別する。
+      // 空配列にすると「再判定して 0 件」と読めてしまう。
       reopened = null;
       rejudgeNotes =
         "rejudge agent が結果を返さなかったため resolved / still_open を判定していない";

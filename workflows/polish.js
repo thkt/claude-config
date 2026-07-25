@@ -295,7 +295,7 @@ if (mode !== "cleanup") {
     );
 
     // ---- Rejudge: did the fix actually resolve each finding? ----
-    // fixed[] is the fix agent's own report, so a critic-audit re-reads the post-fix diff.
+    // fixed[] is the fix agent's own report, so it is not evidence of resolution.
     phase("Rejudge");
     const rejudged = await agent(
       anchor(
@@ -317,8 +317,7 @@ if (mode !== "cleanup") {
       },
     );
     if (rejudged) {
-      // A missing verdict falls to still_open so a finding the agent dropped
-      // never leaks through as resolved.
+      // A verdict the agent dropped is not read as resolved.
       const byVerdict = new Map(rejudged.verdicts.map((v) => [v.id, v]));
       reopened = survivors
         .filter((s) => (byVerdict.get(s.id) || {}).verdict !== "resolved")
@@ -329,7 +328,7 @@ if (mode !== "cleanup") {
         }));
       log(`rejudge: ${reopened.length} reopened / ${survivors.length} survivors`);
     } else {
-      // An empty array would read as "rejudged, zero reopened", so null marks undecided.
+      // An empty array would read as "rejudged, zero reopened".
       reopened = null;
       rejudgeNotes = "the rejudge agent returned nothing, so resolved / still_open is undecided";
     }
