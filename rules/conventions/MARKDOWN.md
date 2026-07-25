@@ -90,6 +90,7 @@ When an always-loaded instruction turns out to duplicate something else, what it
 | `output-styles/**`                                 | Never delete from `rules/`. The user can switch output styles, so deleting makes the instruction style-dependent                            |
 | Another always-loaded `rules/` file                | Delete the compressed restatement, keep the table that carries the criteria                                                                 |
 | Anything whose removal relaxes a threshold or gate | Keep until a false positive shows up in practice                                                                                            |
+| A duplicate that works as a reverse index          | Keep it. The defining side is indexed by principle, so the path from situation to principle exists only in the index                        |
 
 ## Out of scope
 
