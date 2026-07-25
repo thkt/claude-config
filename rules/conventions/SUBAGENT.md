@@ -7,7 +7,7 @@ paths:
 
 # Subagent Conventions
 
-Conventions for sub-agent files under `.claude/agents/`.
+Conventions for sub-agent files under `agents/`.
 
 ## Naming
 

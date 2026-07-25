@@ -7,7 +7,7 @@ paths:
 
 # Skill Conventions
 
-`.claude/skills/` 配下のスキルファイルに対する規約。
+`skills/` 配下のスキルファイルに対する規約。
 
 ## 命名
 

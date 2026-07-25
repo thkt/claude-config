@@ -7,7 +7,7 @@ paths:
 
 # Skill Conventions
 
-Conventions for skill files under `.claude/skills/`.
+Conventions for skill files under `skills/`.
 
 ## Naming
 

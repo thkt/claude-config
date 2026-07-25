@@ -7,7 +7,7 @@ paths:
 
 # Subagent Conventions
 
-`.claude/agents/` 配下のサブエージェントファイルに対する規約。
+`agents/` 配下のサブエージェントファイルに対する規約。
 
 ## 命名
 
