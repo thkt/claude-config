@@ -94,6 +94,7 @@ This directory contains important decisions about the project.
 | [0085](0085-replace-builds-audit-fan-out-with-selection-based-verification.md) | ADR-0085: build の audit fan-out を選択ベース検証に置換する | accepted | 2026-07-14 |
 | [0086](0086-draft-plans-for-plan-less-issues-in-build.md) | ADR-0086: Plan 節なし issue の plan を build 内で自律生成する | accepted | 2026-07-14 |
 | [0087](0087-enforce-unit-size-caps-with-regeneration-in-build.md) | ADR-0087: unit サイズ上限を build に決定論強制し、超過時は再生成 + fail-closed で処理する | accepted | 2026-07-22 |
+| [0088](0088-commit-each-unit-in-build-with-plan-anchors-as-trailers.md) | ADR-0088: build の実装を unit ごとにコミットし、plan のアンカーを trailer に載せる | accepted | 2026-07-25 |
 
 ## By Status
 
@@ -178,6 +179,8 @@ This directory contains important decisions about the project.
 - **0084**: ADR-0084: issue-gate を廃止し issue フローのオーケストレーションを人間に返す
 - **0085**: ADR-0085: build の audit fan-out を選択ベース検証に置換する
 - **0086**: ADR-0086: Plan 節なし issue の plan を build 内で自律生成する
+- **0087**: ADR-0087: unit サイズ上限を build に決定論強制し、超過時は再生成 + fail-closed で処理する
+- **0088**: ADR-0088: build の実装を unit ごとにコミットし、plan のアンカーを trailer に載せる
 
 ### Superseded
 

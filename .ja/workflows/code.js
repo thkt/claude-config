@@ -1,9 +1,9 @@
 export const meta = {
   name: "code",
   description:
-    '構造化 plan (units / test_command) を受け取り、unit ごとに script 制御で実装する TDD workflow。test scenario を持つ unit は Red → Green で実装し、tests が空の unit (docs / 設定など検証可能な振る舞いが無いもの) は直接実装 1 段で扱う。TDD の要否は runtime でなく plan が選択する。未確認の Red は anomaly として記録し、最後に実装へ関与していない独立 agent が全 suite + lint + type-check を検証する。単独でも build からの workflow("code") でも呼べる。',
+    '構造化 plan (units / test_command) を受け取り、unit ごとに script 制御で実装する TDD workflow。test scenario を持つ unit は Red → Green で実装し、tests が空の unit (docs / 設定など検証可能な振る舞いが無いもの) は直接実装 1 段で扱う。TDD の要否は runtime でなく plan が選択する。未確認の Red は anomaly として記録し、最後に実装へ関与していない独立 agent が全 suite + lint + type-check を検証する。commit: true のとき、各 unit は plan の指示を trailer に載せた独立コミットとして着地する (ADR-0088)。単独でも build からの workflow("code") でも呼べる。',
   whenToUse:
-    "headless の plan 実装。args は {plan, repo, model}。plan は units / test_command を持つ構造化 plan (think skill が生成する形)。model (任意) は実装 agent にのみ伝播する (default は sonnet)。実装 agent は effort xhigh で走る。",
+    "headless の plan 実装。args は {plan, repo, model, commit, issue, untracked_baseline}。plan は units / test_command を持つ構造化 plan (think skill が生成する形)。model (任意) は実装 agent にのみ伝播する (default は sonnet)。commit: true は unit の完了ごとにコミットし、issue / untracked_baseline は commit trailer と never-stage 集合になる。実装 agent は effort xhigh で走る。",
   phases: [{ title: "Implement" }, { title: "Verify" }],
 };
 
@@ -40,14 +40,31 @@ const anchor = (p) =>
     ? `すべての git / ファイル / ビルドコマンドを ${repo} のリポジトリから実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`
     : p;
 
+// unit ごとのコミットは opt-in。単独起動では working tree を未コミットのまま残し、build
+// だけが有効化して自身の diff 基準を HEAD から外す (ADR-0088)。issue は trailer に、
+// untracked_baseline は never-stage 集合になる。
+const commitPerUnit = input.commit === true;
+const issueRef = String(input.issue || "")
+  .replace(/^#/, "")
+  .trim();
+const untrackedBaseline = Array.isArray(input.untracked_baseline) ? input.untracked_baseline : [];
+
 // plan の units は実装順に並んでいる。並び順のまま実行する。
 const units = plan.units;
 const testCmd = plan.test_command || "";
 const completed = [];
 const anomalies = [];
+const commits = [];
 // unit 途中終了の返り値は 3 サイト共通の shape。completed / anomalies を閉じ込め、部分進捗を
 // 呼び出し元へそのまま渡す
-const stopUnit = (stopped, unit, why) => ({ stopped, unit: unit.id, why, completed, anomalies });
+const stopUnit = (stopped, unit, why) => ({
+  stopped,
+  unit: unit.id,
+  why,
+  completed,
+  anomalies,
+  commits,
+});
 // 全実装 agent で共有し、model / effort の変更を 1 箇所にする。実装は plan の contract /
 // tests を実行する段なので sonnet で足りる。ここで失敗が続くなら plan の欠陥シグナル。
 const implementOpts = { model: input.model || "sonnet", effort: "xhigh" };
@@ -86,6 +103,79 @@ const GREEN_SCHEMA = {
         "contract / files が求める実装のうち、この unit で実装しなかった項目。無ければ空配列。ここに列挙されたものだけが正当な先送りとして anomaly に記録される",
     },
   },
+};
+
+const COMMIT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["committed", "subject", "left_unstaged"],
+  properties: {
+    committed: { type: "boolean" },
+    subject: { type: "string", description: "自分が書いた Conventional Commits の subject 行" },
+    left_unstaged: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "意図的に stage しなかった path。committed が false のときは、何もコミットしなかった理由",
+    },
+  },
+};
+
+// メッセージ本文は agent の prompt 文でなく plan から script が組み立てる。agent に届く
+// 指示には issue 由来 (untrusted) の文が混ざり、コミットメッセージは改変不能な記録だから。
+// trailer 形式は plan のアンカーを機械可読に保つ (git interpret-trailers / git log --format)。
+const commitBody = (unit, tests) =>
+  [
+    unit.goal,
+    "",
+    `Unit: ${unit.id}`,
+    `Contract: ${String(unit.contract || "")
+      .split("\n")
+      .join(" ")}`,
+    ...(tests.length ? [`Tests: ${tests.map((t) => t.id).join(", ")}`] : []),
+    `Seam: ${unit.seam === true}`,
+    ...(issueRef ? [`Issue: #${issueRef}`] : []),
+  ].join("\n");
+
+// unit ごとに 1 コミット。working tree がその unit の作業だけを持っている間に取る。混ざった
+// 後の分割は hunk の帰属を LLM に推測させることになる。コミット失敗 (pre-commit gate の
+// ブロック、ADR-0064) は stop でなく anomaly とし、作業はツリーに残して呼び出し元の最終
+// コミットが拾う。
+const commitUnit = async (unit, tests, testFiles) => {
+  if (!commitPerUnit) return;
+  const res = await agent(
+    anchor(
+      `unit ${unit.id} の作業を 1 コミットにする。\n` +
+        `stage するのはこの unit の作業だけ: plan の対象ファイル ${JSON.stringify(unit.files)}` +
+        (testFiles.length ? `、テストファイル ${JSON.stringify(testFiles)}` : "") +
+        `、およびこの run でこの unit のために自分が作成 / 変更した他のファイル。\`git add -A\` と \`git add .\` は使わない。` +
+        (untrackedBaseline.length
+          ? `次の path は決して stage しない: ${JSON.stringify(untrackedBaseline)} — この run より前から存在し、stage するとローカルのメモや設定が PR に漏れる。`
+          : "") +
+        `stage しなかったものは left_unstaged に列挙する。\n` +
+        `コミットは \`git commit -F {tempfile}\` で行う。メッセージは、staged diff から自分が書く Conventional Commits の subject (72 文字以内、命令形、小文字始まり、末尾ピリオド無し)、空行、続けて次のブロックを逐語コピー (verbatim、加えない・落とさない・言い換えない):\n` +
+        `${commitBody(unit, tests)}\n` +
+        `staging 規則の結果 stage されるものが無ければコミットしない。committed: false を返し、理由を left_unstaged に書く。` +
+        (repo
+          ? ` コミット前に \`git rev-parse --show-toplevel\` を実行し、出力が ${repo} であることを確認する。異なる場合はコミットせず中断し、不一致を報告する。`
+          : ""),
+    ),
+    {
+      label: `commit:${unit.id}`,
+      phase: `Unit ${unit.id}`,
+      agentType: "general-purpose",
+      schema: COMMIT_SCHEMA,
+      model: "haiku",
+    },
+  );
+  if (res && res.committed) {
+    commits.push({ unit: unit.id, subject: res.subject });
+    log(`${unit.id}: コミット済み (${res.subject})。`);
+    return;
+  }
+  const why = res ? (res.left_unstaged || []).join(" / ") : "commit agent が結果を返さなかった";
+  anomalies.push({ unit: unit.id, kind: "uncommitted", notes: why });
+  log(`${unit.id}: 未コミット (${why})。working tree に残す。`);
 };
 
 // 先送りの検出は agent の自己申告 (deferred) を script が anomaly 化する。緑のまま
@@ -178,6 +268,8 @@ for (const unit of units) {
 
     log(`${unit.id}: 直接実装 done (${completed.length}/${units.length})。`);
 
+    await commitUnit(unit, tests, []);
+
     continue;
   }
 
@@ -223,6 +315,9 @@ for (const unit of units) {
     anomalies.push({ unit: unit.id, kind: "no-red", notes: red.notes });
     log(`${unit.id}: Red 未確認 (${red.notes})。implement step を skip する。`);
     completed.push(unit.id);
+    // Red step が書いたテストはツリーに残っているので、この unit もコミットする。何も
+    // 書いていない unit は committed: false で返り、そのまま記録される。
+    await commitUnit(unit, tests, red.test_files || []);
     continue;
   }
 
@@ -269,6 +364,7 @@ for (const unit of units) {
   recordDeferred(unit, green);
   completed.push(unit.id);
   log(`${unit.id}: Red → Green done (${completed.length}/${units.length})。`);
+  await commitUnit(unit, tests, red.test_files || []);
 }
 
 const VERIFY_SCHEMA = {
@@ -309,12 +405,13 @@ const verify = (await agent(
 };
 
 log(
-  `code: ${completed.length}/${units.length} unit done、anomaly ${anomalies.length} 件、verify tests=${verify.tests_pass} gates=${verify.gates_pass}。`,
+  `code: ${completed.length}/${units.length} unit done、コミット ${commits.length} 件、anomaly ${anomalies.length} 件、verify tests=${verify.tests_pass} gates=${verify.gates_pass}。`,
 );
 
 return {
   completed,
   anomalies,
+  commits,
   // 全 unit の tests が空なら suite は何も検証しておらず、自動検証の実体は gates のみ。
   // 呼び出し元が「テスト全緑」を独立した信号と誤読しないよう明示する。
   verification: units.some((u) => (Array.isArray(u.tests) ? u.tests : []).length)

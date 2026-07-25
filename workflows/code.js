@@ -1,9 +1,9 @@
 export const meta = {
   name: "code",
   description:
-    'TDD workflow that takes a structured plan (units / test_command) and implements per unit under script enforcement. A unit with test scenarios runs Red -> Green; a unit with no tests (docs / config, no verifiable behavior) runs a single direct-implementation step, so whether TDD applies is selected in the plan, not decided at runtime. An unconfirmed Red is recorded as an anomaly, and at the end an independent agent verifies the full suite + lint + type-check. Callable standalone or nested from build via workflow("code").',
+    'TDD workflow that takes a structured plan (units / test_command) and implements per unit under script enforcement. A unit with test scenarios runs Red -> Green; a unit with no tests (docs / config, no verifiable behavior) runs a single direct-implementation step, so whether TDD applies is selected in the plan, not decided at runtime. An unconfirmed Red is recorded as an anomaly, and at the end an independent agent verifies the full suite + lint + type-check. With commit: true each unit lands as its own commit carrying the plan\'s instruction as trailers (ADR-0088). Callable standalone or nested from build via workflow("code").',
   whenToUse:
-    "Headless plan implementation. args is {plan, repo, model}; plan is a structured plan with units / test_command (as produced by the think skill). model (optional) propagates only to the implementation agents (defaults to sonnet). The implementation agents run at effort xhigh.",
+    "Headless plan implementation. args is {plan, repo, model, commit, issue, untracked_baseline}; plan is a structured plan with units / test_command (as produced by the think skill). model (optional) propagates only to the implementation agents (defaults to sonnet). commit: true commits each unit as it completes; issue / untracked_baseline feed the commit trailers and the never-stage set. The implementation agents run at effort xhigh.",
   phases: [{ title: "Implement" }, { title: "Verify" }],
 };
 
@@ -37,15 +37,32 @@ const anchor = (p) =>
     ? `Run every git, file, and build command from the repository at ${repo} (begin each shell command with \`cd ${repo} && \`).\n\n${p}`
     : p;
 
+// Per-unit commits are opt-in so a standalone run still leaves the working tree
+// uncommitted; build turns them on and moves its own diff base off HEAD accordingly
+// (ADR-0088). issue feeds the trailer; untracked_baseline is the never-stage set.
+const commitPerUnit = input.commit === true;
+const issueRef = String(input.issue || "")
+  .replace(/^#/, "")
+  .trim();
+const untrackedBaseline = Array.isArray(input.untracked_baseline) ? input.untracked_baseline : [];
+
 // The plan lists units in implementation order; run them as listed.
 const units = plan.units;
 
 const testCmd = plan.test_command || "";
 const completed = [];
 const anomalies = [];
+const commits = [];
 // The three mid-loop terminal returns share this shape; completed / anomalies close over
 // the run-level arrays so the caller still sees partial progress
-const stopUnit = (stopped, unit, why) => ({ stopped, unit: unit.id, why, completed, anomalies });
+const stopUnit = (stopped, unit, why) => ({
+  stopped,
+  unit: unit.id,
+  why,
+  completed,
+  anomalies,
+  commits,
+});
 // Shared by every implementation agent so a model/effort change lands once. Implementation
 // executes the plan's contract / tests, so sonnet suffices; repeated failure here signals a
 // defective plan.
@@ -85,6 +102,80 @@ const GREEN_SCHEMA = {
         "items required by the contract / files that this unit did not implement; empty array if none. Only items listed here count as legitimate deferrals and are recorded as anomalies",
     },
   },
+};
+
+const COMMIT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["committed", "subject", "left_unstaged"],
+  properties: {
+    committed: { type: "boolean" },
+    subject: { type: "string", description: "the Conventional Commits subject line you wrote" },
+    left_unstaged: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "paths deliberately left unstaged, or - when committed is false - the reason nothing was committed",
+    },
+  },
+};
+
+// The message body is rendered here from the plan, never from the agent's prompt text:
+// the instruction reaching the agent carries issue-derived (untrusted) prose, and a
+// commit message is an unamendable record. Trailer form keeps the plan's anchors
+// machine-readable (git interpret-trailers / git log --format).
+const commitBody = (unit, tests) =>
+  [
+    unit.goal,
+    "",
+    `Unit: ${unit.id}`,
+    `Contract: ${String(unit.contract || "")
+      .split("\n")
+      .join(" ")}`,
+    ...(tests.length ? [`Tests: ${tests.map((t) => t.id).join(", ")}`] : []),
+    `Seam: ${unit.seam === true}`,
+    ...(issueRef ? [`Issue: #${issueRef}`] : []),
+  ].join("\n");
+
+// One commit per unit, taken while the working tree still holds only that unit's work;
+// splitting the merged tree afterwards would be an LLM guess at hunk ownership. A failed
+// commit (a blocking pre-commit gate, ADR-0064) is an anomaly, not a stop: the work stays
+// in the tree and the caller's final commit sweeps it up.
+const commitUnit = async (unit, tests, testFiles) => {
+  if (!commitPerUnit) return;
+  const res = await agent(
+    anchor(
+      `Commit the work of unit ${unit.id} as one commit.\n` +
+        `Stage only this unit's work: the plan's target files ${JSON.stringify(unit.files)}` +
+        (testFiles.length ? `, the test files ${JSON.stringify(testFiles)}` : "") +
+        `, and any other file you created or modified for this unit during this run. Never run \`git add -A\` or \`git add .\`. ` +
+        (untrackedBaseline.length
+          ? `Never stage these paths: ${JSON.stringify(untrackedBaseline)} - they predate this run and would leak local notes and config into the PR. `
+          : "") +
+        `List anything you left unstaged in left_unstaged.\n` +
+        `Commit with \`git commit -F {tempfile}\`. The message is a Conventional Commits subject you write from the staged diff (<= 72 chars, imperative, lowercase, no trailing period), a blank line, then this block copied verbatim - add nothing, drop nothing, reword nothing:\n` +
+        `${commitBody(unit, tests)}\n` +
+        `If the staging rules leave nothing staged, do not commit: return committed: false with the reason in left_unstaged.` +
+        (repo
+          ? ` Before committing, run \`git rev-parse --show-toplevel\` and confirm the output is ${repo}; if it differs, abort without committing and report the mismatch.`
+          : ""),
+    ),
+    {
+      label: `commit:${unit.id}`,
+      phase: `Unit ${unit.id}`,
+      agentType: "general-purpose",
+      schema: COMMIT_SCHEMA,
+      model: "haiku",
+    },
+  );
+  if (res && res.committed) {
+    commits.push({ unit: unit.id, subject: res.subject });
+    log(`${unit.id}: committed (${res.subject}).`);
+    return;
+  }
+  const why = res ? (res.left_unstaged || []).join(" / ") : "the commit agent returned no result";
+  anomalies.push({ unit: unit.id, kind: "uncommitted", notes: why });
+  log(`${unit.id}: not committed (${why}). Left in the working tree.`);
 };
 
 // Deferral detection turns the agent's self-report (deferred) into anomalies in the
@@ -175,6 +266,7 @@ for (const unit of units) {
     recordDeferred(unit, impl);
     completed.push(unit.id);
     log(`${unit.id}: direct implementation done (${completed.length}/${units.length}).`);
+    await commitUnit(unit, tests, []);
     continue;
   }
 
@@ -218,6 +310,9 @@ for (const unit of units) {
     anomalies.push({ unit: unit.id, kind: "no-red", notes: red.notes });
     log(`${unit.id}: Red unconfirmed (${red.notes}). Skipping the implement step.`);
     completed.push(unit.id);
+    // The tests the Red step wrote are still in the tree, so this unit is committed too;
+    // a unit that wrote nothing comes back committed: false and is recorded as such.
+    await commitUnit(unit, tests, red.test_files || []);
     continue;
   }
 
@@ -262,6 +357,7 @@ for (const unit of units) {
   recordDeferred(unit, green);
   completed.push(unit.id);
   log(`${unit.id}: Red -> Green done (${completed.length}/${units.length}).`);
+  await commitUnit(unit, tests, red.test_files || []);
 }
 
 const VERIFY_SCHEMA = {
@@ -301,12 +397,13 @@ const verify = (await agent(
 };
 
 log(
-  `code: ${completed.length}/${units.length} unit(s) done, ${anomalies.length} anomaly(ies), verify tests=${verify.tests_pass} gates=${verify.gates_pass}.`,
+  `code: ${completed.length}/${units.length} unit(s) done, ${commits.length} commit(s), ${anomalies.length} anomaly(ies), verify tests=${verify.tests_pass} gates=${verify.gates_pass}.`,
 );
 
 return {
   completed,
   anomalies,
+  commits,
   // With every unit's tests empty the suite verified nothing; the real automated
   // verification is the gates. Make it explicit so the caller never misreads
   // "all tests green" as an independent signal.

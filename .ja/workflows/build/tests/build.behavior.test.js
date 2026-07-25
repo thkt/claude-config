@@ -86,6 +86,9 @@ const makeStubs = ({
   diff,
   presence,
   critique,
+  branch,
+  untracked,
+  code,
 } = {}) => ({
   agent: (prompt, opts) => {
     const kind = kindOf(opts);
@@ -127,9 +130,11 @@ const makeStubs = ({
         };
       }
       case "branch":
-        return { branch: "feat/sample-branch" };
+        // head は分岐点 sha。既定で返すことで happy path は本番と同じ per-unit commit
+        // 経路 (ADR-0088) を通る。sha 以外を返す override で fallback 経路を踏める。
+        return branch ?? { branch: "feat/sample-branch", head: "a1b2c3d4e5f6a7b8" };
       case "untracked":
-        return { untracked: [] };
+        return untracked ?? { untracked: [] };
       case "cleanup":
         return { edits: [], tests_pass: true, stashed: false };
       case "critique":
@@ -145,12 +150,15 @@ const makeStubs = ({
   },
   workflow: (name) => {
     if (name === "code")
-      return {
-        completed: ["U-001"],
-        anomalies: [],
-        tests_pass: true,
-        gates_pass: true,
-      };
+      return (
+        code ?? {
+          completed: ["U-001"],
+          anomalies: [],
+          commits: [{ unit: "U-001", subject: "feat: sample subject" }],
+          tests_pass: true,
+          gates_pass: true,
+        }
+      );
     // 実 runtime の意味論: 未知の workflow 名は throw する。sibling() は code を先に試して
     // ここで解決するので build:code へ fallback しない。audit は ADR-0085 で build から
     // 外れたので、呼ばれたらこの throw が (fallback ではなく) テストを落とす。
@@ -859,6 +867,100 @@ test("tests 空の unit は invalid-plan にならず、言明 0 件なら prese
   );
   assert.deepEqual(result.missing_tests, [], "照合対象が無いので missing_tests は空");
   assert.ok(calls.phase.includes("Ship"), "直接実装 unit だけの plan でも Ship まで完走する");
+});
+
+// ---- ADR-0088: unit ごとの commit と分岐点基準の diff ----
+// Code が unit ごとに commit すると HEAD は分岐点でなくなる。Verify の 3 つの review が
+// `git diff HEAD` のままだと差分が空になり、scope 逸脱も conformance も無言で 0 件に
+// なる (可視の失敗ではなく silent pass)。基準を Branch が返す分岐点 sha に固定する。
+
+const refPlan = () =>
+  makePlan({
+    reference_module: { path: "src/existing", files: ["src/existing/index.ts"] },
+  });
+
+test("Verify の diff / conformance / structure が Branch の分岐点 sha を基準にし、素の git diff HEAD を使わない", async () => {
+  const { calls } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ plan: refPlan() }),
+  });
+  const sha = "a1b2c3d4e5f6a7b8";
+  const reviewPrompts = calls.agent
+    .filter((c) => ["diff-files", "conformance", "structure"].includes(c.opts.label))
+    .map((c) => ({ label: c.opts.label, prompt: c.prompt }));
+  assert.equal(reviewPrompts.length, 3, "diff-files / conformance / structure の 3 つが走る");
+  for (const { label, prompt } of reviewPrompts) {
+    assert.ok(prompt.includes(`git diff ${sha}`), `${label} の diff 基準が分岐点 sha になる`);
+    assert.ok(
+      !/git diff HEAD\b/.test(prompt),
+      `${label} に素の git diff HEAD が残っていない (unit commit 後は空になる)`,
+    );
+  }
+});
+
+test("code に commit: true / issue / untracked_baseline が渡り、戻り値 unit_commits に件数が載る", async () => {
+  const { calls, result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      untracked: { untracked: ["notes/local-memo.md"] },
+      code: {
+        completed: ["U-001"],
+        anomalies: [],
+        commits: [{ unit: "U-001", subject: "feat: sample subject" }],
+        tests_pass: true,
+        gates_pass: true,
+      },
+    }),
+  });
+  const codeArgs = calls.workflow.find((c) => c.name === "code").args;
+  assert.equal(codeArgs.commit, true, "分岐点 sha があるとき code に commit: true が渡る");
+  assert.equal(codeArgs.issue, "123", "commit trailer 用に issue 番号が渡る");
+  assert.deepEqual(
+    codeArgs.untracked_baseline,
+    ["notes/local-memo.md"],
+    "build 以前からの未追跡パスが never-stage 集合として渡る",
+  );
+  assert.equal(result.unit_commits, 1, "戻り値 unit_commits に unit commit 件数が載る");
+});
+
+// 分岐点 sha を取れないまま unit commit を有効にすると、比較対象を失った Verify が
+// 無言で全 pass する。sha が使えないときは commit を止めて従来の HEAD 基準へ退避する。
+test("head が sha でないときは code の commit を false にし diff 基準を HEAD へ戻す", async () => {
+  for (const branch of [
+    { branch: "feat/sample-branch", head: "" },
+    { branch: "feat/sample-branch", head: "not-a-sha" },
+  ]) {
+    const { calls, result } = await runWorkflow(buildJs, {
+      args,
+      stubs: makeStubs({ branch, plan: refPlan() }),
+    });
+    const codeArgs = calls.workflow.find((c) => c.name === "code").args;
+    assert.equal(codeArgs.commit, false, `head=${JSON.stringify(branch.head)} で commit: false`);
+    const diffCall = calls.agent.find((c) => c.opts.label === "diff-files");
+    assert.ok(
+      diffCall.prompt.includes("git diff HEAD --name-only"),
+      "per-unit commit 無効時は従来どおり HEAD 基準で diff する",
+    );
+    assert.equal(result.stopped, undefined, "sha が取れなくても fail-close しない");
+  }
+});
+
+// unit が既に履歴にあるので、Ship は残余だけを commit し、残余ゼロを正常終了として扱う。
+test("per-unit commit 有効時の Ship prompt は残余 commit 指示になり、空なら skip を許す", async () => {
+  const withCommits = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const shipPrompt = agentCallsOf(withCommits.calls, "ship")[0].prompt;
+  assert.match(shipPrompt, /commit 自体を skip/, "残余が空なら commit を skip してよいと指示する");
+
+  const fallback = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ branch: { branch: "feat/sample-branch", head: "" } }),
+  });
+  const fallbackPrompt = agentCallsOf(fallback.calls, "ship")[0].prompt;
+  assert.notEqual(
+    shipPrompt,
+    fallbackPrompt,
+    "per-unit commit 無効時は単一 commit 指示に戻り、prompt が変わる",
+  );
 });
 
 test("stopped 値集合の snapshot が 13 値と exact match し、audit 経路の残骸が無い", () => {

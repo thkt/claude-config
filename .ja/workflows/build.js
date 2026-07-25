@@ -1,7 +1,7 @@
 export const meta = {
   name: "build",
   description:
-    "自律的な end-to-end build。/think + /issue で精緻化した Plan 節付き issue を入力に、Load (逐語 fetch → 決定論 id 収集 → 抽出 → validate + id クロスチェック) / Revalidate / Branch / Code / Cleanup / Verify / Ship を headless の決定論 script stage として実行する。Plan 節なし issue は入れ子の draft-plan workflow が plan を下書きする (ADR-0086)。正しさの確認は plan 自身のアンカー (前提、files スコープ、T-NNN 言明、conformance) との比較であり、開放的な欠陥探索ではない。重い担保 (/audit、/polish review) は draft PR に対して人間が起動する (ADR-0085)。",
+    "自律的な end-to-end build。/think + /issue で精緻化した Plan 節付き issue を入力に、Load (逐語 fetch → 決定論 id 収集 → 抽出 → validate + id クロスチェック) / Revalidate / Branch / Code / Cleanup / Verify / Ship を headless の決定論 script stage として実行する。Code は unit ごとに plan の指示を trailer に載せてコミットし、Verify / Ship は HEAD でなく Branch で捕まえた分岐点を基準にする (ADR-0088)。Plan 節なし issue は入れ子の draft-plan workflow が plan を下書きする (ADR-0086)。正しさの確認は plan 自身のアンカー (前提、files スコープ、T-NNN 言明、conformance) との比較であり、開放的な欠陥探索ではない。重い担保 (/audit、/polish review) は draft PR に対して人間が起動する (ADR-0085)。",
   whenToUse:
     'plan 付き issue の実装。args には {issue, repo, base?} を渡す (issue は番号 "123" / "#123" か URL、repo は対象リポジトリの絶対パス、base は任意で PR の base ブランチと新規 checkout の起点。epic ブランチ集約フローで使う)。repo の無い args は no-repo で早期 stop する。## Plan 節の無い issue は plan を自動生成する (ゴール + a11y、critic-design gate 付き。品質は /think + /issue path に劣る)。離席して戻れば、前提 / conformance findings / 決定論 verify 結果を記録した draft PR ができている。スコープ外の backlog 候補は workflow の戻り値で返り、/issue で起票する。途中で舵を取る場合は phase を対話的に進める。',
   phases: [
@@ -463,8 +463,15 @@ const REVALIDATE_SCHEMA = obj(["results"], {
 // (両者は plan のみに依存)。drift 停止時は作成済みブランチを stopped に載せて surface する。
 phase("Revalidate");
 const preconditions = plan.preconditions || [];
-const BRANCH_SCHEMA = obj(["branch"], {
+// head は分岐点を固定する。Code が unit ごとに commit するため run の途中で HEAD は分岐点
+// でなくなり、下流の \`git diff HEAD\` はすべて空を返す。可視の失敗でなく無言の pass に
+// なるので、基準を sha で持つ (ADR-0088)。
+const BRANCH_SCHEMA = obj(["branch", "head"], {
   branch: { type: "string", description: "checkout 済みブランチ名のみ" },
+  head: {
+    type: "string",
+    description: "checkout 後の `git rev-parse HEAD` の commit sha のみ",
+  },
 });
 // build 以前から作業ツリーにある私物を Verify の scope 逸脱から差し引く。
 const UNTRACKED_SCHEMA = obj(["untracked"], {
@@ -499,7 +506,8 @@ const [reval, branchRes, baseline] = await parallel([
           (baseBranch
             ? `\`git checkout -b {name} ${baseBranch}\` で ${baseBranch} を起点に作成する。`
             : `git checkout -b を実行する。`) +
-          `既に default 以外のブランチにいる場合は現在のブランチを維持する。branch フィールドにブランチ名だけを返す。${guard}`,
+          `既に default 以外のブランチにいる場合は現在のブランチを維持する。branch フィールドにブランチ名だけを返す。` +
+          `続けて \`git rev-parse HEAD\` を実行し、その sha を逐語で head フィールドに返す。${guard}`,
       ),
       {
         label: "checkout",
@@ -524,6 +532,16 @@ const [reval, branchRes, baseline] = await parallel([
     ),
 ]);
 const branch = (branchRes && branchRes.branch) || "";
+// build 以前から作業ツリーにある私物を Verify の scope 逸脱から差し引き、同じ一覧を
+// commit agent の never-stage 集合にも渡す。
+const baselineUntracked = baseline && Array.isArray(baseline.untracked) ? baseline.untracked : [];
+// unit ごとの commit は分岐点 sha が使えるときだけ有効にする。無ければ HEAD が動いた後に
+// 比較対象が消えるので、scope / conformance を未検証のまま出荷せず、build 末尾 1 コミットへ
+// 退避する。
+const startPoint = String((branchRes && branchRes.head) || "").trim();
+const perUnitCommits = /^[0-9a-f]{7,40}$/.test(startPoint);
+const diffBase = perUnitCommits ? startPoint : "HEAD";
+if (!perUnitCommits) log("分岐点 sha を取得できず、Ship で 1 回 commit し HEAD 基準で diff する。");
 if (preconditions.length) {
   if (!reval || !Array.isArray(reval.results)) {
     return {
@@ -605,6 +623,9 @@ const code =
     // 実装は plan の contract / tests を実行する段で、設計判断は plan 側 (think /
     // critic-design) が済ませている。code.js の default 変更を暗黙に追従しない。
     model: "sonnet",
+    commit: perUnitCommits,
+    issue: issueNumber,
+    untracked_baseline: baselineUntracked,
   })) || null;
 if (!code || code.stopped) {
   return { stopped: "code-failed", detail: code };
@@ -613,8 +634,9 @@ if (!code.tests_pass || !code.gates_pass)
   log(
     `code の独立 verify が失敗 (tests=${code.tests_pass} gates=${code.gates_pass})。Verify へ進み、PR に surface する。`,
   );
+const unitCommits = Array.isArray(code.commits) ? code.commits : [];
 log(
-  `Code: ${plan.units.length} unit 実装、独立 verify tests=${code.tests_pass} gates=${code.gates_pass}。`,
+  `Code: ${plan.units.length} unit 実装、unit commit ${unitCommits.length} 件、独立 verify tests=${code.tests_pass} gates=${code.gates_pass}。`,
 );
 
 // ---- Cleanup: simplify skill + test 検証 ----
@@ -747,7 +769,7 @@ const [diff, testPresence, conformance, structure] = await parallel([
     agent(
       anchor(
         `この build が変更したファイルを機械的に列挙する。判定やフィルタをしない。リポジトリルートから ` +
-          `\`git diff HEAD --name-only\` と \`git status --porcelain --untracked-files=all\` を実行し、変更パスと未追跡パス ` +
+          `\`git diff ${diffBase} --name-only\` と \`git status --porcelain --untracked-files=all\` を実行し、変更パスと未追跡パス ` +
           `(porcelain の "??" 行) の和集合を、リポジトリルート起点、1 ファイル 1 要素で files として返す。`,
       ),
       {
@@ -783,9 +805,9 @@ const [diff, testPresence, conformance, structure] = await parallel([
     agent(
       anchor(
         `起点 issue に対する conformance review。spec は GitHub issue #${issueNumber} で、` +
-          `\`gh issue view ${issueNumber}\` で読む。レビュー対象は未 commit の working-tree diff ` +
-          `(この build はまだ commit していない) なので、\`git diff HEAD\` と \`git status --porcelain\` が示す ` +
-          `未追跡ファイルを使う。main...HEAD は使わない (HEAD はまだ分岐点にある)。`,
+          `\`gh issue view ${issueNumber}\` で読む。レビュー対象は、この build が分岐点 ${diffBase} 以降に生んだ ` +
+          `もの全部 (commit 済みも未 commit も含む) なので、\`git diff ${diffBase}\` と \`git status --porcelain\` が示す ` +
+          `未追跡ファイルを使う。main...HEAD は使わない。`,
       ),
       {
         label: "conformance",
@@ -805,8 +827,8 @@ const [diff, testPresence, conformance, structure] = await parallel([
               (refModule.conventions?.length
                 ? `携える慣例は ${JSON.stringify(refModule.conventions)}。`
                 : "") +
-              `レビュー対象は未 commit の working-tree diff なので、\`git diff HEAD\` と ` +
-              `\`git status --porcelain\` が示す未追跡ファイルを使う。main...HEAD は使わない。` +
+              `レビュー対象は、この build が分岐点 ${diffBase} 以降に生んだもの全部 (commit 済みも未 commit も含む) ` +
+              `なので、\`git diff ${diffBase}\` と \`git status --porcelain\` が示す未追跡ファイルを使う。main...HEAD は使わない。` +
               `判定の前に参照モジュールのファイルを読み、参照モジュールが実際に行っていることだけを報告する。` +
               `従っていない慣例を発明しない。`,
           ),
@@ -823,7 +845,6 @@ const [diff, testPresence, conformance, structure] = await parallel([
 // 変更ファイルは plan の files か .claude/workspace/ 配下 (think の plan 下書き) に収まる。
 // diff 一覧を取得できないこと自体も surface する。
 const planFiles = new Set(plan.units.flatMap((u) => u.files));
-const baselineUntracked = baseline && Array.isArray(baseline.untracked) ? baseline.untracked : [];
 // porcelain はディレクトリを "dir/" の 1 行で出すので prefix でも突き合わせる。
 const preexisting = (f) =>
   baselineUntracked.some((b) => b && (f === b || f.startsWith(b.endsWith("/") ? b : `${b}/`)));
@@ -957,14 +978,25 @@ const shipPayload = {
 };
 
 const SHIP_SCHEMA = obj(["committed", "pr_url"], {
-  committed: { type: "boolean" },
+  committed: {
+    type: "boolean",
+    description:
+      "push したブランチがこの build の作業を持っているなら true。空の残余 commit を正しく skip した場合も含む",
+  },
   pr_url: { type: "string" },
   notes: { type: "string" },
 });
 
+// unit ごとの commit がある場合、unit は既に履歴に入っているので Ship は残り (cleanup の
+// 編集、unit commit が残したもの) だけを commit し、空でも許容する。無い場合は従来どおり
+// build 全体を 1 コミットにする。
+const commitInstruction = perUnitCommits
+  ? `この build は既に実装 unit ごとに commit 済み (${unitCommits.length} 件)。未 commit のまま残っているもの — cleanup の編集と unit commit が残したもの — を 1 つの Conventional Commits commit にまとめる。commit メッセージは自分で書く。下の stage 規則の結果 stage されるものが無ければ commit 自体を skip して push へ進む。これは異常でなく正常な結末。`
+  : `この build の変更を 1 つの Conventional Commits commit にまとめる。commit メッセージは自分で書く (diff を要約する)。`;
+
 const ship = await agent(
   anchor(
-    `この build の変更を 1 つの Conventional Commits commit にまとめる。commit メッセージは自分で書く (diff を要約する)。` +
+    commitInstruction +
       `stage する範囲は自分で絞る。\`git add -A\` と \`git add .\` は使わない。追跡済みファイルの変更はそのまま stage してよいが、` +
       `未追跡ファイル (\`git status --porcelain --untracked-files=all\` の "??" 行。ディレクトリ単位に畳まずファイル単位で判定する) は、plan の files ${JSON.stringify([...planFiles])} に含まれるか、この run で自分が作成したものだけを stage する。` +
       `それ以外の未追跡ファイルは build 以前から作業ツリーにあったものなので stage しない (仕様書・調査メモ・ローカル設定が PR に混入する)。stage しなかった未追跡パスは結果に列挙する。\n` +
@@ -972,7 +1004,7 @@ const ship = await agent(
       `(1) \`$HOME/.claude/settings.json\` から \`language\` を読み (未設定なら英語)、その言語で人間向け本文を書く。コード / 識別子 / 専門用語は翻訳しない。PR テンプレートはリポジトリのものがあれば使う (大文字小文字の区別なし、優先順 \`.github/pull_request_template.md\` > \`pull_request_template.md\` > \`docs/pull_request_template.md\` > \`PULL_REQUEST_TEMPLATE/\` ディレクトリ)。無ければ同梱の \`${bundled("skills/pr/templates/pr.md")}\` を使う。骨格を読んで body ファイルへ折り込む。人間向けセクションだけを、レビュアーが速く掴める順で埋める。先頭に解決する問題と到達する成果 (${JSON.stringify(plan.outcome)})、次に変更内容とアプローチ、最後にレビューの注目点。埋め草と事実の捏造をしない。Related / Closes は書かない (tail が \`Closes #\` を出す)。Scope / Backlog も書かない。スコープ外候補は PR に載せない。Design Decisions は plan の decisions (${JSON.stringify(plan.decisions || [])}) と実 diff から埋め、空なら節ごと省略する。\n` +
       `(2) この JSON をそのまま一時ファイルに書く。\n${JSON.stringify(shipPayload)}\n` +
       `(3) fact tail の追記と PR 作成を 1 つの \`&&\` チェーンで行い、レンダラー失敗時は PR 作成前に中断させる。リポジトリルートから ` +
-      `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{commit subject}" --body-file {bodyfile}\` を実行する。\n` +
+      `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{title}" --body-file {bodyfile}\` を実行する。{title} は自分が書いた commit subject、残余 commit を skip した場合はブランチ全体を表す Conventional Commits の subject。\n` +
       `pr-body.py は payload が壊れているか必須フィールドを欠くと非ゼロで終了する (何も出力しない)。チェーンが失敗したら他の手段で PR を作らない。committed と空の pr_url とエラーを報告する。\n` +
       `committed の状態と PR url を報告する。${guard}`,
   ),
@@ -1002,6 +1034,7 @@ return {
   conformance_high: (conf.findings || []).filter((f) => f.severity === "high").length,
   structure_findings: (struct.findings || []).length,
   cleanup_tests_pass: cleanup.tests_pass,
+  unit_commits: unitCommits.length,
   backlog_candidates: backlogCandidates,
   assumptions: plan.assumptions,
   pr_url: ship.pr_url,
