@@ -37,4 +37,4 @@ User Authority takes priority by default. Safety First wins on destructive opera
 
 ## Debug Investigation Protocol
 
-Fix directly when the cause is obvious. For non-obvious bugs (behavioral / intermittent / unclear root cause), pattern comparison diffs working similar code against the broken code.
+Fix directly when the cause is obvious. For non-obvious bugs (behavioral / intermittent / unclear root cause), pattern comparison diffs working similar code against the broken code. Raise 3 or more hypotheses and eliminate them by testing, rather than concluding from a single one.
