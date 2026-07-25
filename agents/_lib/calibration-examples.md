@@ -252,72 +252,6 @@ app.get("/users", async (req, res) => {
 | Filter | Context Test: allowlist validation                               |
 | Signal | `ALLOWED_SORTS.includes()` gates user input before interpolation |
 
-## TS (reviewer-strictness)
-
-### REPORT
-
-```typescript
-async function fetchUser(id: string): Promise<User> {
-  const res = await fetch(`/api/users/${id}`);
-  const data = await res.json();
-  return data as User;  // no runtime validation
-}
-```
-
-| Field   | Value                                                    |
-| ------- | -------------------------------------------------------- |
-| Filter  | Harm Test pass - external boundary without validation    |
-| Trigger | API returns unexpected shape (field renamed, null added) |
-| Impact  | Runtime crash far from the assertion site; hard to debug |
-
-### SKIP
-
-```typescript
-const schema = z.object({ name: z.string(), email: z.string().email() });
-
-function parseUser(raw: unknown): User {
-  const parsed = schema.parse(raw);
-  return parsed as User;  // Zod already validated; type narrowing
-}
-```
-
-| Field  | Value                                                        |
-| ------ | ------------------------------------------------------------ |
-| Filter | Context Test: validated input                                |
-| Signal | `schema.parse()` provides runtime guarantee before assertion |
-
-## TD (reviewer-encapsulation)
-
-### REPORT
-
-```rust
-pub struct Order {
-    pub items: Vec<Item>,
-    pub total: f64,      // must equal sum of items - not enforced
-    pub status: String,  // "pending" | "paid" | "shipped" - not enforced
-}
-```
-
-| Field   | Value                                                            |
-| ------- | ---------------------------------------------------------------- |
-| Filter  | Harm Test pass - invalid state is constructible                  |
-| Trigger | `Order { items: vec![], total: 999.0, status: "banana".into() }` |
-| Impact  | Business logic bugs from inconsistent total or invalid status    |
-
-### SKIP
-
-```rust
-pub struct Point {
-    pub x: f64,
-    pub y: f64,
-}
-```
-
-| Field  | Value                                                        |
-| ------ | ------------------------------------------------------------ |
-| Filter | Context Test: no invariants to enforce                       |
-| Signal | Any (x, y) combination is valid; encapsulation adds no value |
-
 ## RP (reviewer-react-pattern)
 
 ### REPORT
@@ -472,51 +406,6 @@ function formatCurrency(amount: number, locale: string): string {
 | ------ | ------------------------------------------------------------ |
 | Filter | Context Test: pure function, no hidden dependencies          |
 | Signal | `Intl.NumberFormat` is deterministic; test with input/output |
-
-## PERF (reviewer-performance)
-
-### REPORT
-
-```tsx
-function ChatList({ messages }: { messages: Message[] }) {
-  return (
-    <ul>
-      {messages.map(msg => (
-        <ChatBubble
-          key={msg.id}
-          message={msg}
-          onReply={() => handleReply(msg.id)}  // new function every render
-          style={{ padding: msg.isOwn ? 10 : 20 }}  // new object every render
-        />
-      ))}
-    </ul>
-  );
-}
-```
-
-| Field   | Value                                                          |
-| ------- | -------------------------------------------------------------- |
-| Filter  | Harm Test pass - N child re-renders per parent render          |
-| Trigger | Any state change in parent; list with 100+ items               |
-| Impact  | Inline arrow + inline object break `React.memo` on every child |
-
-### SKIP
-
-```tsx
-function SettingsToggle({ label, checked, onChange }: Props) {
-  return (
-    <label>
-      {label}
-      <input type="checkbox" checked={checked} onChange={() => onChange(!checked)} />
-    </label>
-  );
-}
-```
-
-| Field  | Value                                                      |
-| ------ | ---------------------------------------------------------- |
-| Filter | Context Test: leaf component, no children to re-render     |
-| Signal | Inline arrow on leaf; memoizing saves nothing (no subtree) |
 
 ## PE (reviewer-progressive)
 
@@ -706,11 +595,6 @@ function validateInvoiceDate(date: Date, billingCycle: BillingCycle): boolean {
 | Filter | Context Test: domain-specific logic with no existing equivalent |
 | Signal | Billing cycle validation is unique to this feature              |
 
-## DOC (reviewer-document)
-
-### REPORT
-
-```markdown
 ## Installation
 
 Install globally: $ npm install -g myapp

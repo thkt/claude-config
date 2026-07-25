@@ -7,7 +7,7 @@ paths:
 
 # Workflow Conventions
 
-Conventions for workflow scripts (headless deterministic pipelines) under `.claude/workflows/`.
+Conventions for workflow scripts (headless deterministic pipelines) under `workflows/`.
 
 ## Degradation recording
 

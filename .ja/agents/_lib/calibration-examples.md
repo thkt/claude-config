@@ -252,72 +252,6 @@ app.get("/users", async (req, res) => {
 | Filter | Context Test: allowlist による検証                                |
 | Signal | `ALLOWED_SORTS.includes()` が補間前にユーザー入力をゲートしている |
 
-## TS (reviewer-strictness)
-
-### REPORT
-
-```typescript
-async function fetchUser(id: string): Promise<User> {
-  const res = await fetch(`/api/users/${id}`);
-  const data = await res.json();
-  return data as User; // no runtime validation
-}
-```
-
-| Field   | Value                                                  |
-| ------- | ------------------------------------------------------ |
-| Filter  | Harm Test pass: 検証なしの外部境界                     |
-| Trigger | API が予期しない形を返す (フィールド改名、null 追加)   |
-| Impact  | アサート位置から離れたランタイムクラッシュ; debug 困難 |
-
-### SKIP
-
-```typescript
-const schema = z.object({ name: z.string(), email: z.string().email() });
-
-function parseUser(raw: unknown): User {
-  const parsed = schema.parse(raw);
-  return parsed as User; // Zod already validated; type narrowing
-}
-```
-
-| Field  | Value                                               |
-| ------ | --------------------------------------------------- |
-| Filter | Context Test: 検証済み入力                          |
-| Signal | `schema.parse()` がアサート前にランタイム保証を提供 |
-
-## TD (reviewer-encapsulation)
-
-### REPORT
-
-```rust
-pub struct Order {
-    pub items: Vec<Item>,
-    pub total: f64,      // must equal sum of items - not enforced
-    pub status: String,  // "pending" | "paid" | "shipped" - not enforced
-}
-```
-
-| Field   | Value                                                            |
-| ------- | ---------------------------------------------------------------- |
-| Filter  | Harm Test pass: 不正状態が構築可能                               |
-| Trigger | `Order { items: vec![], total: 999.0, status: "banana".into() }` |
-| Impact  | total 不一致や不正 status からビジネスロジックバグ               |
-
-### SKIP
-
-```rust
-pub struct Point {
-    pub x: f64,
-    pub y: f64,
-}
-```
-
-| Field  | Value                                                 |
-| ------ | ----------------------------------------------------- |
-| Filter | Context Test: 強制すべき不変条件なし                  |
-| Signal | (x, y) はどんな組合せも有効; encapsulation は価値ゼロ |
-
 ## RP (reviewer-react-pattern)
 
 ### REPORT
@@ -479,51 +413,6 @@ function formatCurrency(amount: number, locale: string): string {
 | ------ | ------------------------------------------------------- |
 | Filter | Context Test: 純粋関数、隠れた依存なし                  |
 | Signal | `Intl.NumberFormat` は決定的; input/output でテスト可能 |
-
-## PERF (reviewer-performance)
-
-### REPORT
-
-```tsx
-function ChatList({ messages }: { messages: Message[] }) {
-  return (
-    <ul>
-      {messages.map((msg) => (
-        <ChatBubble
-          key={msg.id}
-          message={msg}
-          onReply={() => handleReply(msg.id)} // new function every render
-          style={{ padding: msg.isOwn ? 10 : 20 }} // new object every render
-        />
-      ))}
-    </ul>
-  );
-}
-```
-
-| Field   | Value                                                         |
-| ------- | ------------------------------------------------------------- |
-| Filter  | Harm Test pass: 親 render ごとに N 個の子 re-render           |
-| Trigger | 親の任意 state 変更; 100+ アイテムのリスト                    |
-| Impact  | inline arrow + inline object が全子の `React.memo` を破壊する |
-
-### SKIP
-
-```tsx
-function SettingsToggle({ label, checked, onChange }: Props) {
-  return (
-    <label>
-      {label}
-      <input type="checkbox" checked={checked} onChange={() => onChange(!checked)} />
-    </label>
-  );
-}
-```
-
-| Field  | Value                                                            |
-| ------ | ---------------------------------------------------------------- |
-| Filter | Context Test: leaf component、re-render する子なし               |
-| Signal | leaf の inline arrow; メモ化しても (subtree なし) 何も得られない |
 
 ## PE (reviewer-progressive)
 
@@ -713,11 +602,6 @@ function validateInvoiceDate(date: Date, billingCycle: BillingCycle): boolean {
 | Filter | Context Test: 既存等価物のないドメイン特化ロジック |
 | Signal | billing cycle 検証はこの機能固有                   |
 
-## DOC (reviewer-document)
-
-### REPORT
-
-```markdown
 ## Installation
 
 Install globally: $ npm install -g myapp

@@ -7,7 +7,7 @@ paths:
 
 # Workflow Conventions
 
-`.claude/workflows/` 配下の workflow script (headless で決定論的に走る pipeline) に対する規約。
+`workflows/` 配下の workflow script (headless で決定論的に走る pipeline) に対する規約。
 
 ## Degradation の記録
 

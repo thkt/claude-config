@@ -40,16 +40,7 @@ The audit workflow's enhancer-integration integrated findings. These have alread
 critic-audit raw output. Read verdict and severity per finding_id. See Phase 6 for stall handling.
 
 ```json
-{
-  "challenges": [
-    {
-      "finding_id": "F-042",
-      "verdict": "confirmed",
-      "original_severity": "high",
-      "adjusted_severity": null
-    }
-  ]
-}
+{ "challenges": [{ "finding_id": "F-042", "verdict": "confirmed", "original_severity": "high", "adjusted_severity": null }] }
 ```
 
 ### Verification pass on Codex findings (critic-evidence, raw)
@@ -57,16 +48,7 @@ critic-audit raw output. Read verdict and severity per finding_id. See Phase 6 f
 critic-evidence raw output. Read verdict, budget_exhausted, and evidence per finding_id.
 
 ```json
-{
-  "verifications": [
-    {
-      "finding_id": "F-042",
-      "verdict": "verified",
-      "budget_exhausted": false,
-      "evidence": "type, detail with file:line references"
-    }
-  ]
-}
+{ "verifications": [{ "finding_id": "F-042", "verdict": "verified", "budget_exhausted": false, "evidence": "type, detail with file:line references" }] }
 ```
 
 ### Promoted adversarial findings
@@ -74,15 +56,7 @@ critic-evidence raw output. Read verdict, budget_exhausted, and evidence per fin
 Adversarial test failures that intent triage judged to be real bugs. Include them into issues as-is.
 
 ```json
-[
-  {
-    "file": "path/to/file.rs",
-    "line": 42,
-    "severity": "high",
-    "summary": "[adversarial] assertion text: failure detail",
-    "source": "adversarial"
-  }
-]
+[{ "file": "path/to/file.rs", "line": 42, "severity": "high", "summary": "[adversarial] assertion text: failure detail", "source": "adversarial" }]
 ```
 
 ### Dynamic evidence

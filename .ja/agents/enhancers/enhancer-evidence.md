@@ -40,16 +40,7 @@ audit workflow の enhancer-integration が統合済みの findings。すでに 
 critic-audit の生出力。finding_id ごとに verdict と severity を読む。stall 時の扱いは Phase 6 参照。
 
 ```json
-{
-  "challenges": [
-    {
-      "finding_id": "F-042",
-      "verdict": "confirmed",
-      "original_severity": "high",
-      "adjusted_severity": null
-    }
-  ]
-}
+{ "challenges": [{ "finding_id": "F-042", "verdict": "confirmed", "original_severity": "high", "adjusted_severity": null }] }
 ```
 
 ### Codex findings への Verification pass (critic-evidence, raw)
@@ -57,16 +48,7 @@ critic-audit の生出力。finding_id ごとに verdict と severity を読む�
 critic-evidence の生出力。finding_id ごとに verdict、budget_exhausted、evidence を読む。
 
 ```json
-{
-  "verifications": [
-    {
-      "finding_id": "F-042",
-      "verdict": "verified",
-      "budget_exhausted": false,
-      "evidence": "type, detail with file:line references"
-    }
-  ]
-}
+{ "verifications": [{ "finding_id": "F-042", "verdict": "verified", "budget_exhausted": false, "evidence": "type, detail with file:line references" }] }
 ```
 
 ### Promoted adversarial findings
@@ -74,15 +56,7 @@ critic-evidence の生出力。finding_id ごとに verdict、budget_exhausted�
 intent triage で「実バグ」と判定された adversarial テストの失敗。そのまま issues に含める。
 
 ```json
-[
-  {
-    "file": "path/to/file.rs",
-    "line": 42,
-    "severity": "high",
-    "summary": "[adversarial] assertion text: failure detail",
-    "source": "adversarial"
-  }
-]
+[{ "file": "path/to/file.rs", "line": 42, "severity": "high", "summary": "[adversarial] assertion text: failure detail", "source": "adversarial" }]
 ```
 
 ### 動的 evidence

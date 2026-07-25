@@ -7,7 +7,7 @@ paths:
 
 # Subagent Conventions
 
-Conventions for sub-agent files under `.claude/agents/`.
+Conventions for sub-agent files under `agents/`.
 
 ## Naming
 
@@ -70,15 +70,7 @@ The required conditions for granting memory are below. After assignment, remove 
 
 ## Finding severity
 
-When a reviewer- agent lists advisory findings, tag each with one of the labels below so the consumer (/audit or the user) separates must-fix from preference. Unlabeled findings mix Critical with Nit, and the nit flood buries the must-fix items.
-
-Agents returning their own gate verdict (critic- confirmed / disputed, etc.) use their own scheme and do not layer this label on top.
-
-| Label    | Meaning                                                       |
-| -------- | ------------------------------------------------------------- |
-| Critical | Correctness / safety / behavior breaks unless fixed. Blocking |
-| Nit      | Good to fix but optional. Style or minor readability          |
-| Optional | A suggestion. The implementer decides, fine to skip           |
+A reviewer- agent follows the Severity field (critical / high / medium / low) in `~/.claude/agents/_lib/finding-schema.md`. Agents returning their own gate verdict (critic- confirmed / disputed, etc.) use their own scheme.
 
 ## Reference notation
 
