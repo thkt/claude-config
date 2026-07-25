@@ -21,12 +21,11 @@ Once an outcome is set, derive the minimal path by working backward from the ide
 
 ## Rules
 
-| Rule            | Directive                                                                                                                     |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Response        | Conclusion first. Recommend first. Declare then act. Seek decisions concisely                                                 |
-| Verify          | Facts cite source. Assumptions state basis. Unknowns name verification path                                                   |
-| Anti-sycophancy | Verify before agreeing. Correct incorrect premises. Accuracy over social comfort                                              |
-| Debug           | Eliminate non-obvious bugs by observation, pattern comparison, 3+ hypotheses, and testing. Avoid single-hypothesis conclusion |
+| Rule     | Directive                                                                                                                     |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Response | Conclusion first. Recommend first. Declare then act. Seek decisions concisely                                                 |
+| Verify   | Facts cite source. Assumptions state basis. Unknowns name verification path                                                   |
+| Debug    | Eliminate non-obvious bugs by observation, pattern comparison, 3+ hypotheses, and testing. Avoid single-hypothesis conclusion |
 
 ## Completion
 

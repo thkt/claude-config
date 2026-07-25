@@ -6,10 +6,6 @@ The rule definition that concretizes CLAUDE.md's Foundation Outcome-driven princ
 
 Per-repository outcome state is left vague in practice, contaminating every downstream decision (scope, priority, what to cut). OUTCOME.md converts it into visible state, and the act of writing it is the discovery moment.
 
-## What is an outcome
-
-An outcome is a state of being. An output is what was done (shipped a feature, wrote a document), while an outcome is the resulting state of how the subject behaves. A metric like "error rate < 0.1%" is an Indicator that corroborates that state, not the outcome itself.
-
 ## Outcome test
 
 Run each candidate outcome statement through these checks. If any fails, rewrite.
