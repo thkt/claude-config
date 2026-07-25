@@ -47,9 +47,7 @@ const scopeNote = (diffKind) =>
     : diffKind === "branch"
       ? `The target is git diff ${base}...HEAD (the pushed branch diff). Drop any fix touching files outside the diff.`
       : "The target is git diff HEAD (staged + unstaged). Drop any fix touching files outside the diff.";
-// The fix agent does not commit, so its edits stay in the working tree. Even for a
-// branch diff, base...HEAD hides those edits, so pass a two-dot diff comparing base
-// against the working tree.
+// The fix agent does not commit, so base...HEAD cannot pick up its edits.
 const postFixDiff = (diffKind) => (diffKind === "branch" ? `git diff ${base}` : "git diff HEAD");
 
 const CODEX_SCHEMA = {
@@ -297,8 +295,7 @@ if (mode !== "cleanup") {
     );
 
     // ---- Rejudge: did the fix actually resolve each finding? ----
-    // fixed[] is the fix agent's own report, so a critic-audit re-reads the post-fix
-    // diff. Turning still_open into reopened stays in the script, not the agent's hands.
+    // fixed[] is the fix agent's own report, so a critic-audit re-reads the post-fix diff.
     phase("Rejudge");
     const rejudged = await agent(
       anchor(
@@ -320,8 +317,8 @@ if (mode !== "cleanup") {
       },
     );
     if (rejudged) {
-      // A survivor with no verdict counts as still_open, so a finding the agent
-      // dropped never leaks through as resolved.
+      // A missing verdict falls to still_open so a finding the agent dropped
+      // never leaks through as resolved.
       const byVerdict = new Map(rejudged.verdicts.map((v) => [v.id, v]));
       reopened = survivors
         .filter((s) => (byVerdict.get(s.id) || {}).verdict !== "resolved")
@@ -332,8 +329,7 @@ if (mode !== "cleanup") {
         }));
       log(`rejudge: ${reopened.length} reopened / ${survivors.length} survivors`);
     } else {
-      // No fail-open here. Returning null instead of an empty array keeps the caller
-      // from reading "nobody rejudged" as "zero reopened".
+      // An empty array would read as "rejudged, zero reopened", so null marks undecided.
       reopened = null;
       rejudgeNotes = "the rejudge agent returned nothing, so resolved / still_open is undecided";
     }

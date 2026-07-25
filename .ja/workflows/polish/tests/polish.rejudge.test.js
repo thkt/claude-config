@@ -1,6 +1,5 @@
-// polish の Rejudge stage: fix agent の fixed[] 自己申告を鵜呑みにせず、critic-audit が
-// post-fix diff を読んで survivor ごとに resolved / still_open を判定する。
-// still_open から reopened への変換は script 側の判定なので、外形挙動として固定する。
+// still_open から reopened への変換は agent でなく script 側の判定なので、
+// fix agent の自己申告に引きずられない外形挙動としてここで固定する。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -10,8 +9,7 @@ import { runWorkflow } from "../../_lib/run-workflow.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const polishJs = join(here, "..", "..", "polish.js");
 
-// Review -> Challenge -> Fix -> Rejudge -> Cleanup を通す最小 stub。
-// challenge の verdict と rejudge の返り値だけ差し替える。
+// Cleanup まで通す最小 stub。challenge の verdict と rejudge の返り値だけ差し替える。
 const agentStub = ({ diffKind = "uncommitted", challenge, rejudge } = {}) => {
   const stub = (prompt, opts) => {
     const label = opts && opts.label;

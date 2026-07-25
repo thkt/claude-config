@@ -46,8 +46,7 @@ const scopeNote = (diffKind) =>
     : diffKind === "branch"
       ? `対象は git diff ${base}...HEAD (push 済み branch diff)。diff 外のファイルに触れる fix は落とす。`
       : "対象は git diff HEAD (staged + unstaged)。diff 外のファイルに触れる fix は落とす。";
-// fix agent は commit しないため、fix の編集は working tree に残る。branch diff でも
-// base...HEAD では fix の編集が見えないので、base と working tree を比べる 2 点 diff を渡す。
+// fix agent は commit しないので、fix の編集は base...HEAD では拾えない。
 const postFixDiff = (diffKind) => (diffKind === "branch" ? `git diff ${base}` : "git diff HEAD");
 
 const CODEX_SCHEMA = {
@@ -288,7 +287,6 @@ if (mode !== "cleanup") {
 
     // ---- Rejudge: fix が finding を実際に解消したかの再判定 ----
     // fixed[] は fix agent の自己申告なので、post-fix diff を読み直す critic-audit を挟む。
-    // still_open から reopened への変換は script が持ち、agent の裁量に渡さない。
     phase("Rejudge");
     const rejudged = await agent(
       anchor(
@@ -310,7 +308,7 @@ if (mode !== "cleanup") {
       },
     );
     if (rejudged) {
-      // verdict が欠けた survivor は still_open 扱い。agent が落とした指摘を resolved に流さない。
+      // agent が落とした指摘を resolved に流さないため、欠けた評決は still_open に倒す。
       const byVerdict = new Map(rejudged.verdicts.map((v) => [v.id, v]));
       reopened = survivors
         .filter((s) => (byVerdict.get(s.id) || {}).verdict !== "resolved")
@@ -321,8 +319,7 @@ if (mode !== "cleanup") {
         }));
       log(`rejudge: reopened ${reopened.length} / survivors ${survivors.length}`);
     } else {
-      // ここは fail-open しない。誰も再判定していない状態を reopened 0 件と読み違えさせないため、
-      // 空配列ではなく null を返して未判定であることを呼び出し元に伝える。
+      // 空配列だと「再判定して 0 件」と読めてしまうので、未判定は null で区別する。
       reopened = null;
       rejudgeNotes =
         "rejudge agent が結果を返さなかったため resolved / still_open を判定していない";
