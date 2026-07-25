@@ -80,6 +80,16 @@ For a skill with a sequential procedure, the top-level sequential unit is always
 | Already in CLAUDE.md  | Globally loaded files don't need re-reference |
 | Speculative reference | Reference only what the current context reads |
 
+## Removing duplicate instructions
+
+| Duplicate of                                       | Deletable                                                                   |
+| -------------------------------------------------- | --------------------------------------------------------------------------- |
+| System prompt                                      | Only when every line and section is covered. Re-check on model updates      |
+| `output-styles/**`                                 | Never delete from `rules/`. Output styles can be switched                   |
+| Another always-loaded `rules/` file                | Delete the compressed restatement, keep the table that carries the criteria |
+| Anything whose removal relaxes a threshold or gate | Keep until a false positive shows up in practice                            |
+| A duplicate that works as a reverse index          | Keep it. The path from situation to principle exists only in the index      |
+
 ## Out of scope
 
 - Inside code blocks / inline code
