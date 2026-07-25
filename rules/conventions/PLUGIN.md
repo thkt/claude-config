@@ -1,6 +1,7 @@
 ---
 paths:
   - ".claude/.claude-plugin/**"
+  - ".claude-plugin/**"
 ---
 
 # Plugin Conventions

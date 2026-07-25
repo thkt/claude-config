@@ -1,6 +1,8 @@
 ---
 paths:
   - ".claude/workflows/**"
+  - "workflows/**"
+  - ".ja/workflows/**"
 ---
 
 # Workflow Conventions

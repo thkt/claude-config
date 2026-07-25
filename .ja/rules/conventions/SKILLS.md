@@ -1,6 +1,8 @@
 ---
 paths:
   - ".claude/skills/**"
+  - "skills/**"
+  - ".ja/skills/**"
 ---
 
 # Skill Conventions
