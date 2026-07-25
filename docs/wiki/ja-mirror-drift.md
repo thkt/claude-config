@@ -2,7 +2,7 @@
 
 ## 内容
 
-.ja/ を canonical として編集し EN を同一コミットでミラーする運用 (`rules/conventions/MARKDOWN.md` の File scope、DR-0073) の下で、移行・削除を伴う変更時に片側ツリーへの反映が漏れ、dead な参照や promise タグが残る drift が繰り返し発生している。規約そのものは rules にあるが、規約だけでは防げていないため、変更時の両ツリー全域 grep を手順として固定する。
+.ja/ を canonical として編集し EN を同一コミットでミラーする運用 (`rules/conventions/MIRROR.md`、DR-0073) の下で、移行・削除を伴う変更時に片側ツリーへの反映が漏れ、dead な参照や promise タグが残る drift が繰り返し発生している。規約そのものは rules にあるが、規約だけでは防げていないため、変更時の両ツリー全域 grep を手順として固定する。
 
 ## 定型手順
 
@@ -18,4 +18,4 @@
 - #144 逆方向の drift。.ja/skills/swarm は削除済みだが EN 側が残存していた
 - #169 anchorless な .gitignore ルールにより .ja 側の test fixture 9 件が silently 欠落していた
 - #60 drift 事例の再発を受けて JA canonical + 同一コミット規律を DR-0073 に明文化した
-- 現行コード: `rules/conventions/MARKDOWN.md:18` (File scope 規約)、`docs/decisions/0073-adopt-ja-as-canonical-source-for-mirror.md`
+- 現行コード: `rules/conventions/MIRROR.md` の Canonical side and mirroring、`docs/decisions/0073-adopt-ja-as-canonical-source-for-mirror.md`
