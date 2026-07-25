@@ -1,22 +1,3 @@
----
-paths:
-  - ".claude/agents/**"
-  - ".claude/docs/**"
-  - ".claude/output-styles/**"
-  - ".claude/rules/**"
-  - ".claude/skills/**"
-  - ".claude/workflows/**"
-  - ".ja/**"
-  - "CLAUDE.md"
-  - "README.md"
-  - "agents/**"
-  - "docs/**"
-  - "output-styles/**"
-  - "rules/**"
-  - "skills/**"
-  - "workflows/**"
----
-
 # Mirror Conventions
 
 Conventions for how `.ja/` and the English files correspond (ADR-0073).
