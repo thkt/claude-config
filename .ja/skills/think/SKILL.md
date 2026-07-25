@@ -2,7 +2,7 @@
 name: think
 description: critic-design による敵対的批判を伴う設計探索。生き残った案を構造化 plan にまとめ、自己点検して呼び出し元に返す。plan の永続先は issue の Plan 節が唯一。計画意図のないコードベース調査には使わない (代わりに /research)。
 when_to_use: 計画して, 設計して, アプローチ検討, 方針決め, planning, design exploration
-allowed-tools: Read Write LS Task AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(test:*)
+allowed-tools: Read Write LS Task AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(test:*) Bash(git cat-file:*) Bash(git show:*) Bash(git rev-parse:*)
 model: opus
 argument-hint: "[task description]"
 ---
@@ -21,7 +21,7 @@ argument-hint: "[task description]"
 
 ## Phase 2: 設計探索
 
-案は現実のコードと既存の調査に接地させる。関連コードを読み、`.claude/workspace/research/` にタスクに該当する調査出力があれば読む。異なる視点 (動く最小解 / 構造と拡張性 / 開発体験) から 2 つ以上の案を生成する。独立した技術判断は 1 つの質問に束ねず、推奨とトレードオフを添えて別々に問う。
+案は現実のコードと既存の調査に接地させる。関連コードを読み、`.claude/workspace/research/` にタスクに該当する調査出力があれば読む。調査レポートで次のアクションが「記録のみ」の発見は背景知識として扱い、plan のスコープに入れない。異なる視点 (動く最小解 / 構造と拡張性 / 開発体験) から 2 つ以上の案を生成する。独立した技術判断は 1 つの質問に束ねず、推奨とトレードオフを添えて別々に問う。
 
 1. 案に `critic-design` を起動する。プロンプトにタスクのタイトルを一字一句そのまま含め、結果は `{ verdict: "GO" | "NO-GO", weaknesses: string[], actionable: string[] }` の JSON オブジェクト 1 つで返させる
 2. NO-GO は blocker をその場で解消してから進む。生き残った設計をトレードオフの根拠とともにユーザーに提示し、承認を待つ
@@ -50,16 +50,25 @@ contract の引用は 1 箇所の振る舞いで、周辺構造の手組みは�
 
 既存の依存先のみを、リポジトリルート起点の path 単独か path + stable anchor の 2 形式で書く。anchor は `ugrep -F` が固定文字列として一致する公開シンボル名 1 つに限り、private な実装詳細・コメント文字列・行番号は使わない。安定したシンボルが無ければ path のみの行にする。unit が作る新規作成ファイルは載せない。
 
+### test_command
+
+test_command の失敗は計画スコープだけに帰着できなければならない。既存負債 (リポジトリ全体の型エラー、フォーマット差分) のあるリポジトリでは、触るディレクトリだけを lint し、型チェック出力を path パターンでフィルタする形でゲートを絞る。内容 grep では絞らない。
+
+### base
+
+`base:` には plan を実装するブランチ (PR のベースブランチ) を書く。タスク説明か会話から読み取り、指定が無ければ現在の checkout のブランチを書く。
+
 ### 書き出し前検証
 
-build workflow の Revalidate と同じリポジトリルートで検証し、失敗した行は修正するか落とす。
+build workflow の Revalidate と同じリポジトリルートで検証し、失敗した行は修正するか落とす。`base:` が現在の checkout と異なるブランチを指すときは、ファイルの実在を `test -f <path>` の代わりに `git cat-file -e <base>:<path>` で、anchor を `git show <base>:<path> | ugrep -F '<pattern>'` で検証する。
 
-1. `### 前提` の各行。path は `test -f <path>`、anchor は `ugrep -F '<pattern>' <path>`
-2. `units[].files` と `reference_module.files` のうち既存ファイルを指す行を `test -f <path>` で確認
+1. `### 前提` の各行。path は `test -f <path>`、anchor は `ugrep -F '<pattern>' <path>` (base が異なるときは上記の base ブランチ形式)
+2. `units[].files` と `reference_module.files` のうち既存ファイルを指す行を `test -f <path>` で確認 (同じく base ブランチ形式に置き換え)
 3. 既存ファイルを触る unit があるのに `### 前提` が空 / 不在なら失敗。要となる依存を anchor する行を足す
 4. `reference_module: null` は理由の明記が prose に無ければ失敗
 5. templates/plan.md の行数規則の超過が無いこと
 6. 各 unit の `files` と T-NNN の個数を数え、files 4 つ以上または tests 5 個以上の unit が無いこと。あれば分割してから再検証する
+7. test_command をリポジトリルートで 1 回実行する。plan より前から在る原因 (script 不在、リポジトリ全体の負債) で失敗したら、`### test_command` に従ってコマンドを絞り直し、絞った理由を plan の prose に書く
 
 ## 出力
 

@@ -2,7 +2,7 @@
 name: think
 description: Design exploration with adversarial critique by critic-design. Assembles the surviving approach into a structured plan, self-checks it, and returns it to the caller. The issue's Plan section is the plan's only persistent home. Do NOT use for codebase investigation without planning intent (use /research instead).
 when_to_use: 計画して, 設計して, アプローチ検討, 方針決め, planning, design exploration
-allowed-tools: Read Write LS Task AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(test:*)
+allowed-tools: Read Write LS Task AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(test:*) Bash(git cat-file:*) Bash(git show:*) Bash(git rev-parse:*)
 model: opus
 argument-hint: "[task description]"
 ---
@@ -21,7 +21,7 @@ Read `.claude/OUTCOME.md`. If it does not exist, generate it via `/outcome`. Who
 
 ## Phase 2: Design Exploration
 
-Ground the approaches in the real code and existing research. Read the relevant code, and read any research output under `.claude/workspace/research/` that matches the task. Generate 2+ approaches from distinct perspectives (simplest thing that works / structure and extensibility / developer experience). Do not bundle independent technical decisions into one question; ask each separately with a recommendation and trade-offs.
+Ground the approaches in the real code and existing research. Read the relevant code, and read any research output under `.claude/workspace/research/` that matches the task. Treat findings whose Next Action reads `record only` as background knowledge, not plan scope. Generate 2+ approaches from distinct perspectives (simplest thing that works / structure and extensibility / developer experience). Do not bundle independent technical decisions into one question; ask each separately with a recommendation and trade-offs.
 
 1. Launch `critic-design` on the approaches. Include the task title verbatim in the prompt, and have it return a single JSON object `{ verdict: "GO" | "NO-GO", weaknesses: string[], actionable: string[] }`
 2. On NO-GO, resolve blockers inline before proceeding. Present the surviving design to the user with trade-off rationale, and wait for approval
@@ -50,16 +50,25 @@ Select, do not generate. Never sketch behavior in prose or invent new code fragm
 
 List existing dependencies only, each line repo-root-relative in one of two forms: path only, or path + stable anchor. An anchor is limited to a single exported / public symbol name that `ugrep -F` matches as a literal fixed string; never private implementation details, comment strings, or line numbers. When no stable symbol exists, write the line as path only. Files newly created by a unit are never listed.
 
+### test_command
+
+A test_command failure must be attributable to the planned scope alone. On a repository with pre-existing debt (repo-wide type errors, format drift), scope the gate by paths: lint the touched directories and filter type-check output by path patterns, never by content grep.
+
+### base
+
+`base:` names the branch the plan will be implemented against (the PR base). Read it from the task description or the conversation; when nothing names one, write the current checkout's branch.
+
 ### Pre-writeout verification
 
-Verify from the same repository root as the build workflow's Revalidate; fix or drop any failing line.
+Verify from the same repository root as the build workflow's Revalidate; fix or drop any failing line. When `base:` names a branch other than the current checkout, verify file existence via `git cat-file -e <base>:<path>` instead of `test -f <path>`, and anchors via `git show <base>:<path> | ugrep -F '<pattern>'`.
 
-1. Each `### Preconditions` line: paths via `test -f <path>`, anchors via `ugrep -F '<pattern>' <path>`
-2. Every `units[].files` and `reference_module.files` entry that refers to an existing file, via `test -f <path>`
+1. Each `### Preconditions` line: paths via `test -f <path>`, anchors via `ugrep -F '<pattern>' <path>` (base-branch forms above when base differs)
+2. Every `units[].files` and `reference_module.files` entry that refers to an existing file, via `test -f <path>` (same base-branch substitution)
 3. If any unit touches an existing file while `### Preconditions` is empty or absent, that is a failure; add a line anchoring the load-bearing dependency
 4. A `reference_module: null` with no stated reason in the prose fails
 5. No overflow against the line-count rules in templates/plan.md
 6. Count each unit's `files` entries and T-NNN entries; no unit has 4 or more files or 5 or more tests. If one does, split it and re-verify
+7. Run test_command once from the repository root. On a failure whose cause predates the plan (missing script, repo-wide debt), rescope the command per `### test_command` and state the scoping reason in the plan prose
 
 ## Output
 

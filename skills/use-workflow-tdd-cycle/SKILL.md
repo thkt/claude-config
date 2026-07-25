@@ -4,6 +4,7 @@ description: TDD with RGRC cycle and Baby Steps.
 when_to_use: TDD, テスト駆動, Red-Green-Refactor, Baby Steps
 allowed-tools: Read Write Edit Bash(ugrep:*) Bash(bfs:*)
 context: fork
+background: false
 user-invocable: false
 ---
 
@@ -58,12 +59,12 @@ Test behavior via public API. Mock only at system boundaries.
 
 ## RGRC Cycle
 
-| Phase    | Goal         | Rule                                                                                | Common Mistake                 |
-| -------- | ------------ | ----------------------------------------------------------------------------------- | ------------------------------ |
-| Red      | Failing test | Verify failure matches the intended behavior gap, not syntax/import errors          | Test passes immediately        |
-| Green    | Pass test    | "You can sin" - dirty OK                                                            | Over-implementing              |
+| Phase    | Goal         | Rule                                                                                   | Common Mistake                 |
+| -------- | ------------ | -------------------------------------------------------------------------------------- | ------------------------------ |
+| Red      | Failing test | Verify failure matches the intended behavior gap, not syntax/import errors             | Test passes immediately        |
+| Green    | Pass test    | "You can sin" - dirty OK                                                               | Over-implementing              |
 | Refactor | Refine       | Keep tests green. Shrink only while it reads easier, per ~/.claude/rules/PRINCIPLES.md | Changing behavior; compressing |
-| Commit   | Save state   | All checks pass                                                                     | Skipping checks                |
+| Commit   | Save state   | All checks pass                                                                        | Skipping checks                |
 
 ## Baby Steps (2-min cycle)
 
@@ -84,12 +85,12 @@ Right (vertical):
   ...
 ```
 
-| #   | Hazard from horizontal slices                                              |
-| --- | -------------------------------------------------------------------------- |
-| 1   | Bulk-written tests verify imagined behavior instead of real behavior       |
-| 2   | Tests degrade into structural assertions of data shape or signature only   |
-| 3   | Sensitivity to behavior change drops: pass when broken, fail when correct  |
-| 4   | Implementation knowledge follows test structure instead of guiding it      |
+| #   | Hazard from horizontal slices                                             |
+| --- | ------------------------------------------------------------------------- |
+| 1   | Bulk-written tests verify imagined behavior instead of real behavior      |
+| 2   | Tests degrade into structural assertions of data shape or signature only  |
+| 3   | Sensitivity to behavior change drops: pass when broken, fail when correct |
+| 4   | Implementation knowledge follows test structure instead of guiding it     |
 
 ## Test Failure Judgment
 

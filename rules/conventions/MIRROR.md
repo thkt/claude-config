@@ -10,4 +10,4 @@ The English side is the executable, not the source of intent. Never let a phrasi
 
 ## Mirroring form
 
-The mirroring form is decided by content, not file type. A file that carries prose (Markdown, and a prompt-embedding script such as `workflows/build.js`) has its prose (comments / prompts / message strings) translated, while code structure, identifiers, stopped values, JSON keys, and schemas stay identical. A script with no prose is an identical copy. Never sync translated files with `cp`.
+The mirroring form is decided by content, not file type. A file that carries prose (Markdown, and a prompt-embedding script such as `workflows/build.js`) has its prose (comments / prompts / message strings) translated, while code structure, identifiers, stopped values, JSON keys, and schemas stay identical. A script with no prose is an identical copy. Never sync translated files with `cp`. `output-styles/**` is the exception with no mirror; write it in Japanese directly as a single file at the real path. Its directives are bound to the output language (connectives, sentence endings), so an English translation loses the concrete forms.

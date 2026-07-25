@@ -26,13 +26,13 @@ test("plan テンプレートが骨格 (id 記法・実装順・前提小節・1
     assert.match(doc, /T-NNN/, `${lang}: T-NNN 記法`);
     if (lang === "ja") {
       assert.match(doc, /^### 前提/m, "ja: 前提小節");
-      assert.match(doc, /並び順がそのまま実装順/, "ja: 並び順 = 実装順");
+      assert.match(doc, /unit は実装順に並べる/, "ja: 並び順 = 実装順");
       assert.match(doc, /条件と期待結果を 1 行で言い切る/, "ja: テストは 1 行言明");
       assert.match(doc, /上限は骨格に示した行数/, "ja: 行数規則");
       assert.match(doc, /分割.{0,40}で解消/, "ja: 超過は分割で解消");
     } else {
       assert.match(doc, /^### Preconditions/m, "en: Preconditions 小節");
-      assert.match(doc, /listed order is the implementation order/, "en: 並び順 = 実装順");
+      assert.match(doc, /List units in implementation order/, "en: 並び順 = 実装順");
       assert.match(doc, /condition \+ expected result/, "en: テストは 1 行言明");
       assert.match(doc, /cap is the line count shown in the skeleton/, "en: 行数規則");
       assert.match(doc, /splitting/i, "en: 超過は分割で解消");

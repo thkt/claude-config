@@ -5,6 +5,7 @@ when_to_use: security, OWASP, XSS, SQL injection, prompt injection, LLM security
 allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
 agent: reviewer-security
 context: fork
+background: false
 user-invocable: false
 ---
 

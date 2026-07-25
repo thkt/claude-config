@@ -9,10 +9,11 @@ development principles, and workflow optimizations.
 
 This repository contains personal configurations for Claude AI, including:
 
-- Custom slash commands for systematic development workflows (25 skills)
+- Custom slash commands for systematic development workflows (26 skills)
 - Specialized AI agents for code review, generation, and analysis (27 agents)
 - Core AI operation principles and development best practices
-- Quality pipeline hooks (guardrails, formatter, reviews, gates)
+- Quality pipeline hooks (guardrails, formatter, gates) and the dormant reviews
+  command
 - Japanese language support
 
 ## 📁 Structure
@@ -24,15 +25,13 @@ This repository contains personal configurations for Claude AI, including:
 ├── rules/                 # Rule definitions
 │   ├── core/             # Core AI operation principles
 │   ├── conventions/      # Documentation conventions
-│   ├── development/      # Development patterns & methodologies
-│   ├── frameworks/       # Framework-specific rules
-│   └── workflows/        # Workflow guides
-├── skills/               # Skill-based knowledge modules (25 skills)
+│   └── development/      # Development patterns & methodologies
+├── skills/               # Skill-based knowledge modules (26 skills)
 ├── agents/               # Specialized AI agents (27 agents)
 │   ├── critics/          # Finding challengers (devils-advocate)
 │   ├── enhancers/        # Code enhancers & simplifiers
 │   ├── explorers/        # Codebase exploration agents
-│   ├── generators/       # Code/test/git generators
+│   ├── generators/       # Test generation (generator-test only)
 │   ├── resolvers/        # Build error resolvers
 │   └── reviewers/        # Code review agents (18 reviewers)
 ├── docs/                  # Design docs & guides (ADRs under decisions/)
@@ -71,12 +70,13 @@ install specific workflow sets:
 
 - **build**: Self-contained development workflow toolkit. Installing it clones
   the whole repository once, so every skill, agent, and workflow loads under the
-  build: namespace. File an issue with /issue (optionally after /challenge,
-  /research, and /think), hand the issue number to the build workflow, and get
-  a draft PR after Load / Code / Audit / Polish / Ship.
+  build: namespace. File an issue with /issue and hand its number to the build
+  workflow. Build creates a draft PR after Load / Revalidate / Branch / Code /
+  Cleanup / Verify / Ship.
+  Humans invoke /audit and /polish separately on the draft PR.
   Bundles the planning skills (/think, /research, /slice, /outcome), the reviewer
   and critic agents, the code / audit / polish / shake / assert / adrift
-  workflows, the git skills (/commit, /checkout, /pr), and /adr, /census.
+  workflows, the git skills (/commit, /checkout, /pr), and /dr, /census.
 
 ### Option 2: Manual Installation (Full Configuration)
 
@@ -85,14 +85,14 @@ For using this as your personal `.claude` configuration:
 1. Clone this repository to your home directory:
 
    ```bash
-   git clone https://github.com/thkt/.claude ~/.claude
+   git clone https://github.com/thkt/dotclaude.git ~/.claude
    ```
 
 2. Or if you already have a `.claude` directory, back it up first:
 
    ```bash
    mv ~/.claude ~/.claude.backup
-   git clone https://github.com/thkt/.claude ~/.claude
+   git clone https://github.com/thkt/dotclaude.git ~/.claude
    ```
 
 **Note**: Manual installation includes all commands, agents, rules, and personal
@@ -111,7 +111,7 @@ permission handling, reducing approval fatigue while maintaining safety.
 - macOS or Linux (Windows not yet supported)
 - Node.js with npm/npx
 - ripgrep (typically pre-installed)
-- jaq (for IDR hooks): `brew install jaq`
+- jq (required by the current hooks): `brew install jq`
 
 **Setup**:
 
@@ -157,21 +157,22 @@ The build workflow runs `gh` inside the sandbox. On macOS with the sandbox enabl
 
 ### Hook Tools (Recommended)
 
-Quality pipeline hooks that run automatically during Claude Code sessions. These
-catch lint errors, format code, inject static analysis, and enforce quality
-gates - all without manual intervention.
+Quality pipeline hooks wired in `settings.json` run automatically during Claude
+Code sessions to catch lint errors, format code, and enforce quality gates. The
+install command includes reviews, but `settings.json` does not wire it, so it
+does not run automatically.
 
 ```bash
 brew tap thkt/tap
 brew install guardrails formatter reviews gates
 ```
 
-| Tool       | Hook        | Timing            | Role                              |
-| ---------- | ----------- | ----------------- | --------------------------------- |
-| guardrails | PreToolUse  | Before Write/Edit | Lint (oxlint) + security checks   |
-| formatter  | PostToolUse | After Write/Edit  | Auto-format (oxfmt)               |
-| reviews    | PreToolUse  | Before Skill      | Static analysis context injection |
-| gates      | Stop        | Agent completion  | Quality gates (knip, tsgo, madge) |
+| Tool       | Hook        | Timing                | Role                              |
+| ---------- | ----------- | --------------------- | --------------------------------- |
+| guardrails | PreToolUse  | Before Write/Edit     | Lint (oxlint) + security checks   |
+| formatter  | PostToolUse | After Write/Edit      | Auto-format (oxfmt)               |
+| reviews    | Not wired   | No automatic run      | Dormant static-analysis command   |
+| gates      | PostToolUse | After Write/Edit/Bash | Quality gates (knip, tsgo, madge) |
 
 Per-project configuration is done via `.claude/tools.json`. See
 [thkt/tap](https://github.com/thkt/homebrew-tap) for details.
@@ -180,27 +181,13 @@ Per-project configuration is done via `.claude/tools.json`. See
 
 Some commands use external CLI tools for data source integration:
 
-| Tool          | Required By         | Purpose               | Install                               |
-| ------------- | ------------------- | --------------------- | ------------------------------------- |
-| `gh`          | `/inbox` (GitHub)   | GitHub API access     | `brew install gh && gh auth login`    |
-| `agy`         | `/inbox` (Calendar) | Google Calendar query | `brew install --cask antigravity-cli` |
-| `scout`       | Slack URL reading   | Slack message fetch   | `brew install thkt/tap/scout`         |
-| `SLACK_TOKEN` | `/inbox` (Slack)    | Slack search API      | See below                             |
+| Tool    | Required By                        | Purpose             | Install                            |
+| ------- | ---------------------------------- | ------------------- | ---------------------------------- |
+| `gh`    | `/issue`, `/pr`, `/preview`, `/build` | GitHub API access | `brew install gh && gh auth login` |
+| `scout` | Slack URL reading                  | Slack message fetch | `brew install thkt/tap/scout`      |
 
 **Slack reading**: `scout fetch <slack-url>` reads any Slack message/thread URL
 directly. No additional setup needed if scout is configured.
-
-**Slack search** (for `/inbox`):
-
-1. Create a [Slack App](https://api.slack.com/apps) and add `search:read` to
-   User Token Scopes
-2. Obtain the User OAuth Token (`xoxp-...`)
-3. Set environment variables:
-
-   ```bash
-   export SLACK_TOKEN="xoxp-..."
-   export SLACK_WORKSPACE="your-workspace"  # the workspace part of {workspace}.slack.com
-   ```
 
 ### Autonomous Iteration
 
@@ -239,7 +226,8 @@ See the complete command reference:
 
 - **AI Processing**: English internally
 - **User Output**: Japanese (configurable)
-- **Documentation**: Available in both English and Japanese
+- **Documentation**: README.md and docs/*.md are available in English and
+  Japanese; the five docs/wiki/*.md files are English-only
 
 ## 🛠️ Key Features
 
@@ -248,8 +236,8 @@ See the complete command reference:
 - **Safety First**: File deletion uses trash (`~/.Trash/`), destructive
   operations require confirmation
 - **User Authority**: Your instructions are the ultimate authority
-- **Output Verifiability**: Claims backed by evidence (file paths, confidence
-  markers ✓/→/?)
+- **Output Verifiability**: Confirm exact formats by reading files, never assert
+  about unread code, and stop when a knowledge gap blocks critical verification
 
 ### Development Approach
 

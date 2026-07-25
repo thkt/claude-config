@@ -1,6 +1,6 @@
 # Plan テンプレート
 
-`/think` が Phase 3 の下書き `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md` をこの骨格で生成する。`/issue` は両節をそのまま issue 本文へ移設するため、この骨格がそのまま issue の Plan 節になる。
+`/think` が Phase 3 の下書き `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md` をこの骨格で生成する。`/issue` は両節をそのまま issue の Plan 節へ移設する。
 
 ## テンプレート
 
@@ -11,6 +11,7 @@
 
 Outcome: {done 状態の 1 行。実装非依存、観測可能}
 test_command: {テスト実行コマンド 1 行。例 cargo test / node --test tests/}
+base: {plan を実装するブランチ (PR のベース)。指定が無ければ現在の checkout のブランチ}
 reference_module: {既存の同形モジュールのルート。または null + この形が新規である理由}
 
 ### 参照モジュール
@@ -44,13 +45,11 @@ reference_module: {既存の同形モジュールのルート。または null +
 
 ## ガイドライン
 
-id は U-NNN / T-NNN とも 001 からの連番。T-NNN は plan 全体で一意とし、unit ごとに振り直さない。unit は実装順に並べ、並び順がそのまま実装順になる。依存が実装順を決めない unit 同士は、データモデル、型 interface、UX flow など変わりやすい判断を含むものを先に、機械的な変更だけのものを後に置く。レビューの注意が変更されやすい判断へ先に向き、判断が覆ったときの手戻りが小さくなる。各 field の上限は骨格に示した行数で、超過は文章の追加でなく分割で解消する。unit を割るか、backlog へ切り出す。受け入れテストは振る舞いを固定する unit に書く。検証可能な振る舞いが無い unit (docs / 設定) は「受け入れテスト。」の段落ごと省略し、build はその unit を Red → Green でなく直接実装で扱う。
-
-各 unit のテストはその unit 自身の境界を stub するので、unit 単位では緑のまま層と層が結線されていない状態が成立する。テストを持つ unit が 2 つ以上になったら、seam unit をちょうど 1 つ、最後に置き `- seam: true` を付ける。その T-NNN は unit 間の境界を跨いで実モジュールを動かし、偽装はシステム外部との I/O に限り、unit どうしをつなぐ接続 (呼び出し、遷移、データの受け渡し) が実際に結線されていることを assert する。テストを持つ unit が 2 つ以上あって seam unit が無い plan は build の `validate()` が reject するので、この印は推奨でなく必須。
+unit は実装順に並べる。依存が実装順を決めない unit 同士は、データモデル、型 interface、UX flow など変わりやすい判断を含むものを先に、機械的な変更だけのものを後に置く。レビューの注意が変更されやすい判断へ先に向き、判断が覆ったときの手戻りが小さくなる。各 field の上限は骨格に示した行数で、超過は文章の追加でなく分割で解消する。unit を割るか、backlog へ切り出す。検証可能な振る舞いが無い unit (docs / 設定) は「受け入れテスト。」の段落ごと省略する。id の採番、seam unit、テスト省略時の build の扱いの意味論は SKILL.md Phase 3 が持つ。
 
 | フィールド | OK                                                 | NG                                   |
 | ---------- | -------------------------------------------------- | ------------------------------------ |
 | Outcome    | 検索結果が 1 秒以内に表示される                    | 検索を高速化する (観測不能)          |
 | 前提       | `src/config.rs` の `load_config`                   | src/config.rs 内の実装詳細コメント   |
 | contract   | `src/query.rs` の `search` に倣い limit 引数を足す | 新規シグネチャのコード片を書き下ろす |
-| T-NNN      | 空クエリはエラーを返す                             | まさしく動くことを確認する           |
+| T-NNN      | 空クエリはエラーを返す                             | 正しく動くことを確認する             |

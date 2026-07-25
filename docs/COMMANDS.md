@@ -60,22 +60,27 @@ confirmation (same functionality)
 
 ## Command → Skill/Agent Mapping
 
-| Command   | Skills Used                               | Agents Used                                           |
-| --------- | ----------------------------------------- | ----------------------------------------------------- |
-| `/think`  | -                                         | -                                                     |
-| `/code`   | use-workflow-tdd-cycle                    | -                                                     |
-| `/audit`  | -                                         | tier-based reviewer agents (3 or file-routed from 17) |
-| `/fix`    | use-context-root-cause-analysis           | generator-test, resolver-build                        |
-| `/polish` | -                                         | enhancer-code                                         |
-| `/build`  | think, code, audit, fix, polish (chained) | -                                                     |
+| Command   | Implementation             | Agents / nested calls                                                                  |
+| --------- | -------------------------- | -------------------------------------------------------------------------------------- |
+| `/think`  | `skills/think/SKILL.md`    | critic-design                                                                          |
+| `/code`   | `workflows/code.js`        | general-purpose implementation and verification agents                                 |
+| `/audit`  | `workflows/audit.js`       | file-routed reviewers, critic-audit, critic-evidence, enhancer-integration              |
+| `/fix`    | `skills/fix/SKILL.md`      | generator-test, resolver-build                                                         |
+| `/polish` | `workflows/polish.js`      | general-purpose, critic-audit, enhancer-code                                            |
+| `/build`  | `workflows/build.js`       | Nests only code. Humans invoke audit and polish separately; fix is not chained          |
 
 ## File Structure
 
 ```text
 skills/
-├── code/SKILL.md      # YAML front matter + execution steps
-├── fix/SKILL.md
+├── fix/SKILL.md       # YAML front matter + execution steps
 ├── think/SKILL.md
+└── ...
+workflows/
+├── code.js
+├── audit.js
+├── polish.js
+├── build.js
 └── ...
 ```
 
@@ -83,10 +88,10 @@ skills/
 
 | Field           | Required | Purpose                                    |
 | --------------- | -------- | ------------------------------------------ |
-| `description`   | ✓        | Command description (Skill picker display) |
-| `allowed-tools` | ✓        | Permitted tools                            |
-| `model`         | -        | Model to use (opus/sonnet/haiku)           |
-| `argument-hint` | -        | Hint shown for argument input              |
+| `description`   | Yes      | Command description (Skill picker display) |
+| `allowed-tools` | No       | Permitted tools                            |
+| `model`         | No       | Model to use (opus/sonnet/haiku)           |
+| `argument-hint` | No       | Hint shown for argument input              |
 
 ## Related
 

@@ -29,13 +29,17 @@ graph LR
 
 ## Skills vs Agents
 
-| Aspect         | Skills                         | Agents        |
-| -------------- | ------------------------------ | ------------- |
-| **Role**       | Knowledge base (What/How)      | Executor (Do) |
-| **Invocation** | Auto-load or command reference | Via Task tool |
-| **Context**    | Main or fork                   | Always fork   |
-| **State**      | Read-only                      | Mutable       |
-| **Output**     | Information                    | Artifacts     |
+`dr` creates a DR file and index through Write/Edit, and `commit` runs
+`git commit`. Skill state and output therefore depend on the permitted tools and
+procedure.
+
+| Aspect         | Skills                          | Agents        |
+| -------------- | ------------------------------- | ------------- |
+| **Role**       | Knowledge base or procedure     | Executor (Do) |
+| **Invocation** | Auto-load or command reference  | Via Task tool |
+| **Context**    | Main or fork                    | Always fork   |
+| **State**      | Read-only or mutable            | Mutable       |
+| **Output**     | Information, files, or actions  | Artifacts     |
 
 ## Skills
 
@@ -45,12 +49,15 @@ Skills are "knowledge modules" that provide domain-specific knowledge when AI ex
 
 ### Categories
 
-| Category       | Skills                                                           | Purpose                          |
-| -------------- | ---------------------------------------------------------------- | -------------------------------- |
-| Workflow       | use-workflow-tdd-cycle, use-workflow-pageshot                    | Multi-phase workflow definitions |
-| Context        | use-context-reviewer-\*, use-context-root-cause-analysis         | Domain knowledge for agents      |
-| CLI wrapper    | use-cli-recall, use-cli-scout, use-cli-gcloud, use-cli-heptabase | CLI tool integration             |
-| User-invocable | think, research, code, audit, polish, feature, fix, adr, etc.    | Slash command entry points       |
+`/code`, `/audit`, and `/polish` are workflows under `workflows/*.js`, not
+Skills. The User-invocable row lists all 14 current Skills.
+
+| Category       | Skills                                                                                                     | Purpose                          |
+| -------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| Workflow       | use-workflow-tdd-cycle, use-workflow-pageshot                                                              | Multi-phase workflow definitions |
+| Context        | use-context-reviewer-\*, use-context-root-cause-analysis                                                   | Domain knowledge for agents      |
+| CLI wrapper    | use-cli-codegraph, use-cli-recall, use-cli-scout, use-cli-gcloud, use-cli-heptabase                       | CLI tool integration             |
+| User-invocable | census, challenge, checkout, commit, dr, fix, issue, outcome, pr, preview, research, scribe, slice, think | Slash command entry points       |
 
 ### Loading Mechanism
 
@@ -89,7 +96,7 @@ skills/[skill-name]/
 name: use-workflow-tdd-cycle
 description: TDD with RGRC cycle and Baby Steps.
 when_to_use: TDD, テスト駆動, Red-Green-Refactor, Baby Steps
-allowed-tools: Read Write Edit Grep Glob
+allowed-tools: Read Write Edit Bash(ugrep:*) Bash(bfs:*)
 context: fork # fork or inline
 user-invocable: false # Whether invocable as slash command
 ---
@@ -111,15 +118,16 @@ agents/
 ├── explorers/      # Exploration (explorer-feature)
 ├── generators/     # Generation (generator-test)
 ├── resolvers/      # Problem resolution (resolver-build)
-└── reviewers/      # Review (16 specialized reviewers)
+└── reviewers/      # Review (18 specialized reviewers)
 ```
 
-### Reviewer Agents (16 types)
+### Reviewer Agents (18 types)
 
 | Agent                  | Focus                             |
 | ---------------------- | --------------------------------- |
 | reviewer-accessibility | WCAG 2.2 conformance              |
 | reviewer-causation     | 5 Whys root cause analysis        |
+| reviewer-conformance   | Diff-vs-spec conformance          |
 | reviewer-coverage      | Test coverage quality             |
 | reviewer-design        | Module depth via deletion test    |
 | reviewer-react-pattern | React design patterns             |
@@ -131,6 +139,7 @@ agents/
 | reviewer-readability   | Code structure, readability       |
 | reviewer-resilience    | Resilience weakness analysis      |
 | reviewer-reuse         | Existing code reuse opportunities |
+| reviewer-rust          | Rust idioms and safety            |
 | reviewer-security      | OWASP Top 10                      |
 | reviewer-silence       | Silent failure detection          |
 | reviewer-testability   | Testable code design              |
