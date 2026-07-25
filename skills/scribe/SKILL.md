@@ -17,7 +17,7 @@ Extract the common patterns that recur across this repository's past merged PRs 
 | Progress record        | Where the previous run stopped reading is shown by the mergedAt of the last merged scribe PR. For a research file, compare that mergedAt against its mtime |
 | Threshold of 2         | A pattern with fewer than 2 pieces of evidence goes to `docs/wiki/_candidates.md`, not a page. One research file counts as one piece of evidence           |
 | Facts only             | Write only facts stated in PRs / issues and research files, plus facts verified in the current code. No guessing                                           |
-| Reference traceability | `workspace/research/` is outside git, so never write its file paths under `docs/wiki/`                                                                     |
+| Reference traceability | Never write `workspace/research/` file paths under `docs/wiki/`                                                                                            |
 | Worktree isolation     | Edit and commit inside an isolated worktree; never touch the user's working tree                                                                           |
 
 ## Phase 1: Preconditions and onboarding
@@ -31,14 +31,14 @@ Extract the common patterns that recur across this repository's past merged PRs 
 1. Get the mergedAt of the last merged scribe PR with `gh pr list --label scribe --state merged --limit 1 --json mergedAt -q '.[0].mergedAt'`
 2. If no mergedAt comes back, this is the first run. Take all of `gh pr list --state merged --search '-label:scribe'`, `gh issue list --state closed`, and `find workspace/research -name '*.md'` as the scope
 3. If a mergedAt comes back, take the PRs from `gh pr list --state merged --search "-label:scribe merged:><mergedAt>"`, the issues from `gh issue list --state closed --search "closed:><mergedAt>"`, and the files from `find workspace/research -name '*.md' -newermt "<mergedAt>"` as the scope
-4. Only `*.md` counts as a research target; read no other format. The `Generated:` line inside a file is not the cursor, because some files lack that line and three files were appended to after creation, leaving their mtime later than `Generated`
+4. Only `*.md` counts as a research target; read no other format. Do not use the `Generated:` line inside a file as the cursor
 5. If PRs, issues, and research are all empty, report "nothing new" and stop
 
 ## Phase 3: Extraction
 
 1. Read `docs/wiki/*.md` and `docs/wiki/_candidates.md` to grasp existing pages / candidates
 2. Read each in-scope PR / issue including comments via `gh pr view <number> --comments` / `gh issue view <number> --comments`
-3. Read each in-scope research file in full with Read. Do not narrow by section name: few files carry `## Verdict`, and some carry only their own headings
+3. Read each in-scope research file in full with Read. Do not narrow by section name
 4. Triage what you read with this table. Design decisions and their history belong to `docs/decisions/` and are out of scope
 
 Write evidence as `#number` when it comes from a PR / issue, and as `(research)` when it comes from a research file. Never write the research file path.
@@ -52,7 +52,7 @@ Write evidence as `#number` when it comes from a PR / issue, and as `(research)`
 
 ## Phase 4: Cross-check against the latest code
 
-Before creating, promoting, or updating a page, cross-check each pattern against the current code. For each item that holds, add the current-code location as reference code, written as `path` + symbol name (no line numbers), and list the items dropped by verification in the PR body of `§ Phase 6: PR creation`. Never write a research file path as reference code or as evidence. `docs/wiki/` is committed, so a path outside git would be judged a broken reference by the next sweep, taking the whole pattern down with it.
+Before creating, promoting, or updating a page, cross-check each pattern against the current code. For each item that holds, add the current-code location as reference code, written as `path` + symbol name (no line numbers), and list the items dropped by verification in the PR body of `§ Phase 6: PR creation`. Never write a research file path as reference code or as evidence.
 
 | Check                                                         | When it fails                                                                 |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------- |

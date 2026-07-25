@@ -17,7 +17,7 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Read Write Edit LS
 | 進捗の記録    | 前回どこまで読んだかは、最後にマージされた scribe PR の mergedAt が示す。research ファイルはその mergedAt と mtime を比べる |
 | 閾値 2 件     | 根拠が 2 件未満の共通項はページにせず `docs/wiki/_candidates.md` に置く。research ファイル 1 件を根拠 1 件と数える          |
 | 事実のみ      | PR / issue と research ファイルに書かれた事実、および現在のコードで確認できた事実のみ書く。推測で埋めない                   |
-| 参照の追跡性  | `workspace/research/` は git 管理外なので、そのファイルパスを `docs/wiki/` 配下に書かない                                   |
+| 参照の追跡性  | `workspace/research/` のファイルパスを `docs/wiki/` 配下に書かない                                                          |
 | worktree 隔離 | 編集 / commit は隔離 worktree 内で行い、ユーザーの作業ツリーを動かさない                                                    |
 
 ## Phase 1: 前提確認とオンボーディング
@@ -31,14 +31,14 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Read Write Edit LS
 1. 最後にマージされた scribe PR の mergedAt を `gh pr list --label scribe --state merged --limit 1 --json mergedAt -q '.[0].mergedAt'` で取得する
 2. mergedAt が取れなければ初回。`gh pr list --state merged --search '-label:scribe'` と `gh issue list --state closed` の全件、および `find workspace/research -name '*.md'` の全件を対象にする
 3. mergedAt が取れたら、`gh pr list --state merged --search "-label:scribe merged:><mergedAt>"` の PR と `gh issue list --state closed --search "closed:><mergedAt>"` の issue、および `find workspace/research -name '*.md' -newermt "<mergedAt>"` のファイルを対象にする
-4. research の対象は `*.md` だけとし、他の形式は読まない。ファイル内の `Generated:` 行を cursor に使わないのは、その行を持たないファイルと、作成後の追記で mtime が `Generated` より後ろにずれたファイルがあるため
+4. research の対象は `*.md` だけとし、他の形式は読まない。ファイル内の `Generated:` 行は cursor に使わない
 5. PR / issue / research のいずれも 0 件なら「新規なし」と報告して終了する
 
 ## Phase 3: 抽出
 
 1. `docs/wiki/*.md` と `docs/wiki/_candidates.md` を読み、既存ページ / 候補を把握する
 2. スコープの各 PR / issue を `gh pr view <番号> --comments` / `gh issue view <番号> --comments` で本文 / コメントまで読む
-3. スコープの各 research ファイルを Read で全文読む。セクション名で絞らないのは、`## Verdict` を持つファイルが少数で、独自見出しだけのファイルも混ざっているため
+3. スコープの各 research ファイルを Read で全文読む。セクション名で絞らない
 4. 読んだ内容を次の表で振り分ける。設計判断とその経緯は `docs/decisions/` の領分なので対象外
 
 根拠の書き方は、PR / issue 由来なら `#番号`、research 由来なら `(research)` とする。research はファイルパスを書かない。
@@ -52,7 +52,7 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Read Write Edit LS
 
 ## Phase 4: 最新コードとの突き合わせ
 
-ページ化 / 昇格 / 更新の前に、各共通項を現在のコードと突き合わせる。成立を確認した項目には現行コードの位置を参照コードとして `path` + シンボル名で付記し（行番号は書かない）、検証で落とした項目は `§ Phase 6: PR 作成` の PR 本文に列挙する。research ファイルのパスは参照コードにも根拠にも書かない。`docs/wiki/` は commit されるので、git 管理外のパスを書くと次回の参照掃除がそれを壊れた参照と判定し、共通項ごと不成立にしてしまう。
+ページ化 / 昇格 / 更新の前に、各共通項を現在のコードと突き合わせる。成立を確認した項目には現行コードの位置を参照コードとして `path` + シンボル名で付記し（行番号は書かない）、検証で落とした項目は `§ Phase 6: PR 作成` の PR 本文に列挙する。research ファイルのパスは参照コードにも根拠にも書かない。
 
 | 確認                                                | 不成立時の扱い                                     |
 | --------------------------------------------------- | -------------------------------------------------- |
