@@ -1,10 +1,16 @@
 export const meta = {
   name: "polish",
   description:
-    'Codex review + cleanup を決定論的に行う workflow。Codex の findings は critic-audit の challenge を必ず通り、triage (confirmed / disputed / downgraded / needs_context) は script が判定するため、fact 扱いの集約や challenge の skip が起きない。単体でも、build から workflow("polish") 経由の入れ子でも呼べる。',
+    'Codex review + cleanup を決定論的に行う workflow。Codex の findings は critic-audit の challenge を必ず通り、triage (confirmed / disputed / downgraded / needs_context) は script が判定するため、fact 扱いの集約や challenge の skip が起きない。fix 後は critic-audit が post-fix diff で resolved / still_open を再判定し、still_open は reopened として結果に出る。単体でも、build から workflow("polish") 経由の入れ子でも呼べる。',
   whenToUse:
-    "diff の外部レンズ review と AI slop 除去を headless に行う。args は scope 文字列、または {scope, repo, mode, base}。scope 省略時は uncommitted な変更、無ければ base branch (既定 main) より先行する commit の diff (push 済み branch diff) を対象とする。mode: full (既定) は review -> fix -> cleanup、review は challenge 済み findings を返すだけ (fix しない)、cleanup は simplify + enhancer-code + テスト検証のみ。内部 reviewer の深い audit は audit workflow を使う。",
-  phases: [{ title: "Review" }, { title: "Challenge" }, { title: "Fix" }, { title: "Cleanup" }],
+    "diff の外部レンズ review と AI slop 除去を headless に行う。args は scope 文字列、または {scope, repo, mode, base}。scope 省略時は uncommitted な変更、無ければ base branch (既定 main) より先行する commit の diff (push 済み branch diff) を対象とする。mode: full (既定) は review -> fix -> rejudge -> cleanup、review は challenge 済み findings を返すだけ (fix しない)、cleanup は simplify + enhancer-code + テスト検証のみ。内部 reviewer の深い audit は audit workflow を使う。",
+  phases: [
+    { title: "Review" },
+    { title: "Challenge" },
+    { title: "Fix" },
+    { title: "Rejudge" },
+    { title: "Cleanup" },
+  ],
 };
 
 // triage 表を script に置くのは、agent に verdict の解釈を任せると
@@ -40,6 +46,9 @@ const scopeNote = (diffKind) =>
     : diffKind === "branch"
       ? `対象は git diff ${base}...HEAD (push 済み branch diff)。diff 外のファイルに触れる fix は落とす。`
       : "対象は git diff HEAD (staged + unstaged)。diff 外のファイルに触れる fix は落とす。";
+// fix agent は commit しないため、fix の編集は working tree に残る。branch diff でも
+// base...HEAD では fix の編集が見えないので、base と working tree を比べる 2 点 diff を渡す。
+const postFixDiff = (diffKind) => (diffKind === "branch" ? `git diff ${base}` : "git diff HEAD");
 
 const CODEX_SCHEMA = {
   type: "object",
@@ -100,6 +109,31 @@ const VERDICTS_SCHEMA = {
   },
 };
 
+const REJUDGE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["verdicts"],
+  properties: {
+    verdicts: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "verdict"],
+        properties: {
+          id: { type: "string" },
+          verdict: {
+            type: "string",
+            enum: ["resolved", "still_open"],
+            description: "post-fix diff が finding を解消しているか",
+          },
+          why: { type: "string" },
+        },
+      },
+    },
+  },
+};
+
 const FIX_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -140,6 +174,8 @@ let verdicts = [];
 let survivors = [];
 let needsContext = [];
 let fix = null;
+let reopened = [];
+let rejudgeNotes = "";
 
 if (mode !== "cleanup") {
   // ---- Review: 外部 Codex レンズ ----
@@ -249,6 +285,48 @@ if (mode !== "cleanup") {
         effort: "high",
       },
     );
+
+    // ---- Rejudge: fix が finding を実際に解消したかの再判定 ----
+    // fixed[] は fix agent の自己申告なので、post-fix diff を読み直す critic-audit を挟む。
+    // still_open から reopened への変換は script が持ち、agent の裁量に渡さない。
+    phase("Rejudge");
+    const rejudged = await agent(
+      anchor(
+        `critic-audit。fix stage 後の diff (\`${postFixDiff(codex.diff_kind)}\`) を読み、survivor ごとに finding が解消したかを判定する。\n` +
+          `verdict の基準は次のとおり。resolved = post-fix diff の変更が finding を解消している / still_open = diff に該当する変更が無い、または変更が finding を解消していない。\n` +
+          `fix agent の自己申告は根拠にせず diff を根拠にする。該当する変更が diff に見当たらない survivor は still_open とする。\n` +
+          `この diff には base branch が先に進んだぶんの他人の変更も混ざる。survivor が指す箇所に対応する変更だけを根拠にし、無関係な変更を解消の根拠にしない。\n` +
+          (scope ? `対象 scope は ${scope}。scope 外の変更は根拠にしない。\n` : "") +
+          `参考として fix stage の自己申告は fixed: ${JSON.stringify(fix ? fix.fixed : [])} / stashed: ${JSON.stringify(fix ? fix.stashed : [])}。\n` +
+          `Survivors は次のとおり。\n${JSON.stringify(survivors)}`,
+      ),
+      {
+        agentType: "critic-audit",
+        phase: "Rejudge",
+        label: "rejudge",
+        schema: REJUDGE_SCHEMA,
+        model: "opus",
+        effort: "xhigh",
+      },
+    );
+    if (rejudged) {
+      // verdict が欠けた survivor は still_open 扱い。agent が落とした指摘を resolved に流さない。
+      const byVerdict = new Map(rejudged.verdicts.map((v) => [v.id, v]));
+      reopened = survivors
+        .filter((s) => (byVerdict.get(s.id) || {}).verdict !== "resolved")
+        .map((s) => ({
+          id: s.id,
+          severity: s.severity,
+          why: (byVerdict.get(s.id) || {}).why || "",
+        }));
+      log(`rejudge: reopened ${reopened.length} / survivors ${survivors.length}`);
+    } else {
+      // ここは fail-open しない。誰も再判定していない状態を reopened 0 件と読み違えさせないため、
+      // 空配列ではなく null を返して未判定であることを呼び出し元に伝える。
+      reopened = null;
+      rejudgeNotes =
+        "rejudge agent が結果を返さなかったため resolved / still_open を判定していない";
+    }
   }
 }
 
@@ -305,6 +383,8 @@ return {
   survivors: survivors.length,
   fixed: fix ? fix.fixed : [],
   stashed_fixes: fix ? fix.stashed : [],
+  reopened,
+  rejudge_notes: rejudgeNotes,
   needs_context: needsContext,
   cleanup,
 };
