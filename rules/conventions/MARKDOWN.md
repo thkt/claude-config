@@ -82,15 +82,13 @@ For a skill with a sequential procedure, the top-level sequential unit is always
 
 ## Removing duplicate instructions
 
-When an always-loaded instruction turns out to duplicate something else, what it duplicates decides whether it can be deleted.
-
-| Duplicate of                                       | Deletable                                                                                                                                   |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| System prompt                                      | Only when every line and section is covered. Keep it when only the gist matches. Tied to the model generation, so re-check on model updates |
-| `output-styles/**`                                 | Never delete from `rules/`. The user can switch output styles, so deleting makes the instruction style-dependent                            |
-| Another always-loaded `rules/` file                | Delete the compressed restatement, keep the table that carries the criteria                                                                 |
-| Anything whose removal relaxes a threshold or gate | Keep until a false positive shows up in practice                                                                                            |
-| A duplicate that works as a reverse index          | Keep it. The defining side is indexed by principle, so the path from situation to principle exists only in the index                        |
+| Duplicate of                                       | Deletable                                                                   |
+| -------------------------------------------------- | --------------------------------------------------------------------------- |
+| System prompt                                      | Only when every line and section is covered. Re-check on model updates      |
+| `output-styles/**`                                 | Never delete from `rules/`. Output styles can be switched                   |
+| Another always-loaded `rules/` file                | Delete the compressed restatement, keep the table that carries the criteria |
+| Anything whose removal relaxes a threshold or gate | Keep until a false positive shows up in practice                            |
+| A duplicate that works as a reverse index          | Keep it. The path from situation to principle exists only in the index      |
 
 ## Out of scope
 
