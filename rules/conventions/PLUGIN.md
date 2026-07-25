@@ -6,14 +6,14 @@ paths:
 
 # Plugin Conventions
 
-Rules for Claude Code plugin definitions under `.claude/.claude-plugin/`.
+Rules for Claude Code plugin definitions under `.claude-plugin/`.
 
 ## Constraints
 
-Plugins are cached at load time and cannot reference files outside their boundary. External hosting breaks existing cross-references between `skills/`, `rules/`, and `agents/`.
+A plugin clones the whole repository at install time and auto-discovers `skills/`, `agents/`, and `workflows/` unconditionally. The `commands` / `agents` / `skills` fields on a plugin only declare what it advertises. Splitting into several plugins makes each one re-register the same skill and agent under a different namespace.
 
-| Rule                | Guideline                                             |
-| ------------------- | ----------------------------------------------------- |
-| Monolithic source   | Use `source: "./"` in `marketplace.json`              |
-| Preserve references | Keep skills/, rules/, agents/ cross-references intact |
-| No external plugins | Do not split into externally-hosted plugins           |
+| Rule                | Guideline                                                   |
+| ------------------- | ----------------------------------------------------------- |
+| Single plugin       | Keep `plugins` in `marketplace.json` to the one build entry |
+| Source              | Use `{ "source": "github", "repo": "thkt/dotclaude" }`      |
+| Preserve references | Keep skills/, rules/, agents/ cross-references intact       |
