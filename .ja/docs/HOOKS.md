@@ -13,18 +13,17 @@ Rust バイナリは sentinels プラグインとしても配布するが、現�
 
 ## イベント マップ
 
-| イベント           | Matcher                   | フック                                                                                                   |
-| ------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------- |
-| PreToolUse         | Bash                      | auto-package-manager, security/npm-safe-install, security/rm-to-trash, textlint-lint, localized-headings |
-| PreToolUse         | Edit/Write/MultiEdit      | rust-pre-edit, guardrails                                                                                |
-| PreToolUse         | EnterPlanMode             | deny (計画は /think へ誘導)                                                                              |
-| PreToolUse         | ExitPlanMode              | CCPlanView notifier                                                                                      |
-| PostToolUse        | Edit/Write/MultiEdit      | rust-post-edit, textlint-fix, assay, formatter, gates                                                    |
-| PostToolUse        | Write/Edit/MultiEdit/Bash | lifecycle/context-monitor                                                                                |
-| SessionStart       | -                         | lifecycle/recall-index                                                                                   |
-| Stop / StopFailure | -                         | notify-stop / notify-stop-failure                                                                        |
-| Notification       | permission_prompt 等      | 通知サウンド (afplay)                                                                                    |
-| statusLine         | -                         | lifecycle/statusline                                                                                     |
+| イベント           | Matcher              | フック                                                                               |
+| ------------------ | -------------------- | ------------------------------------------------------------------------------------ |
+| PreToolUse         | Bash                 | auto-package-manager, security/npm-safe-install, security/rm-to-trash, textlint-lint |
+| PreToolUse         | Write/Edit/MultiEdit | rust-pre-edit, guardrails                                                            |
+| PreToolUse         | EnterPlanMode        | deny (計画は /think へ誘導)                                                          |
+| PostToolUse        | Write/Edit/MultiEdit | rust-post-edit, textlint-fix, assay, formatter, gates                                |
+| PostToolUse        | Bash                 | gates post-bash                                                                      |
+| SessionStart       | \*                   | lifecycle/recall-index, herdr-agent-state                                            |
+| Stop / StopFailure | -                    | notify-stop / notify-stop-failure                                                    |
+| Notification       | permission_prompt 等 | 通知サウンド (afplay)                                                                |
+| statusLine         | -                    | lifecycle/statusline                                                                 |
 
 ## シェル hooks
 
@@ -33,7 +32,6 @@ Rust バイナリは sentinels プラグインとしても配布するが、現�
 | Hook                    | イベント         | 失敗モード  | 用途                                                         |
 | ----------------------- | ---------------- | ----------- | ------------------------------------------------------------ |
 | auto-package-manager.sh | PreToolUse(Bash) | fail-closed | パッケージ マネージャー コマンドを ni 系へ変換               |
-| localized-headings.sh   | PreToolUse(Bash) | fail-closed | gh issue/pr create の見出し言語を検査                        |
 | textlint-lint.sh        | PreToolUse(Bash) | fail-closed | gh issue/pr create 本文の textlint + 構造チェック (advisory) |
 | textlint-fix.sh         | PostToolUse      | fail-closed | .md ファイルを textlint で自動修正                           |
 | rust-pre-edit.sh        | PreToolUse       | fail-open   | .rs 編集前に cargo clippy、結果を additionalContext 注入     |
@@ -50,17 +48,14 @@ Rust バイナリは sentinels プラグインとしても配布するが、現�
 
 ### lifecycle/
 
-| Hook               | トリガー     | 失敗モード | 用途                                                 |
-| ------------------ | ------------ | ---------- | ---------------------------------------------------- |
-| statusline.sh      | statusLine   | fail-open  | ステータス ライン表示                                |
-| \_pr-cache.sh      | (sourced)    | fail-open  | statusline 用の PR 情報キャッシュ                    |
-| context-monitor.sh | PostToolUse  | fail-open  | コンテキスト使用量の警告 (advisory)                  |
-| recall-index.sh    | SessionStart | fail-open  | recall のクロスセッション索引をバックグラウンド更新  |
-| reflection-\*.sh   | 未登録       | fail-open  | セッション振り返りの抽出・注入。再設計待ちで無効化中 |
+| Hook            | トリガー     | 失敗モード | 用途                                                |
+| --------------- | ------------ | ---------- | --------------------------------------------------- |
+| statusline.sh   | statusLine   | fail-open  | ステータス ライン表示                               |
+| recall-index.sh | SessionStart | fail-open  | recall のクロスセッション索引をバックグラウンド更新 |
 
 ### lib/
 
-hook から source する共有関数 (japanese-detect, notify, reflection)。単体では登録しない。
+hook から source する共有関数 (japanese-detect, notify, rust-target)。単体では登録しない。
 
 ## Quality Pipeline (Rust バイナリ)
 
@@ -109,7 +104,7 @@ PostToolUse フック。編集のたびに品質ゲートを強制する。
 
 ### assay
 
-PostToolUse フック。spec.md / eval-criteria.md の保存時に文書品質を検証する。
+PostToolUse フック。spec.md/eval-criteria.md の保存時に文書品質を検証する。
 
 | 観点     | 詳細                                             |
 | -------- | ------------------------------------------------ |
@@ -119,7 +114,7 @@ PostToolUse フック。spec.md / eval-criteria.md の保存時に文書品質�
 
 ### プロジェクト設定
 
-guardrails / formatter / gates はプロジェクト ルートの `.claude/tools.json` を共有する。各ツールはプロジェクト単位で `"enabled": false` により無効化できる。
+guardrails/formatter/gates はプロジェクト ルートの `.claude/tools.json` を共有する。各ツールはプロジェクト単位で `"enabled": false` により無効化できる。
 
 ```json
 {
