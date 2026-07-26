@@ -12,7 +12,8 @@
     "preset-ja-spacing": {
       "ja-space-between-half-and-full-width": {
         "space": ["alphabets", "numbers"]
-      }
+      },
+      "ja-space-around-code": false
     },
     "ja-no-redundant-expression": true,
     "ja-no-weak-phrase": true

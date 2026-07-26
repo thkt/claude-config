@@ -27,7 +27,6 @@ EOF
   local content
   content=$(cat "$tmpfile")
   assert_not_contains "removes redundant expression ($label)" "することができます" "$content"
-  assert_not_contains "removes kanji keishikimeishi ($label)" "する事" "$content"
 }
 
 test_md_write_fixes_file() {

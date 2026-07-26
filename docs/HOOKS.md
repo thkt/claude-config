@@ -13,18 +13,17 @@ The Rust binaries are also distributed as sentinels plugins, but plugin registra
 
 ## Event Map
 
-| Event              | Matcher                   | Hooks                                                                                                    |
-| ------------------ | ------------------------- | -------------------------------------------------------------------------------------------------------- |
-| PreToolUse         | Bash                      | auto-package-manager, security/npm-safe-install, security/rm-to-trash, textlint-lint, localized-headings |
-| PreToolUse         | Edit/Write/MultiEdit      | rust-pre-edit, guardrails                                                                                |
-| PreToolUse         | EnterPlanMode             | deny (planning is routed to /think)                                                                      |
-| PreToolUse         | ExitPlanMode              | CCPlanView notifier                                                                                      |
-| PostToolUse        | Edit/Write/MultiEdit      | rust-post-edit, textlint-fix, assay, formatter, gates                                                    |
-| PostToolUse        | Write/Edit/MultiEdit/Bash | lifecycle/context-monitor                                                                                |
-| SessionStart       | -                         | lifecycle/recall-index                                                                                   |
-| Stop / StopFailure | -                         | notify-stop / notify-stop-failure                                                                        |
-| Notification       | permission_prompt etc.    | Notification sound (afplay)                                                                              |
-| statusLine         | -                         | lifecycle/statusline                                                                                     |
+| Event              | Matcher                | Hooks                                                                                |
+| ------------------ | ---------------------- | ------------------------------------------------------------------------------------ |
+| PreToolUse         | Bash                   | auto-package-manager, security/npm-safe-install, security/rm-to-trash, textlint-lint |
+| PreToolUse         | Write/Edit/MultiEdit   | rust-pre-edit, guardrails                                                            |
+| PreToolUse         | EnterPlanMode          | deny (planning is routed to /think)                                                  |
+| PostToolUse        | Write/Edit/MultiEdit   | rust-post-edit, textlint-fix, assay, formatter, gates                                |
+| PostToolUse        | Bash                   | gates post-bash                                                                      |
+| SessionStart       | \*                     | lifecycle/recall-index, herdr-agent-state                                            |
+| Stop / StopFailure | -                      | notify-stop / notify-stop-failure                                                    |
+| Notification       | permission_prompt etc. | Notification sound (afplay)                                                          |
+| statusLine         | -                      | lifecycle/statusline                                                                 |
 
 ## Shell Hooks
 
@@ -33,7 +32,6 @@ The Rust binaries are also distributed as sentinels plugins, but plugin registra
 | Hook                    | Event            | Failure Mode | Purpose                                                          |
 | ----------------------- | ---------------- | ------------ | ---------------------------------------------------------------- |
 | auto-package-manager.sh | PreToolUse(Bash) | fail-closed  | Convert package manager commands to the ni family                |
-| localized-headings.sh   | PreToolUse(Bash) | fail-closed  | Check heading language in gh issue/pr create                     |
 | textlint-lint.sh        | PreToolUse(Bash) | fail-closed  | textlint + structure check on gh issue/pr create body (advisory) |
 | textlint-fix.sh         | PostToolUse      | fail-closed  | Auto-fix .md files with textlint                                 |
 | rust-pre-edit.sh        | PreToolUse       | fail-open    | cargo clippy before .rs edits, injected as additionalContext     |
@@ -50,17 +48,14 @@ The Rust binaries are also distributed as sentinels plugins, but plugin registra
 
 ### lifecycle/
 
-| Hook               | Trigger      | Failure Mode | Purpose                                                      |
-| ------------------ | ------------ | ------------ | ------------------------------------------------------------ |
-| statusline.sh      | statusLine   | fail-open    | Status line display                                          |
-| \_pr-cache.sh      | (sourced)    | fail-open    | PR info cache for statusline                                 |
-| context-monitor.sh | PostToolUse  | fail-open    | Context usage warning (advisory)                             |
-| recall-index.sh    | SessionStart | fail-open    | Background update of the recall cross-session index          |
-| reflection-\*.sh   | Unregistered | fail-open    | Session reflection extract/inject. Disabled pending redesign |
+| Hook            | Trigger      | Failure Mode | Purpose                                             |
+| --------------- | ------------ | ------------ | --------------------------------------------------- |
+| statusline.sh   | statusLine   | fail-open    | Status line display                                 |
+| recall-index.sh | SessionStart | fail-open    | Background update of the recall cross-session index |
 
 ### lib/
 
-Shared functions sourced by hooks (japanese-detect, notify, reflection). Not registered on their own.
+Shared functions sourced by hooks (japanese-detect, notify, rust-target). Not registered on their own.
 
 ## Quality Pipeline (Rust Binaries)
 
