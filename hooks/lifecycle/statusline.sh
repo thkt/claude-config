@@ -23,10 +23,7 @@ parse_stdin() {
         (.model.id? // ""),
         (.session_id // ""),
         (.cost.total_cost_usd? // ""),
-        (if .context_window.current_usage? then
-          (.context_window.current_usage.input_tokens // 0) + (.context_window.current_usage.output_tokens // 0) +
-          (.context_window.current_usage.cache_creation_input_tokens // 0) + (.context_window.current_usage.cache_read_input_tokens // 0)
-        else "" end),
+        (.context_window.total_input_tokens? // ""),
         (.context_window.context_window_size? // ""),
         (.context_window.used_percentage? // ""),
         (.rate_limits.five_hour.used_percentage? // "" | if . == "" then "" else floor end),
@@ -35,12 +32,15 @@ parse_stdin() {
         (if .context_window.current_usage? then (.context_window.current_usage.cache_creation_input_tokens // 0) else 0 end),
         (.worktree.name? // ""),
         (.worktree.branch? // ""),
-        (.worktree.directory? // ""),
+        (.worktree.original_cwd? // ""),
         (.workspace.git_worktree? // false | if . then "1" else "" end),
         (.effort.level? // ""),
         (.fast_mode? // false | if . then "1" else "" end),
         (.rate_limits.five_hour.resets_at? // ""),
-        (.rate_limits.seven_day.resets_at? // "")
+        (.rate_limits.seven_day.resets_at? // ""),
+        (.workspace.current_dir? // .cwd? // ""),
+        (.pr.number? // ""),
+        (.pr.url? // "")
       ] | map(tostring) | join("\u001f")' 2>/dev/null)
 
     if [ -n "$parsed" ]; then
@@ -49,7 +49,8 @@ parse_stdin() {
             USAGE_5H USAGE_7D \
             CACHE_READ CACHE_CREATION \
             WT_NAME WT_BRANCH WT_ORIG_DIR WS_IS_WORKTREE \
-            EFFORT_LEVEL FAST_MODE RESET_5H RESET_7D <<< "$parsed"
+            EFFORT_LEVEL FAST_MODE RESET_5H RESET_7D \
+            CUR_DIR PR_NUM PR_URL <<< "$parsed"
     fi
 
     [[ "${SESSION_ID:-}" =~ ^[a-zA-Z0-9_-]+$ ]] || SESSION_ID=""
@@ -98,13 +99,6 @@ render_context() {
             has_cache=1
             cache_hit_pct=$((CACHE_READ * 100 / cache_total))
         fi
-    fi
-
-    # Bridge file for context-monitor.sh PostToolUse hook
-    if [ -n "$SESSION_ID" ]; then
-        printf '{"session_id":"%s","remaining_pct":%d,"used_pct":%d,"cache_hit_pct":%d,"ts":%d}\n' \
-            "$SESSION_ID" "$remaining" "$percentage" "$cache_hit_pct" "${EPOCHSECONDS:-$(date +%s)}" \
-            > "${TMPDIR:-/tmp}/claude-ctx-${SESSION_ID}.json" 2>/dev/null
     fi
 
     local tokens_k=$((CONTEXT_TOKENS / 1000)) limit_k=$((CONTEXT_LIMIT / 1000))
@@ -196,6 +190,13 @@ render_deadlines() {
     fi
 }
 
+# Claude Code supplies the open PR for the current branch as pr.number / pr.url, so
+# no `gh pr view` subprocess or TTL cache is needed here.
+render_pr() {
+    [[ "$PR_NUM" =~ ^[0-9]+$ ]] || return 0
+    printf ' \033]8;;%s\033\\\033[93m[PR#%s]\033[0m\033]8;;\033\\' "$PR_URL" "$PR_NUM"
+}
+
 render_git() {
     sep
 
@@ -206,26 +207,22 @@ render_git() {
         printf ' \033[92m[wt]\033[0m'
         [ -n "$WT_ORIG_DIR" ] && [ "$WT_ORIG_DIR" != "null" ] && \
             printf ' \033[90m← %s\033[0m' "${WT_ORIG_DIR:t}"
-        source "$(dirname "$0")/_pr-cache.sh" || true
+        render_pr
         return
     fi
 
-    printf '\033[96;1m%s\033[0m' "${PWD:t}"
+    printf '\033[96;1m%s\033[0m' "${${CUR_DIR:-$PWD}:t}"
 
     BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)
     [ -z "$BRANCH" ] && return
 
     printf ' on \033[95m%s\033[0m' "$BRANCH"
 
-    if [ "${WS_IS_WORKTREE:-}" = "1" ]; then
-        printf ' \033[92m[wt]\033[0m'
-    else
-        local git_dir git_common
-        { read -r git_dir; read -r git_common; } <<< "$(git rev-parse --git-dir --git-common-dir 2>/dev/null)"
-        [ -n "$git_common" ] && [ "$git_common" != "$git_dir" ] && printf ' \033[92m[wt]\033[0m'
-    fi
+    # workspace.git_worktree is populated for any linked worktree, so no git rev-parse
+    # fallback is needed to detect one.
+    [ -n "${WS_IS_WORKTREE:-}" ] && printf ' \033[92m[wt]\033[0m'
 
-    source "$(dirname "$0")/_pr-cache.sh" || true
+    render_pr
 }
 
 parse_stdin
@@ -241,3 +238,7 @@ render_cost
 render_usage
 render_deadlines
 render_git
+
+# Claude Code hides the status line when the command exits non-zero, and every
+# render_* ends in a conditional whose false branch would leak status 1.
+exit 0
