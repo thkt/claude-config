@@ -140,9 +140,11 @@ flowchart LR
         R1["/research"] --> F2["/fix"]
     end
     subgraph Feature["Feature Development"]
-        R2["/research"] --> T["/think"] --> C["/code"] --> A["/audit"]
+        R2["/research"] --> T["/think"] --> I["/issue"] --> B["build workflow"] --> A["/audit · /polish"]
     end
 ```
+
+The Feature Development detail (build's 7 stages, stop conditions, governing DRs) lives in [COMMANDS](./COMMANDS.md).
 
 ## Underlying Philosophy
 
@@ -163,12 +165,12 @@ Built on the premise that "**AI makes mistakes**":
 
 Refer to:
 
-| Document                            | Content                          |
-| ----------------------------------- | -------------------------------- |
-| [COMMANDS](./COMMANDS.md)           | Command design and relationships |
-| [SKILLS_AGENTS](./SKILLS_AGENTS.md) | Skill/agent mechanisms and usage |
-| [HOOKS](./HOOKS.md)                 | Hook system and Quality Pipeline |
-| [GLOSSARY](./GLOSSARY.md)           | Ubiquitous language dictionary   |
+| Document                            | Content                                                      |
+| ----------------------------------- | ------------------------------------------------------------ |
+| [COMMANDS](./COMMANDS.md)           | Commands, workflows, and the build-centered development flow |
+| [SKILLS_AGENTS](./SKILLS_AGENTS.md) | Skill/agent mechanisms and usage                             |
+| [HOOKS](./HOOKS.md)                 | Hook system and Quality Pipeline                             |
+| [GLOSSARY](./GLOSSARY.md)           | Ubiquitous language dictionary                               |
 
 ---
 
