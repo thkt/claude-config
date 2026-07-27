@@ -2,7 +2,7 @@
 name: research
 description: Probe project and technical questions. Findings are positions to be challenged with explicit sources, not conclusions. Phase 6 advisor pass argues against the synthesis before it lands. Do NOT use for design planning or plan generation (use /think instead).
 when_to_use: 調査して, 調べて, リサーチ, investigate, 分析して, issueやろう, issue見て, 横並びチェック, 類似パターン検出, refactor 横展開
-allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Task AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) WebFetch WebSearch
+allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Task AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) Bash($HOME/.claude/skills/research/scripts/*) WebFetch WebSearch
 model: opus
 context: fork
 background: false
@@ -23,7 +23,11 @@ Read `.claude/OUTCOME.md`. If absent, generate the stub via /outcome. If the inv
 
 ## Phase 2: Prior Research Scan
 
-Derive the lowercase hyphenated subject slug from `$ARGUMENTS` and search prior research with `bfs .claude/workspace/research -name '*<slug>*.md'`. If no match, note "No prior research found for `<slug>`" and move on. For each match, carry forward per the table below.
+Derive the lowercase hyphenated subject slug from `$ARGUMENTS` and run `${CLAUDE_SKILL_DIR}/scripts/find-prior-research.py <slug> .claude/workspace/research`. Parse the JSON `{ candidates: [{file, shared}, ...] }` (shared descending) from stdout.
+
+- No candidates: note "No prior research found for `<slug>`" and move on
+- A candidate with shared >= 2: carry forward per the table below
+- A candidate with shared == 1: the filename overlap alone is too weak to trust as a match, so read the file and judge relevance to `$ARGUMENTS` before deciding. When relevant, carry forward per the table below. When not relevant, mark it excluded from the Constraints carry-over table below and do not extract from it
 
 | Extract                 | Carry to | Handling                           |
 | ----------------------- | -------- | ---------------------------------- |

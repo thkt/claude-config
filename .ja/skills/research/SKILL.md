@@ -2,7 +2,7 @@
 name: research
 description: プロジェクトと技術的な質問を調査する。発見事項は結論ではなく、明示的なソース付きで反証にさらすべき主張として扱う。Phase 6 では統合が確定する前に advisor がそれへ反論する。設計計画や plan 生成には使わない (代わりに /think を使う)。
 when_to_use: 調査して, 調べて, リサーチ, investigate, 分析して, issueやろう, issue見て, 横並びチェック, 類似パターン検出, refactor 横展開
-allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Task AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) WebFetch WebSearch
+allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Task AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) Bash($HOME/.claude/skills/research/scripts/*) WebFetch WebSearch
 model: opus
 context: fork
 background: false
@@ -23,7 +23,11 @@ argument-hint: "[research subject or question]"
 
 ## Phase 2: 過去調査スキャン
 
-`$ARGUMENTS` から小文字ハイフン区切りの slug を作り、`bfs .claude/workspace/research -name '*<slug>*.md'` で過去の調査ファイルを探す。見つからなければ「No prior research found for `<slug>`」と注記して先へ進む。見つかった各ファイルは下表のとおり引き継ぐ。
+`$ARGUMENTS` から小文字ハイフン区切りの slug を作り、`${CLAUDE_SKILL_DIR}/scripts/find-prior-research.py <slug> .claude/workspace/research` を実行する。標準出力の JSON `{ candidates: [{file, shared}, ...] }` (shared 降順) をパースする。
+
+- 候補が 0 件のとき「No prior research found for `<slug>`」と注記して先へ進む
+- shared 2 以上の候補は下表のとおり引き継ぐ
+- shared 1 の候補はファイル名の語の重なりだけでは一致の根拠として弱いので、ファイルを読み `$ARGUMENTS` との関連性を判定してから決める。関連性があれば下表のとおり引き継ぎ、なければ Constraints 引き継ぎ表の対象外とし抽出しない
 
 | 抽出元               | 引き継ぎ先 | 扱い                                 |
 | -------------------- | ---------- | ------------------------------------ |
