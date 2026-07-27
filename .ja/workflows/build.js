@@ -1,7 +1,7 @@
 export const meta = {
   name: "build",
   description:
-    "自律的な end-to-end build。/think + /issue で精緻化した Plan 節付き issue を入力に、Load (逐語 fetch → 決定論 id 収集 → 抽出 → validate + id クロスチェック) / Revalidate / Branch / Code / Cleanup / Verify / Ship を headless の決定論 script stage として実行する。Code は unit ごとに plan の指示を trailer に載せてコミットし、Verify / Ship は HEAD でなく Branch で捕まえた分岐点を基準にする (ADR-0088)。Plan 節なし issue は入れ子の draft-plan workflow が plan を下書きする (ADR-0086)。正しさの確認は plan 自身のアンカー (前提、files スコープ、T-NNN 言明、conformance) との比較であり、開放的な欠陥探索ではない。重い担保 (/audit、/polish review) は draft PR に対して人間が起動する (ADR-0085)。",
+    "自律的な end-to-end build。/think + /issue で精緻化した Plan 節付き issue を入力に、Load (逐語 fetch → 決定論 id 収集 → 抽出 → validate + id クロスチェック) / Revalidate / Branch / Code / Cleanup / Verify / Ship を headless の決定論 script stage として実行する。Code は unit ごとに plan の指示を trailer に載せてコミットし、Verify / Ship は HEAD でなく Branch で捕まえた分岐点を基準にする (DR-0088)。Plan 節なし issue は入れ子の draft-plan workflow が plan を下書きする (DR-0086)。正しさの確認は plan 自身のアンカー (前提、files スコープ、T-NNN 言明、conformance) との比較であり、開放的な欠陥探索ではない。重い担保 (/audit、/polish review) は draft PR に対して人間が起動する (DR-0085)。",
   whenToUse:
     'plan 付き issue の実装。args には {issue, repo, base?} を渡す (issue は番号 "123" / "#123" か URL、repo は対象リポジトリの絶対パス、base は任意で PR の base ブランチと新規 checkout の起点。epic ブランチ集約フローで使う)。repo の無い args は no-repo で早期 stop する。## Plan 節の無い issue は plan を自動生成する (ゴール + a11y、critic-design gate 付き。品質は /think + /issue path に劣る)。離席して戻れば、前提 / conformance findings / 決定論 verify 結果を記録した draft PR ができている。スコープ外の backlog 候補は workflow の戻り値で返り、/issue で起票する。途中で舵を取る場合は phase を対話的に進める。',
   phases: [
@@ -15,8 +15,8 @@ export const meta = {
   ],
 };
 
-// build は人間の ## Plan 節を再計画しない (ADR-0084)。Plan 節なし issue は入れ子の
-// draft-plan workflow が下書きする (ADR-0086)。抽出は LLM に委ね、検証は script が持つ。
+// build は人間の ## Plan 節を再計画しない (DR-0084)。Plan 節なし issue は入れ子の
+// draft-plan workflow が下書きする (DR-0086)。抽出は LLM に委ね、検証は script が持つ。
 // fan-out を持つ stage は入れ子 workflow (code / draft-plan) に委譲する。
 
 phase("Load");
@@ -270,7 +270,7 @@ const oversizedUnits = (p) =>
 
 // Plan 節なし issue の plan 下書き。critic-design gate が Plan 節あり path の id
 // クロスチェックに相当する。build 専用なので単独 workflow でなくローカル関数にする
-// (ADR-0086)。GO で { plan }、それ以外は { stopped } を返す。
+// (DR-0086)。GO で { plan }、それ以外は { stopped } を返す。
 const draftPlan = async () => {
   const basePrompt =
     `以下の GitHub issue 本文には ## Plan 節が無い。本文だけから構造化 plan を導き、issue が求める以上のスコープを発明しない。` +
@@ -375,6 +375,7 @@ if (planHeading) {
       `以下の GitHub issue 本文の ## Plan 節から構造化 plan を抽出する。再計画 / 要約 / 補完をせず、書かれているものをそのまま構造化する。` +
         `本文の unit id (U-NNN) と test id (T-NNN) をすべて保持する。` +
         `preconditions は plan が前提にする既存コードの {path, pattern} の一覧、backlog_candidates は issue に書かれたスコープ外候補。本文に無ければ空配列。\n` +
+        `assumptions は ## Plan 節に限らず本文全体から集める。インラインの \`(tentative: ...)\` のマークと Premises 節の各行がすべて対象。マーカーは本文がどの言語でも英語のまま。本文に無ければ空配列。\n` +
         `seam は本文が \`seam: true\` と記した unit だけ true、他はすべて false。unit の内容から推測しない。\n\n${fencedBody}`,
     ),
     {
@@ -465,12 +466,20 @@ phase("Revalidate");
 const preconditions = plan.preconditions || [];
 // Code が unit ごとに commit するため run の途中で HEAD は分岐点でなくなり、下流の
 // `git diff HEAD` はすべて空を返す。可視の失敗でなく無言の pass になるので、基準を
-// 分岐点の sha で持つ (ADR-0088)。
-const BRANCH_SCHEMA = obj(["branch", "head"], {
+// 分岐点の sha で持つ (DR-0088)。
+const BRANCH_SCHEMA = obj(["branch", "head", "ahead_of_base"], {
   branch: { type: "string", description: "checkout 済みブランチ名のみ" },
   head: {
     type: "string",
     description: "checkout 後の `git rev-parse HEAD` の commit sha のみ",
+  },
+  // base 起点の呼び出しで、現在のブランチが base より進んでいないことを確かめる。
+  // 破棄したブランチに居たまま起動すると、その実装の上に積む (kizalas #599)。
+  ahead_of_base: {
+    type: "number",
+    description: baseBranch
+      ? `\`git rev-list --count ${baseBranch}..HEAD\` の出力を数値で返す`
+      : "base 起点の呼び出しではないので 0 を返す",
   },
 });
 // build 以前から作業ツリーにある私物を Verify の scope 逸脱から差し引く。
@@ -503,11 +512,17 @@ const [reval, branchRes, baseline] = await parallel([
     agent(
       anchor(
         `issue #${issueNumber}「${plan.outcome}」の作業ブランチを新規に checkout する。慣例に沿ったブランチ名 (type + 短い slug) を選び、` +
+          // base 起点を指定した呼び出しでは「現在のブランチを維持する」を書かない。
+          // 同じプロンプトに両方を置くと後者が前者を打ち消す (kizalas #599)。
           (baseBranch
-            ? `\`git checkout -b {name} ${baseBranch}\` で ${baseBranch} を起点に作成する。`
-            : `git checkout -b を実行する。`) +
-          `既に default 以外のブランチにいる場合は現在のブランチを維持する。branch フィールドにブランチ名だけを返す。` +
-          `続けて \`git rev-parse HEAD\` を実行し、その sha を逐語で head フィールドに返す。${guard}`,
+            ? `\`git checkout -b {name} ${baseBranch}\` で ${baseBranch} を起点に作成する。既に別のブランチにいても、そのブランチは使わず必ず ${baseBranch} から切り直す。`
+            : `git checkout -b を実行する。既に default 以外のブランチにいる場合は現在のブランチを維持する。`) +
+          `branch フィールドにブランチ名だけを返す。` +
+          `続けて \`git rev-parse HEAD\` を実行し、その sha を逐語で head フィールドに返す。` +
+          (baseBranch
+            ? `最後に \`git rev-list --count ${baseBranch}..HEAD\` を実行し、その数値を ahead_of_base に返す。`
+            : `ahead_of_base には 0 を返す。`) +
+          `${guard}`,
       ),
       {
         label: "checkout",
@@ -541,6 +556,21 @@ const startPoint = String((branchRes && branchRes.head) || "").trim();
 const perUnitCommits = /^[0-9a-f]{7,40}$/.test(startPoint);
 const diffBase = perUnitCommits ? startPoint : "HEAD";
 if (!perUnitCommits) log("分岐点 sha を取得できず、Ship で 1 回 commit し HEAD 基準で diff する。");
+// base 起点の呼び出しで分岐点が base より進んでいれば、その差分は今回の実装ではない。
+// 破棄したブランチや前タスクのブランチの上に積むと、Verify も PR もそれを今回の成果として
+// 扱う。scope 逸脱にも conformance にも現れないので、ここで止める (kizalas #599)。
+if (baseBranch && Number(branchRes && branchRes.ahead_of_base) > 0) {
+  return {
+    stopped: "dirty-branch-point",
+    branch,
+    base: baseBranch,
+    ahead_of_base: Number(branchRes.ahead_of_base),
+    why:
+      `分岐点が ${baseBranch} より ${Number(branchRes.ahead_of_base)} コミット進んでいる。既存のコミットの上に実装を積むと、` +
+      `それが今回の成果として PR に載る。${baseBranch} から新しいブランチを切り直して再実行するか、` +
+      `その差分を今回の起点として意図しているなら base を実際の起点ブランチに変えて再実行する。`,
+  };
+}
 if (preconditions.length) {
   if (!reval || !Array.isArray(reval.results)) {
     return {
@@ -639,7 +669,7 @@ log(
 );
 
 // ---- Cleanup: simplify skill + test 検証 ----
-// review lens は build に置かない (ADR-0085)。/polish は人間が PR に起動する。cleanup
+// review lens は build に置かない (DR-0085)。/polish は人間が PR に起動する。cleanup
 // を Verify の前に走らせ、検証の対象を出荷する tree にする。
 const CLEANUP_SCHEMA = obj(["edits", "tests_pass", "stashed"], {
   edits: {
@@ -671,7 +701,7 @@ const cleanup = (await agent(
 log(`Cleanup: 編集 ${cleanup.edits.length} 件、tests_pass=${cleanup.tests_pass}。`);
 
 // ---- Verify: 決定論の選択チェック (diff スコープ + T-NNN 照合) ∥ conformance ----
-// 正しさの確認は欠陥探索でなく plan のアンカーとの比較で行う (ADR-0085)。静的解析は
+// 正しさの確認は欠陥探索でなく plan のアンカーとの比較で行う (DR-0085)。静的解析は
 // edit 時の gates hooks、重い担保は人間の /audit が受け持つ。2 チェックは fail-open で
 // PR に surface する。conformance は唯一の LLM レビューで、findings は専用の PR 節に
 // 出して他へ混ぜない。
@@ -866,16 +896,34 @@ if (!allTestNames.length) {
 } else {
   missingTests = ["テスト言明の照合を実行できず presence 未検証"];
 }
+// plan が files に挙げたのに一度も変更されていないファイル。scope 逸脱が「plan に無い
+// ファイルを触った」を見るのに対し、こちらは「plan にあるファイルを触っていない」を見る。
+// unit が丸ごと実装されないまま green で通ることがあり (kizalas #596 U-003)、conformance が
+// 落ちていると誰も気づかない。LLM 判断が要らないので落ちようがない。
+const untouchedPlanFiles =
+  diff && Array.isArray(diff.files)
+    ? [...planFiles].filter(
+        (p) => !diff.files.some((f) => f && (f === p || (f.endsWith("/") && p.startsWith(f)))),
+      )
+    : [];
+// agent が死んで null を返したときの findings 0 は「指摘なし」ではなく「未実行」。
+// 戻り値で両者が同じ 0 に潰れると、呼び出し側がレビュー済みと読む (kizalas #596)。
+const confStatus = !conformance ? "agent-failed" : conformance.spec_found ? "reviewed" : "no-spec";
+const structStatus = !structure
+  ? "agent-failed"
+  : structure.reference_checked
+    ? "reviewed"
+    : "no-reference";
 const conf = conformance || { spec_found: false, findings: [] };
 const struct = structure || { reference_checked: false, findings: [] };
 log(
-  `Verify: scope 逸脱 ${scopeDeviations.length} 件、欠落テスト言明 ${missingTests.length} 件、` +
-    (conf.spec_found
+  `Verify: scope 逸脱 ${scopeDeviations.length} 件、未変更の plan files ${untouchedPlanFiles.length} 件、欠落テスト言明 ${missingTests.length} 件、` +
+    (confStatus === "reviewed"
       ? `conformance の spec 逸脱 ${conf.findings.length} 件 (うち high ${conf.findings.filter((f) => f.severity === "high").length} 件)、`
-      : "conformance は skip (spec 無し)、") +
-    (struct.reference_checked
+      : `conformance は未実施 (${confStatus})、`) +
+    (structStatus === "reviewed"
       ? `structure の逸脱 ${struct.findings.length} 件 (${refModule.path} 比)。`
-      : "structure は skip (plan に参照モジュール無し)。"),
+      : `structure は未実施 (${structStatus})。`),
 );
 
 // build は起票しない。スコープ外候補は戻り値で返し、ユーザーが /issue で起票する。
@@ -966,6 +1014,7 @@ const shipPayload = {
   issue: issueNumber,
   assumptions: shipAssumptions,
   scope_deviations: scopeDeviations,
+  untouched_plan_files: untouchedPlanFiles,
   missing_tests: missingTests,
   code_anomalies: shipAnomalies,
   tests_pass: code.tests_pass,
@@ -999,7 +1048,7 @@ const ship = await agent(
       `未追跡ファイル (\`git status --porcelain --untracked-files=all\` の "??" 行。ディレクトリ単位に畳まずファイル単位で判定する) は、plan の files ${JSON.stringify([...planFiles])} に含まれるか、この run で自分が作成したものだけを stage する。` +
       `それ以外の未追跡ファイルは build 以前から作業ツリーにあったものなので stage しない (仕様書・調査メモ・ローカル設定が PR に混入する)。stage しなかった未追跡パスは結果に列挙する。\n` +
       `ブランチを push し、draft pull request を開く。本文は PR テンプレートから自分で書く人間向けパートと、データから決定論レンダリングされる fact セクションで構成する (fact セクションを手書きしない)。手順は以下。\n` +
-      `(1) \`$HOME/.claude/settings.json\` から \`language\` を読み (未設定なら英語)、その言語で人間向け本文を書く。コード / 識別子 / 専門用語は翻訳しない。PR テンプレートはリポジトリのものがあれば使う (大文字小文字の区別なし、優先順 \`.github/pull_request_template.md\` > \`pull_request_template.md\` > \`docs/pull_request_template.md\` > \`PULL_REQUEST_TEMPLATE/\` ディレクトリ)。無ければ同梱の \`${bundled("skills/pr/templates/pr.md")}\` を使う。骨格を読んで body ファイルへ折り込む。人間向けセクションだけを、レビュアーが速く掴める順で埋める。先頭に解決する問題と到達する成果 (${JSON.stringify(plan.outcome)})、次に変更内容とアプローチ、最後にレビューの注目点。埋め草と事実の捏造をしない。Related / Closes は書かない (tail が \`Closes #\` を出す)。Scope / Backlog も書かない。スコープ外候補は PR に載せない。Design Decisions は plan の decisions (${JSON.stringify(plan.decisions || [])}) と実 diff から埋め、空なら節ごと省略する。\n` +
+      `(1) \`$HOME/.claude/settings.json\` から \`language\` を読み (未設定なら英語)、その言語で人間向け本文を書く。コード / 識別子 / 専門用語は翻訳しない。PR テンプレートはリポジトリのものがあれば使う (大文字小文字の区別なし、優先順 \`.github/pull_request_template.md\` > \`pull_request_template.md\` > \`docs/pull_request_template.md\` > \`PULL_REQUEST_TEMPLATE/\` ディレクトリ)。無ければ同梱の \`${bundled("skills/pr/templates/pr.md")}\` を使う。骨格を読んで body ファイルへ折り込む。人間向けセクションだけを、レビュアーが速く掴める順で埋める。先頭に解決する問題と到達する成果 (${JSON.stringify(plan.outcome)})、次に変更内容とアプローチ、最後にレビューの注目点。レビューの注目点は、骨格の該当節か、無ければ \`## Review focus\` 節として書く。Changes に書くのは diff が理由を運ばない変更だけで、ファイルの目録は書かない。埋め草と事実の捏造をしない。Related / Closes は書かない (tail が \`Closes #\` を出す)。Scope / Backlog も書かない。スコープ外候補は PR に載せない。Design Decisions は plan の decisions (${JSON.stringify(plan.decisions || [])}) と実 diff から埋め、空なら節ごと省略する。\n` +
       `(2) この JSON をそのまま一時ファイルに書く。\n${JSON.stringify(shipPayload)}\n` +
       `(3) fact tail の追記と PR 作成を 1 つの \`&&\` チェーンで行い、レンダラー失敗時は PR 作成前に中断させる。リポジトリルートから ` +
       `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{title}" --body-file {bodyfile}\` を実行する。{title} は自分が書いた commit subject、残余 commit を skip した場合はブランチ全体を表す Conventional Commits の subject。\n` +
@@ -1025,11 +1074,18 @@ return {
   // 実機確認が前提になる。その状態を呼び出し元へ明示する。
   verification: allTestNames.length ? "tests+gates" : "gates-only",
   scope_deviations: scopeDeviations,
+  // plan が挙げたのに一度も変更されていないファイル。unit の実装漏れが green のまま
+  // 通った跡として読む (kizalas #596 U-003)。
+  untouched_plan_files: untouchedPlanFiles,
   missing_tests: missingTests,
+  // status を伴わない件数は、agent が死んだ 0 とレビュー済みの 0 を同じに見せる。
+  // 呼び出し元は必ず status と組で読む (kizalas #596)。
+  conformance_status: confStatus,
   conformance_findings: (conf.findings || []).length,
   // high は受け入れ条件を満たせない欠落 / 誤実装。0 でない戻り値は Ship 済みでも
   // 呼び出し元がすぐ修正に入るべき信号 (件数だけでは重大性が読めなかった反省)。
   conformance_high: (conf.findings || []).filter((f) => f.severity === "high").length,
+  structure_status: structStatus,
   structure_findings: (struct.findings || []).length,
   cleanup_tests_pass: cleanup.tests_pass,
   unit_commits: unitCommits.length,

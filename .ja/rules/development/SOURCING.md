@@ -14,13 +14,13 @@ paths:
 
 # Sourcing
 
-framework / library の API を書くとき、学習データの記憶は固定バージョンとずれることがある。固定バージョンの公式 docs を権威ある出典とし、記憶ではなく docs に従って書く。非自明な API には出典を残す。
+framework/library の API を書くとき、学習データの記憶は固定バージョンとずれることがある。固定バージョンの公式 docs を権威ある出典とし、記憶ではなく docs に従って書く。非自明な API には出典を残す。
 
 これは CLAUDE.md の Verify ルール「事実は出典を引用」を、framework コード生成の場面に具体化したもの。
 
 ## 適用対象
 
-framework / library の public API に依存するコードを書く局面で適用する。判断はコード片の性質で決まる。
+framework/library の public API に依存するコードを書く局面で適用する。判断はコード片の性質で決まる。
 
 | 適用する                                                       | 適用しない                       |
 | -------------------------------------------------------------- | -------------------------------- |
@@ -32,9 +32,9 @@ framework / library の public API に依存するコードを書く局面で適
 
 適用対象に該当したら、記憶から書く前に次を実行する。
 
-1. 固定バージョンを lockfile / manifest (package.json、Cargo.toml 等) で確認し、そのバージョンの公式 docs を `scout fetch <url>` で引く。
+1. 固定バージョンを lockfile/manifest (package.json、Cargo.toml 等) で確認し、そのバージョンの公式 docs を `scout fetch <url>` で引く。scout が入っていない環境では WebFetch に落とす。
 2. docs の signature に従って書く。記憶と docs が食い違ったら docs を正とする。
-3. 出典 URL をコメントまたはコミットに残す。動作を左右する非自明な API に限り、自明なものへの付与は過剰。URL は docs のトップでなく該当 API のセクション / 行アンカーに deep-link し、後で読む者が引用元の signature に直接着地できるようにする。
+3. 出典 URL をコメントまたはコミットに残す。動作を左右する非自明な API に限り、自明なものへの付与は過剰。URL は docs のトップでなく該当 API のセクション/行アンカーに deep-link し、後で読む者が引用元の signature へ直接着地できるようにする。
 
 ## docs が引けないとき
 

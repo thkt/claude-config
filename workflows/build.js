@@ -1,7 +1,7 @@
 export const meta = {
   name: "build",
   description:
-    "Autonomous end-to-end build. Taking an issue with a Plan section refined via /think + /issue as input, Load (verbatim fetch -> deterministic id collection -> extract -> validate + id cross-check) / Revalidate / Branch / Code / Cleanup / Verify / Ship run headlessly as deterministic script stages. Code commits each unit separately with the plan's instruction in trailers, and Verify / Ship work from the branch point captured at Branch rather than from HEAD (ADR-0088). A plan-less issue has its plan drafted by the nested draft-plan workflow (ADR-0086). Correctness checking is a comparison against the plan's own anchors (preconditions, files scope, T-NNN statements, conformance), not an open-ended defect hunt; heavy assurance (/audit, /polish review) is human-invoked on the draft PR (ADR-0085).",
+    "Autonomous end-to-end build. Taking an issue with a Plan section refined via /think + /issue as input, Load (verbatim fetch -> deterministic id collection -> extract -> validate + id cross-check) / Revalidate / Branch / Code / Cleanup / Verify / Ship run headlessly as deterministic script stages. Code commits each unit separately with the plan's instruction in trailers, and Verify / Ship work from the branch point captured at Branch rather than from HEAD (DR-0088). A plan-less issue has its plan drafted by the nested draft-plan workflow (DR-0086). Correctness checking is a comparison against the plan's own anchors (preconditions, files scope, T-NNN statements, conformance), not an open-ended defect hunt; heavy assurance (/audit, /polish review) is human-invoked on the draft PR (DR-0085).",
   whenToUse:
     'Implementation of a plan-backed issue. Pass {issue, repo, base?} as args, where issue is a number ("123" / "#123") or URL, repo is the absolute path of the target repository, and base (optional) is both the PR base branch and the starting point of a fresh checkout (for the epic-branch aggregation flow); args without repo stop early as no-repo. An issue without a ## Plan section has a plan auto-drafted (goal + a11y, critic-design gated); its quality is below the /think + /issue path. Step away and come back to a draft PR with recorded assumptions, conformance findings, and deterministic verify results; out-of-scope backlog candidates are returned in the workflow result for you to file via /issue. If in-flight steering is needed, drive the phases interactively.',
   phases: [
@@ -15,8 +15,8 @@ export const meta = {
   ],
 };
 
-// build does not re-plan a human ## Plan section (ADR-0084). A plan-less issue is
-// drafted by the nested draft-plan workflow (ADR-0086). Extraction is left to the
+// build does not re-plan a human ## Plan section (DR-0084). A plan-less issue is
+// drafted by the nested draft-plan workflow (DR-0086). Extraction is left to the
 // LLM; verification belongs to the script. Fan-out stages are delegated to nested
 // workflows (code / draft-plan).
 
@@ -282,7 +282,7 @@ const oversizedUnits = (p) =>
 
 // Plan drafting for a plan-less issue. The critic-design gate is the counterpart
 // to the has-plan id cross-check. Build-internal, so it is a local function rather
-// than a standalone workflow (ADR-0086). Returns { plan } on GO, { stopped } otherwise.
+// than a standalone workflow (DR-0086). Returns { plan } on GO, { stopped } otherwise.
 const draftPlan = async () => {
   const basePrompt =
     `The following GitHub issue body has no ## Plan section. Derive a structured plan from the body alone; do not invent scope beyond what the issue asks. ` +
@@ -387,6 +387,7 @@ if (planHeading) {
       `Extract a structured plan from the ## Plan section of the following GitHub issue body. Do not re-plan, summarize, or fill in gaps; structure exactly what is written. ` +
         `Preserve every unit id (U-NNN) and test id (T-NNN) from the body. ` +
         `preconditions is the list of {path, pattern} of existing code the plan presupposes; backlog_candidates are out-of-scope candidates written in the issue. Empty arrays if absent from the body.\n` +
+        `assumptions come from the whole body, not just the ## Plan section: collect every inline \`(tentative: ...)\` mark and every line of a Premises section. The marker stays English whatever language the body is written in. Empty array if the body carries none.\n` +
         `seam is true only for a unit the body marks \`seam: true\`; every other unit is false. Do not infer it from the unit's content.\n\n${fencedBody}`,
     ),
     {
@@ -488,12 +489,21 @@ phase("Revalidate");
 const preconditions = plan.preconditions || [];
 // Code commits per unit, so HEAD stops being the branch point mid-run and every
 // downstream `git diff HEAD` comes back empty - a silent pass, not a visible failure.
-// Hold the base as the branch point's sha (ADR-0088).
-const BRANCH_SCHEMA = obj(["branch", "head"], {
+// Hold the base as the branch point's sha (DR-0088).
+const BRANCH_SCHEMA = obj(["branch", "head", "ahead_of_base"], {
   branch: { type: "string", description: "the checked-out branch name, nothing else" },
   head: {
     type: "string",
     description: "the commit sha of `git rev-parse HEAD` after the checkout, nothing else",
+  },
+  // For a base-anchored call, confirms the current branch is not ahead of base.
+  // Launching while still on a discarded branch stacks onto that implementation
+  // (kizalas #599).
+  ahead_of_base: {
+    type: "number",
+    description: baseBranch
+      ? `the output of \`git rev-list --count ${baseBranch}..HEAD\` as a number`
+      : "0, since this call is not base-anchored",
   },
 });
 // Subtracts pre-existing working-tree clutter from Verify's scope deviations.
@@ -526,11 +536,17 @@ const [reval, branchRes, baseline] = await parallel([
     agent(
       anchor(
         `Check out a new git working branch for issue #${issueNumber} "${plan.outcome}". Pick a conventional branch name (type + short slug) and ` +
+          // For a base-anchored call, never emit the keep-current-branch clause: in one
+          // prompt the latter voids the former (kizalas #599).
           (baseBranch
-            ? `create it from ${baseBranch} via \`git checkout -b {name} ${baseBranch}\`. `
-            : `run git checkout -b with it. `) +
-          `If already on a non-default branch, keep the current branch. Return only the branch name in the branch field. ` +
-          `Then run \`git rev-parse HEAD\` and return that sha verbatim in the head field.${guard}`,
+            ? `create it from ${baseBranch} via \`git checkout -b {name} ${baseBranch}\`. Even if you are already on another branch, do not use it; always branch off ${baseBranch} again. `
+            : `run git checkout -b with it. If already on a non-default branch, keep the current branch. `) +
+          `Return only the branch name in the branch field. ` +
+          `Then run \`git rev-parse HEAD\` and return that sha verbatim in the head field. ` +
+          (baseBranch
+            ? `Finally run \`git rev-list --count ${baseBranch}..HEAD\` and return that number in ahead_of_base.`
+            : `Return 0 in ahead_of_base.`) +
+          `${guard}`,
       ),
       {
         label: "checkout",
@@ -565,6 +581,22 @@ const perUnitCommits = /^[0-9a-f]{7,40}$/.test(startPoint);
 const diffBase = perUnitCommits ? startPoint : "HEAD";
 if (!perUnitCommits)
   log("Branch point sha unavailable; committing once at Ship and diffing against HEAD.");
+// For a base-anchored call, a branch point ahead of base means that delta is not this
+// build's work. Stacking onto a discarded or previous-task branch makes Verify and the
+// PR treat it as this run's output. It shows up in neither scope deviations nor
+// conformance, so stop here (kizalas #599).
+if (baseBranch && Number(branchRes && branchRes.ahead_of_base) > 0) {
+  return {
+    stopped: "dirty-branch-point",
+    branch,
+    base: baseBranch,
+    ahead_of_base: Number(branchRes.ahead_of_base),
+    why:
+      `The branch point is ${Number(branchRes.ahead_of_base)} commit(s) ahead of ${baseBranch}. Implementing on top of those commits ` +
+      `puts them on the PR as this build's work. Branch off ${baseBranch} again and relaunch, or - if that delta ` +
+      `is the intended starting point - set base to the actual starting branch and relaunch.`,
+  };
+}
 if (preconditions.length) {
   if (!reval || !Array.isArray(reval.results)) {
     return {
@@ -665,7 +697,7 @@ log(
 );
 
 // ---- Cleanup: simplify skill + test validation ----
-// The review lens does not belong to build (ADR-0085); /polish is human-invoked on
+// The review lens does not belong to build (DR-0085); /polish is human-invoked on
 // the PR. Cleanup runs before Verify so the verified tree is the shipped tree.
 const CLEANUP_SCHEMA = obj(["edits", "tests_pass", "stashed"], {
   edits: {
@@ -698,7 +730,7 @@ log(`Cleanup: ${cleanup.edits.length} edit(s), tests_pass=${cleanup.tests_pass}.
 
 // ---- Verify: deterministic selection checks (diff scope + T-NNN presence) ∥ conformance ----
 // Correctness checking compares against the plan's anchors, not a defect hunt
-// (ADR-0085). Static analysis belongs to the edit-time gates hooks; heavy assurance
+// (DR-0085). Static analysis belongs to the edit-time gates hooks; heavy assurance
 // is human-invoked /audit on the PR. Both checks fail open and surface on the PR.
 // conformance is the only LLM review; its findings go to a dedicated PR section.
 
@@ -894,16 +926,35 @@ if (!allTestNames.length) {
 } else {
   missingTests = ["test-statement verification unavailable; presence not verified"];
 }
+// Files the plan named but that were never changed. Scope deviations answer "did it
+// touch a file outside the plan"; this answers "did it leave a planned file untouched".
+// A whole unit can go unimplemented and still pass green (kizalas #596 U-003), and
+// nobody notices when conformance is down. No LLM judgment, so it cannot fail.
+const untouchedPlanFiles =
+  diff && Array.isArray(diff.files)
+    ? [...planFiles].filter(
+        (p) => !diff.files.some((f) => f && (f === p || (f.endsWith("/") && p.startsWith(f)))),
+      )
+    : [];
+// When an agent dies and returns null, findings 0 means "did not run", not "found
+// nothing". Collapsing both into the same 0 in the return value makes the caller read
+// it as reviewed (kizalas #596).
+const confStatus = !conformance ? "agent-failed" : conformance.spec_found ? "reviewed" : "no-spec";
+const structStatus = !structure
+  ? "agent-failed"
+  : structure.reference_checked
+    ? "reviewed"
+    : "no-reference";
 const conf = conformance || { spec_found: false, findings: [] };
 const struct = structure || { reference_checked: false, findings: [] };
 log(
-  `Verify: scope deviations ${scopeDeviations.length}, missing test statements ${missingTests.length}, ` +
-    (conf.spec_found
+  `Verify: scope deviations ${scopeDeviations.length}, untouched plan files ${untouchedPlanFiles.length}, missing test statements ${missingTests.length}, ` +
+    (confStatus === "reviewed"
       ? `conformance ${conf.findings.length} spec deviation(s) (${conf.findings.filter((f) => f.severity === "high").length} high), `
-      : "conformance skipped (no spec found), ") +
-    (struct.reference_checked
+      : `conformance did not run (${confStatus}), `) +
+    (structStatus === "reviewed"
       ? `structure ${struct.findings.length} deviation(s) from ${refModule.path}.`
-      : "structure skipped (no reference module in plan)."),
+      : `structure did not run (${structStatus}).`),
 );
 
 // build files nothing; out-of-scope candidates return to the user to file via /issue.
@@ -1000,6 +1051,7 @@ const shipPayload = {
   issue: issueNumber,
   assumptions: shipAssumptions,
   scope_deviations: scopeDeviations,
+  untouched_plan_files: untouchedPlanFiles,
   missing_tests: missingTests,
   code_anomalies: shipAnomalies,
   tests_pass: code.tests_pass,
@@ -1032,7 +1084,7 @@ const ship = await agent(
       `Scope what you stage yourself; never use \`git add -A\` or \`git add .\`. Modifications to tracked files may be staged as they are, but stage an untracked path (a "??" line in \`git status --porcelain --untracked-files=all\`, judged per file, never per directory) only when it appears in the plan's files ${JSON.stringify([...planFiles])} or you created it during this run. ` +
       `Every other untracked path predates this build and must stay unstaged, otherwise specification documents, research notes, and local config leak into the PR. List any untracked path you left unstaged in your result.\n` +
       `Push the branch, then open a draft pull request. Its body is a human-facing part you write from a PR template, followed by deterministic fact sections rendered from data (do not hand-write the fact sections). The steps are as follows.\n` +
-      `(1) Read \`language\` from \`$HOME/.claude/settings.json\` (default English if unset) and write the human-facing body in that language, keeping code, identifiers, and technical terms untranslated. Choose the PR template: the repository's if present (case-insensitive, priority \`.github/pull_request_template.md\` > \`pull_request_template.md\` > \`docs/pull_request_template.md\` > a \`PULL_REQUEST_TEMPLATE/\` directory), otherwise the bundled \`${bundled("skills/pr/templates/pr.md")}\`; read the skeleton and fold it into the body file. Fill only the human-facing sections, ordered so a reviewer grasps it fast: lead with the problem this solves and the outcome it reaches (${JSON.stringify(plan.outcome)}), then what changed and the approach, then where to focus review. No filler, no invented facts. Skip Related / Closes; the tail emits \`Closes #\`. Skip Scope / Backlog too; out-of-scope candidates do not go in the PR. Fill Design Decisions from the plan decisions (${JSON.stringify(plan.decisions || [])}) and the actual diff; omit the section if empty rather than inventing.\n` +
+      `(1) Read \`language\` from \`$HOME/.claude/settings.json\` (default English if unset) and write the human-facing body in that language, keeping code, identifiers, and technical terms untranslated. Choose the PR template: the repository's if present (case-insensitive, priority \`.github/pull_request_template.md\` > \`pull_request_template.md\` > \`docs/pull_request_template.md\` > a \`PULL_REQUEST_TEMPLATE/\` directory), otherwise the bundled \`${bundled("skills/pr/templates/pr.md")}\`; read the skeleton and fold it into the body file. Fill only the human-facing sections, ordered so a reviewer grasps it fast: lead with the problem this solves and the outcome it reaches (${JSON.stringify(plan.outcome)}), then what changed and the approach, then where to focus review. Put the review-focus content under the skeleton's nearest section, or as a \`## Review focus\` section when it has none. A change belongs in Changes only when the diff does not carry its rationale, never as an inventory of files. No filler, no invented facts. Skip Related / Closes; the tail emits \`Closes #\`. Skip Scope / Backlog too; out-of-scope candidates do not go in the PR. Fill Design Decisions from the plan decisions (${JSON.stringify(plan.decisions || [])}) and the actual diff; omit the section if empty rather than inventing.\n` +
       `(2) write this exact JSON to a temp file.\n${JSON.stringify(shipPayload)}\n` +
       `(3) append the fact tail and open the PR as one \`&&\` chain, so a renderer failure aborts before the PR is created; from the repository root run ` +
       `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{title}" --body-file {bodyfile}\`, where {title} is your commit subject, or - if you skipped the remainder commit - a Conventional Commits subject for the branch as a whole.\n` +
@@ -1058,11 +1110,18 @@ return {
   // acceptance then rests on human manual checks. Make that state explicit.
   verification: allTestNames.length ? "tests+gates" : "gates-only",
   scope_deviations: scopeDeviations,
+  // Files the plan named but that were never changed. Read it as the trace of a unit
+  // that went unimplemented and still passed green (kizalas #596 U-003).
+  untouched_plan_files: untouchedPlanFiles,
   missing_tests: missingTests,
+  // A count without its status shows a dead agent's 0 and a clean review's 0 as the
+  // same thing. The caller must always read the pair (kizalas #596).
+  conformance_status: confStatus,
   conformance_findings: (conf.findings || []).length,
   // high defeats an acceptance criterion. A non-zero value is a signal for the caller
   // to start fixing immediately even though the PR shipped (a bare count hid severity).
   conformance_high: (conf.findings || []).filter((f) => f.severity === "high").length,
+  structure_status: structStatus,
   structure_findings: (struct.findings || []).length,
   cleanup_tests_pass: cleanup.tests_pass,
   unit_commits: unitCommits.length,
