@@ -9,7 +9,7 @@ argument-hint: "[issue number or URL]"
 
 # /qualify - Inspect an issue for build readiness
 
-Inspect an issue before handing it to build, and return whether to hand it over or fix it first. The conditions that stop build at Load live in build.js, so read them at run time instead of copying them into this skill. Findings come back as question drafts for the author; nothing is posted to GitHub.
+Inspect an issue before handing it to build, and return whether to hand it over or fix it first. The conditions that stop build at Load live in build.js, so read them at run time instead of copying them into this skill. Findings that need a decision come back as questions with a hypothesis attached, addressed to whoever invoked the skill; nothing is posted to GitHub.
 
 ## Input
 
@@ -54,19 +54,19 @@ Check that the issue follows `/issue`'s output format. Inspect exactly the axes 
 
 ## Phase 4: Verdict and output
 
-Return the output in conversation. The order is the verdict on one line, the blockers, the advice, then the question drafts. Write "none" for a section with 0 entries. Evaluate the verdicts in the table below top to bottom and take the first one that matches.
+Return the output in conversation. The order is the verdict on one line, the blockers, the advice, then the questions. Write "none" for a section with 0 entries. Evaluate the verdicts in the table below top to bottom and take the first one that matches.
 
 | Verdict     | Condition            | Next step                                                             |
 | ----------- | -------------------- | --------------------------------------------------------------------- |
 | needs-plan  | No `## Plan` section | Draft a plan via `/think` and transfer it via `/issue` into `## Plan` |
-| needs-fix   | 1 or more blockers   | Return the findings to the author, then run `/qualify` again          |
+| needs-fix   | 1 or more blockers   | Clear the blockers, then run `/qualify` again                         |
 | build-ready | 0 blockers           | Hand the issue number to the build workflow                           |
 
-### Question drafts
+### Questions
 
-Turn a finding into a question only when the author alone can answer it, which covers gaps in the spec and undecided judgments; for a format defect, write the correction directly instead of asking. Attach the answer you expect to each question as a hypothesis. The author corrects the hypothesis instead of explaining from scratch, and your level of understanding shows at the same time.
+Turn a finding into a question when reading the body alone does not settle it, which covers gaps in the spec and undecided judgments; for a format defect, write the correction directly instead of asking. Attach the answer you expect to each question as a hypothesis. The reader corrects the hypothesis instead of explaining from scratch, and your level of understanding shows at the same time.
 
-Do not post. Whether to send them to the author, and in what words, is the human's call.
+Address the questions to whoever invoked this skill. That person chooses whether to settle the answers themselves or send the questions to the issue author. Nothing is posted to GitHub.
 
 ## Rules
 
