@@ -94,6 +94,36 @@ test("live な指示と規約に旧称 ADR が残っていない", () => {
   assert.doesNotMatch(readFileSync(join(root, "README.md"), "utf8"), /\bADRs?\b/, "README.md");
 });
 
+// DR-0090 の Confirmation を機械化する。作業成果物は .claude/workspace/ に統一したので、
+// 他プロジェクトのルート直下に無い workspace/ を live な指示が指すと参照が解決しない。
+// 走査形は上の旧称チェックと同じで、置き場所もそれに揃えた。
+test("live な指示と規約が .claude/ を伴わない workspace/ を指していない", () => {
+  const BARE_WORKSPACE = /(?<!\.claude\/)(?<![\w/.])workspace\//;
+  const scanned = [];
+  for (const prefix of ["", ".ja"]) {
+    for (const dir of ["skills", "agents", "rules", "workflows"]) {
+      const base = join(root, prefix, dir);
+      if (!existsSync(base)) continue;
+      for (const entry of readdirSync(base, { recursive: true, withFileTypes: true })) {
+        if (!entry.isFile() || !/\.(md|js|py)$/.test(entry.name)) continue;
+        const full = join(entry.parentPath ?? entry.path, entry.name);
+        const rel = full.slice(join(root, prefix).length + 1);
+        // このテスト自身が bare workspace/ を negative assert に使う。
+        if (rel.includes("__pycache__") || rel === "skills/dr/tests/script-contract.test.js") {
+          continue;
+        }
+        scanned.push(rel);
+        assert.doesNotMatch(
+          readFileSync(full, "utf8"),
+          BARE_WORKSPACE,
+          `${prefix || "en"}: ${rel} が .claude/ を伴わない workspace/ を指す`,
+        );
+      }
+    }
+  }
+  assert.ok(scanned.length > 100, `走査した件数 (${scanned.length})`);
+});
+
 // MADR は v4 で名称が Architectural に戻った外部仕様。この skill が対象を広げていることを
 // 書いておかないと、名称を読んだ書き手がアーキテクチャ決定だけに絞る。
 test("madr-format がアーキテクチャに限らない旨を述べる", () => {

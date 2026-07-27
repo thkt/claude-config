@@ -8,7 +8,6 @@ paths:
   - "docs/**/*.md"
   - "rules/**/*.md"
   - "skills/**/*.md"
-  - ".claude/workspace/**/*.md"
 ---
 
 # Markdown Conventions
@@ -28,15 +27,15 @@ Which conventions apply depends on the reader. Scope is judged by the path witho
 
 In `.ja` prose the textlint hook collapses the spaces around `/`. When a collapsed enumeration of Latin-letter words would read as a path, list it with commas instead, and keep established compounds like `CI/CD` and `try/catch` as they are. Wrap slash commands like `/fix` in inline code, so that hook cannot glue them to the preceding word.
 
-| Symbol | Use                                           | Example                               |
-| ------ | --------------------------------------------- | ------------------------------------- |
-| `/`    | AND parallel enumeration                      | `Safety First / Output Verifiability` |
-| `.`    | Separator between independent rules           | `Check scope. Do not skip`            |
-| `()`   | Supplementary condition only                  | `Skip for follow-up (same session)`   |
-| `>`    | Priority order (prefer left, fall back right) | `CLI tool > built-in equivalent`      |
-| `→`    | Step sequence                                 | `Observe → analyze → conclude`        |
-| `§`    | Section reference                             | `phase.md § Gate rule`                |
-| `+`    | Composition of components                     | `root causes + Gate decision`         |
+| Symbol | Use                                           | Example                             |
+| ------ | --------------------------------------------- | ----------------------------------- |
+| `/`    | AND parallel enumeration                      | `Safety First/Output Verifiability` |
+| `.`    | Separator between independent rules           | `Check scope. Do not skip`          |
+| `()`   | Supplementary condition only                  | `Skip for follow-up (same session)` |
+| `>`    | Priority order (prefer left, fall back right) | `CLI tool > built-in equivalent`    |
+| `→`    | Step sequence                                 | `Observe → analyze → conclude`      |
+| `§`    | Section reference                             | `phase.md § Gate rule`              |
+| `+`    | Composition of components                     | `root causes + Gate decision`       |
 
 ## Inline code
 

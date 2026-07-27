@@ -8,7 +8,6 @@ paths:
   - "docs/**/*.md"
   - "rules/**/*.md"
   - "skills/**/*.md"
-  - ".claude/workspace/**/*.md"
 ---
 
 # Markdown Conventions
@@ -28,15 +27,15 @@ paths:
 
 `.ja` の散文では textlint hook が `/` の前後を詰める。詰めた形で英字どうしの列挙が path と読めてしまうときは読点で並べ、`CI/CD` や `try/catch` のような定着した複合語は `/` のままにする。`/fix` のようなスラッシュコマンドは、素で書くとその hook が直前の空白を落として前の語と繋がるため、inline code で囲む。
 
-| 記号 | 用途                            | 例                                    |
-| ---- | ------------------------------- | ------------------------------------- |
-| `/`  | AND 並列列挙                    | `Safety First / Output Verifiability` |
-| `.`  | 独立したルールのセパレータ      | `Check scope. Do not skip`            |
-| `()` | 補足条件のみ                    | `Skip for follow-up (same session)`   |
-| `>`  | 優先順位 (左を優先、不可なら右) | `CLI tool > built-in equivalent`      |
-| `→`  | ステップ列挙                    | `Observe → analyze → conclude`        |
-| `§`  | セクション参照                  | `phase.md § Gate ルール`              |
-| `+`  | 構成要素の合成                  | `root causes + Gate decision`         |
+| 記号 | 用途                            | 例                                  |
+| ---- | ------------------------------- | ----------------------------------- |
+| `/`  | AND 並列列挙                    | `Safety First/Output Verifiability` |
+| `.`  | 独立したルールのセパレータ      | `Check scope. Do not skip`          |
+| `()` | 補足条件のみ                    | `Skip for follow-up (same session)` |
+| `>`  | 優先順位 (左を優先、不可なら右) | `CLI tool > built-in equivalent`    |
+| `→`  | ステップ列挙                    | `Observe → analyze → conclude`      |
+| `§`  | セクション参照                  | `phase.md § Gate ルール`            |
+| `+`  | 構成要素の合成                  | `root causes + Gate decision`       |
 
 ## インラインコード
 
