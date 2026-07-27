@@ -72,8 +72,6 @@ test("live な指示と規約に旧称 ADR が残っていない", () => {
   for (const [lang, [path, declaration]] of Object.entries(fowler)) {
     assert.match(readFileSync(path, "utf8"), declaration, `${lang}: 除外の根拠を本文が宣言する`);
   }
-  // build の manual acceptance を通す環境変数名。prose ではなく knob なので改名しない。
-  const ENV_KNOB = /ADR0085_MANUAL_ACCEPTANCE/g;
   // when_to_use は利用者が打つ語の一覧。旧称で呼ぶ人に届かせるため ADR も並べておく。
   const TRIGGERS = /^when_to_use:.*$/gm;
   const scanned = [];
@@ -87,7 +85,7 @@ test("live な指示と規約に旧称 ADR が残っていない", () => {
         const rel = full.slice(join(root, prefix).length + 1);
         if (EXEMPT.includes(rel) || rel.includes("__pycache__")) continue;
         scanned.push(rel);
-        const text = readFileSync(full, "utf8").replace(ENV_KNOB, "").replace(TRIGGERS, "");
+        const text = readFileSync(full, "utf8").replace(TRIGGERS, "");
         assert.doesNotMatch(text, /\bADRs?\b/, `${prefix || "en"}: ${rel} に旧称 ADR が残る`);
       }
     }

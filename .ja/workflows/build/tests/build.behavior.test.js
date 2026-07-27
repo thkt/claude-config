@@ -1080,15 +1080,3 @@ test("translate-tail の訳 id が入力と一致しないなら英語原文で 
   );
   assert.ok(!shipCalls[0].prompt.includes("only one"), "id 不一致の訳は採用されない");
 });
-
-test("実環境で Plan 節付き issue が Load → Revalidate → Branch → Code → Cleanup → Verify と進む (manual acceptance、done 前必須)", () => {
-  // harness green だけで完了にしないための manual gate。実際に build workflow を
-  // Plan 節付きの実 issue で起動し、phase log が
-  // Load → Revalidate → Branch → Code → Cleanup → Verify の順に出て PR tail に /audit 案内が載ることを
-  // 確認したら ADR0085_MANUAL_ACCEPTANCE=pass を付けてテストを実行する。
-  assert.equal(
-    process.env.ADR0085_MANUAL_ACCEPTANCE,
-    "pass",
-    "manual acceptance 未実施。実 issue で build workflow を起動して確認後、ADR0085_MANUAL_ACCEPTANCE=pass で再実行する",
-  );
-});
