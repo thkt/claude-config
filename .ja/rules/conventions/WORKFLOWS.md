@@ -13,7 +13,7 @@ paths:
 
 Degradation とは、失敗または欠落した sub-result を、構造化フィールドと `log()` のどちらにも喪失粒度で記録しないまま drop または default する branch を指す。喪失粒度とは、何が / いくつ / なぜ落ちたかを後から再構成できる情報 (件数、id、対象名、理由)。
 
-主チャネルは workflow の返り値。snapshot は audit workflow だけが持つ追加チャネル (ADR-0047 の docs/audit/ 書き出し) で、他 workflow の実装者は返り値へ記録する。`log()` は対話中の補完で、返り値だけでは人間が気づけない degradation を実行ログに残す。喪失粒度を返り値の構造化フィールドへ既に残しているなら `log()` は任意。
+主チャネルは workflow の返り値。snapshot は audit workflow だけが持つ追加チャネル (DR-0047 の docs/audit/ 書き出し) で、他 workflow の実装者は返り値へ記録する。`log()` は対話中の補完で、返り値だけでは人間が気づけない degradation を実行ログに残す。喪失粒度を返り値の構造化フィールドへ既に残しているなら `log()` は任意。
 
 記録すべき粒度を状況ごとに示す。
 

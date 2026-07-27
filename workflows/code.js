@@ -1,7 +1,7 @@
 export const meta = {
   name: "code",
   description:
-    'TDD workflow that takes a structured plan (units / test_command) and implements per unit under script enforcement. A unit with test scenarios runs Red -> Green; a unit with no tests (docs / config, no verifiable behavior) runs a single direct-implementation step, so whether TDD applies is selected in the plan, not decided at runtime. An unconfirmed Red is recorded as an anomaly, and at the end an independent agent verifies the full suite + lint + type-check. With commit: true each unit lands as its own commit carrying the plan\'s instruction as trailers (ADR-0088). Callable standalone or nested from build via workflow("code").',
+    'TDD workflow that takes a structured plan (units / test_command) and implements per unit under script enforcement. A unit with test scenarios runs Red -> Green; a unit with no tests (docs / config, no verifiable behavior) runs a single direct-implementation step, so whether TDD applies is selected in the plan, not decided at runtime. An unconfirmed Red is recorded as an anomaly, and at the end an independent agent verifies the full suite + lint + type-check. With commit: true each unit lands as its own commit carrying the plan\'s instruction as trailers (DR-0088). Callable standalone or nested from build via workflow("code").',
   whenToUse:
     "Headless plan implementation. args is {plan, repo, model, commit, issue, untracked_baseline}; plan is a structured plan with units / test_command (as produced by the think skill). model (optional) propagates only to the implementation agents (defaults to sonnet). commit: true commits each unit as it completes; issue / untracked_baseline feed the commit trailers and the never-stage set. The implementation agents run at effort xhigh.",
   phases: [{ title: "Implement" }, { title: "Verify" }],
@@ -39,7 +39,7 @@ const anchor = (p) =>
 
 // Commits are opt-in because a standalone caller has not moved its diff base off
 // HEAD. Once HEAD moves, that caller's verification silently sees an empty diff
-// (ADR-0088).
+// (DR-0088).
 const commitPerUnit = input.commit === true;
 const issueRef = String(input.issue || "")
   .replace(/^#/, "")
@@ -138,7 +138,7 @@ const commitBody = (unit, tests) =>
 
 // Taken while the working tree still holds only that unit's work; splitting the merged
 // tree afterwards would be an LLM guess at hunk ownership. A failed commit (a blocking
-// pre-commit gate, ADR-0064) does not stop the run because the work stays in the tree
+// pre-commit gate, DR-0064) does not stop the run because the work stays in the tree
 // and the caller's final commit sweeps it up.
 const commitUnit = async (unit, tests, testFiles) => {
   if (!commitPerUnit) return;
@@ -216,7 +216,7 @@ for (const unit of units) {
     `Before reporting the result, audit each claim against a tool result from this session. Report only work you can point to evidence for; state unverified items as such in notes.\n` +
     `Unit-test convenience is never a reason to drop part of the feature. Do not omit a shared component, a data fetch, or a navigation affordance because it would need a Router / Suspense / permission context; stub that boundary in the test instead. Deferrals absent from the plan are forbidden, including narrowing the implementation behind a code comment claiming a later unit will do it. If part of what the contract / files require must go unimplemented, list it in deferred (it is recorded as an anomaly and surfaced on the PR).\n` +
     // Consulting advisor mid-implementation clashes with build's design: blockers are recorded
-    // as anomalies and heavy assurance is human-invoked on the draft PR (ADR-0085, #221).
+    // as anomalies and heavy assurance is human-invoked on the draft PR (DR-0085, #221).
     `Do not call the advisor tool, even on design ambiguity or an environment blocker. Push through to the end on your own analysis alone; write the judgment you made into notes and any narrowed implementation into deferred, leaving it to the anomaly record.\n` +
     (unit.seam === true
       ? `This is the plan's seam unit: its tests are what catch units that are each green in isolation but never connected. Run the real modules across the unit boundary; fake only I/O with systems external to this one. Stubbing an internal layer here defeats the unit. Assert that the connections between what the preceding units built (calls, transitions, data handoffs) exist and are actually reachable; showing a leaf piece works on its own is not enough.\n`

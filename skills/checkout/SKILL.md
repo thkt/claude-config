@@ -15,7 +15,7 @@ argument-hint: "[context or ticket number]"
 
 ## Execution
 
-1. Run `git status` and `git diff` in parallel to read the changes
+1. Run `git status` and `git diff HEAD` in parallel to read the changes. Plain `git diff` hides staged changes
 2. Generate 3 branch name candidates that follow the naming convention from the changes and `$ARGUMENTS`
 3. Present each candidate with a selection reason via `AskUserQuestion` and let the user pick one
 4. Create the new branch via `git checkout -b <selected name>`
@@ -31,7 +31,7 @@ Determine the type from the changes and assemble the branch name in this format.
 
 | Prefix    | Purpose              | Trigger               |
 | --------- | -------------------- | --------------------- |
-| feature/  | New functionality    | New files, components |
+| feat/     | New functionality    | New files, components |
 | fix/      | Bug fixes            | Error corrections     |
 | refactor/ | Code improvements    | Restructuring         |
 | docs/     | Documentation        | .md files, README     |
@@ -41,7 +41,7 @@ Determine the type from the changes and assemble the branch name in this format.
 
 - Compose it from lowercase and hyphen separators; do not use spaces, underscores, or CamelCase
 - Keep scope and description to 2-4 words and avoid vague words such as update
-- If `$ARGUMENTS` has a ticket ID, include it at the `<ticket>` position; do not include dates
+- If `$ARGUMENTS` has a ticket ID, include it at the `<ticket>` position. Names this skill creates carry no date
 
 ## Error Handling
 

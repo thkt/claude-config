@@ -43,11 +43,11 @@ No net-new decisions in {files}.
 
 ## DR Promotion Candidates (post-challenge)
 
+keep {N} / downgrade {N} / drop {N}
+
 | #   | Candidate                   | Initial | Challenge | Final          |
 | --- | --------------------------- | ------- | --------- | -------------- |
 | 1   | {source}:{line} - {summary} | promote | keep      | DR             |
 | 2   | {source}:{line} - {summary} | promote | downgrade | inline-comment |
 | 3   | {source}:{line} - {summary} | promote | drop      | skip           |
-
-keep {N} / downgrade {N} / drop {N}
 ```

@@ -9,7 +9,7 @@ import json
 import os
 import re
 import sys
-from datetime import date
+from datetime import datetime
 
 from dr_common import fail, guard_skill_dir, resolve_dr_dir
 
@@ -74,7 +74,7 @@ def main():
         "number": next_num,
         "filename": f"{next_num}-{slug}.md",
         "slug": slug,
-        "date": date.today().isoformat(),
+        "date": datetime.now().astimezone().date().isoformat(),
         "dr_dir": str(dr_dir),
         "similar_drs": similar_drs,
     }, indent=2))

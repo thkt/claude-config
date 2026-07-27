@@ -1,8 +1,8 @@
 ---
 name: slice
-description: Break a plan / spec / PRD into independently-grabbable tracer-bullet vertical-slice issues and publish them to GitHub in dependency order. Each issue is one thin slice cutting through every layer.
+description: Break a plan / spec / PRD into independently-grabbable tracer-bullet vertical-slice issues and publish them to GitHub in dependency order. Each issue is one thin slice cutting through every layer. Do NOT use to file a single request (use /issue instead).
 when_to_use: break plan into issues, plan to issues, spec to issues, vertical slice, tracer bullet, split into issues, slice
-allowed-tools: Bash(gh:*) Bash(cat:*) Bash(mv:*) Bash(ugrep:*) Bash(bfs:*) Read LS Task AskUserQuestion
+allowed-tools: Bash(gh:*) Bash(ugrep:*) Bash(bfs:*) Read LS Task AskUserQuestion
 model: opus
 argument-hint: "[plan / spec / PRD / issue ref]"
 ---
@@ -15,26 +15,17 @@ Break a plan into independently-grabbable issues. Each issue is a tracer bullet,
 
 Take the plan source from `$ARGUMENTS`. For an issue reference given as a number, URL, or path, fetch the body and comments via `gh issue view <N>`. If empty, work from a plan already in conversation context; if none, ask what to break down via AskUserQuestion.
 
-## Distinction from related skills
+## Where the published issues go next
 
-| Skill         | Output                                    | Medium / timing                      |
-| ------------- | ----------------------------------------- | ------------------------------------ |
-| /slice (this) | Durable GitHub issues in dependency order | A queue for a human to pick up later |
-| /issue        | One issue                                 | File a single request                |
+A sliced issue carries no `## Plan` yet; handing it straight to `/build` makes build auto-generate an ephemeral plan and proceed, recording a not-human-reviewed assumption. For slices where plan quality matters, generate a plan via `/think` and append it to the issue as a `## Plan` section before handing it to `/build`; use `/code` when you already hold a structured plan.
 
-/slice's value is decomposition and dependency-ordered publish. For one issue use /issue. A sliced issue carries no `## Plan` yet; handing it straight to /build makes build auto-generate an ephemeral plan and proceed, recording a not-human-reviewed assumption. For slices where plan quality matters, generate a plan via /think and append it to the issue as a `## Plan` section before handing it to /build; use /code when you already hold a structured plan.
+## Phase 1: Explore the codebase (optional)
 
-## Phase 1: Gather context
+If not yet explored, understand the current state. Issue titles / descriptions follow the project glossary and respect DRs in the area you touch. Look for prefactor opportunities that make the change easier. Spawn one Explore agent only when a cross-cutting sweep is needed; no per-slice spawns.
 
-Work from the plan in conversation context. If `$ARGUMENTS` carries an issue reference, read its body and comments.
+## Phase 2: Draft vertical slices
 
-## Phase 2: Explore the codebase (optional)
-
-If not yet explored, understand the current state. Issue titles / descriptions follow the project glossary and respect ADRs in the area you touch. Look for prefactor opportunities that make the change easier. Spawn one Explore agent only when a cross-cutting sweep is needed; no per-slice spawns.
-
-## Phase 3: Draft vertical slices
-
-Split the plan into tracer-bullet issues. Vertical slices (through all layers), not horizontal (one layer only).
+Split the plan into tracer-bullet issues. Vertical slices (through all layers), not horizontal (one layer only). Describe each slice by its end-to-end behavior, not by per-layer implementation steps. Leave out concrete file paths and code snippets: they go stale fast and mislead whoever picks the slice up. The exception is a state machine, reducer, schema, or type snippet a prototype produced, where it encodes the decision more precisely than prose; note it came from the prototype and trim it to the part that carries the decision. Write acceptance criteria that are demoable or verifiable on the slice alone; a criterion presupposing another slice's completion is a dependency and moves to Blocked by.
 
 | Rule            | Content                                                        |
 | --------------- | -------------------------------------------------------------- |
@@ -44,11 +35,11 @@ Split the plan into tracer-bullet issues. Vertical slices (through all layers), 
 
 ### Coverage check
 
-After drafting, enumerate the plan's requirement units, meaning user stories / acceptance criteria / FR-equivalents, and extract the units assigned to no slice. Weigh misses over false alarms; include doubtful units among the uncovered. Surface the uncovered units in the Phase 4 preview.
+After drafting, enumerate the plan's requirement units, meaning user stories / acceptance criteria / FR-equivalents, and extract the units assigned to no slice. Weigh misses over false alarms; include doubtful units among the uncovered. Surface the uncovered units in what Phase 3 presents.
 
-## Phase 4: Quiz the user
+## Phase 3: Quiz the user
 
-Present the proposed breakdown as a numbered list. For each slice show the following.
+Present the proposed breakdown as a numbered list, then add one Uncovered line at the end; write "none" when nothing is uncovered. After presenting, ask: is the granularity neither too coarse nor too fine, are the dependencies correct, should any slices be merged or split, and how to handle the uncovered units. The handling options are assigning to an existing slice, a new slice, or deliberate exclusion with a reason. Iterate until the user approves. The fields to show per slice are below.
 
 | Field        | Content                                         |
 | ------------ | ----------------------------------------------- |
@@ -56,84 +47,27 @@ Present the proposed breakdown as a numbered list. For each slice show the follo
 | Blocked by   | Which other slices must complete first (if any) |
 | User stories | Which user stories this slice covers (if any)   |
 
-Ask: is the granularity neither too coarse nor too fine, are the dependencies correct, should any slices be merged or split, and how to handle the uncovered units. The handling options are assigning to an existing slice, a new slice, or deliberate exclusion with a reason. Iterate until the user approves.
-
-## Phase 5: Publish the issues
+## Phase 4: Publish the issues
 
 After approval, confirm once more via AskUserQuestion before batch publish: "Create these N issues?". Creating N issues is outward-facing and hard to unwind, so never auto-publish without confirmation.
 
-On approval, publish in dependency order with blockers first. Create blockers first and capture their numbers so "Blocked by" can reference real issue numbers. Use the template below and Sandbox-Compatible Create per issue. Do not attach a triage label; AFK consumer wiring is out of scope. Do not close or modify any parent issue.
+On approval, publish in dependency order with blockers first. Create blockers first and capture their numbers so "Blocked by" can reference real issue numbers. Per issue, use the skeleton chosen by Template selection below, write the body to a temp file, and file it with `gh issue create --title "<title>" --body-file <path>`. Multi-line markdown breaks through `--body`, so use `--body-file`. Do not attach a triage label; AFK consumer wiring is out of scope. Do not close or modify any parent issue. After publishing, list the created issues in dependency order, each line carrying its issue number and its blocker's number; write "none" when a slice has no blocker.
 
-## Issue Template
+### Template selection
 
-```markdown
-## Parent
+Enumerate `.md` files via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'`. Take the feature-equivalent template if one exists, or the only template if there is exactly one, and strip its leading `name`, `about`, `labels`, and `title` frontmatter to get the skeleton. With no candidate, use `${CLAUDE_SKILL_DIR}/../issue/templates/feature.md`.
 
-A reference to the parent issue (only if the source was an existing issue; otherwise omit this section).
-
-## What to build
-
-A concise description of this vertical slice. Describe the end-to-end behavior, not layer-by-layer implementation. Avoid specific file paths or code snippets, which go stale fast. Exception: a state machine / reducer / schema / type snippet a prototype produced that encodes a decision more precisely than prose. Note it came from a prototype and trim to the decision-rich parts.
-
-## Acceptance criteria
-
-- [ ] Criterion 1
-- [ ] Criterion 2
-- [ ] Criterion 3
-
-## Blocked by
-
-- A reference to the blocking ticket (if any)
-
-Or "None - can start immediately" if no blockers.
-```
+Whichever skeleton wins, add `## Parent` at the top and `## Blocked by` at the bottom. Drop the optional sections that do not apply. Confidence marking does not apply: Phase 3 already had the user approve granularity and dependencies, so a published slice carries no open decisions.
 
 ## Language
 
-Read `language` from ${CLAUDE_SKILL_DIR}/../../settings.json and translate the issue body into that language. Default to English if unset. Keep technical terms / code / identifiers untranslated.
-
-## Sandbox-Compatible Create
-
-```bash
-cat > /tmp/claude/slice-body.md << 'EOF'
-<body>
-EOF
-gh issue create --title "<title>" --body-file /tmp/claude/slice-body.md
-mv /tmp/claude/slice-body.md ~/.Trash/ 2>/dev/null || true
-```
-
-Repeat this in dependency order for multiple slices, capturing each issue number from the publish output to fill into later "Blocked by" fields.
+Read `language` from `~/.claude/settings.json` and translate the issue body into that language. Default to English if unset. Keep technical terms / code / identifiers untranslated.
 
 ## Error Handling
 
 | Error                  | Action                                           |
 | ---------------------- | ------------------------------------------------ |
-| No plan source         | Ask what to break down via AskUserQuestion       |
 | Issue ref unresolvable | Report the ref and stop                          |
 | No git repository      | Report "Not a git repo"                          |
 | gh auth failure        | Report the auth error                            |
 | Publish fails midway   | Report created numbers and ask whether to resume |
-
-## Display Format
-
-### Preview (Phase 4)
-
-```markdown
-## Slice breakdown (N)
-
-1. <Title>
-   - Blocked by: <slices or none>
-   - User stories: <ids or none>
-
-Uncovered: <requirement units on no slice or none>
-```
-
-### Success
-
-List published issues in dependency order.
-
-```markdown
-Created (dependency order):
-
-- #<number> <title> (blocked by: #<n> | none)
-```

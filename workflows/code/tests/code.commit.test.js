@@ -1,4 +1,4 @@
-// ADR-0088 の unit ごとのコミット。コミットメッセージと staging 範囲は agent の裁量に
+// DR-0088 の unit ごとのコミット。コミットメッセージと staging 範囲は agent の裁量に
 // 委ねると壊れても静かなので、trailer の中身と staging 禁止事項を prompt 上で固定する。
 import { test } from "node:test";
 import assert from "node:assert/strict";

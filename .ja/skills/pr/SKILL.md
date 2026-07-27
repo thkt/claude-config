@@ -15,23 +15,23 @@ argument-hint: "[issue reference or context]"
 
 ## 言語
 
-`${CLAUDE_SKILL_DIR}/../../settings.json` から `language` を読み、その言語で PR 本文を翻訳する。未設定なら英語をデフォルト。技術用語、コード、識別子は翻訳しない。
+`~/.claude/settings.json` から `language` を読み、その言語で PR 本文を翻訳する。未設定なら英語をデフォルト。技術用語、コード、識別子は翻訳しない。
 
 ## 実行
 
-commit なし、Git リポジトリでない、gh 認証失敗 のいずれかを検出したら、エラーを報告して中止する。
+commit なし、Git リポジトリでない、gh 認証失敗のいずれかを検出したら、エラーを報告して中止する。
 
 1. base ブランチを検出 (§ Base ブランチ検出)
-2. base ブランチを AskUserQuestion で選択する。選択肢は main / develop / 検出済み
+2. base ブランチを AskUserQuestion で選択する。選択肢は main/develop/検出済み
 3. § 分析ソースの各コマンドを並列実行する
 4. UI 変更を検出 (§ UI 変更検出)
 5. テンプレートを選ぶ (§ PR テンプレート)
 6. 選んだテンプレートに従いタイトルと本文を生成 (§ タイトルルール)
 7. `${CLAUDE_SKILL_DIR}/references/prose-review.md` と、本文言語に対応する空句ファイルの基準で本文をインライン精査する。空句ファイルは日本語なら `phrases.ja.md`、英語なら `phrases.en.md`
-8. PR をプレビュー → AskUserQuestion: "Create this PR?"
+8. PR をプレビューし、AskUserQuestion で `Create this PR?` と確認する
 9. UI 変更があれば Skill で `use-workflow-pageshot` を PR 本文と共に呼ぶ (§ Pageshot 統合)
 10. 現在ブランチを push (§ Push)
-11. `gh pr create --title "..." --body "..."` で PR を作成。本文は直接文字列で渡し、heredoc `<<EOF` は sandbox 制約のため使わない
+11. 本文を一時ファイルに書き出し、`gh pr create --title "<title>" --body-file <path>` で PR を作成する。テンプレート由来の本文は backtick や `$` を含むので、`--body` で渡すと shell に解釈される
 12. pageshot 成果物があれば表示 (§ Pageshot 統合)
 
 ## 分析ソース
@@ -51,12 +51,12 @@ BASE=${BASE:-main}
 
 ## UI 変更検出
 
-§ 分析ソースの diff を読み込んで視覚出力への影響を判断する。ロジック / 型 / テスト / ドキュメントのみの変更は UI 変更なしとして § Pageshot 統合をスキップする。最終判定は pageshot のレンダリングが担うので、frontend シグナルがあって影響が曖昧なら UI 変更ありに倒す。以下のいずれかで視覚出力に影響する変更があれば UI 変更とみなす。
+§ 分析ソースの diff を読み込んで視覚出力への影響を判断する。ロジック/型/テスト/ドキュメントのみの変更は UI 変更なしとして § Pageshot 統合をスキップする。最終判定は pageshot のレンダリングが担うので、frontend シグナルがあって影響が曖昧なら UI 変更ありに倒す。以下のいずれかで視覚出力に影響する変更があれば UI 変更とみなす。
 
-- JSX / テンプレート / HTML のマークアップ
-- CSS / クラス名 / インラインスタイル
-- 色 / 間隔 / タイポグラフィのデザイントークン
-- 画像 / アイコン / フォントのアセット
+- JSX/テンプレート/HTML のマークアップ
+- CSS/クラス名/インラインスタイル
+- 色/間隔/タイポグラフィのデザイントークン
+- 画像/アイコン/フォントのアセット
 - `tailwind.config` などスタイル生成 config
 
 ## タイトルルール
@@ -69,23 +69,23 @@ BASE=${BASE:-main}
 
 - リポジトリに PR テンプレートがあればそれを利用、なければ同梱の `${CLAUDE_SKILL_DIR}/templates/pr.md` を使う
 - case-insensitive、`.github/pull_request_template.md` > `pull_request_template.md` > `docs/pull_request_template.md` > `PULL_REQUEST_TEMPLATE/` ディレクトリの順で優先する
-- `gh pr create --body` はテンプレを自動適用しないので、骨格を読み取って本文に組み込む
-- UI 変更検出時にリポジトリテンプレを採用するなら、`Preview URL:` 行と `## How to Test` セクションを必ず補う (§ Pageshot 統合)
+- `gh pr create` はテンプレを自動適用しないので、骨格を読み取って本文に組み込む
+- UI 変更検出時にリポジトリテンプレを採用するなら、§ Pageshot 統合が要求する 2 項目を補う
 
 ## Design Decisions の検出
 
 `Design Decisions` は commit 単位でなく PR 全体で集約し、§ 分析ソースの diff と log から検出する。以下のシグナルがあれば記載し、明示的なトレードオフがなくルーチンな実装だけなら省略する。
 
 - 同等な代替肢の中で明示的に選択
-- パフォーマンス / 型 / 互換性のトレードオフ
+- パフォーマンス/型/互換性のトレードオフ
 - 既存パターンからの逸脱
-- ライブラリ / API の選定
+- ライブラリ/API の選定
 
 ## Pageshot 統合
 
 `Skill("use-workflow-pageshot")` を現在の PR 本文文字列を入力に呼ぶ。本文には上部近くの `Preview URL: <URL>` 行と、番号付きリストの `## How to Test` セクションが必要。skill は stdout に mode 行を 1 つ返す。
 
-- `mode=screenshot artifact=<path>` / `mode=video artifact=<path>` パスを表示し、GitHub の PR 説明か最初のコメントへドラッグ & ドロップするよう案内
+- `mode=screenshot artifact=<path>`/`mode=video artifact=<path>` パスを表示し、GitHub の PR 説明か最初のコメントへドラッグ & ドロップするよう案内
 - `mode=failed` 欠落項目を報告し、pageshot をスキップして PR 作成を続行
 
 ## Push

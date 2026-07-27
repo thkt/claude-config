@@ -21,7 +21,7 @@ argument-hint: "[context or issue reference]"
 
 ## 種別判定
 
-diff のコンテキストから type を推定する。判別不能な場合は feat をデフォルトとする。
+diff のコンテキストから type を推定する。判別できないときは chore とする。feat は semver の minor を上げる宣言になるので、根拠がないまま選ばない。
 
 | Type     | 用途                           |
 | -------- | ------------------------------ |
@@ -37,7 +37,7 @@ diff のコンテキストから type を推定する。判別不能な場合は
 
 ## ルール
 
-Subject は 72 文字以内の命令形 / 小文字 / ピリオドなし。Body には変更の動機や判断の理由など diff から読み取れない why を書き、diff から自明なら省略する。Footer には `BREAKING CHANGE:` / `Closes #123` / `Co-authored-by:` を使う。
+Subject は 72 文字以内の命令形/小文字/ピリオドなし。Body には変更の動機や判断の理由など diff から読み取れない why を書き、diff から自明なら省略する。Footer には `BREAKING CHANGE:`/`Closes #123`/`Co-authored-by:` を使う。
 
 ```text
 feat(auth): add OAuth2 authentication support
@@ -46,12 +46,15 @@ feat(api)!: remove deprecated endpoints  # BREAKING CHANGE
 
 ## Sandbox 互換コミット
 
+先頭の `git rev-parse --show-toplevel` で対象リポジトリを確かめる。出力が意図した先と違えば、コミットせず不一致を報告して止める。
+
 ```bash
-cat > /tmp/claude/commit-msg.txt << 'EOF'
+git rev-parse --show-toplevel
+cat > "$TMPDIR/commit-msg.txt" << 'EOF'
 <message>
 EOF
-git commit -F /tmp/claude/commit-msg.txt
-mv /tmp/claude/commit-msg.txt ~/.Trash/ 2>/dev/null || true
+git commit -F "$TMPDIR/commit-msg.txt"
+mv "$TMPDIR/commit-msg.txt" ~/.Trash/ 2>/dev/null || true
 ```
 
 ## エラー処理

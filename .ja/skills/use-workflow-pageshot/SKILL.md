@@ -11,12 +11,12 @@ user-invocable: false
 
 ## 入力
 
-| フィールド  | ソース                                                    |
-| ----------- | --------------------------------------------------------- |
-| Preview URL | PR 本文の冒頭にある `Preview URL: <URL>` 行               |
-| Steps       | PR 本文の `## How to Test` セクション配下の番号付きリスト |
+PR 本文は `/pr` から文字列として渡される。下表のいずれかが欠落していれば、`mode: failed` と欠落フィールド名を返し、判断は `/pr` に任せる。
 
-PR 本文は `/pr` から文字列として渡される。Preview URL または How to Test が欠落していれば、`mode: failed` と欠落フィールド名を返し、判断は `/pr` に任せる。
+| フィールド  | ソース                                                    |
+| ----------- | --------------------------------------------------------- | --- |
+| Preview URL | PR 本文の冒頭にある `Preview URL: <URL>` 行               |
+| Steps       | PR 本文の `## How to Test` セクション配下の番号付きリスト | 。  |
 
 ## ブラウザ engine
 
@@ -48,14 +48,14 @@ PR 本文は `/pr` から文字列として渡される。Preview URL または 
 
 ## Video Flow (2+ steps)
 
+step 間に `agent-browser wait 500` を挟む。各操作の前に `snapshot` を実行して要素を特定する。
+
 | #   | コマンド                                                               |
 | --- | ---------------------------------------------------------------------- |
 | 1   | `agent-browser record start {outdir}/capture.webm`                     |
 | 2   | 各 step について順に `snapshot` してから操作を実行                     |
 | 3   | `agent-browser record stop`                                            |
 | 4   | `ffmpeg -i {outdir}/capture.webm -vcodec libx264 {outdir}/capture.mp4` |
-
-step 間に `agent-browser wait 500` を挟む。各操作の前に `snapshot` を実行して要素を特定する。
 
 ## 出力
 
@@ -65,7 +65,7 @@ stdout の 1 行。
 mode=screenshot artifact=/absolute/path/to/step-01.png
 ```
 
-または
+動画を撮ったとき。
 
 ```
 mode=video artifact=/absolute/path/to/capture.mp4

@@ -31,7 +31,7 @@ Run the Action for each check. When the described condition is met, the check pa
 | Check                   | Action                                                                                                                                           |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Intentional             | Search for a marker comment near the location                                                                                                    |
-| Documented tradeoff     | Check whether an ADR, comment, or commit message explains the choice                                                                             |
+| Documented tradeoff     | Check whether an DR, comment, or commit message explains the choice                                                                             |
 | Context complete        | Check whether an external API, legacy code, or migration narrows scope                                                                           |
 | Severity accurate       | Run the impact analysis and compare against the claimed blast radius (e.g. mitigated by upstream guard, cold path, single non-user-facing usage) |
 | Rule scope              | Check whether the rule is sound generally but this usage falls outside scope                                                                     |
@@ -47,7 +47,7 @@ Apply on top of the baseline for the finding's matching category. When category 
 | ---- | -------------------------------------------- | ------------------- | ------------------------------------------------------------------------ |
 | 1    | Read finding location + 20 lines context     | Code snippet        | File missing, verdict = needs_context, note "File may have been deleted" |
 | 2    | Search for intentionality markers nearby     | Comments, patterns  | None found, proceed to step 3                                            |
-| 3    | Read related files (tests, types, cited ADR) | Trade-off rationale | None found, finding likely real                                          |
+| 3    | Read related files (tests, types, cited DR) | Trade-off rationale | None found, finding likely real                                          |
 | 4    | Apply baseline + category lens               | Per-check pass/fail | All fail, finding confirmed                                              |
 | 5    | Decide verdict                               | One of 4 verdicts   | -                                                                        |
 
@@ -68,7 +68,7 @@ Apply on top of the baseline for the finding's matching category. When category 
 | confirmed     | All baseline checks / category lens fail, challenge does not succeed                         | Keep in report                                                                        |
 | disputed      | Any baseline check (excluding severity accuracy) or category lens passes, challenge succeeds | Remove from report                                                                    |
 | downgraded    | The severity-accuracy baseline check applies                                                 | Adjust severity based on the impact analysis result. The number of steps is not fixed |
-| needs_context | File missing, ADR cited but unreadable, or judgment requires domain expert                   | Flag for human review                                                                 |
+| needs_context | File missing, DR cited but unreadable, or judgment requires domain expert                   | Flag for human review                                                                 |
 
 ## Output
 

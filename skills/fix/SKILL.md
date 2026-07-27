@@ -1,28 +1,25 @@
 ---
 name: fix
-description: Rapidly fix small bugs and minor improvements in development environment. Do NOT use for new feature implementation or large-scale changes (refine via /issue and hand to the build workflow instead).
+description: Rapidly fix small bugs and minor improvements in development environment. Hand it a filed issue number and a fix confined to 1-3 files carries straight through. Do NOT use for new feature implementation or changes spanning 4 or more files (hand the number to the build workflow instead).
 when_to_use: バグ修正, 直して, 修正して, fix bug, 不具合
-allowed-tools: Bash(git diff:*) Bash(git ls-files:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit MultiEdit Read LS Task AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit MultiEdit Read LS Task AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
 model: opus
 argument-hint: "[bug or issue description]"
 ---
 
 # /fix - Quick Bug Fix
 
-Rapidly fix small bugs with root cause analysis and TDD verification.
-
 ## Input
 
-`$ARGUMENTS` holds a bug description, a finding ID from a `/audit` snapshot in `${CLAUDE_SKILL_DIR}/../../workspace/history/` (e.g., `RC-001`, `SEC-003`), or a finding returned by a standalone audit workflow run. Scope is limited to small, well-understood issues of 1-3 files. The `$ARGUMENTS` pattern routes the mode.
+`$ARGUMENTS` holds one of four forms: a bug description, a finding ID from a `/audit` snapshot in `${CLAUDE_SKILL_DIR}/../../workspace/history/` (e.g., `RC-001`, `SEC-003`), a finding returned by a standalone audit workflow run, or the number of a filed issue. Scope is limited to small, well-understood issues of 1-3 files. When Direct Finding Input carries multiple findings, handle them one at a time in descending severity order. When the impact spans 4+ files, check the multi-file trigger in § Escalation first.
 
-| Pattern                                       | Mode                  | Action                                                                                                                                                                                                                                                        |
-| --------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/^[A-Z]+-[0-9]+$/`                           | Finding ID Resolution | Read the latest snapshot from `${CLAUDE_SKILL_DIR}/../../workspace/history/` and find the ID match in findings[]. Carry severity / fix_type / root cause, skip Outcome Anchor and Build Check, enter Triage. If absent, present error + suggest Standard Flow |
-| Finding with file / line / severity / summary | Direct Finding Input  | Return value of the audit workflow: a single JSON finding, or text carrying file:line + severity + summary. Use file:line as the RCA starting point, skip Outcome Anchor and Build Check, enter Triage                                                       |
-| empty                                         | Fix Prompt            | Ask via AskUserQuestion for Fix type from Bug fix / Error message / Test failure and Description as free text via Other, then execute                                                                                                                             |
-| otherwise                                     | Standard Flow         | Treat as a bug description and run from Outcome Anchor                                                                                                                                                                                                        |
-
-When Direct Finding Input carries multiple findings, handle them one at a time in descending severity order. When the impact spans 4+ files, check the multi-file trigger in § Escalation first.
+| Pattern                                       | Mode                  | Action                                                                                                                                                                                                                                            |
+| --------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/^[A-Z][A-Z0-9]*-[0-9]+$/`                   | Finding ID Resolution | Read the latest snapshot from `${CLAUDE_SKILL_DIR}/../../workspace/history/` and find the ID match in findings[]. Carry severity and summary, skip Outcome Anchor and Build Check, enter Triage. If absent, present error + suggest Standard Flow |
+| Finding with file / line / severity / summary | Direct Finding Input  | Return value of the audit workflow: a single JSON finding, or text carrying file:line + severity + summary. Use file:line as the RCA starting point, skip Outcome Anchor and Build Check, enter Triage                                            |
+| `/^#?[0-9]+$/`                                | Issue Handoff         | Read the body with `gh issue view <number>`. Use Why and the repro steps as the bug description, Premises as the givens. Skip Outcome Anchor and enter Build Check                                                                                |
+| empty                                         | Fix Prompt            | Ask via AskUserQuestion for Fix type from Bug fix / Error message / Test failure and Description as free text via Other, then execute                                                                                                             |
+| otherwise                                     | Standard Flow         | Treat as a bug description and run from Outcome Anchor                                                                                                                                                                                            |
 
 ## Delegation Map
 
@@ -50,14 +47,12 @@ Detect the build command from package.json or project config and run it.
 
 Obvious skips both RCA and regression test generation, so it is limited to findings with low misfix risk.
 
-| Input                | Condition                                                      | Path        |
-| -------------------- | -------------------------------------------------------------- | ----------- |
-| Bug desc             | Single location identified + 1-3 line fix + no similar pattern | Obvious     |
-| Bug desc             | Intermittent, multiple repro conditions, or unknown root cause | Non-obvious |
-| Finding ID           | `fix_type: auto` and severity low / med                        | Obvious     |
-| Finding ID           | severity critical / high, or fix_type not auto                 | Non-obvious |
-| Direct Finding Input | severity low / med and a 1-3 line fix                          | Obvious     |
-| Direct Finding Input | severity critical / high, or the fix is non-obvious            | Non-obvious |
+| Input                 | Condition                                                      | Path        |
+| --------------------- | -------------------------------------------------------------- | ----------- |
+| Bug desc              | Single location identified + 1-3 line fix + no similar pattern | Obvious     |
+| Bug desc              | Intermittent, multiple repro conditions, or unknown root cause | Non-obvious |
+| finding (ID / direct) | severity low / medium and a 1-3 line fix                       | Obvious     |
+| finding (ID / direct) | severity critical / high, or the fix is non-obvious            | Non-obvious |
 
 ## Obvious
 
@@ -66,8 +61,8 @@ Obvious skips both RCA and regression test generation, so it is limited to findi
 
 ## Non-obvious
 
-1. Run 5 Whys via `Skill("use-context-root-cause-analysis")`. If via Finding ID or Direct Finding Input, pass the finding's file:line and summary as the 5 Whys starting point, adding the snapshot root cause when available. Output Symptom / Root cause / Pattern.
-2. `Task(subagent_type: generator-test)` for the regression test. Pass symptom + repro steps only
+1. Run 5 Whys via `Skill("use-context-root-cause-analysis")`. If via Finding ID or Direct Finding Input, pass the finding's file:line and summary as the 5 Whys starting point. Output Symptom / Root cause / Pattern.
+2. `Task(subagent_type: generator-test)` for the regression test. Pass symptom, repro steps, and the root cause from step 1
 3. Verify regression test is Red
 4. Apply fix
 5. Verify regression test is Green and no other tests regressed
@@ -75,7 +70,7 @@ Obvious skips both RCA and regression test generation, so it is limited to findi
 
 ## Escalation
 
-Branch on objective triggers, not confidence self-assessment. Do not attempt fix #4 without escalating.
+Branch on objective triggers, not confidence self-assessment. Do not attempt fix #4 without escalating. When delegating from the Issue Handoff path, hand the build workflow the number that is already filed.
 
 | Trigger                        | Action                                                                  |
 | ------------------------------ | ----------------------------------------------------------------------- |
@@ -93,12 +88,12 @@ Branch on objective triggers, not confidence self-assessment. Do not attempt fix
 | resolver-build fails   | Present error, ask user for guidance   |
 | generator-test timeout | Skip regression test, proceed with fix |
 
-## Verification
+## Completion
 
-| Check                                    | Required                                |
-| ---------------------------------------- | --------------------------------------- |
-| Root cause identified (Non-obvious path) | Yes                                     |
-| All tests pass                           | Yes                                     |
-| Pattern field recorded from RCA          | Yes (Non-obvious path)                  |
-| defense-in-depth applied if needed       | Yes (Recurring / Systematic only)       |
-| Re-audit suggested if via finding        | Yes (Finding ID / Direct Finding Input) |
+Not done until every item holds. A parenthesized item is required only when it applies.
+
+- [ ] Root cause identified (Non-obvious path)
+- [ ] All tests pass
+- [ ] Pattern field recorded from RCA (Non-obvious path)
+- [ ] defense-in-depth applied (Recurring / Systematic only)
+- [ ] Re-audit suggested (Finding ID / Direct Finding Input path)

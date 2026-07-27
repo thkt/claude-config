@@ -32,7 +32,7 @@ Challenger results (critic-audit) and Verifier results (critic-evidence) arrive 
       "original_severity": "high",
       "adjusted_severity": null,
       "reasoning": "One sentence naming the verdict trigger.",
-      "evidence": "file:line refs, marker quotes, ADR refs"
+      "evidence": "file:line refs, marker quotes, DR refs"
     }
   ],
   "summary": {

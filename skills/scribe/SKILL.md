@@ -7,7 +7,7 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Read Write Edit LS
 
 # /scribe - Accumulate PR / issue / research recurring patterns into the wiki
 
-Extract the common patterns that recur across this repository's past merged PRs / closed issues and the research findings in `workspace/research/`, namely routine procedures / conventions and recurring review comments / failure patterns, verify them against the latest code, and accumulate them into `docs/wiki/`. Always propose via PR.
+Extract the common patterns that recur across this repository's past merged PRs/closed issues and the research findings in `workspace/research/`, namely routine procedures/conventions and recurring review comments/failure patterns, verify them against the latest code, and accumulate them into `docs/wiki/`. Always propose via PR.
 
 ## Invariants
 
@@ -36,12 +36,12 @@ Extract the common patterns that recur across this repository's past merged PRs 
 
 ## Phase 3: Extraction
 
-1. Read `docs/wiki/*.md` and `docs/wiki/_candidates.md` to grasp existing pages / candidates
-2. Read each in-scope PR / issue including comments via `gh pr view <number> --comments` / `gh issue view <number> --comments`
+1. Read `docs/wiki/*.md` and `docs/wiki/_candidates.md` to grasp existing pages/candidates
+2. Read each in-scope PR/issue including comments via `gh pr view <number> --comments`/`gh issue view <number> --comments`
 3. Read each in-scope research file in full with Read. Do not narrow by section name
 4. Triage what you read with this table. Design decisions and their history belong to `docs/decisions/` and are out of scope
 
-Write evidence as `#number` when it comes from a PR / issue, and as `(research)` when it comes from a research file.
+Write evidence as `#number` when it comes from a PR/issue, and as `(research)` when it comes from a research file.
 
 | Match                             | Operation                                                |
 | --------------------------------- | -------------------------------------------------------- |
@@ -52,15 +52,13 @@ Write evidence as `#number` when it comes from a PR / issue, and as `(research)`
 
 ## Phase 4: Cross-check against the latest code
 
-Before creating, promoting, or updating a page, cross-check each pattern against the current code. For each item that holds, add the current-code location as reference code, written as `path` + symbol name (no line numbers), and list the items dropped by verification in the PR body of `§ Phase 6: PR creation`.
+Before creating, promoting, or updating a page, cross-check each pattern against the current code. For each item that holds, add the current-code location as reference code, written as `path` + symbol name (no line numbers), and list the items dropped by verification in the PR body of `§ Phase 6: PR creation`. In addition, sweep the reference code of every page under `docs/wiki/*.md`, including existing pages unrelated to this run's scope. Mechanically verify that the file exists and that the symbol name greps within the file, and for a broken reference, reread the current code and relink it. If the pattern itself no longer holds because its referent is gone, update the page as no longer holding.
 
 | Check                                                         | When it fails                                                                 |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | Does the convention/procedure still hold in the current code? | Do not write it. If it is on an existing page, update it as no longer holding |
 | Is it already mechanically enforced by lint / hook / CI?      | Do not write it                                                               |
 | Do the referenced paths/commands still exist?                 | Rewrite with the current paths/commands                                       |
-
-In addition, sweep the reference code of every page under `docs/wiki/*.md`, including existing pages unrelated to this run's scope. Mechanically verify that the file exists and that the symbol name greps within the file, and for a broken reference, reread the current code and relink it. If the pattern itself no longer holds because its referent is gone, update the page as no longer holding.
 
 ## Phase 5: 由来 link judgment
 
@@ -75,5 +73,5 @@ The cap is 3 pages per run, counted as promotions + updates combined; edits to `
 1. After `git fetch origin <default branch>`, create an isolated worktree and branch `scribe/<yyyymmdd-HHMMSS>` from `origin/<default branch>`
 2. Edit `docs/wiki/` inside the worktree following the skeleton in `${CLAUDE_SKILL_DIR}/templates/page.md`, and commit with the message `docs(wiki): <pattern names, ...> を追加/更新`
 3. Push and run `gh pr create --base <default branch>`. Title `[scribe] <pattern names, ...> を追加/更新`, label scribe
-4. In the body, write the added/promoted/updated pages, candidate additions, reference-repaired / 由来-repaired pages, the range of PRs / issues read and the count of research files read, the items dropped by verification, and any leftovers
+4. In the body, write the added/promoted/updated pages, candidate additions, reference-repaired/由来-repaired pages, the range of PRs/issues read and the count of research files read, the items dropped by verification, and any leftovers
 5. Remove the worktree

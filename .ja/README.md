@@ -32,7 +32,7 @@ Claude AI のためのカスタムコマンド、開発原則、ワークフロ�
 │   ├── generators/       # テスト生成 (generator-test のみ)
 │   ├── resolvers/        # ビルドエラー解決
 │   └── reviewers/        # コードレビュー (18 reviewers)
-├── docs/                 # 設計ドキュメント・ガイド (decisions/ に ADR)
+├── docs/                 # 設計ドキュメント・ガイド (decisions/ に DR)
 ├── hooks/                # Pre/Post tool-use フック
 ├── output-styles/        # 出力スタイル定義
 ├── .claude-plugin/       # プラグインマーケットプレイス設定

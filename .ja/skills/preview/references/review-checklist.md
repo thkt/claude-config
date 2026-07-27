@@ -6,11 +6,13 @@
 
 ### Step 1: plan の特定
 
-plan は起点となる issue の `## Plan` 節にある。ブランチや commit messages の issue 参照から `gh issue view <N>` で取得する。issue が見つからない場合、${CLAUDE_SKILL_DIR}/../../workspace/planning/ で、ブランチ名や PR タイトルに一致する `*.plan.md` を探す。
+plan は起点となる issue の `## Plan` 節にある。ブランチや commit messages の issue 参照から `gh issue view <N>` で取得する。issue が見つからない場合、${CLAUDE_SKILL_DIR}/../../workspace/planning/で、ブランチ名や PR タイトルに一致する `*.plan.md` を探す。
 
 plan が見つからない場合、PR 説明 + commit messages を意図のソースとしてフォールバックし、U/T の行はスキップする。
 
 ### Step 2: チェック
+
+各フラグの根拠となる意図の行を引用する。引用 U-NNN/T-NNN 行を欠く `wrong`/`missing` は印象判定なので落とす。このスクリーニングは reviewer-conformance と同じ 3 適合性カテゴリを覆う。任意のブランチで深い standalone パスが要るときはそのエージェントを起動する。
 
 | チェック      | ソース                               | 条件      | フラグ       |
 | ------------- | ------------------------------------ | --------- | ------------ |
@@ -18,8 +20,6 @@ plan が見つからない場合、PR 説明 + commit messages を意図のソ�
 | Test coverage | Plan 節の T-NNN 受け入れテスト       | plan あり | missing      |
 | Scope creep   | diff vs 全意図ソース                 | 常時      | out-of-scope |
 | Impl-wrong    | diff の振る舞い vs unit goal / T-NNN | 常時      | wrong        |
-
-各フラグの根拠となる意図の行を引用する。引用 U-NNN / T-NNN 行を欠く `wrong` / `missing` は印象判定なので落とす。このスクリーニングは reviewer-conformance と同じ 3 適合性カテゴリを覆う。任意のブランチで深い standalone パスが要るときはそのエージェントを起動する。
 
 ### 出力形式
 
@@ -53,13 +53,6 @@ Wrong: <U-NNN/T-NNN> - implemented but <gap> (plan: "<quoted line>")
 | Interface contracts | 関数シグネチャが不変か検証                  |
 | Shared state        | グローバル/モジュール状態の mutation を確認 |
 | Test coverage       | 既存テストが変更パスに対し有効か            |
-
-## コメントセクション
-
-| セクション      | 内容                                 |
-| --------------- | ------------------------------------ |
-| Requires action | `[must]`, `[want]` findings          |
-| Awareness only  | `[imo]`, `[ask]`, `[nits]`, `[info]` |
 
 ## テスト評価
 

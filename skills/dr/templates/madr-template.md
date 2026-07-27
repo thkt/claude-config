@@ -11,6 +11,8 @@ Replace `{...}` at creation time. Omit a section marked optional, heading includ
 status: "{proposed | rejected | accepted | deprecated | superseded by DR-NNNN}"
 date: "{YYYY-MM-DD}"
 decision-makers: "{names or roles}"
+consulted: "{optional. experts consulted}"
+informed: "{optional. stakeholders kept in the loop}"
 ---
 
 # {Decision title in "Adopt X for Y" form}

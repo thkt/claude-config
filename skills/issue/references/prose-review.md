@@ -4,13 +4,12 @@ Write for a teammate who shares context and can open the linked docs. The issue 
 
 ## Structure
 
-| Check          | Question                                                                                                                |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Problem stated | Is the problem or request in 1-3 lines at the top?                                                                      |
-| Concreteness   | Bug: are reproduction steps concrete? Feature: is the use case concrete? Is the expected outcome not left to inference? |
-| Delta focus    | Does it skip what the code shows and stay on why and done conditions?                                                   |
-| Section fit    | Does each section carry only what its heading asks?                                                                     |
-| Length         | Does the body fit in ~40 lines? If it overflows, cut it or split into another issue / link                              |
+| Check          | Question                                                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Problem stated | Is the problem or request in 1-3 lines at the top?                                                                                    |
+| Concreteness   | Bug: are reproduction steps concrete? Feature: is the use case concrete? Is the expected outcome not left to inference?               |
+| Delta focus    | Does it skip what the code shows and stay on why and done conditions? What does not fit gets cut, or moved to another issue or a link |
+| Section fit    | Does each section carry only what its heading asks?                                                                                   |
 
 ## Redundancy patterns
 

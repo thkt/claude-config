@@ -29,13 +29,13 @@ Grill the proposal from evidence on its own, then return only the unresolved res
 
 Aggregate the Phase 1 findings into the following shape before spawning.
 
-| Field            | Source                                                                                                                                  |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| approach         | one-line summary of the proposal core                                                                                                   |
-| decisions        | settled architecture-level decisions, excluding terminology checks and scope minutiae                                                   |
-| trade-offs       | surfaced trade-offs                                                                                                                     |
-| referenced_files | files read                                                                                                                              |
-| outcome_ref      | OUTCOME.md path plus a digest of its Outcome state / Non-goals / Constraints. If OUTCOME.md is absent, the outcome confirmed in Phase 1 |
+| Field            | Source                                                                                                                             |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| approach         | one-line summary of the proposal core                                                                                              |
+| decisions        | settled architecture-level decisions, excluding terminology checks and scope minutiae                                              |
+| trade-offs       | surfaced trade-offs                                                                                                                |
+| referenced_files | files read                                                                                                                         |
+| outcome_ref      | OUTCOME.md path plus a digest of its Behavior / Non-goals / Constraints. If OUTCOME.md is absent, the outcome confirmed in Phase 1 |
 
 ## Phase 2 Devil
 
@@ -43,12 +43,11 @@ Land the Phase 1 material on two critic-design, adversarially probing for holes.
 
 | Pass                     | Role                                                                                |
 | ------------------------ | ----------------------------------------------------------------------------------- |
-| advisor                  | Evidence synthesis / self-consistency check / sorting audit                         |
 | critic-design (internal) | Attack the proposal on its own terms, surfacing hidden weaknesses and failure paths |
 | critic-design (outcome)  | Attack the outcome fit and non-goal / constraint breaches                           |
 
-1. Spawn two critic-design via Task in parallel. subagent_type is critic-design, run_in_background is false. One handles the internal attack, the other takes `outcome_ref` for the outcome attack. Omit the outcome attack when no outcome is available. Mention `ARCHITECTURE.md` if present. Include the target title verbatim in each spawn prompt, and have each return a single JSON object `{ verdict: "GO" | "NO-GO", weaknesses: string[] }`
-2. Wait for both, reconcile the verdicts and weaknesses, and drop the overlap
+1. Spawn two critic-design via Task in parallel. subagent_type is critic-design, run_in_background is false. One handles the internal attack, the other takes `outcome_ref` for the outcome attack. Omit the outcome attack when no outcome is available. Mention `ARCHITECTURE.md` if present. Include the target title verbatim in each spawn prompt. Each returns what its agent definition specifies: verdict (confirmed / weakened / needs_revision) and weaknesses (items carrying viewpoint, severity, finding, evidence, disconfirming probe)
+2. Wait for both, reconcile the weaknesses, and drop the overlap. needs_revision from either pass means NO-GO, confirmed from both means GO, and anything else is a conditional GO whose condition rides on the Verdict line
 3. Aggregate the overall verdict and the Phase 1 residuals into VERDICT_SCHEMA `{ verdict, assumptions: [{ text, irreversible, underspecified }] }`. When an irreversible assumption remains, assumptions exceed 7, or an assumption is underspecified, downgrade to NO-GO regardless of how good the content looks, and never hand-override it back to GO
 
 ## Output

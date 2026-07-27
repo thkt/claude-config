@@ -15,11 +15,11 @@ argument-hint: "[file or directory]"
 
 ## 判定基準
 
-impact / reversibility、incomplete-contract の定義、DR 化価値の経験則、challenge 観点の判定基準はすべて `${CLAUDE_SKILL_DIR}/references/decision-criteria.md` にある。各 Phase はこれを基準として適用する。
+impact/reversibility、incomplete-contract の定義、DR 化価値の経験則、challenge 観点の判定基準はすべて `${CLAUDE_SKILL_DIR}/references/decision-criteria.md` にある。各 Phase はこれを基準として適用する。
 
 ## Phase 1: ソースファイル列挙
 
-ファイルが直接指定された場合はこのフェーズをスキップし、そのファイルを Phase 3 の対象とする。それ以外は `python3 ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py <scope>` を実行し、ソースファイルの一覧を取得する。`<scope>` はディレクトリ指定時はそのパス、引数なし時はリポジトリルート。
+ファイルが直接指定された場合はこのフェーズをスキップし、そのファイルを Phase 3 の対象とする。それ以外は `python3 ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py <scope>` を実行し、ソースファイルの一覧を取得する。`<scope>` には、ディレクトリ指定時はそのパスを、引数なし時はリポジトリルートを渡す。
 
 ファイル数が目安の 20 件を超えるなら、Phase 3 の reviewer を並列起動する前に AskUserQuestion で絞り込みを確認する。目安はリポジトリ規模に応じて調整し、選択肢はサブディレクトリ、上位 N 件、特定モジュールなど。目安以下なら確認を省き、全件を Phase 3 に渡す。
 
@@ -46,7 +46,7 @@ reviewer は git にアクセスできないため、`/census` 自身が `git lo
 
 ### 3c 記録と DR 相互参照
 
-各検出事項は `file:line` + 判断概要 + 根拠 + `documented?` + `incomplete-contract?` で記録する。根拠はコメント / 命名 / module-doc / commit のいずれか。commit 由来は `commit <sha>` を根拠とする。収集後、DR ディレクトリがあれば相互参照し、既存 DR で覆われたものは除外し、除外件数を Summary に "DR-covered (excluded)" として記録する。
+各検出事項は `file:line` + 判断概要 + 根拠 + `documented?` + `incomplete-contract?` で記録する。根拠はコメント/命名/module-doc/commit のいずれか。commit 由来は `commit <sha>` を根拠とする。収集後、DR ディレクトリがあれば相互参照し、既存 DR で覆われたものは除外し、除外件数を Summary に "DR-covered (excluded)" として記録する。
 
 ## Phase 4: 散文ドキュメントからの抽出
 
@@ -62,11 +62,11 @@ Phase 3 と Phase 4 の各候補に impact と reversibility を付与する。D
 
 ### 5b Devil's Advocate Challenge
 
-`critic-design` を Task で起動し、初期の昇格候補リストと `${CLAUDE_SKILL_DIR}/references/decision-criteria.md` を渡す。`critic-design` は同ファイルの challenge 観点で各候補に挑み、`keep` / `downgrade` / `drop` のいずれかの Verdict を返す。判定は初期ランク付けと並べて記録する。
+`critic-design` を Task で起動し、初期の昇格候補リストと `~/.claude/skills/census/references/decision-criteria.md` を渡す。subagent では `${CLAUDE_SKILL_DIR}` が展開されないので、絶対パスの形で渡す。agent は自身の定義どおり verdict (confirmed/weakened/needs_revision) と weaknesses を返す。`/census` はその weaknesses を候補ごとに突き合わせ、decision-criteria.md の keep/downgrade/drop 表で各候補を判定する。判定は初期ランク付けと並べて記録する。
 
 ## Phase 6: レポート出力
 
-`${CLAUDE_SKILL_DIR}/templates/report-template.md` に従い、プレースホルダーを検出事項から置換してレポートを書く。DR Promotion Candidates 表の直後に、全候補を集計した 1 行 `keep N / downgrade N / drop N` を追加する。書き終えたら 候補数 / DR 化候補数 をコンソールに出力する。
+`${CLAUDE_SKILL_DIR}/templates/report-template.md` に従い、プレースホルダーを検出事項から置換してレポートを書く。DR Promotion Candidates 表の直前に、全候補を集計した 1 行 `keep N / downgrade N / drop N` を置く。書き終えたら候補数/DR 化候補数をコンソールに出力する。
 
 ```bash
 mkdir -p docs/audit

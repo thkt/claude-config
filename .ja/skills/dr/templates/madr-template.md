@@ -10,7 +10,9 @@
 ---
 status: "{proposed | rejected | accepted | deprecated | superseded by DR-NNNN}"
 date: "{YYYY-MM-DD}"
-decision-makers: "{名前またはロール}"
+decision-makers: "{名前または役割}"
+consulted: "{任意。相談した専門家}"
+informed: "{任意。結果を共有する利害関係者}"
 ---
 
 # {Adopt X for Y 形式の決定タイトル}

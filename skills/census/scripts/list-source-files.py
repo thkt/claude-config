@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """List source files in a tree, largest first.
 
 Usage: list-source-files.py <repo-root>

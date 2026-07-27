@@ -19,7 +19,10 @@ def resolve_dr_dir(arg=None):
     if arg:
         return Path(arg)
     git = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True
+        ["git", "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if git.returncode != 0:
         fail(

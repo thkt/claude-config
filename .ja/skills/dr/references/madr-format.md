@@ -1,12 +1,12 @@
 # MADR: Markdown Architectural Decision Records
 
-MADR は、アーキテクチャ決定を記録するための簡潔な markdown テンプレート。このファイルは v4 を前提とする。
+MADR は決定を記録する簡潔な markdown テンプレート。このファイルは v4 を前提とする。A の展開は 2022 年に Any へ、2024 年に Architectural へ戻ったが、upstream はどちらの時期も any decision の記録を認めており、変わったのは focus の置き方だけ。このスキルは字面の揺れから降りて DR と呼び、アーキテクチャに限らない決定を対象とする。
 
 ## 重要ポイント
 
 | 観点       | 規約                                                                 |
 | ---------- | -------------------------------------------------------------------- |
-| 粒度       | アーキテクチャ決定 1 件につき 1 つの markdown ファイル               |
+| 粒度       | 決定 1 件につき 1 つの markdown ファイル                             |
 | ファイル名 | `nnnn-title-with-dashes.md`。4 桁番号 + 小文字ハイフン区切りタイトル |
 | 配置       | `docs/decisions/`。MADR デフォルトで、この skill では固定            |
 
@@ -33,10 +33,10 @@ Confirmation は upstream MADR v4 では任意だが、このスキルでは必�
 
 ## Status ライフサイクル
 
-| Status                 | 意味                           |
-| ---------------------- | ------------------------------ |
-| proposed               | レビュー待ち                   |
-| accepted               | 承認済み、実装中または完了     |
-| rejected               | 検討したが採用せず             |
-| deprecated             | 後継 ADR なしで廃止            |
-| superseded by ADR-NNNN | ID を記録して別 ADR に置き換え |
+| Status                | 意味                          |
+| --------------------- | ----------------------------- |
+| proposed              | レビュー待ち                  |
+| accepted              | 承認済み、実装中または完了    |
+| rejected              | 検討したが採用せず            |
+| deprecated            | 後継 DR なしで廃止            |
+| superseded by DR-NNNN | ID を記録して別 DR に置き換え |

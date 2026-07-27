@@ -13,14 +13,14 @@
 
 ## ワークフロー
 
+テスト毎の実行は `SKILL.md` の正典 RGRC サイクルに従う。Feature-driven は Red が次に選ばれたテストの `.skip` を外すところから始まる点が異なる。
+
 | ステップ | アクション                                                 |
 | -------- | ---------------------------------------------------------- |
 | 1        | spec.md を読む → FR-xxx を抽出 → Given-When-Then を特定    |
 | 2        | skip 状態のテスト (`it.skip()`) を simple→complex 順で生成 |
 | 3        | 対話的有効化。[Y]es/[S]kip/[Q]uit → RGRC サイクル          |
 | 4        | 全テストが active かつ pass するまで繰り返す               |
-
-テスト毎の実行は `SKILL.md` の正典 RGRC サイクルに従う。Feature-driven は Red が次に選ばれたテストの `.skip` を外すところから始まる点が異なる。
 
 ## フレームワークの skip マーカー
 

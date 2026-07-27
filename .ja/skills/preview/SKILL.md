@@ -19,16 +19,15 @@ argument-hint: "[PR URL or number]"
 2. PR がない、または作業ツリーが dirty なら中止する。判定は `git status --porcelain`
 3. PR を checkout: `gh pr checkout $PR`
 4. PR コンテキストを並列収集する (§ PR コンテキスト収集)
-5. 各変更ファイルを diff hunks 外も含めて完全に読む
+5. 各変更ファイルを diff hunks 外も含めて全体を読む
 6. プロセスに沿ってレビュー: 概観 → ファイルごと → 依存影響 → findings
 7. 構造化スクリーニングレポートを出力
 
 ### PR コンテキスト収集
 
-```bash
-# Metadata
-gh pr view --json title,body,labels,files,url $PR
+gh の出力フィールドに `author` を含めない。
 
+```bash
 # Diff
 gh pr diff $PR
 
@@ -39,8 +38,6 @@ gh pr view --comments $PR
 gh api repos/{owner}/{repo}/pulls/{number}/comments \
   --jq '.[] | {file: .path, user: .user.login, comment: .body}'
 ```
-
-gh の出力フィールドに `author` を含めない。
 
 ## コメントラベル
 
@@ -65,38 +62,7 @@ gh の出力フィールドに `author` を含めない。
 
 ## 出力
 
-```markdown
-## PR Screening Report
-
-### Overview
-
-{背景と目的を 2-3 文で}
-
-### Changes Summary
-
-| File | Change Summary |
-| ---- | -------------- |
-
-### Dependency Impact
-
-{影響ファイル、回帰リスク}
-
----
-
-### Requires Action
-
-{`[must]` と `[want]` の findings、file:line 付き}
-
-### Awareness
-
-{`[imo]`, `[ask]`, `[nits]`, `[info]` のアイテム、file:line 付き}
-
----
-
-### Proposed Review Comments
-
-{ファイルでグループ化、ラベル付き}
-```
+`${CLAUDE_SKILL_DIR}/templates/screening-report.md` の骨格でレポートを生成し、会話に出力する。
 
 ## ルール
 

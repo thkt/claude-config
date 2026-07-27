@@ -1,6 +1,6 @@
 # Fowler on Architecture Decision Records
 
-Martin Fowler's bliki entry summarizing ADR practice. The original concept is from Michael Nygard (2011).
+Martin Fowler's bliki entry summarizing ADR practice. The original concept is from Michael Nygard (2011). This file quotes the source, so it says ADR throughout. Fowler's ADR is the architecture-decision subset of this skill's DR, and the practices below apply to every DR.
 
 ## Core Definition
 

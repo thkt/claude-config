@@ -26,6 +26,8 @@ Which conventions apply depends on the reader. Scope is judged by the path witho
 
 ## Symbols
 
+When an enumeration would read as a path, keep spaces around the `/` (`Write / Edit`); established compounds like `CI/CD` and `try/catch` stay unspaced. Wrap slash commands like `/fix` in inline code, so the `.ja` formatter cannot glue them to the preceding word.
+
 | Symbol | Use                                           | Example                               |
 | ------ | --------------------------------------------- | ------------------------------------- |
 | `/`    | AND parallel enumeration                      | `Safety First / Output Verifiability` |

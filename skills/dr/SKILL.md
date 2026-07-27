@@ -1,6 +1,6 @@
 ---
 name: dr
-description: Create Decision Records (DR) in MADR v4 format with auto-numbering.
+description: Create Decision Records (DR) in MADR v4 format with auto-numbering. Scope is not limited to architecture; it covers every decision that is hard to reverse and surprising without context.
 when_to_use: DR作成, ADR作成, 技術決定, アーキテクチャ決定, decision record
 allowed-tools: Read Write Edit LS Bash(mkdir:*) Bash($HOME/.claude/skills/dr/scripts/*) AskUserQuestion Bash(ugrep:*) Bash(bfs:*)
 model: opus
@@ -15,7 +15,7 @@ Take the decision title from `$ARGUMENTS` and shape it into a specific action li
 
 ## Adoption Gate
 
-Proceed to the 6-Phase Process only when all three conditions hold. Otherwise skip the DR; if condition 1 or 2 is missing, record the decision as a `CONTEXT.md` entry or an equivalent design note, and if only condition 3 is missing, record it in the commit message body.
+Proceed to the 5-Phase Process only when all three conditions hold. Otherwise skip the DR; if condition 1 or 2 is missing, record the decision as a `CONTEXT.md` entry or an equivalent design note, and if only condition 3 is missing, record it in the commit message body.
 
 1. Hard to reverse. Changing the decision later carries meaningful cost
 2. Surprising without context. A future reader will ask "why this way?"
@@ -44,13 +44,11 @@ Proceed to the 6-Phase Process only when all three conditions hold. Otherwise sk
 
 When a new DR replaces an existing one. Only `status` and `date` change in the old DR; decision content stays as-is.
 
-| Step | Action                                                                      |
-| ---- | --------------------------------------------------------------------------- |
-| 1    | Create the new DR via the normal 6-Phase Process                            |
-| 2    | New DR's More Information cites the predecessor (e.g. `Supersedes DR-NNNN`) |
-| 3    | In the old DR, change `status:` to `superseded by DR-NNNN`                  |
-| 4    | Update old DR's `date:` to today                                            |
-| 5    | Run `${CLAUDE_SKILL_DIR}/scripts/update-index.py` to refresh the index      |
+1. Create the new DR via the normal 5-Phase Process
+2. New DR's More Information cites the predecessor (e.g. `Supersedes DR-NNNN`)
+3. In the old DR, change `status:` to `superseded by DR-NNNN`
+4. Update old DR's `date:` to today
+5. Run `${CLAUDE_SKILL_DIR}/scripts/update-index.py` to refresh the index
 
 ## Decision Type
 
@@ -63,16 +61,26 @@ The decision type only affects which recommended More Information topics to incl
 | process-change       | Workflow, rule changes     | 100 lines  | Before / After comparison, Transition Plan, Review Schedule                   |
 | deprecation          | Retiring technology        | 100 lines  | Deprecation Target, Migration Plan, Deprecation Warning Period, Rollback Plan |
 
-## 6-Phase Process
+## 5-Phase Process
 
-| Step | Phase      | Actions                                                                                                                                                 |
-| ---- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Pre-Check  | Run `${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE"`. If `similar_drs` is non-empty, confirm the potential duplicate with the user before proceeding |
-| 2    | Type       | Determine the decision type by the decision's intent and pick recommended topics from the Decision Type table                                           |
-| 3    | References | Gather project docs, issues, external resources                                                                                                         |
-| 4    | Validate   | Run `${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE"` after writing. exit 0 + empty `errors[]` = pass. `warnings[]` advisory                      |
-| 5    | Index      | Run `${CLAUDE_SKILL_DIR}/scripts/update-index.py` to regenerate index README                                                                            |
-| 6    | Recovery   | Handle missing dirs, duplicates, missing sections                                                                                                       |
+| Step | Phase      | Actions                                                                                                                                                                                                                                                                         |
+| ---- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Pre-Check  | Run `${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE"`. If `similar_drs` is non-empty, confirm the potential duplicate with the user before proceeding. Write the DR under the returned `dr_dir` named `filename`, and carry `number` and `date` into the body and frontmatter |
+| 2    | Type       | Determine the decision type by the decision's intent and pick recommended topics from the Decision Type table                                                                                                                                                                   |
+| 3    | References | Gather project docs, issues, external resources                                                                                                                                                                                                                                 |
+| 4    | Validate   | Run `${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE"` after writing. exit 0 + empty `errors[]` = pass. `warnings[]` advisory                                                                                                                                              |
+| 5    | Index      | Run `${CLAUDE_SKILL_DIR}/scripts/update-index.py` to regenerate index README                                                                                                                                                                                                    |
+
+## Error Handling
+
+Each script reports its failure as JSON or on stderr. Handle them per the table.
+
+| Error                                    | Action                                                                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Reported as outside a git repository     | Set `DR_DIR` to name the archive explicitly                                               |
+| Reported as an archive holding SKILL.md  | It points at a skill directory, so redirect `DR_DIR` to the archive                       |
+| `similar_drs` is non-empty               | Present the duplicate candidates and confirm whether to proceed or update the existing DR |
+| validate-dr.py returns `missing_section` | Restore the dropped heading from the template and re-validate                             |
 
 ## Output
 

@@ -73,7 +73,7 @@ test("think SKILL.md の contract authoring 規則が選択 (引用ラダー) �
 test("think SKILL.md の precondition 規則と書き出し前検証が stable anchor と実在検証を含む", () => {
   const ja = read(skills.ja);
   assert.match(ja, /既存.{0,10}依存先のみ/, "ja: 既存依存先のみ");
-  assert.match(ja, /新規作成ファイル.{0,20}載せない/, "ja: 新規作成ファイルは載せない");
+  assert.match(ja, /新しく作るファイル.{0,20}載せない/, "ja: unit が新しく作るファイルは載せない");
   assert.match(ja, /stable anchor/, "ja: stable anchor");
   assert.match(ja, /公開シンボル/, "ja: 公開シンボル名");
   assert.match(
