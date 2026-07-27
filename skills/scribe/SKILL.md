@@ -1,13 +1,13 @@
 ---
 name: scribe
-description: Extract recurring patterns from past closed PRs/issues and the research findings in workspace/research/, verify them against the latest code, and propose them to docs/wiki/ via PR.
+description: Extract recurring patterns from past closed PRs/issues and the research findings in .claude/workspace/research/, verify them against the latest code, and propose them to docs/wiki/ via PR.
 when_to_use: scribe 実行, wiki 抽出, 共通項の蒸留, PR/issue からの知見蓄積, research 成果の蓄積, run scribe, wiki extraction, distill recurring patterns
 allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Read Write Edit LS
 ---
 
 # /scribe - Accumulate PR / issue / research recurring patterns into the wiki
 
-Extract the common patterns that recur across this repository's past merged PRs/closed issues and the research findings in `workspace/research/`, namely routine procedures/conventions and recurring review comments/failure patterns, verify them against the latest code, and accumulate them into `docs/wiki/`. Always propose via PR.
+Extract the common patterns that recur across this repository's past merged PRs/closed issues and the research findings in `.claude/workspace/research/`, namely routine procedures/conventions and recurring review comments/failure patterns, verify them against the latest code, and accumulate them into `docs/wiki/`. Always propose via PR.
 
 ## Invariants
 
@@ -17,7 +17,7 @@ Extract the common patterns that recur across this repository's past merged PRs/
 | Progress record        | The cursor is the mergedAt of the last merged scribe PR. For a research file, compare that mergedAt against its mtime                            |
 | Threshold of 2         | A pattern with fewer than 2 pieces of evidence goes to `docs/wiki/_candidates.md`, not a page. One research file counts as one piece of evidence |
 | Facts only             | Write only facts stated in PRs / issues and research files, plus facts verified in the current code. No guessing                                 |
-| Reference traceability | Never write `workspace/research/` file paths under `docs/wiki/`                                                                                  |
+| Reference traceability | Never write `.claude/workspace/research/` file paths under `docs/wiki/`                                                                          |
 | Worktree isolation     | Edit and commit inside an isolated worktree; never touch the user's working tree                                                                 |
 
 ## Phase 1: Preconditions and onboarding
@@ -29,8 +29,8 @@ Extract the common patterns that recur across this repository's past merged PRs/
 ## Phase 2: Scope
 
 1. Get the mergedAt of the last merged scribe PR with `gh pr list --label scribe --state merged --limit 1 --json mergedAt -q '.[0].mergedAt'`
-2. If no mergedAt comes back, this is the first run. Take all of `gh pr list --state merged --search '-label:scribe'`, `gh issue list --state closed`, and `find workspace/research -name '*.md'` as the scope
-3. If a mergedAt comes back, take the PRs from `gh pr list --state merged --search "-label:scribe merged:><mergedAt>"`, the issues from `gh issue list --state closed --search "closed:><mergedAt>"`, and the files from `find workspace/research -name '*.md' -newermt "<mergedAt>"` as the scope
+2. If no mergedAt comes back, this is the first run. Take all of `gh pr list --state merged --search '-label:scribe'`, `gh issue list --state closed`, and `find .claude/workspace/research -name '*.md'` as the scope
+3. If a mergedAt comes back, take the PRs from `gh pr list --state merged --search "-label:scribe merged:><mergedAt>"`, the issues from `gh issue list --state closed --search "closed:><mergedAt>"`, and the files from `find .claude/workspace/research -name '*.md' -newermt "<mergedAt>"` as the scope
 4. Only `*.md` counts as a research target; read no other format. Do not use the `Generated:` line inside a file as the cursor
 5. If PRs, issues, and research are all empty, report "nothing new" and stop
 

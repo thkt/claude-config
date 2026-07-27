@@ -101,4 +101,4 @@ Not done until all are satisfied. An item whose Condition carries "(...)" is req
 | Primary source    | Primary-source verification run on load-bearing external claims, or marked unverified (when present) |
 | Same-origin sweep | Sweep performed when Bug intent confirmed a root cause (when applicable)                             |
 | advisor           | Phase 6 advisor invoked, or skip reason recorded                                                     |
-| Save              | Output saved to `workspace/research/`                                                                |
+| Save              | Output saved to `.claude/workspace/research/`                                                        |

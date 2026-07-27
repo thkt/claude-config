@@ -1,6 +1,6 @@
 """Usage: snapshot.py   (audit payload JSON on stdin)
 
-Record one audit run to $HOME/.claude/workspace/history/ and compute the
+Record one audit run to $HOME/.claude/history/ and compute the
 resolved/new/carried delta against the most recent prior snapshot.
 
 stdin:  JSON {scope, focus, pre_flight, raw_findings[], findings[], skipped[]}
@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import NoReturn
 
-HISTORY_DIR = Path(os.path.expanduser("~")) / ".claude" / "workspace" / "history"
+HISTORY_DIR = Path(os.path.expanduser("~")) / ".claude" / "history"
 
 
 def fail(message) -> NoReturn:

@@ -8,7 +8,7 @@ paths:
   - "docs/**/*.md"
   - "rules/**/*.md"
   - "skills/**/*.md"
-  - "workspace/**/*.md"
+  - ".claude/workspace/**/*.md"
 ---
 
 # Markdown Conventions
@@ -19,10 +19,10 @@ paths:
 
 読み手によって規約の適用が変わる。スコープの判定は `.ja/` を除いたパスで行う。
 
-| スコープ     | パス                                                              |
-| ------------ | ----------------------------------------------------------------- |
-| LLM-facing   | `CLAUDE.md`, `agents/**`, `skills/**`, `rules/**`, `workspace/**` |
-| Human-facing | `docs/**`, `README.md`                                            |
+| スコープ     | パス                                                                      |
+| ------------ | ------------------------------------------------------------------------- |
+| LLM-facing   | `CLAUDE.md`, `agents/**`, `skills/**`, `rules/**`, `.claude/workspace/**` |
+| Human-facing | `docs/**`, `README.md`                                                    |
 
 ## 記号
 

@@ -75,7 +75,7 @@ const writeSnapshot = async ({ preFlight, rawFindings, findings, skipped }) => {
         `\`python3 ${bundled("workflows/audit/snapshot.py")} < <tempfile>\` once. ` +
         `The script resolves the timestamp, branch, and the delta against the ` +
         `prior snapshot (resolved / new / carried, matched on file + message), writes the record under ` +
-        `$HOME/.claude/workspace/history/, and prints the output path to stdout. ` +
+        `$HOME/.claude/history/, and prints the output path to stdout. ` +
         `Do not review code or change any finding. Do not write the file by any other means. The payload is as follows.\n${payload}`,
     ),
     {

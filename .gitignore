@@ -17,6 +17,7 @@ archive/
 debug/
 node_modules/
 workspace/
+history/
 *.log
 *.temp
 *.tmp

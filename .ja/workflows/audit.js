@@ -74,7 +74,7 @@ const writeSnapshot = async ({ preFlight, rawFindings, findings, skipped }) => {
         `\`python3 ${bundled("workflows/audit/snapshot.py")} < <tempfile>\` を 1 回実行する。` +
         `スクリプトが timestamp・branch・prior snapshot との delta ` +
         `(file + message でマッチした resolved / new / carried) を解決し、` +
-        `$HOME/.claude/workspace/history/ に記録を書いて出力パスを stdout に返す。` +
+        `$HOME/.claude/history/ に記録を書いて出力パスを stdout に返す。` +
         `コードの review や finding の変更はしない。他の方法でファイルを書かない。Payload は次のとおり。\n${payload}`,
     ),
     {
