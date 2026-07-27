@@ -36,9 +36,9 @@ Failure-driven, not pattern-driven. Start from "what could break?" then trace to
 | ---------- | -------------------------------------------- | -------------------------------------------------- |
 | silence    | Per-block catch/promise/fallback pattern     | Aggregates into failure scenario with blast radius |
 | operations | Per-component boundary/log/loading presence  | Cascade impact when boundaries themselves fail     |
-| causation  | Backward 5 Whys from observed symptom         | Forward projection from hypothetical trigger       |
-| efficiency | TOCTOU as correctness or perf bug             | TOCTOU as failure mode with user impact            |
-| security   | Threat actor and attack vector (incl. AuthZ)  | Incident scenario without actor (DB timeout, OOM)  |
+| causation  | Backward 5 Whys from observed symptom        | Forward projection from hypothetical trigger       |
+| efficiency | TOCTOU as correctness or perf bug            | TOCTOU as failure mode with user impact            |
+| security   | Threat actor and attack vector (incl. AuthZ) | Incident scenario without actor (DB timeout, OOM)  |
 
 ## Blast Radius Scoring
 
@@ -49,9 +49,13 @@ Failure-driven, not pattern-driven. Start from "what could break?" then trace to
 | medium   | Degraded experience, recoverable              |
 | low      | Edge case, minimal user impact                |
 
+## Calibration
+
+See `~/.claude/agents/_lib/calibration-examples.md` section CHX.
+
 ## Output
 
-Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
+Follow ~/.claude/agents/\_lib/finding-schema.md. When no code is found, report "No code to review". Common guards (glob empty, tool error) follow ~/.claude/agents/\_lib/finding-schema.md defaults.
 
 | Field        | Value                                                     |
 | ------------ | --------------------------------------------------------- |
