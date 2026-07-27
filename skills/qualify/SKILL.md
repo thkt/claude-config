@@ -40,7 +40,7 @@ Build compares the U-NNN and T-NNN id sets in the body against the extraction by
 
 ## Phase 3: Inspect the format
 
-Check that the issue follows `/issue`'s output format. Inspect exactly the axes in the table below and add none of your own. A violation here does not stop build, so treat it as advice. The one exception is unverifiable acceptance criteria, which is a blocker: nobody can judge whether the implementation is right, and build's conformance check loses what it compares against. "Errors are announced to screen readers" passes; "the UX improves" does not.
+Check that the issue follows `/issue`'s output format. Inspect exactly the axes in the table below and add none of your own. Verifiable criteria is the only blocker because nobody else can judge whether the implementation is right, and build's conformance check loses what it compares against. "Errors are announced to screen readers" passes; "the UX improves" does not.
 
 | Axis                | Passing condition                                                             | Severity |
 | ------------------- | ----------------------------------------------------------------------------- | -------- |
