@@ -33,7 +33,7 @@ Treat every violation of those conditions as a blocker. Build stops on the same 
 
 ### Id cross-check
 
-Build compares the U-NNN / T-NNN id sets in the body against the extraction by exact match. qualify does not extract, so check instead that the body's own ids are unique and consecutive. Duplicates and gaps are blockers.
+Build compares the U-NNN and T-NNN id sets in the body against the extraction by exact match. qualify does not extract, so check instead that the body's own ids are unique and consecutive. Duplicates and gaps are blockers.
 
 | Collected from                    | Target |
 | --------------------------------- | ------ |
@@ -42,7 +42,7 @@ Build compares the U-NNN / T-NNN id sets in the body against the extraction by e
 
 ## Phase 3: Inspect the format
 
-Check that the issue follows `/issue`'s output format. A violation here does not stop build, so treat it as advice. The one exception is unverifiable acceptance criteria, which is a blocker: nobody can judge whether the implementation is right, and build's conformance check loses what it compares against.
+Check that the issue follows `/issue`'s output format. Inspect exactly the axes in the table below and add none of your own. A violation here does not stop build, so treat it as advice. The one exception is unverifiable acceptance criteria, which is a blocker: nobody can judge whether the implementation is right, and build's conformance check loses what it compares against. Verifiable means any reader judges achievement the same way. "Errors are announced to screen readers" passes; "the UX improves" does not.
 
 | Axis                | Passing condition                                                             | Severity |
 | ------------------- | ----------------------------------------------------------------------------- | -------- |
@@ -54,15 +54,13 @@ Check that the issue follows `/issue`'s output format. A violation here does not
 
 ## Phase 4: Verdict and output
 
-Evaluate the verdicts top to bottom and take the first one that matches.
+Return the output in conversation. The order is the verdict on one line, the blockers, the advice, then the question drafts. Write "none" for a section with 0 entries. Evaluate the verdicts in the table below top to bottom and take the first one that matches.
 
 | Verdict     | Condition            | Next step                                                             |
 | ----------- | -------------------- | --------------------------------------------------------------------- |
 | needs-plan  | No `## Plan` section | Draft a plan via `/think` and transfer it via `/issue` into `## Plan` |
 | needs-fix   | 1 or more blockers   | Return the findings to the author, then run `/qualify` again          |
 | build-ready | 0 blockers           | Hand the issue number to the build workflow                           |
-
-Return the output in conversation. The order is the verdict on one line, the blockers, the advice, then the question drafts. Write "none" for a section with 0 entries.
 
 ### Question drafts
 
