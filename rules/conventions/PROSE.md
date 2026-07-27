@@ -71,3 +71,13 @@ Delete a sentence a reader can already read off the adjacent code, table, or hea
 | Code restatement       | Prose repeating what the code directly below states                                              |
 | Consequence narration  | Stating what an instruction or branch leads to. Keep the instruction alone                       |
 | Measurement provenance | Recording where a number came from or what was measured. It goes stale without changing behavior |
+
+## Match Document Length to Content
+
+The previous two sections delete by sentence. This one judges by section. Take the length that covers the substance, and do not add sections that only add bulk. Typical padding forms are the three below (not limited to these).
+
+| Form              | Description                                                                                                       |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Filler section    | Built only from restatement of other sections or generalities. Removing it leaves the document's claims unchanged |
+| Redundant summary | Re-stating at the end what the body already said                                                                  |
+| Boilerplate frame | Placed to fill a template, carrying nothing specific to this document                                             |
