@@ -80,7 +80,7 @@ test("SKILL.md が名前で指す verification.md の見出しが実在する", 
   }
 });
 
-// Phase 2 が代わりにスクリプトを呼ぶ (ADR: .ja/skills/outcome/SKILL.md の呼び出し形に倣う)。
+// Phase 2 が代わりにスクリプトを呼ぶ (.ja/skills/outcome/SKILL.md の呼び出し形に倣う)。
 // 名指しされたスクリプトが実在せず実行もできなければ、Phase 2 の指示は絵に描いた餅になる。
 function extractPhase(skillText, n) {
   const re = new RegExp(`^## Phase ${n}[\\s\\S]*?(?=^## Phase ${n + 1})`, "m");
