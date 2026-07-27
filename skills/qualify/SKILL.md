@@ -9,7 +9,7 @@ argument-hint: "[issue number or URL]"
 
 # /qualify - Inspect an issue for build readiness
 
-Inspect an issue before handing it to build, and return whether to hand it over or fix it first. The conditions that stop build at Load live in build.js, so read them at run time instead of copying them into this skill. Findings that need a decision come back as questions with a hypothesis attached, addressed to whoever invoked the skill; nothing is posted to GitHub.
+Inspect an issue before handing it to build, and return whether to hand it over or fix it first. The conditions that stop build at Load live in build.js, so read them at run time instead of copying them into this skill. Findings that need a decision come back to the user as questions with a hypothesis attached.
 
 ## Input
 
@@ -64,7 +64,7 @@ Return the output in conversation. The order is the verdict on one line, the blo
 
 Turn a finding into a question when reading the body alone does not settle it, which covers gaps in the spec and undecided judgments; for a format defect, write the correction directly instead of asking. Attach the answer you expect to each question as a hypothesis. The reader corrects the hypothesis instead of explaining from scratch.
 
-Address the questions to whoever invoked this skill. That person chooses whether to settle the answers themselves or send the questions to the issue author. Nothing is posted to GitHub.
+Address the questions to the user. The user chooses whether to settle the answers or send the questions to the issue author. Nothing is posted to GitHub.
 
 ## Rules
 
