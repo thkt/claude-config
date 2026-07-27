@@ -602,30 +602,6 @@ function validateInvoiceDate(date: Date, billingCycle: BillingCycle): boolean {
 | Filter | Context Test: 既存等価物のないドメイン特化ロジック |
 | Signal | billing cycle 検証はこの機能固有                   |
 
-## Installation
-
-Install globally: $ npm install -g myapp
-```
-
-| Field   | Value                                                    |
-| ------- | -------------------------------------------------------- |
-| Filter  | Harm Test pass: 古い手順がユーザー失敗を招く             |
-| Trigger | ユーザーが非推奨の global install に従う; npx 利用と衝突 |
-| Impact  | 初回セットアップ失敗; ユーザー離脱                       |
-
-### SKIP
-
-```markdown
-## Architecture
-
-The system uses a pipeline pattern where each stage transforms the input and passes it to the next stage.
-```
-
-| Field  | Value                                              |
-| ------ | -------------------------------------------------- |
-| Filter | Context Test: 正確な散文、好みの問題で欠陥ではない |
-| Signal | 内容は正確; diagram 追加は改善で fix ではない      |
-
 ## PQ (reviewer-prompt)
 
 ### REPORT

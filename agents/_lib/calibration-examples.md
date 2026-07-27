@@ -262,19 +262,23 @@ function OrderPage() {
   const [filter, setFilter] = useState("");
   const [sort, setSort] = useState("date");
 
-  useEffect(() => { fetch("/api/orders").then(r => r.json()).then(setOrders); }, []);
+  useEffect(() => {
+    fetch("/api/orders")
+      .then((r) => r.json())
+      .then(setOrders);
+  }, []);
 
-  const filtered = orders.filter(o => o.name.includes(filter));
-  const sorted = filtered.sort((a, b) => a[sort] > b[sort] ? 1 : -1);
+  const filtered = orders.filter((o) => o.name.includes(filter));
+  const sorted = filtered.sort((a, b) => (a[sort] > b[sort] ? 1 : -1));
 
   return (
     <div>
-      <input value={filter} onChange={e => setFilter(e.target.value)} />
-      <select value={sort} onChange={e => setSort(e.target.value)}>
+      <input value={filter} onChange={(e) => setFilter(e.target.value)} />
+      <select value={sort} onChange={(e) => setSort(e.target.value)}>
         <option value="date">Date</option>
         <option value="name">Name</option>
       </select>
-      {sorted.map(o => (
+      {sorted.map((o) => (
         <div key={o.id}>
           <h3>{o.name}</h3>
           <p>{o.total}</p>
@@ -296,8 +300,11 @@ function OrderPage() {
 
 ```tsx
 function UserAvatar({ name, src }: { name: string; src: string }) {
-  const initials = name.split(" ").map(n => n[0]).join("");
-  return <img src={src} alt={initials} onError={e => (e.target.textContent = initials)} />;
+  const initials = name
+    .split(" ")
+    .map((n) => n[0])
+    .join("");
+  return <img src={src} alt={initials} onError={(e) => (e.target.textContent = initials)} />;
 }
 ```
 
@@ -314,11 +321,11 @@ function UserAvatar({ name, src }: { name: string; src: string }) {
 const ButtonWrapper = (props: ButtonProps) => <Button {...props} />;
 ```
 
-| Field   | Value                                                                                |
-| ------- | ------------------------------------------------------------------------------------ |
+| Field   | Value                                                                                 |
+| ------- | ------------------------------------------------------------------------------------- |
 | Filter  | Deletion test: removing collapses to `<Button>` at every call site with no logic loss |
-| Trigger | Component forwards props 1:1 with no own state/effect/derivation                     |
-| Impact  | Adds an indirection without hiding any behavior                                      |
+| Trigger | Component forwards props 1:1 with no own state/effect/derivation                      |
+| Impact  | Adds an indirection without hiding any behavior                                       |
 
 ### REPORT (shallow, Rust)
 
@@ -334,7 +341,7 @@ impl AppLogger {
 
 | Field   | Value                                                                              |
 | ------- | ---------------------------------------------------------------------------------- |
-| Filter  | Deletion test: callers invoke tracing macros directly; no abstraction is lost     |
+| Filter  | Deletion test: callers invoke tracing macros directly; no abstraction is lost      |
 | Trigger | Methods forward 1:1 to `tracing::event!` with no aggregation, validation, or state |
 | Impact  | Renames a primitive without earning the wrapper                                    |
 
@@ -370,10 +377,10 @@ impl Redactor {
 }
 ```
 
-| Field  | Value                                                                                       |
-| ------ | ------------------------------------------------------------------------------------------- |
+| Field  | Value                                                                                        |
+| ------ | -------------------------------------------------------------------------------------------- |
 | Filter | Deletion test: removing forces callers to re-implement compile+validate+apply+reverse-lookup |
-| Signal | Owns invariants (placeholder uniqueness), borrowed-vs-owned optimization, error taxonomy    |
+| Signal | Owns invariants (placeholder uniqueness), borrowed-vs-owned optimization, error taxonomy     |
 
 ## TEST (reviewer-testability)
 
@@ -431,7 +438,7 @@ window.addEventListener("resize", () => {
 
 ```javascript
 const observer = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
+  entries.forEach((entry) => {
     if (entry.isIntersecting) {
       loadMoreItems();
       observer.unobserve(entry.target);
@@ -452,7 +459,7 @@ observer.observe(sentinelRef.current);
 
 ```tsx
 function DashboardPage() {
-  const { data } = useSWR("/api/dashboard", fetcher);  // can throw
+  const { data } = useSWR("/api/dashboard", fetcher); // can throw
   return (
     <main>
       <h1>Dashboard</h1>
@@ -493,7 +500,7 @@ async function saveOrder(order: Order) {
     await db.save(order);
   } catch {
     await sleep(500);
-    await db.save(order);  // retry hides the real problem
+    await db.save(order); // retry hides the real problem
   }
 }
 ```
@@ -512,7 +519,7 @@ async function fetchExternalRate(currency: string): Promise<number> {
   return retry(() => fetch(`https://api.rates.com/${currency}`), {
     retries: 3,
     delay: 1000,
-    retryOn: [503, 429],  // only transient errors
+    retryOn: [503, 429], // only transient errors
   });
 }
 ```
@@ -595,30 +602,6 @@ function validateInvoiceDate(date: Date, billingCycle: BillingCycle): boolean {
 | Filter | Context Test: domain-specific logic with no existing equivalent |
 | Signal | Billing cycle validation is unique to this feature              |
 
-## Installation
-
-Install globally: $ npm install -g myapp
-```
-
-| Field   | Value                                                            |
-| ------- | ---------------------------------------------------------------- |
-| Filter  | Harm Test pass - outdated instruction causes user failure        |
-| Trigger | User follows deprecated global install; conflicts with npx usage |
-| Impact  | Setup failure on first experience; user abandons                 |
-
-### SKIP
-
-```markdown
-## Architecture
-
-The system uses a pipeline pattern where each stage transforms the input and passes it to the next stage.
-```
-
-| Field  | Value                                                          |
-| ------ | -------------------------------------------------------------- |
-| Filter | Context Test: accurate prose, style preference not defect      |
-| Signal | Content is correct; adding a diagram is improvement, not a fix |
-
 ## PQ (reviewer-prompt)
 
 ### REPORT
@@ -658,8 +641,10 @@ function Dropdown({ items, onSelect }: Props) {
       <div onClick={() => setOpen(!open)}>Select...</div>
       {open && (
         <ul>
-          {items.map(item => (
-            <li key={item.id} onClick={() => onSelect(item)}>{item.label}</li>
+          {items.map((item) => (
+            <li key={item.id} onClick={() => onSelect(item)}>
+              {item.label}
+            </li>
           ))}
         </ul>
       )}
@@ -678,7 +663,11 @@ function Dropdown({ items, onSelect }: Props) {
 
 ```tsx
 function SubmitButton({ onClick, children }: Props) {
-  return <button type="submit" onClick={onClick}>{children}</button>;
+  return (
+    <button type="submit" onClick={onClick}>
+      {children}
+    </button>
+  );
 }
 ```
 
