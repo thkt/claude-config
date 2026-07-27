@@ -26,7 +26,7 @@ Which conventions apply depends on the reader. Scope is judged by the path witho
 
 ## Symbols
 
-In `.ja` prose the formatter collapses the spaces around `/`. When a collapsed enumeration of Latin-letter words would read as a path, list it with commas instead, and keep established compounds like `CI/CD` and `try/catch` as they are. Wrap slash commands like `/fix` in inline code, so the formatter cannot glue them to the preceding word.
+When an enumeration would read as a path, keep spaces around the `/` (`Write / Edit`); established compounds like `CI/CD` and `try/catch` stay unspaced. Wrap slash commands like `/fix` in inline code, so the `.ja` formatter cannot glue them to the preceding word.
 
 | Symbol | Use                                           | Example                               |
 | ------ | --------------------------------------------- | ------------------------------------- |
