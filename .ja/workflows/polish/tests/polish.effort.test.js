@@ -1,7 +1,5 @@
-// U-004: polish workflow の fix agent (general-purpose) は effort: high、
-// challenge (critic-audit) agent は難易度軸で effort: xhigh。
-// runWorkflow behavioral capture で Review -> Challenge -> Fix まで到達させ、
-// 各段の opts.effort を検査して per-stage 配分をテストで固定する。
+// effort の配分は実行結果に現れないので、値を変えてもここ以外のテストは落ちない。
+// per-stage の値を固定して drift を可視にする。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -11,12 +9,9 @@ import { runWorkflow } from "../../_lib/run-workflow.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const polishJs = join(here, "..", "..", "polish.js");
 
-// Review -> Challenge -> Fix -> Cleanup まで到達させる最小 stub (mode: full)。
-// - codex review: 1 件 finding (P1) を返し has_changes: true にして Challenge へ進める。
-// - challenge: 同じ id を confirmed で返し、triage で survivors に載せて Fix へ進める。
-// - fix: 最小の FIX_SCHEMA 形状を返す。
-// - validate (Cleanup): 最小の CLEANUP_SCHEMA 形状を返す。
-// - simplify / enhancer は戻り値を消費しないので undefined のままでよい。
+// Review -> Challenge -> Fix -> Rejudge -> Cleanup まで到達させる最小 stub (mode: full)。
+// severity を P1、challenge の verdict を confirmed にしないと triage が survivors を
+// 空にして Fix 以降へ進まない。simplify / enhancer は戻り値を消費しないので undefined でよい。
 const agentStub = (prompt, opts) => {
   const label = opts && opts.label;
   if (label === "codex") {
@@ -51,9 +46,12 @@ test("fix agent の effort が high である", async () => {
   assert.equal(fixCalls[0].opts.effort, "high", "fix agent の effort が high である");
 });
 
-test("challenge agent の effort が xhigh である", async () => {
+test("challenge / rejudge agent の effort が xhigh である", async () => {
   const { calls } = await runToFix();
   const challengeCalls = calls.agent.filter((c) => c.opts && c.opts.label === "challenge");
+  const rejudgeCalls = calls.agent.filter((c) => c.opts && c.opts.label === "rejudge");
   assert.equal(challengeCalls.length, 1, "challenge agent (critic-audit) が 1 回呼ばれる");
+  assert.equal(rejudgeCalls.length, 1, "rejudge agent (critic-audit) が 1 回呼ばれる");
   assert.equal(challengeCalls[0].opts.effort, "xhigh", "challenge agent の effort が xhigh");
+  assert.equal(rejudgeCalls[0].opts.effort, "xhigh", "rejudge agent の effort が xhigh");
 });
