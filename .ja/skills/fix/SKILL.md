@@ -1,6 +1,6 @@
 ---
 name: fix
-description: 開発環境で小さなバグや軽微な改善を素早く修正する。起票済み issue の番号を渡せば、1〜3 ファイルに収まる修正はそのまま引き継ぐ。新機能実装や 4 ファイル以上の変更には使わない (番号を build workflow に渡す)。
+description: 開発環境で小さなバグや軽微な改善を素早く修正する。起票済み issue の番号を渡せば、1〜3 ファイルに収まる修正はそのまま引き継ぐ。新機能実装や 4 ファイル以上の変更には使わない (/think と /issue で Plan 節を作り build workflow に渡す)。
 when_to_use: バグ修正, 直して, 修正して, fix bug, 不具合
 allowed-tools: Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit MultiEdit Read LS Task AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
 model: opus
@@ -70,16 +70,16 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 
 ## エスカレーション
 
-客観的トリガーで分岐し、自己評価による信頼度判断はしない。エスカレーションなしで 4 回目の修正を試みない。Issue 引き継ぎ経路から委譲するときは、起票済みの番号をそのまま build workflow に渡す。
+客観的トリガーで分岐し、自己評価による信頼度判断はしない。エスカレーションなしで 4 回目の修正を試みない。Issue 引き継ぎ経路から委譲するときは、起票済みの issue に `## Plan` 節があることを確かめてから番号を build workflow に渡す。
 
-| トリガー                          | 動作                                                           |
-| --------------------------------- | -------------------------------------------------------------- |
-| RCA で根本原因が特定できない      | `/research` にエスカレーション                                 |
-| 修正後もテスト失敗                | 根本原因を再分析。3 回失敗で `/research` にエスカレーション    |
-| 複数ファイル影響 (4 ファイル以上) | `/issue` で練って build workflow に委譲                        |
-| 新機能スコープ                    | `/issue` で練って build workflow に委譲                        |
-| Pattern = Systematic              | `/research` にエスカレーション                                 |
-| Fix が OUTCOME.md スコープ外      | ユーザーに確認。Non-goals を再定義するか build workflow に委譲 |
+| トリガー                          | 動作                                                              |
+| --------------------------------- | ----------------------------------------------------------------- |
+| RCA で根本原因が特定できない      | `/research` にエスカレーション                                    |
+| 修正後もテスト失敗                | 根本原因を再分析。3 回失敗で `/research` にエスカレーション       |
+| 複数ファイル影響 (4 ファイル以上) | `/think` と `/issue` で Plan 節まで作り build workflow に委譲     |
+| 新機能スコープ                    | `/think` と `/issue` で Plan 節まで作り build workflow に委譲     |
+| Pattern = Systematic              | `/research` にエスカレーション                                    |
+| Fix が OUTCOME.md スコープ外      | ユーザーに確認。Non-goals を再定義するか Plan 節まで作り build へ |
 
 ## エラー処理
 

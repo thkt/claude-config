@@ -1,6 +1,6 @@
 ---
 name: fix
-description: Rapidly fix small bugs and minor improvements in development environment. Hand it a filed issue number and a fix confined to 1-3 files carries straight through. Do NOT use for new feature implementation or changes spanning 4 or more files (hand the number to the build workflow instead).
+description: Rapidly fix small bugs and minor improvements in development environment. Hand it a filed issue number and a fix confined to 1-3 files carries straight through. Do NOT use for new feature implementation or changes spanning 4 or more files (write the plan via /think and /issue, then hand the number to the build workflow).
 when_to_use: バグ修正, 直して, 修正して, fix bug, 不具合
 allowed-tools: Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit MultiEdit Read LS Task AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
 model: opus
@@ -70,16 +70,16 @@ Obvious skips both RCA and regression test generation, so it is limited to findi
 
 ## Escalation
 
-Branch on objective triggers, not confidence self-assessment. Do not attempt fix #4 without escalating. When delegating from the Issue Handoff path, hand the build workflow the number that is already filed.
+Branch on objective triggers, not confidence self-assessment. Do not attempt fix #4 without escalating. When delegating from the Issue Handoff path, confirm the filed issue carries a `## Plan` section, then hand the build workflow its number.
 
-| Trigger                        | Action                                                                  |
-| ------------------------------ | ----------------------------------------------------------------------- |
-| RCA cannot identify root cause | Escalate to `/research`                                                 |
-| Tests still fail after fix     | Re-analyze root cause. After 3 failures, escalate to `/research`        |
-| Multi-file impact (4+ files)   | Refine via `/issue` and delegate to the build workflow                  |
-| New feature scope              | Refine via `/issue` and delegate to the build workflow                  |
-| Pattern = Systematic           | Escalate to `/research`                                                 |
-| Fix outside OUTCOME.md scope   | Confirm with user; redefine Non-goals or delegate to the build workflow |
+| Trigger                        | Action                                                                        |
+| ------------------------------ | ----------------------------------------------------------------------------- |
+| RCA cannot identify root cause | Escalate to `/research`                                                       |
+| Tests still fail after fix     | Re-analyze root cause. After 3 failures, escalate to `/research`              |
+| Multi-file impact (4+ files)   | Write the Plan via `/think` and `/issue`, then delegate to build              |
+| New feature scope              | Write the Plan via `/think` and `/issue`, then delegate to build              |
+| Pattern = Systematic           | Escalate to `/research`                                                       |
+| Fix outside OUTCOME.md scope   | Confirm with user; redefine Non-goals or write the Plan and delegate to build |
 
 ## Error Handling
 
