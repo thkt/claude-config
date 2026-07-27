@@ -233,7 +233,9 @@ if (mode !== "cleanup") {
         label: "challenge",
         schema: VERDICTS_SCHEMA,
         model: "opus",
-        effort: "xhigh",
+        // high is Opus 5's recommended starting point; the docs reject carrying xhigh over
+        // from an earlier model.
+        effort: "high",
       },
     );
     // If the challenge dies, advance with every finding treated as confirmed (fail-open).
@@ -313,7 +315,7 @@ if (mode !== "cleanup") {
         label: "rejudge",
         schema: REJUDGE_SCHEMA,
         model: "opus",
-        effort: "xhigh",
+        effort: "high",
       },
     );
     if (rejudged) {

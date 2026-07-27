@@ -225,7 +225,8 @@ if (mode !== "cleanup") {
         label: "challenge",
         schema: VERDICTS_SCHEMA,
         model: "opus",
-        effort: "xhigh",
+        // Opus 5 は high が推奨の出発点で、前世代からの xhigh 持ち越しを docs が否定する。
+        effort: "high",
       },
     );
     // challenge が落ちたら全 findings を confirmed 扱いで前進する (fail-open)
@@ -304,7 +305,7 @@ if (mode !== "cleanup") {
         label: "rejudge",
         schema: REJUDGE_SCHEMA,
         model: "opus",
-        effort: "xhigh",
+        effort: "high",
       },
     );
     if (rejudged) {
