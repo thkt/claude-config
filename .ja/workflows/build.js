@@ -1,9 +1,9 @@
 export const meta = {
   name: "build",
   description:
-    "自律的な end-to-end build。/think + /issue で精緻化した Plan 節付き issue を入力に、Load (逐語 fetch → 決定論 id 収集 → 抽出 → validate + id クロスチェック) / Revalidate / Branch / Code / Cleanup / Verify / Ship を headless の決定論 script stage として実行する。Code は unit ごとに plan の指示を trailer に載せてコミットし、Verify / Ship は HEAD でなく Branch で捕まえた分岐点を基準にする (DR-0088)。Plan 節なし issue は入れ子の draft-plan workflow が plan を下書きする (DR-0086)。正しさの確認は plan 自身のアンカー (前提、files スコープ、T-NNN 言明、conformance) との比較であり、開放的な欠陥探索ではない。重い担保 (/audit、/polish review) は draft PR に対して人間が起動する (DR-0085)。",
+    "自律的な end-to-end build。/think + /issue で精緻化した Plan 節付き issue を入力に、Load (逐語 fetch → 決定論 id 収集 → 抽出 → validate + id クロスチェック) / Revalidate / Branch / Code / Cleanup / Verify / Ship を headless の決定論 script stage として実行する。Code は unit ごとに plan の指示を trailer に載せてコミットし、Verify / Ship は HEAD でなく Branch で捕まえた分岐点を基準にする (DR-0088)。Plan 節なし issue は no-plan で停止し、issue の精緻化に差し戻す (DR-0089)。正しさの確認は plan 自身のアンカー (前提、files スコープ、T-NNN 言明、conformance) との比較であり、開放的な欠陥探索ではない。重い担保 (/audit、/polish review) は draft PR に対して人間が起動する (DR-0085)。",
   whenToUse:
-    'plan 付き issue の実装。args には {issue, repo, base?} を渡す (issue は番号 "123" / "#123" か URL、repo は対象リポジトリの絶対パス、base は任意で PR の base ブランチと新規 checkout の起点。epic ブランチ集約フローで使う)。repo の無い args は no-repo で早期 stop する。## Plan 節の無い issue は plan を自動生成する (ゴール + a11y、critic-design gate 付き。品質は /think + /issue path に劣る)。離席して戻れば、前提 / conformance findings / 決定論 verify 結果を記録した draft PR ができている。スコープ外の backlog 候補は workflow の戻り値で返り、/issue で起票する。途中で舵を取る場合は phase を対話的に進める。',
+    'plan 付き issue の実装。args には {issue, repo, base?} を渡す (issue は番号 "123" / "#123" か URL、repo は対象リポジトリの絶対パス、base は任意で PR の base ブランチと新規 checkout の起点。epic ブランチ集約フローで使う)。repo の無い args は no-repo で早期 stop する。## Plan 節の無い issue は no-plan で早期 stop するので、/think + /issue で ## Plan 節を書いてから再実行する。離席して戻れば、前提 / conformance findings / 決定論 verify 結果を記録した draft PR ができている。スコープ外の backlog 候補は workflow の戻り値で返り、/issue で起票する。途中で舵を取る場合は phase を対話的に進める。',
   phases: [
     { title: "Load" },
     { title: "Revalidate" },
@@ -15,9 +15,9 @@ export const meta = {
   ],
 };
 
-// build は人間の ## Plan 節を再計画しない (DR-0084)。Plan 節なし issue は入れ子の
-// draft-plan workflow が下書きする (DR-0086)。抽出は LLM に委ね、検証は script が持つ。
-// fan-out を持つ stage は入れ子 workflow (code / draft-plan) に委譲する。
+// build は人間の ## Plan 節を再計画しない (DR-0084)。Plan 節なし issue は no-plan で
+// 停止し、issue の精緻化に差し戻す (DR-0089)。抽出は LLM に委ね、検証は script が持つ。
+// fan-out を持つ stage は入れ子 workflow (code) に委譲する。
 
 phase("Load");
 
@@ -268,176 +268,83 @@ const oversizedUnits = (p) =>
     return fileCount > UNIT_CAPS.files || testCount > UNIT_CAPS.tests;
   });
 
-// Plan 節なし issue の plan 下書き。critic-design gate が Plan 節あり path の id
-// クロスチェックに相当する。build 専用なので単独 workflow でなくローカル関数にする
-// (DR-0086)。GO で { plan }、それ以外は { stopped } を返す。
-const draftPlan = async () => {
-  const basePrompt =
-    `以下の GitHub issue 本文には ## Plan 節が無い。本文だけから構造化 plan を導き、issue が求める以上のスコープを発明しない。` +
-    `まずリポジトリを探索して plan を現実に接地させる。実在のファイルパス、既存コードからの preconditions、プロジェクト設定を読んで決めた test_command。` +
-    `outcome は done 状態のゴール。issue に明示が無ければ自分で設定し、UI に触れる作業なら a11y criteria (キーボードのみで全操作が完結する、エラーがスクリーンリーダーに通知される、など) を outcome と test scenario に含める。` +
-    `unit は実装順に並べ、検証可能な振る舞いが無い unit (docs / 設定) は tests を空配列にする。非 seam unit は UNIT_CAPS (files <= ${UNIT_CAPS.files}、tests <= ${UNIT_CAPS.tests}) の範囲に収める。どちらかが上限を超えるくらいなら unit をさらに分割する。` +
-    `unit ごとのテストは自分の境界を stub するので、各層が緑のまま結線されないことが起こる。テストを持つ unit が 2 つ以上になる plan には seam unit (seam: true) を最後に置く。他の unit はすべて seam: false。` +
-    `contract は生成でなく選択で書く (引用 + やりたいことの 1 行)。` +
-    `計画対象と同じ形を持つ既存モジュール (ドメインを問わず、画面の組か layer の組が一致するもの) があれば reference_module に記録し、U-001 をその構造複製 (tests は空配列) にする。null にするのは一致するモジュールが無いときだけで、理由を assumption に書く。` +
-    `自分が置いた best-guess の判断はすべて assumptions に記録する。\n\n${fencedBody}`;
-
-  const generate = (feedback) =>
-    agent(anchor(feedback ? `${basePrompt}\n\n${feedback}` : basePrompt), {
-      label: "generate-plan",
-      phase: "Load",
-      agentType: "general-purpose",
-      schema: PLAN_SCHEMA,
-    });
-
-  let drafted = await generate();
-  if (!drafted) {
-    return { stopped: "plan-generation-failed", why: "generate agent が plan を返さなかった。" };
-  }
-
-  // 再生成は 1 回に限り、無限ループと超過の黙認をどちらも避ける。
-  let oversized = oversizedUnits(drafted);
-  if (oversized.length) {
-    drafted = await generate(
-      `直前の下書きは unit ${oversized.map((u) => u.id).join(", ")} で UNIT_CAPS (files <= ${UNIT_CAPS.files}、tests <= ${UNIT_CAPS.tests}) を超過した。該当 unit をさらに分割し、すべての非 seam unit を上限内に収めた上で plan 全体を返し直す。`,
-    );
-    if (!drafted) {
-      return { stopped: "plan-generation-failed", why: "generate agent が plan を返さなかった。" };
-    }
-    oversized = oversizedUnits(drafted);
-    if (oversized.length) {
-      return {
-        stopped: "oversized-unit",
-        units: oversized.map((u) => u.id),
-        why:
-          `1 回の feedback 付き再生成後も非 seam unit が UNIT_CAPS (files <= ${UNIT_CAPS.files} / tests <= ${UNIT_CAPS.tests}) を超えている。` +
-          "issue を ## Plan 節へ精緻化して (/issue) 再実行する。",
-      };
-    }
-  }
-
-  const CRITIQUE_SCHEMA = obj(["verdict", "weaknesses"], {
-    verdict: { type: "string", enum: ["GO", "NO-GO"] },
-    weaknesses: { type: "array", items: { type: "string" } },
-  });
-  const critique = await agent(
-    anchor(
-      `critic-design。issue #${issueNumber}「${drafted.outcome}」向けに自動生成された実装 plan を敵対的にレビューする。` +
-        `本文から人間レビュー無しで導かれたので攻撃する。unit 分解の不健全さや欠落、preconditions の誤りや欠落、issue が求める以上に発明されたスコープ、検証不能な scenario、誤った test_command を探す。` +
-        `reference_module も攻撃する。リポジトリに同形モジュールがあるのに null、最近似でない path、対応ファイルや conventions の欠落を探す。` +
-        `unit の肥大も攻撃する。UNIT_CAPS の件数チェックは通過していても、非 seam unit がまだ多くを背負い過ぎていないか探す。weaknesses には挙げるが、肥大単独では NO-GO にせず、NO-GO はサイズを超えた blocking な欠陥のときだけにする。` +
-        `そのまま実装して安全なら verdict "GO"、blocking な欠陥があれば "NO-GO" を返し、具体的な欠陥を weaknesses に列挙する。\n` +
-        `plan は以下。\n${JSON.stringify(drafted)}`,
-    ),
-    {
-      label: "critique-plan",
-      phase: "Load",
-      agentType: "critic-design",
-      schema: CRITIQUE_SCHEMA,
-      model: "opus",
-      // Opus 5 は high が推奨の出発点で、前世代からの xhigh 持ち越しを docs が否定する。
-      effort: "high",
-    },
-  );
-  // 明示 NO-GO だけ止める。critic が死んだ (null) 場合は fail-open で、flaky な reviewer が
-  // 全 plan-less build を止めないようにする。
-  if (critique && critique.verdict === "NO-GO") {
-    return {
-      stopped: "generated-plan-rejected",
-      weaknesses: critique.weaknesses || [],
-      why: "critic-design が自動生成 plan を却下した。issue を ## Plan 節へ精緻化して (/issue) 再実行する。",
-    };
-  }
-  // 人間未レビューであることを assumptions 先頭に固定し、PR で veto 対象として surface する。
-  drafted.assumptions = [
-    "plan は build が issue 本文から自動生成した (issue に ## Plan 節が無い)。unit 分割と test scenario は人間レビューを経ていない。",
-    ...(drafted.assumptions || []),
-  ];
-  log(
-    `Plan 下書き: ${drafted.units.length} unit、critic-design ${critique && critique.verdict ? critique.verdict : "unavailable"}。`,
-  );
-  return { plan: drafted };
-};
-
+// 検証済みの選択だけを実装する。Plan 節が無い issue には実装対象が無いので、plan を
+// 代わりに生成せず issue の精緻化に差し戻す (DR-0089)。
 const planHeading = body.match(/^##\s+Plan\b.*$/m);
-let plan;
-
-if (planHeading) {
-  const afterHeading = body.slice(planHeading.index + planHeading[0].length);
-  const nextSection = afterHeading.search(/^##[^#]/m);
-  const planSection = nextSection === -1 ? afterHeading : afterHeading.slice(0, nextSection);
-  // id は定義位置のみ照合し、prose 中の参照は数えない (think templates/plan.md 参照)。
-  const idSet = (re) => new Set([...planSection.matchAll(re)].map((m) => m[1]));
-  const bodyUnitIds = idSet(/^###\s+(U-\d{3})\b/gm);
-  const bodyTestIds = idSet(/^[ \t]*[-*+][ \t]+(T-\d{3})\b/gm);
-
-  plan = await agent(
-    anchor(
-      `以下の GitHub issue 本文の ## Plan 節から構造化 plan を抽出する。再計画 / 要約 / 補完をせず、書かれているものをそのまま構造化する。` +
-        `本文の unit id (U-NNN) と test id (T-NNN) をすべて保持する。` +
-        `preconditions は plan が前提にする既存コードの {path, pattern} の一覧、backlog_candidates は issue に書かれたスコープ外候補。本文に無ければ空配列。\n` +
-        `assumptions は ## Plan 節に限らず本文全体から集める。インラインの \`(tentative: ...)\` のマークと Premises 節の各行がすべて対象。マーカーは本文がどの言語でも英語のまま。本文に無ければ空配列。\n` +
-        `seam は本文が \`seam: true\` と記した unit だけ true、他はすべて false。unit の内容から推測しない。\n\n${fencedBody}`,
-    ),
-    {
-      label: "extract",
-      phase: "Load",
-      agentType: "general-purpose",
-      schema: PLAN_SCHEMA,
-      // 抽出は機械的な写しなので sonnet に固定する。
-      model: "sonnet",
-    },
-  );
-  if (!plan) {
-    return { stopped: "extraction-failed", why: "extract agent が plan を返さなかった。" };
-  }
-
-  const blockers = validate(plan);
-  if (blockers.length) {
-    return { stopped: "invalid-plan", blockers, why: "抽出した plan が構造 validation に失敗。" };
-  }
-
-  // id 集合の厳密比較で、抽出時の silent drop と捏造を reject する。
-  const planTestIds = new Set(plan.units.flatMap((u) => u.tests.map((t) => t.id)));
-  const planUnitIds = new Set(plan.units.map((u) => u.id));
-  const setDiff = (a, b) => [...a].filter((x) => !b.has(x));
-  const mismatch = {
-    units_missing: setDiff(bodyUnitIds, planUnitIds),
-    units_extra: setDiff(planUnitIds, bodyUnitIds),
-    tests_missing: setDiff(bodyTestIds, planTestIds),
-    tests_extra: setDiff(planTestIds, bodyTestIds),
+if (!planHeading) {
+  return {
+    stopped: "no-plan",
+    why:
+      `issue ${issueRef} に ## Plan 節が無く、実装対象になる検証済みの選択が存在しない。` +
+      `まず issue を精緻化する。/think で設計して plan を下書きし、/issue で issue の ## Plan 節へ転記してから build を再実行する。`,
   };
-  if (Object.values(mismatch).some((l) => l.length)) {
-    return {
-      stopped: "extraction-mismatch",
-      detail: mismatch,
-      why: "issue 本文と抽出結果の U/T id 集合が一致しない。",
-    };
-  }
-
-  const oversized = oversizedUnits(plan);
-  if (oversized.length) {
-    return {
-      stopped: "oversized-unit",
-      units: oversized.map((u) => u.id),
-      why:
-        `非 seam unit が UNIT_CAPS (files <= ${UNIT_CAPS.files} / tests <= ${UNIT_CAPS.tests}) を超えている。` +
-        "/think Phase 3 の unit サイズ上限に沿って unit をさらに分割し、issue を /issue で精緻化して再実行する。",
-    };
-  }
-  log(
-    `Plan 抽出: ${plan.units.length} unit / ${planTestIds.size} test scenario、id クロスチェック pass。`,
-  );
-} else {
-  log("## Plan 節なし。issue 本文から plan を下書きする。");
-  const drafted = await draftPlan();
-  if (drafted.stopped) return drafted;
-  plan = drafted.plan;
-  const blockers = validate(plan);
-  if (blockers.length) {
-    return { stopped: "invalid-plan", blockers, why: "生成した plan が構造 validation に失敗。" };
-  }
 }
+
+const afterHeading = body.slice(planHeading.index + planHeading[0].length);
+const nextSection = afterHeading.search(/^##[^#]/m);
+const planSection = nextSection === -1 ? afterHeading : afterHeading.slice(0, nextSection);
+// id は定義位置のみ照合し、prose 中の参照は数えない (think templates/plan.md 参照)。
+const idSet = (re) => new Set([...planSection.matchAll(re)].map((m) => m[1]));
+const bodyUnitIds = idSet(/^###\s+(U-\d{3})\b/gm);
+const bodyTestIds = idSet(/^[ \t]*[-*+][ \t]+(T-\d{3})\b/gm);
+
+const plan = await agent(
+  anchor(
+    `以下の GitHub issue 本文の ## Plan 節から構造化 plan を抽出する。再計画 / 要約 / 補完をせず、書かれているものをそのまま構造化する。` +
+      `本文の unit id (U-NNN) と test id (T-NNN) をすべて保持する。` +
+      `preconditions は plan が前提にする既存コードの {path, pattern} の一覧、backlog_candidates は issue に書かれたスコープ外候補。本文に無ければ空配列。\n` +
+      `assumptions は ## Plan 節に限らず本文全体から集める。インラインの \`(tentative: ...)\` のマークと Premises 節の各行がすべて対象。マーカーは本文がどの言語でも英語のまま。本文に無ければ空配列。\n` +
+      `seam は本文が \`seam: true\` と記した unit だけ true、他はすべて false。unit の内容から推測しない。\n\n${fencedBody}`,
+  ),
+  {
+    label: "extract",
+    phase: "Load",
+    agentType: "general-purpose",
+    schema: PLAN_SCHEMA,
+    // 抽出は機械的な写しなので sonnet に固定する。
+    model: "sonnet",
+  },
+);
+if (!plan) {
+  return { stopped: "extraction-failed", why: "extract agent が plan を返さなかった。" };
+}
+
+const blockers = validate(plan);
+if (blockers.length) {
+  return { stopped: "invalid-plan", blockers, why: "抽出した plan が構造 validation に失敗。" };
+}
+
+// id 集合の厳密比較で、抽出時の silent drop と捏造を reject する。
+const planTestIds = new Set(plan.units.flatMap((u) => u.tests.map((t) => t.id)));
+const planUnitIds = new Set(plan.units.map((u) => u.id));
+const setDiff = (a, b) => [...a].filter((x) => !b.has(x));
+const mismatch = {
+  units_missing: setDiff(bodyUnitIds, planUnitIds),
+  units_extra: setDiff(planUnitIds, bodyUnitIds),
+  tests_missing: setDiff(bodyTestIds, planTestIds),
+  tests_extra: setDiff(planTestIds, bodyTestIds),
+};
+if (Object.values(mismatch).some((l) => l.length)) {
+  return {
+    stopped: "extraction-mismatch",
+    detail: mismatch,
+    why: "issue 本文と抽出結果の U/T id 集合が一致しない。",
+  };
+}
+
+const oversized = oversizedUnits(plan);
+if (oversized.length) {
+  return {
+    stopped: "oversized-unit",
+    units: oversized.map((u) => u.id),
+    why:
+      `非 seam unit が UNIT_CAPS (files <= ${UNIT_CAPS.files} / tests <= ${UNIT_CAPS.tests}) を超えている。` +
+      "/think Phase 3 の unit サイズ上限に沿って unit をさらに分割し、issue を /issue で精緻化して再実行する。",
+  };
+}
+log(
+  `Plan 抽出: ${plan.units.length} unit / ${planTestIds.size} test scenario、id クロスチェック pass。`,
+);
 
 // 決定論 Python verifier (revalidate.py / verify-tests.py) への relay prompt。agent は
 // payload を流し込んで stdout を返すだけで、判定を LLM が下すことはない。

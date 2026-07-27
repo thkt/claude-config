@@ -1,9 +1,9 @@
 export const meta = {
   name: "build",
   description:
-    "Autonomous end-to-end build. Taking an issue with a Plan section refined via /think + /issue as input, Load (verbatim fetch -> deterministic id collection -> extract -> validate + id cross-check) / Revalidate / Branch / Code / Cleanup / Verify / Ship run headlessly as deterministic script stages. Code commits each unit separately with the plan's instruction in trailers, and Verify / Ship work from the branch point captured at Branch rather than from HEAD (DR-0088). A plan-less issue has its plan drafted by the nested draft-plan workflow (DR-0086). Correctness checking is a comparison against the plan's own anchors (preconditions, files scope, T-NNN statements, conformance), not an open-ended defect hunt; heavy assurance (/audit, /polish review) is human-invoked on the draft PR (DR-0085).",
+    "Autonomous end-to-end build. Taking an issue with a Plan section refined via /think + /issue as input, Load (verbatim fetch -> deterministic id collection -> extract -> validate + id cross-check) / Revalidate / Branch / Code / Cleanup / Verify / Ship run headlessly as deterministic script stages. Code commits each unit separately with the plan's instruction in trailers, and Verify / Ship work from the branch point captured at Branch rather than from HEAD (DR-0088). A plan-less issue stops as no-plan and is handed back for refinement (DR-0089). Correctness checking is a comparison against the plan's own anchors (preconditions, files scope, T-NNN statements, conformance), not an open-ended defect hunt; heavy assurance (/audit, /polish review) is human-invoked on the draft PR (DR-0085).",
   whenToUse:
-    'Implementation of a plan-backed issue. Pass {issue, repo, base?} as args, where issue is a number ("123" / "#123") or URL, repo is the absolute path of the target repository, and base (optional) is both the PR base branch and the starting point of a fresh checkout (for the epic-branch aggregation flow); args without repo stop early as no-repo. An issue without a ## Plan section has a plan auto-drafted (goal + a11y, critic-design gated); its quality is below the /think + /issue path. Step away and come back to a draft PR with recorded assumptions, conformance findings, and deterministic verify results; out-of-scope backlog candidates are returned in the workflow result for you to file via /issue. If in-flight steering is needed, drive the phases interactively.',
+    'Implementation of a plan-backed issue. Pass {issue, repo, base?} as args, where issue is a number ("123" / "#123") or URL, repo is the absolute path of the target repository, and base (optional) is both the PR base branch and the starting point of a fresh checkout (for the epic-branch aggregation flow); args without repo stop early as no-repo. An issue without a ## Plan section stops early as no-plan, so write its ## Plan via /think + /issue and relaunch. Step away and come back to a draft PR with recorded assumptions, conformance findings, and deterministic verify results; out-of-scope backlog candidates are returned in the workflow result for you to file via /issue. If in-flight steering is needed, drive the phases interactively.',
   phases: [
     { title: "Load" },
     { title: "Revalidate" },
@@ -15,10 +15,10 @@ export const meta = {
   ],
 };
 
-// build does not re-plan a human ## Plan section (DR-0084). A plan-less issue is
-// drafted by the nested draft-plan workflow (DR-0086). Extraction is left to the
-// LLM; verification belongs to the script. Fan-out stages are delegated to nested
-// workflows (code / draft-plan).
+// build does not re-plan a human ## Plan section (DR-0084). A plan-less issue stops
+// and is handed back for refinement (DR-0089). Extraction is left to the
+// LLM; verification belongs to the script. Fan-out stages are delegated to a nested
+// workflow (code).
 
 phase("Load");
 
@@ -280,185 +280,88 @@ const oversizedUnits = (p) =>
     return fileCount > UNIT_CAPS.files || testCount > UNIT_CAPS.tests;
   });
 
-// Plan drafting for a plan-less issue. The critic-design gate is the counterpart
-// to the has-plan id cross-check. Build-internal, so it is a local function rather
-// than a standalone workflow (DR-0086). Returns { plan } on GO, { stopped } otherwise.
-const draftPlan = async () => {
-  const basePrompt =
-    `The following GitHub issue body has no ## Plan section. Derive a structured plan from the body alone; do not invent scope beyond what the issue asks. ` +
-    `Explore the repository first to ground the plan in reality: real file paths, preconditions from existing code, a test_command read from the project config. ` +
-    `outcome is a done-state goal; set one yourself if the issue names none, and when the work touches UI include a11y criteria (keyboard-only completion, errors announced to screen readers, and similar) in outcome and test scenarios. ` +
-    `List units in implementation order; a unit with no verifiable behavior (docs / config) gets an empty tests array. Keep each non-seam unit within UNIT_CAPS (files <= ${UNIT_CAPS.files}, tests <= ${UNIT_CAPS.tests}); split a unit further rather than letting either count exceed its cap. ` +
-    `Per-unit tests stub their own boundaries, so layers can each be green while never being connected. Once the plan has 2 or more tested units, give it a seam unit (seam: true) placed last. Every other unit is seam: false. ` +
-    `Write each contract by selection, not generation (a citation plus a one-line intent). ` +
-    `When an existing module has the same shape as the one being planned (a matching set of screens or layers, in any domain), record it as reference_module and make U-001 its structure replication with an empty tests array; set null only when no module matches, and say why in an assumption. ` +
-    `Record every best-guess decision you make in assumptions.\n\n${fencedBody}`;
-
-  const generate = (feedback) =>
-    agent(anchor(feedback ? `${basePrompt}\n\n${feedback}` : basePrompt), {
-      label: "generate-plan",
-      phase: "Load",
-      agentType: "general-purpose",
-      schema: PLAN_SCHEMA,
-    });
-
-  let drafted = await generate();
-  if (!drafted) {
-    return { stopped: "plan-generation-failed", why: "The generate agent returned no plan." };
-  }
-
-  // Exactly one regenerate, avoiding both an endless loop and silently shipped bloat.
-  let oversized = oversizedUnits(drafted);
-  if (oversized.length) {
-    drafted = await generate(
-      `The previous draft exceeded UNIT_CAPS (files <= ${UNIT_CAPS.files}, tests <= ${UNIT_CAPS.tests}) in unit(s) ${oversized.map((u) => u.id).join(", ")}. Split those units further so every non-seam unit stays within the caps, then return the complete plan again.`,
-    );
-    if (!drafted) {
-      return { stopped: "plan-generation-failed", why: "The generate agent returned no plan." };
-    }
-    oversized = oversizedUnits(drafted);
-    if (oversized.length) {
-      return {
-        stopped: "oversized-unit",
-        units: oversized.map((u) => u.id),
-        why:
-          `A non-seam unit still exceeds UNIT_CAPS (files <= ${UNIT_CAPS.files} / tests <= ${UNIT_CAPS.tests}) after one feedback-driven ` +
-          "regenerate. Refine the issue into a ## Plan section (via /issue) and relaunch.",
-      };
-    }
-  }
-
-  const CRITIQUE_SCHEMA = obj(["verdict", "weaknesses"], {
-    verdict: { type: "string", enum: ["GO", "NO-GO"] },
-    weaknesses: { type: "array", items: { type: "string" } },
-  });
-  const critique = await agent(
-    anchor(
-      `critic-design. Adversarially review the auto-generated implementation plan for issue #${issueNumber} "${drafted.outcome}". ` +
-        `It was derived from the body with no human review, so attack it: unsound or missing unit decomposition, wrong or missing preconditions, scope invented beyond what the issue asks, untestable scenarios, or a wrong test_command. ` +
-        `Also attack reference_module: null despite a same-shaped module in the repository, a path that is not the closest match, or missing counterpart files / conventions. ` +
-        `Also attack unit bloat: a non-seam unit that is still doing too much even though it passed the UNIT_CAPS count check. Name it as a weakness, but bloat alone is not a NO-GO reason; verdict NO-GO only for a blocking flaw beyond size. ` +
-        `Return verdict "GO" if it is sound enough to implement as-is, or "NO-GO" if a blocking flaw makes it unsafe, and list the concrete flaws in weaknesses.\n` +
-        `The plan is as follows.\n${JSON.stringify(drafted)}`,
-    ),
-    {
-      label: "critique-plan",
-      phase: "Load",
-      agentType: "critic-design",
-      schema: CRITIQUE_SCHEMA,
-      model: "opus",
-      // high is Opus 5's recommended starting point; the docs reject carrying xhigh over
-      // from an earlier model.
-      effort: "high",
-    },
-  );
-  // Only an explicit NO-GO stops. A dead critic (null) fails open so a flaky reviewer
-  // does not block every plan-less build.
-  if (critique && critique.verdict === "NO-GO") {
-    return {
-      stopped: "generated-plan-rejected",
-      weaknesses: critique.weaknesses || [],
-      why: "critic-design rejected the auto-generated plan. Refine the issue into a ## Plan section (via /issue) and relaunch.",
-    };
-  }
-  // Pin the human-unreviewed fact at the head of assumptions; it is a veto target on the PR.
-  drafted.assumptions = [
-    "Plan was auto-generated by build from the issue body (the issue has no ## Plan section); the unit split and test scenarios have not been human-reviewed.",
-    ...(drafted.assumptions || []),
-  ];
-  log(
-    `Plan drafted: ${drafted.units.length} unit(s), critic-design ${critique && critique.verdict ? critique.verdict : "unavailable"}.`,
-  );
-  return { plan: drafted };
-};
-
+// Implement only verified selections. A plan-less issue has nothing to implement
+// against, so build hands it back for refinement instead of drafting a plan in its
+// place (DR-0089).
 const planHeading = body.match(/^##\s+Plan\b.*$/m);
-let plan;
-
-if (planHeading) {
-  const afterHeading = body.slice(planHeading.index + planHeading[0].length);
-  const nextSection = afterHeading.search(/^##[^#]/m);
-  const planSection = nextSection === -1 ? afterHeading : afterHeading.slice(0, nextSection);
-  // Match ids at their definition position only, not prose references (see think templates/plan.md).
-  const idSet = (re) => new Set([...planSection.matchAll(re)].map((m) => m[1]));
-  const bodyUnitIds = idSet(/^###\s+(U-\d{3})\b/gm);
-  const bodyTestIds = idSet(/^[ \t]*[-*+][ \t]+(T-\d{3})\b/gm);
-
-  plan = await agent(
-    anchor(
-      `Extract a structured plan from the ## Plan section of the following GitHub issue body. Do not re-plan, summarize, or fill in gaps; structure exactly what is written. ` +
-        `Preserve every unit id (U-NNN) and test id (T-NNN) from the body. ` +
-        `preconditions is the list of {path, pattern} of existing code the plan presupposes; backlog_candidates are out-of-scope candidates written in the issue. Empty arrays if absent from the body.\n` +
-        `assumptions come from the whole body, not just the ## Plan section: collect every inline \`(tentative: ...)\` mark and every line of a Premises section. The marker stays English whatever language the body is written in. Empty array if the body carries none.\n` +
-        `seam is true only for a unit the body marks \`seam: true\`; every other unit is false. Do not infer it from the unit's content.\n\n${fencedBody}`,
-    ),
-    {
-      label: "extract",
-      phase: "Load",
-      agentType: "general-purpose",
-      schema: PLAN_SCHEMA,
-      // extract is mechanical, so it is pinned to sonnet.
-      model: "sonnet",
-    },
-  );
-  if (!plan) {
-    return { stopped: "extraction-failed", why: "The extract agent returned no plan." };
-  }
-
-  const blockers = validate(plan);
-  if (blockers.length) {
-    return {
-      stopped: "invalid-plan",
-      blockers,
-      why: "The extracted plan fails structural validation.",
-    };
-  }
-
-  // Reject silent drops / fabrications in extraction via exact id-set comparison.
-  const planTestIds = new Set(plan.units.flatMap((u) => u.tests.map((t) => t.id)));
-  const planUnitIds = new Set(plan.units.map((u) => u.id));
-  const setDiff = (a, b) => [...a].filter((x) => !b.has(x));
-  const mismatch = {
-    units_missing: setDiff(bodyUnitIds, planUnitIds),
-    units_extra: setDiff(planUnitIds, bodyUnitIds),
-    tests_missing: setDiff(bodyTestIds, planTestIds),
-    tests_extra: setDiff(planTestIds, bodyTestIds),
+if (!planHeading) {
+  return {
+    stopped: "no-plan",
+    why:
+      `Issue ${issueRef} has no ## Plan section, so there is no verified selection to implement against. ` +
+      `Refine the issue first: run /think to design and draft the plan, then /issue to transfer it into the issue's ## Plan section, and relaunch build.`,
   };
-  if (Object.values(mismatch).some((l) => l.length)) {
-    return {
-      stopped: "extraction-mismatch",
-      detail: mismatch,
-      why: "The U/T id sets in the issue body and the extraction do not match.",
-    };
-  }
-
-  const oversized = oversizedUnits(plan);
-  if (oversized.length) {
-    return {
-      stopped: "oversized-unit",
-      units: oversized.map((u) => u.id),
-      why:
-        `A non-seam unit exceeds UNIT_CAPS (files <= ${UNIT_CAPS.files} / tests <= ${UNIT_CAPS.tests}). Split it further ` +
-        "per /think Phase 3's unit-size guidance, then refine the issue's Plan via /issue and relaunch.",
-    };
-  }
-  log(
-    `Plan extracted: ${plan.units.length} unit(s), ${planTestIds.size} test scenario(s), id cross-check pass.`,
-  );
-} else {
-  log("No ## Plan section; drafting a plan from the issue body.");
-  const drafted = await draftPlan();
-  if (drafted.stopped) return drafted;
-  plan = drafted.plan;
-  const blockers = validate(plan);
-  if (blockers.length) {
-    return {
-      stopped: "invalid-plan",
-      blockers,
-      why: "The generated plan fails structural validation.",
-    };
-  }
 }
+
+const afterHeading = body.slice(planHeading.index + planHeading[0].length);
+const nextSection = afterHeading.search(/^##[^#]/m);
+const planSection = nextSection === -1 ? afterHeading : afterHeading.slice(0, nextSection);
+// Match ids at their definition position only, not prose references (see think templates/plan.md).
+const idSet = (re) => new Set([...planSection.matchAll(re)].map((m) => m[1]));
+const bodyUnitIds = idSet(/^###\s+(U-\d{3})\b/gm);
+const bodyTestIds = idSet(/^[ \t]*[-*+][ \t]+(T-\d{3})\b/gm);
+
+const plan = await agent(
+  anchor(
+    `Extract a structured plan from the ## Plan section of the following GitHub issue body. Do not re-plan, summarize, or fill in gaps; structure exactly what is written. ` +
+      `Preserve every unit id (U-NNN) and test id (T-NNN) from the body. ` +
+      `preconditions is the list of {path, pattern} of existing code the plan presupposes; backlog_candidates are out-of-scope candidates written in the issue. Empty arrays if absent from the body.\n` +
+      `assumptions come from the whole body, not just the ## Plan section: collect every inline \`(tentative: ...)\` mark and every line of a Premises section. The marker stays English whatever language the body is written in. Empty array if the body carries none.\n` +
+      `seam is true only for a unit the body marks \`seam: true\`; every other unit is false. Do not infer it from the unit's content.\n\n${fencedBody}`,
+  ),
+  {
+    label: "extract",
+    phase: "Load",
+    agentType: "general-purpose",
+    schema: PLAN_SCHEMA,
+    // extract is mechanical, so it is pinned to sonnet.
+    model: "sonnet",
+  },
+);
+if (!plan) {
+  return { stopped: "extraction-failed", why: "The extract agent returned no plan." };
+}
+
+const blockers = validate(plan);
+if (blockers.length) {
+  return {
+    stopped: "invalid-plan",
+    blockers,
+    why: "The extracted plan fails structural validation.",
+  };
+}
+
+// Reject silent drops / fabrications in extraction via exact id-set comparison.
+const planTestIds = new Set(plan.units.flatMap((u) => u.tests.map((t) => t.id)));
+const planUnitIds = new Set(plan.units.map((u) => u.id));
+const setDiff = (a, b) => [...a].filter((x) => !b.has(x));
+const mismatch = {
+  units_missing: setDiff(bodyUnitIds, planUnitIds),
+  units_extra: setDiff(planUnitIds, bodyUnitIds),
+  tests_missing: setDiff(bodyTestIds, planTestIds),
+  tests_extra: setDiff(planTestIds, bodyTestIds),
+};
+if (Object.values(mismatch).some((l) => l.length)) {
+  return {
+    stopped: "extraction-mismatch",
+    detail: mismatch,
+    why: "The U/T id sets in the issue body and the extraction do not match.",
+  };
+}
+
+const oversized = oversizedUnits(plan);
+if (oversized.length) {
+  return {
+    stopped: "oversized-unit",
+    units: oversized.map((u) => u.id),
+    why:
+      `A non-seam unit exceeds UNIT_CAPS (files <= ${UNIT_CAPS.files} / tests <= ${UNIT_CAPS.tests}). Split it further ` +
+      "per /think Phase 3's unit-size guidance, then refine the issue's Plan via /issue and relaunch.",
+  };
+}
+log(
+  `Plan extracted: ${plan.units.length} unit(s), ${planTestIds.size} test scenario(s), id cross-check pass.`,
+);
 
 // Relay prompt for the deterministic Python verifiers (revalidate.py /
 // verify-tests.py): the agent pipes the payload in and echoes stdout back; the

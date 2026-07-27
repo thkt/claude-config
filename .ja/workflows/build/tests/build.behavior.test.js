@@ -68,7 +68,6 @@ const kindOf = (opts) => {
   if ("untracked" in p) return "untracked";
   if ("files" in p) return "diff";
   if ("edits" in p) return "cleanup";
-  if ("verdict" in p) return "critique";
   if ("spec_found" in p) return "conformance";
   if ("translations" in p) return "translate";
   if ("pr_url" in p) return "ship";
@@ -85,7 +84,6 @@ const makeStubs = ({
   translate,
   diff,
   presence,
-  critique,
   branch,
   untracked,
   code,
@@ -137,9 +135,6 @@ const makeStubs = ({
         return untracked ?? { untracked: [] };
       case "cleanup":
         return { edits: [], tests_pass: true, stashed: false };
-      case "critique":
-        // draftPlan の critic-design gate。既定は GO。
-        return critique ?? { verdict: "GO", weaknesses: [] };
       case "conformance":
         return conformance ?? { spec_found: false, findings: [] };
       case "ship":
@@ -167,9 +162,6 @@ const makeStubs = ({
 });
 
 const agentCallsOf = (calls, kind) => calls.agent.filter((c) => kindOf(c.opts) === kind);
-// generate-plan / critique-plan は共に kindOf を "extract" / "critique" に分類するので、
-// draftPlan の再実行検証は kindOf でなく label で識別する。
-const agentCallsByLabel = (calls, label) => calls.agent.filter((c) => c.opts.label === label);
 
 test("args 空は stopped: no-issue で fail-close する", async () => {
   const empty = await runWorkflow(buildJs, { args: {}, stubs: makeStubs() });
@@ -232,47 +224,29 @@ test("数字単体 / #数字 / issue URL を repo 付き args で渡すと同じ
   }
 });
 
-// Plan 節なし issue は build 内の draftPlan (generate → critique) が plan を下書きし、
-// build は続行する (DR-0086)。extract label は使わず、下書き plan で Ship まで進む。
-test("Plan 節なし本文は build 内 draftPlan で plan を下書きし Ship まで進む", async () => {
+// Plan 節なし issue は plan を代わりに生成せず stopped: no-plan で止まり、issue の
+// 精緻化に差し戻す (DR-0089)。why には /think と /issue の再実行経路が載る。
+test("Plan 節なし本文は stopped: no-plan で止まり plan を生成しない", async () => {
   const noPlan = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
       body: "Plan 見出しの無い issue 本文。\n\n## Context\n\n説明のみ。",
     }),
   });
+  assert.equal(noPlan.result.stopped, "no-plan", "Plan 節なしは stopped: no-plan");
   const labels = noPlan.calls.agent.map((c) => c.opts.label);
-  assert.equal(noPlan.result.stopped, undefined, "Plan 節なしでも fail-close しない");
-  assert.ok(labels.includes("generate-plan"), "draftPlan の generate agent が呼ばれる");
-  assert.ok(labels.includes("critique-plan"), "draftPlan の critic-design gate が呼ばれる");
-  assert.ok(!labels.includes("extract"), "Plan 節なし path では extract (label) を呼ばない");
+  assert.ok(!labels.includes("extract"), "Plan 節なしで extract agent を呼ばない");
   assert.ok(
-    noPlan.calls.workflow.every((c) => c.name !== "draft-plan"),
-    "draft-plan は workflow でなく inline なので workflow 呼び出しに現れない",
+    !labels.some((l) => l === "generate-plan" || l === "critique-plan"),
+    "Plan 節なしで plan 生成 agent を呼ばない",
   );
-  assert.ok(noPlan.calls.phase.includes("Ship"), "下書き plan で Ship phase まで到達する");
-});
-
-// draftPlan の critic-design が NO-GO なら stopped: generated-plan-rejected で fail-close
-// し、Code へ進まない (DR-0086)。
-test("critic-design NO-GO は stopped: generated-plan-rejected で Code へ進まない", async () => {
-  const rejected = await runWorkflow(buildJs, {
-    args,
-    stubs: makeStubs({
-      body: "Plan 見出しの無い issue 本文。",
-      critique: { verdict: "NO-GO", weaknesses: ["unit 分解が不健全"] },
-    }),
-  });
-  assert.equal(
-    rejected.result.stopped,
-    "generated-plan-rejected",
-    "NO-GO で stopped: generated-plan-rejected",
-  );
+  assert.equal(noPlan.calls.workflow.length, 0, "no-plan 後に入れ子 workflow が走らない");
   assert.ok(
-    (rejected.result.weaknesses || []).includes("unit 分解が不健全"),
-    "critic の weaknesses が surface する",
+    noPlan.calls.phase.every((p) => p === "Load"),
+    "no-plan 後に Load 以外の phase が走らない",
   );
-  assert.ok(!rejected.calls.phase.includes("Code"), "NO-GO で Code phase へ進まない");
+  assert.match(noPlan.result.why, /\/think/, "why が /think での plan 下書きを案内する");
+  assert.match(noPlan.result.why, /\/issue/, "why が /issue での ## Plan 節転記を案内する");
 });
 
 // issue body は untrusted input (public repo では誰でも編集できる) なので、extract prompt
@@ -605,93 +579,6 @@ test("UNIT_CAPS の数値と seam 除外が /think SKILL.md の unit 上限記�
   );
 });
 
-// draftPlan (## Plan 節なし) 経路にも UNIT_CAPS 超過検出を適用する。generate agent の初回
-// plan が超過なら、超過 unit 一覧を feedback して generate agent を 1 回だけ再実行する
-// (critique-plan は攻撃項目に unit 肥大が増えるだけで、肥大単独で NO-GO にはしない)。
-const draftPlanBody = "Plan 見出しの無い issue 本文。\n\n## Context\n\n説明のみ。";
-const oversizedDraftPlan = () =>
-  makePlan({
-    units: [
-      {
-        id: "U-001",
-        goal: "sample goal",
-        files: ["a.js", "b.js", "c.js", "d.js"],
-        contract: "sample contract",
-        tests: [{ id: "T-001", name: "sample spec statement" }],
-        seam: false,
-      },
-    ],
-  });
-const withinCapsDraftPlan = () => makePlan();
-// generate-plan の呼び出し順に responses を返す stub (最後の要素は以降の呼び出しにも使い回す)。
-// critique-plan / fetch など他の agent 呼び出しは makeStubs の既定 (critique: GO) を使う。
-const stubsWithGenerateSequence = (responses) => {
-  const base = makeStubs({ body: draftPlanBody });
-  let callIndex = 0;
-  return {
-    ...base,
-    agent: (prompt, opts) => {
-      if (opts.label !== "generate-plan") return base.agent(prompt, opts);
-      const plan = responses[Math.min(callIndex, responses.length - 1)];
-      callIndex += 1;
-      return plan;
-    },
-  };
-};
-
-test("draftPlan 経路で超過 plan が返ると generate agent が超過 unit 一覧の feedback 付きで 1 回だけ再実行される", async () => {
-  const run = await runWorkflow(buildJs, {
-    args,
-    stubs: stubsWithGenerateSequence([oversizedDraftPlan(), withinCapsDraftPlan()]),
-  });
-
-  const generateCalls = agentCallsByLabel(run.calls, "generate-plan");
-  assert.equal(generateCalls.length, 2, "generate agent が初回 + 再実行の計 2 回だけ呼ばれる");
-  assert.ok(
-    generateCalls[1].prompt.includes("U-001"),
-    "再実行の prompt に超過した unit id U-001 が feedback として載る",
-  );
-});
-
-test("再生成後の plan が上限内なら build は続行する", async () => {
-  const run = await runWorkflow(buildJs, {
-    args,
-    stubs: stubsWithGenerateSequence([oversizedDraftPlan(), withinCapsDraftPlan()]),
-  });
-
-  const generateCalls = agentCallsByLabel(run.calls, "generate-plan");
-  assert.equal(
-    generateCalls.length,
-    2,
-    "上限内に収まった再生成後は generate agent をこれ以上呼ばない (再実行は 1 回のみ)",
-  );
-  assert.notEqual(
-    run.result.stopped,
-    "oversized-unit",
-    "再生成後に上限内なら stopped: oversized-unit にならない",
-  );
-  assert.ok(run.calls.phase.includes("Ship"), "再生成後に上限内なら Ship まで続行する");
-});
-
-test('再生成後も超過が残る plan は stopped "oversized-unit" で停止する', async () => {
-  const run = await runWorkflow(buildJs, {
-    args,
-    stubs: stubsWithGenerateSequence([oversizedDraftPlan()]),
-  });
-
-  const generateCalls = agentCallsByLabel(run.calls, "generate-plan");
-  assert.equal(
-    generateCalls.length,
-    2,
-    "再生成後も超過が残る場合、再実行は 1 回だけで無限ループしない",
-  );
-  assert.equal(
-    run.result.stopped,
-    "oversized-unit",
-    "再生成後も超過が残る plan は stopped: oversized-unit で停止する",
-  );
-});
-
 test("Revalidate は 1 miss で stopped: plan-drift、全 pass で Branch へ進み、preconditions 空なら agent を呼ばない", async () => {
   // miss case: exists: false を 1 件含む
   const driftPlan = makePlan({
@@ -985,7 +872,7 @@ test("per-unit commit 有効時の Ship prompt は残余 commit 指示になり�
   );
 });
 
-test("stopped 値集合の snapshot が 14 値と exact match し、audit 経路の残骸が無い", () => {
+test("stopped 値集合の snapshot が 13 値と exact match し、audit 経路の残骸が無い", () => {
   const source = readFileSync(buildJs, "utf8");
   const stopped = new Set();
   for (const m of source.matchAll(/stopped:\s*"([^"]+)"/g)) stopped.add(m[1]);
@@ -996,18 +883,17 @@ test("stopped 値集合の snapshot が 14 値と exact match し、audit 経路
       "dirty-branch-point",
       "extraction-failed",
       "extraction-mismatch",
-      "generated-plan-rejected",
       "invalid-plan",
       "no-issue",
       "no-issue-body",
+      "no-plan",
       "no-repo",
       "oversized-unit",
       "plan-drift",
-      "plan-generation-failed",
       "revalidate-failed",
       "revalidate-incomplete",
     ],
-    "stopped リテラル集合が 14 値と exact match する (base 指定時の分岐点汚染検出で dirty-branch-point が build.js に入る)",
+    "stopped リテラル集合が 13 値と exact match する (Plan 節なしの差し戻しで no-plan、plan 自律生成の停止値 2 つは DR-0089 で消える)",
   );
   const explore = source.match(/agentType:\s*"Explore"/g) || [];
   assert.equal(explore.length, 0, 'agentType: "Explore" が 0 件');
@@ -1195,12 +1081,11 @@ test("translate-tail の訳 id が入力と一致しないなら英語原文で 
   assert.ok(!shipCalls[0].prompt.includes("only one"), "id 不一致の訳は採用されない");
 });
 
-test("実環境で Plan 節付き issue が Load → Revalidate → Branch → Code → Cleanup → Verify と進み、Plan 節なし issue が draft-plan 経由で同じ順に進む (manual acceptance、done 前必須)", () => {
+test("実環境で Plan 節付き issue が Load → Revalidate → Branch → Code → Cleanup → Verify と進む (manual acceptance、done 前必須)", () => {
   // harness green だけで完了にしないための manual gate。実際に build workflow を
-  // Plan 節付き / Plan 節なしの実 issue で起動し、前者の phase log が
-  // Load → Revalidate → Branch → Code → Cleanup → Verify の順に出て PR tail に /audit 案内が載ること、
-  // 後者が draft-plan で plan を下書きし同じ順に進む (assumptions 先頭に自動生成注記) ことを確認したら
-  // ADR0085_MANUAL_ACCEPTANCE=pass を付けてテストを実行する。
+  // Plan 節付きの実 issue で起動し、phase log が
+  // Load → Revalidate → Branch → Code → Cleanup → Verify の順に出て PR tail に /audit 案内が載ることを
+  // 確認したら ADR0085_MANUAL_ACCEPTANCE=pass を付けてテストを実行する。
   assert.equal(
     process.env.ADR0085_MANUAL_ACCEPTANCE,
     "pass",
