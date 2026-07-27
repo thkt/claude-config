@@ -277,7 +277,7 @@ const draftPlan = async () => {
     `まずリポジトリを探索して plan を現実に接地させる。実在のファイルパス、既存コードからの preconditions、プロジェクト設定を読んで決めた test_command。` +
     `outcome は done 状態のゴール。issue に明示が無ければ自分で設定し、UI に触れる作業なら a11y criteria (キーボードのみで全操作が完結する、エラーがスクリーンリーダーに通知される、など) を outcome と test scenario に含める。` +
     `unit は実装順に並べ、検証可能な振る舞いが無い unit (docs / 設定) は tests を空配列にする。非 seam unit は UNIT_CAPS (files <= ${UNIT_CAPS.files}、tests <= ${UNIT_CAPS.tests}) の範囲に収める。どちらかが上限を超えるくらいなら unit をさらに分割する。` +
-    `unit ごとのテストは自分の境界を stub するので、各層が緑のまま結線されないことが起こる。テストを持つ unit が 2 つ以上になる plan には seam unit (seam: true) を最後に置く。そのテストは unit 間の境界を跨いで実モジュールを動かし、偽装はシステム外部との I/O に限り、unit どうしをつなぐ接続 (呼び出し、遷移、データの受け渡し) が実際に結線されていることを assert する。他の unit はすべて seam: false。` +
+    `unit ごとのテストは自分の境界を stub するので、各層が緑のまま結線されないことが起こる。テストを持つ unit が 2 つ以上になる plan には seam unit (seam: true) を最後に置く。他の unit はすべて seam: false。` +
     `contract は生成でなく選択で書く (引用 + やりたいことの 1 行)。` +
     `計画対象と同じ形を持つ既存モジュール (ドメインを問わず、画面の組か layer の組が一致するもの) があれば reference_module に記録し、U-001 をその構造複製 (tests は空配列) にする。null にするのは一致するモジュールが無いときだけで、理由を assumption に書く。` +
     `自分が置いた best-guess の判断はすべて assumptions に記録する。\n\n${fencedBody}`;
@@ -688,7 +688,7 @@ const cleanup = (await agent(
   anchor(
     `Skill ツールで skill "simplify" を起動し、現在の diff に cleanup 限定の pass (再利用 / 簡素化 / 効率 / 高度) をかける。引数なしを拒否されたら diff の scope を渡す。` +
       `続けてプロジェクトのテストコマンドを検出して実行する。失敗したら cleanup の編集を git stash で戻し stashed: true を報告する。` +
-      `適用した編集の要約を file:line 付きで edits に列挙する。commit しない。`,
+      `commit しない。`,
   ),
   {
     label: "cleanup",

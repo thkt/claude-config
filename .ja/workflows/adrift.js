@@ -388,7 +388,8 @@ const report = (await agent(
       `手順は \`mkdir -p docs/audit\` の後、\`STAMP=$(date -u +%Y-%m-%d-%H%M%S)\` で docs/audit/\${STAMP}-dr-drift.md に書く。\n` +
       `構成は次のとおり。見出しは "# DR Drift Scan: {STAMP}"。セクションは "## Summary" (Metric | Value の表。行は DRs scanned / Drift findings / H priority / M priority / L priority / Unverifiable DRs)、"## Per-DR Findings"、"## External DR Dependencies" (File:Line | External DR ref | Recommended action の表。action は "Promote to local DR or supersede locally")、"## Follow-up Issue Candidates" (\`- [ ] DR {id} drift at {file}:{line}: {summary}\` のチェックリスト) の順。\n` +
       `Per-DR Findings では drift の無い DR を "DRs {ids}: no drift." の 1 行に束ね、drift / unverifiable の DR にのみ "### DR {id}: {title}" サブセクション (Status / Result 行 + File:Line | Description | Direction | Priority の表。unverifiable は理由を Result に書き表を省略) を立てる。\n` +
-      `完全性の要件は次の 4 つ。(1) 全 DR を Per-DR Findings に漏れなく記載する。(2) 各 drift に file:line / direction / priority を記録する。(3) superseded な DR の Status に Superseded を反映する。(4) external_refs が空なら External DR Dependencies を、H 優先度が 0 件なら Follow-up Issue Candidates を、見出しごと省略する。\n\n` +
+      `完全性の要件は次の 4 つ。(1) 全 DR を Per-DR Findings に漏れなく記載する。(2) 各 drift に file:line / direction / priority を記録する。(3) superseded な DR の Status に Superseded を反映する。(4) external_refs が空なら External DR Dependencies を、H 優先度が 0 件なら Follow-up Issue Candidates を、見出しごと省略する。\n` +
+      `長さは上の構成が要求する範囲に収める。指定した見出し以外に前置き / 総括 / 補足の節を足さず、表のセルには findings の内容だけを書く。\n\n` +
       focusNote +
       `Summary 件数は次の値をそのまま使う。DRs scanned=${scanned.length}, findings=${allFindings.length}, H=${counts.H}, M=${counts.M}, L=${counts.L}, unverifiable=${unverifiable.length}\n\n` +
       `Per-DR 結果は次のとおり。\n${JSON.stringify(

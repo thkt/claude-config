@@ -289,7 +289,7 @@ const draftPlan = async () => {
     `Explore the repository first to ground the plan in reality: real file paths, preconditions from existing code, a test_command read from the project config. ` +
     `outcome is a done-state goal; set one yourself if the issue names none, and when the work touches UI include a11y criteria (keyboard-only completion, errors announced to screen readers, and similar) in outcome and test scenarios. ` +
     `List units in implementation order; a unit with no verifiable behavior (docs / config) gets an empty tests array. Keep each non-seam unit within UNIT_CAPS (files <= ${UNIT_CAPS.files}, tests <= ${UNIT_CAPS.tests}); split a unit further rather than letting either count exceed its cap. ` +
-    `Per-unit tests stub their own boundaries, so layers can each be green while never being connected. Once the plan has 2 or more tested units, give it a seam unit (seam: true) placed last: its tests run the real modules across the unit boundary, fake only I/O with external systems, and assert that the connections between units (calls, transitions, data handoffs) are actually wired. Every other unit is seam: false. ` +
+    `Per-unit tests stub their own boundaries, so layers can each be green while never being connected. Once the plan has 2 or more tested units, give it a seam unit (seam: true) placed last. Every other unit is seam: false. ` +
     `Write each contract by selection, not generation (a citation plus a one-line intent). ` +
     `When an existing module has the same shape as the one being planned (a matching set of screens or layers, in any domain), record it as reference_module and make U-001 its structure replication with an empty tests array; set null only when no module matches, and say why in an assumption. ` +
     `Record every best-guess decision you make in assumptions.\n\n${fencedBody}`;
@@ -716,7 +716,7 @@ const cleanup = (await agent(
   anchor(
     `Invoke the Skill tool with skill "simplify" for a cleanup-only pass (reuse, simplification, efficiency, altitude) on the current diff. If it rejects a no-arg invocation, pass the diff scope. ` +
       `Then detect and run the project's test command. On failure, roll back the cleanup edits via git stash and report stashed: true. ` +
-      `List the applied edit summaries with file:line in edits. Do not commit.`,
+      `Do not commit.`,
   ),
   {
     label: "cleanup",
