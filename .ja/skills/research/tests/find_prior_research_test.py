@@ -68,6 +68,15 @@ class FindPriorResearch(unittest.TestCase):
         shared = {c["file"]: c["shared"] for c in out["candidates"]}
         self.assertEqual(shared["2026-07-01-schema-export.md"], 2)
 
+    def test_non_markdown_file_is_excluded(self):
+        """語が重なっても .md 以外の拡張子のファイルは候補に含まれない"""
+        directory = make_dir("2026-07-02-schema-export.json", "2026-07-01-schema-export.md")
+        code, out = run("schema-export", directory)
+        self.assertEqual(code, 0)
+        files = [c["file"] for c in out["candidates"]]
+        self.assertNotIn("2026-07-02-schema-export.json", files)
+        self.assertIn("2026-07-01-schema-export.md", files)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

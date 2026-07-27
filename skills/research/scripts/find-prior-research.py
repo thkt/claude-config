@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Usage: find-prior-research.py <slug> <search-dir>
 
-slug の語とファイル名の語の重なり数を数え、重なりを持つファイルを降順で返す。
+slug の語とファイル名の語の重なり数を数え、重なりを持つ .md ファイルを降順で返す。
 ファイル名の日付プレフィックス (YYYY-MM-DD-) は語の照合対象から外れる。
 
 stdout: JSON { candidates: [{file, shared}, ...] }  (shared 降順)
@@ -30,7 +30,7 @@ def main():
     directory = Path(search_dir)
     if directory.is_dir():
         for path in directory.iterdir():
-            if not path.is_file():
+            if not path.is_file() or path.suffix != ".md":
                 continue
             stem = DATE_PREFIX.sub("", path.stem)
             shared = len(slug_words & words(stem))
