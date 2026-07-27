@@ -26,12 +26,12 @@ Spec axis only. It checks the implemented diff against the originating spec (pos
 
 Find the originating spec in this order.
 
-| Order | Source                                                                                    |
-| ----- | ----------------------------------------------------------------------------------------- |
-| 1     | Issue references in commit messages (`#123`, `Closes #45`). Fetch via `gh issue view <N>` |
-| 2     | A path the caller or user passed as an argument                                           |
-| 3     | `workspace/planning/**/*.plan.md`, `docs/`, or `.scratch/` matching the branch or feature |
-| 4     | If nothing is found, report "no spec available" and skip the review                       |
+| Order | Source                                                                                            |
+| ----- | ------------------------------------------------------------------------------------------------- |
+| 1     | Issue references in commit messages (`#123`, `Closes #45`). Fetch via `gh issue view <N>`         |
+| 2     | A path the caller or user passed as an argument                                                   |
+| 3     | `.claude/workspace/planning/**/*.plan.md`, `docs/`, or `.scratch/` matching the branch or feature |
+| 4     | If nothing is found, report "no spec available" and skip the review                               |
 
 The diff fixed point is whatever the caller supplies (commit SHA, branch, tag, merge-base). If unspecified, default to `git diff main...HEAD` and state that assumption in the output.
 

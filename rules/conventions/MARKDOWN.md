@@ -8,7 +8,7 @@ paths:
   - "docs/**/*.md"
   - "rules/**/*.md"
   - "skills/**/*.md"
-  - "workspace/**/*.md"
+  - ".claude/workspace/**/*.md"
 ---
 
 # Markdown Conventions
@@ -19,10 +19,10 @@ Conventions for Markdown files under `.claude/`.
 
 Which conventions apply depends on the reader. Scope is judged by the path without the `.ja/` prefix.
 
-| Scope        | Paths                                                             |
-| ------------ | ----------------------------------------------------------------- |
-| LLM-facing   | `CLAUDE.md`, `agents/**`, `skills/**`, `rules/**`, `workspace/**` |
-| Human-facing | `docs/**`, `README.md`                                            |
+| Scope        | Paths                                                                     |
+| ------------ | ------------------------------------------------------------------------- |
+| LLM-facing   | `CLAUDE.md`, `agents/**`, `skills/**`, `rules/**`, `.claude/workspace/**` |
+| Human-facing | `docs/**`, `README.md`                                                    |
 
 ## Symbols
 

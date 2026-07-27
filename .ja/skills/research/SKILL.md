@@ -101,4 +101,4 @@ Explore、ugrep、bfs、Read を並列起動する。各コマンドと生出力
 | 一次ソース        | 動作を左右する外部仕様 claim に一次ソース検証を実施した、または unverified とマークした (該当する claim がある場合) |
 | Same-origin sweep | Bug intent で root cause 確定時に sweep を実施した (該当する場合)                                                   |
 | advisor           | Phase 6 の advisor を起動した、または省略理由を記録した                                                             |
-| 保存              | 出力を `workspace/research/` に保存した                                                                             |
+| 保存              | 出力を `.claude/workspace/research/` に保存した                                                                     |

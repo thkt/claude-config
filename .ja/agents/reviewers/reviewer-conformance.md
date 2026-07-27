@@ -26,12 +26,12 @@ Spec 軸専用。実装後の diff を元 spec と照合する (post-implementat
 
 次の順で元 spec を探す。
 
-| 順  | 探索先                                                                                 |
-| --- | -------------------------------------------------------------------------------------- |
-| 1   | commit message 内の issue 参照 (`#123`、`Closes #45` など)。`gh issue view <N>` で取得 |
-| 2   | 呼び出し元/ユーザーが引数で渡したパス                                                  |
-| 3   | branch 名や feature に一致する `workspace/planning/**/*.plan.md`、`docs/`、`.scratch/` |
-| 4   | 見つからなければ "no spec available" を報告し、レビューを skip する                    |
+| 順  | 探索先                                                                                         |
+| --- | ---------------------------------------------------------------------------------------------- |
+| 1   | commit message 内の issue 参照 (`#123`、`Closes #45` など)。`gh issue view <N>` で取得         |
+| 2   | 呼び出し元/ユーザーが引数で渡したパス                                                          |
+| 3   | branch 名や feature に一致する `.claude/workspace/planning/**/*.plan.md`、`docs/`、`.scratch/` |
+| 4   | 見つからなければ "no spec available" を報告し、レビューを skip する                            |
 
 diff の固定点は呼び出し元の指定 (commit SHA、branch、tag、merge-base)。指定がなければ `git diff main...HEAD` を既定とし、その前提を出力に明記する。
 

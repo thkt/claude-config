@@ -1,13 +1,13 @@
 ---
 name: scribe
-description: 過去の closed PR / issue と workspace/research/ の調査結果から繰り返しの共通項を抽出し、最新コードと突き合わせて docs/wiki/ に PR で提案する。
+description: 過去の closed PR / issue と .claude/workspace/research/ の調査結果から繰り返しの共通項を抽出し、最新コードと突き合わせて docs/wiki/ に PR で提案する。
 when_to_use: scribe 実行, wiki 抽出, 共通項の蒸留, PR/issue からの知見蓄積, research 成果の蓄積, run scribe, wiki extraction, distill recurring patterns
 allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Read Write Edit LS
 ---
 
 # /scribe - PR / issue / research 共通項の wiki 蓄積
 
-このリポジトリの過去の merged PR/closed issue と `workspace/research/` の調査結果から、定型手順/規約や再発指摘/失敗パターンとして繰り返し現れる共通項を抽出し、最新コードと突き合わせて `docs/wiki/` に蓄積する。提案は必ず PR で行う。
+このリポジトリの過去の merged PR/closed issue と `.claude/workspace/research/` の調査結果から、定型手順/規約や再発指摘/失敗パターンとして繰り返し現れる共通項を抽出し、最新コードと突き合わせて `docs/wiki/` に蓄積する。提案は必ず PR で行う。
 
 ## 不変条件
 
@@ -17,7 +17,7 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Read Write Edit LS
 | 進捗の記録    | cursor は最後にマージされた scribe PR の mergedAt。research ファイルはその mergedAt と mtime を比べる              |
 | 閾値 2 件     | 根拠が 2 件未満の共通項はページにせず `docs/wiki/_candidates.md` に置く。research ファイル 1 件を根拠 1 件と数える |
 | 事実のみ      | PR / issue と research ファイルに書かれた事実、および現在のコードで確認できた事実のみ書く。推測で埋めない          |
-| 参照の追跡性  | `workspace/research/` のファイルパスを `docs/wiki/` 配下に書かない                                                 |
+| 参照の追跡性  | `.claude/workspace/research/` のファイルパスを `docs/wiki/` 配下に書かない                                         |
 | worktree 隔離 | 編集 / commit は隔離 worktree 内で行い、ユーザーの作業ツリーを動かさない                                           |
 
 ## Phase 1: 前提確認とオンボーディング
@@ -29,8 +29,8 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Read Write Edit LS
 ## Phase 2: スコープ決定
 
 1. 最後にマージされた scribe PR の mergedAt を `gh pr list --label scribe --state merged --limit 1 --json mergedAt -q '.[0].mergedAt'` で取得する
-2. mergedAt が取れなければ初回。`gh pr list --state merged --search '-label:scribe'` と `gh issue list --state closed` の全件、および `find workspace/research -name '*.md'` の全件を対象にする
-3. mergedAt が取れたら差分だけを対象にする。PR は `gh pr list --state merged --search "-label:scribe merged:><mergedAt>"` で集める。issue は `gh issue list --state closed --search "closed:><mergedAt>"` で集める。調査ファイルは `find workspace/research -name '*.md' -newermt "<mergedAt>"` で集める
+2. mergedAt が取れなければ初回。`gh pr list --state merged --search '-label:scribe'` と `gh issue list --state closed` の全件、および `find .claude/workspace/research -name '*.md'` の全件を対象にする
+3. mergedAt が取れたら差分だけを対象にする。PR は `gh pr list --state merged --search "-label:scribe merged:><mergedAt>"` で集める。issue は `gh issue list --state closed --search "closed:><mergedAt>"` で集める。調査ファイルは `find .claude/workspace/research -name '*.md' -newermt "<mergedAt>"` で集める
 4. research の対象は `*.md` だけとし、他の形式は読まない。ファイル内の `Generated:` 行は cursor に使わない
 5. PR/issue/research のいずれも 0 件なら「新規なし」と報告して終了する
 
