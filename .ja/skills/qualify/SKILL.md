@@ -2,7 +2,7 @@
 name: qualify
 description: issue が build に投入できる形かを検分し、verdict (build-ready / needs-plan / needs-fix) と指摘を返す。起票には使わない (/issue)。PR のスクリーニングには使わない (/preview)。
 when_to_use: 実装可否, build-ready 判定, issue 品質チェック, qualify issue, check issue before build
-allowed-tools: Bash(gh issue view:*) Bash(ugrep:*) Read AskUserQuestion
+allowed-tools: Bash(gh issue view:*) Bash(ugrep:*) Bash(bfs:*) Read AskUserQuestion
 model: opus
 argument-hint: "[issue number or URL]"
 ---
@@ -33,17 +33,19 @@ Plan 節があるときは、build.js の判定条件を書き写さず実行時
 
 build は本文の U-NNN と T-NNN の id 集合を抽出結果と厳密比較する。qualify は抽出を行わないので、代わりに本文側の id が一意で連番になっているかを見る。id は `### U-NNN` で始まる行と、リストマーカー直後の `T-NNN` から集める。重複と欠番は blocker。
 
-## Phase 3: 形式の検分
+## Phase 3: 形式と前提の検分
 
-issue の書式が `/issue` の出力形式に沿うかを見る。検査する軸は次の表のものに限り、軸を足さない。AC の検証可能性だけを blocker にするのは、実装した結果が正しいかを誰も判定できず、build の conformance も照合先を失うため。「エラーがスクリーンリーダーに通知される」は通り、「UX が改善される」は通らない。
+issue の書式が `/issue` の出力形式に沿うか、plan の前提が現在のコードと噛み合うかを見る。検査する軸は次の表のものに限り、軸を足さない。AC が検証不能なら、実装した結果が正しいかを誰も判定できず、build の conformance も照合先を失う。「エラーがスクリーンリーダーに通知される」は通り、「UX が改善される」は通らない。新規作成先に既存ファイルがあると、build のどの段もそれを見ないまま上書きへ進む。preconditions の実在は build の Revalidate が正なので、ここでの照合は build で止まる可能性の予告として advice に置く。
 
-| 軸               | 通る条件                                                         | 重大度  |
-| ---------------- | ---------------------------------------------------------------- | ------- |
-| title の種別     | `[Feature]` / `[Bug]` / `[Docs]` / `[Chore]` のいずれかで始まる  | advice  |
-| What & Why       | 誰の何の痛みかと、その根拠が書かれている                         | advice  |
-| AC の検証可能性  | 各項目が観測可能な結果を述べ、達成の判定者が人間の主観に依らない | blocker |
-| tentative マーク | 未決の判断に `(tentative: <着手時のアクション>)` が付く          | advice  |
-| priority ラベル  | `priority:critical` / `high` / `medium` / `low` のいずれかが付く | advice  |
+| 軸                   | 通る条件                                                         | 重大度  |
+| -------------------- | ---------------------------------------------------------------- | ------- |
+| title の種別         | `[Feature]` / `[Bug]` / `[Docs]` / `[Chore]` のいずれかで始まる  | advice  |
+| What & Why           | 誰の何の痛みかと、その根拠が書かれている                         | advice  |
+| AC の検証可能性      | 各項目が観測可能な結果を述べ、達成の判定者が人間の主観に依らない | blocker |
+| tentative マーク     | 未決の判断に `(tentative: <着手時のアクション>)` が付く          | advice  |
+| priority ラベル      | `priority:critical` / `high` / `medium` / `low` のいずれかが付く | advice  |
+| preconditions の実在 | 各 {path, pattern} が現在のコードで見つかる                      | advice  |
+| 新規作成の衝突       | contract が新規作成と読める files が、まだ存在しない             | blocker |
 
 ## Phase 4: verdict と出力
 
@@ -67,6 +69,6 @@ issue の書式が `/issue` の出力形式に沿うかを見る。検査する�
 | ---------------- | ----------------------------------------------------------------------- |
 | 投稿しない       | GitHub への comment 投稿を行わない。出力は会話に返す                    |
 | 1 件ずつ         | 複数 issue の一括 triage は対象外。1 回の起動で 1 issue を検分する      |
-| 実コードを見ない | preconditions が実在するかの照合は build の Revalidate 段に委ねる       |
+| 判定の正は build | preconditions の実在は build の Revalidate が正。ここでの照合は予告     |
 | 優先度を決めない | priority ラベルの有無だけを見る。値の当否は判定しない                   |
 | 条件を写さない   | build が止まる条件は build.js を実行時に読む。この skill に書き写さない |

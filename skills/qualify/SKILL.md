@@ -2,7 +2,7 @@
 name: qualify
 description: Inspect whether an issue is in shape to hand to build, returning a verdict (build-ready / needs-plan / needs-fix) and the findings. Do NOT use to file an issue (use /issue) or to screen a PR (use /preview).
 when_to_use: 実装可否, build-ready 判定, issue 品質チェック, qualify issue, check issue before build
-allowed-tools: Bash(gh issue view:*) Bash(ugrep:*) Read AskUserQuestion
+allowed-tools: Bash(gh issue view:*) Bash(ugrep:*) Bash(bfs:*) Read AskUserQuestion
 model: opus
 argument-hint: "[issue number or URL]"
 ---
@@ -33,9 +33,9 @@ With a `## Plan` section, read build.js's own conditions at run time rather than
 
 Build compares the U-NNN and T-NNN id sets in the body against the extraction by exact match. qualify does not extract, so check instead that the body's own ids are unique and consecutive. Collect the ids from lines starting with `### U-NNN` and from a `T-NNN` right after a list marker. Duplicates and gaps are blockers.
 
-## Phase 3: Inspect the format
+## Phase 3: Inspect the format and the premises
 
-Check that the issue follows `/issue`'s output format. Inspect exactly the axes in the table below and add none of your own. Verifiable criteria is the only blocker because nobody else can judge whether the implementation is right, and build's conformance check loses what it compares against. "Errors are announced to screen readers" passes; "the UX improves" does not.
+Check that the issue follows `/issue`'s output format and that the plan's premises still match the current code. Inspect exactly the axes in the table below and add none of your own. When acceptance criteria are unverifiable, nobody can judge whether the implementation is right and build's conformance check loses what it compares against. "Errors are announced to screen readers" passes; "the UX improves" does not. When a file marked for creation already exists, no build stage looks at it before overwriting. The Revalidate stage owns the verdict on whether preconditions exist, so the check here lands as advice that forecasts where build would stop.
 
 | Axis                | Passing condition                                                             | Severity |
 | ------------------- | ----------------------------------------------------------------------------- | -------- |
@@ -44,6 +44,8 @@ Check that the issue follows `/issue`'s output format. Inspect exactly the axes 
 | Verifiable criteria | Each item states an observable result whose judgment does not rest on opinion | blocker  |
 | tentative marks     | Undecided judgments carry `(tentative: <action at pickup>)`                   | advice   |
 | priority label      | One of `priority:critical` / `high` / `medium` / `low` is attached            | advice   |
+| Preconditions exist | Each {path, pattern} is found in the current code                             | advice   |
+| Creation collision  | Files whose contract reads as new do not exist yet                            | blocker  |
 
 ## Phase 4: Verdict and output
 
@@ -63,10 +65,10 @@ Address the questions to the user. The user chooses whether to settle the answer
 
 ## Rules
 
-| Rule               | Content                                                                             |
-| ------------------ | ----------------------------------------------------------------------------------- |
-| Never post         | Do not post a comment to GitHub. The output goes to the conversation                |
-| One at a time      | Bulk triage is out of scope. One invocation inspects one issue                      |
-| No source lookup   | Whether the preconditions exist in code is left to build's Revalidate stage         |
-| No priority ruling | Only whether a priority label is attached. Do not judge which value is right        |
-| Never transcribe   | Read the build-stopping conditions from build.js at run time; do not copy them here |
+| Rule                | Content                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------- |
+| Never post          | Do not post a comment to GitHub. The output goes to the conversation                |
+| One at a time       | Bulk triage is out of scope. One invocation inspects one issue                      |
+| Build owns the call | Revalidate owns the verdict on whether preconditions exist; this check forecasts    |
+| No priority ruling  | Only whether a priority label is attached. Do not judge which value is right        |
+| Never transcribe    | Read the build-stopping conditions from build.js at run time; do not copy them here |
