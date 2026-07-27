@@ -1,5 +1,5 @@
 ---
-status: "accepted"
+status: "superseded by 0089-retire-build-plan-drafting-and-hand-plan-less-issues-back.md"
 date: 2026-07-14
 decision-makers: thkt
 ---

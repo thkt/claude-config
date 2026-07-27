@@ -17,7 +17,7 @@ argument-hint: "[plan / spec / PRD / issue ref]"
 
 ## publish した issue の引き渡し先
 
-slice が生む issue には `## Plan` がまだ無く、そのまま `/build` に渡すと build が ephemeral plan を自動生成して進み、人間レビュー未経由の assumption が付く。plan の精度を上げたいスライスは、`/think` で plan を作り issue の `## Plan` 節へ書き足してから `/build` に渡す。既に構造化 plan を手元に持つなら `/code` を使う。
+slice が生む issue には `## Plan` がまだ無く、そのまま `/build` に渡すと no-plan で止まる。各スライスは `/think` で plan を作り issue の `## Plan` 節へ書き足してから `/build` に渡す。既に構造化 plan を手元に持つなら `/code` を使う。
 
 ## Phase 1: コードベース探索 (任意)
 

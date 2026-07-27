@@ -17,7 +17,7 @@ Take the plan source from `$ARGUMENTS`. For an issue reference given as a number
 
 ## Where the published issues go next
 
-A sliced issue carries no `## Plan` yet; handing it straight to `/build` makes build auto-generate an ephemeral plan and proceed, recording a not-human-reviewed assumption. For slices where plan quality matters, generate a plan via `/think` and append it to the issue as a `## Plan` section before handing it to `/build`; use `/code` when you already hold a structured plan.
+A sliced issue carries no `## Plan` yet, so handing it straight to `/build` stops as no-plan. Generate a plan for each slice via `/think` and append it to the issue as a `## Plan` section before handing it to `/build`; use `/code` when you already hold a structured plan.
 
 ## Phase 1: Explore the codebase (optional)
 
