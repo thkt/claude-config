@@ -1,19 +1,19 @@
-#!/usr/bin/env python3
 """Usage: snapshot.py   (audit payload JSON on stdin)
 
-audit の 1 実行を $HOME/.claude/workspace/history/ に記録し、直近の prior
-snapshot に対する resolved/new/carried の delta を計算する。
+Record one audit run to $HOME/.claude/workspace/history/ and compute the
+resolved/new/carried delta against the most recent prior snapshot.
 
 stdin:  JSON {scope, focus, pre_flight, raw_findings[], findings[], skipped[]}
-        各 raw_findings entry は最低限 {file, message} を持つ。
-stdout: 書き込んだ JSON record のパス。
-exit 0 は成功。exit 1 は payload が parse 不能 (何も書かない)。
+        each raw_findings entry carries at least {file, message}.
+stdout: the path of the JSON record written.
+exit 0 on success. exit 1 on an unparseable payload (nothing written).
 
-record に追加される解決済みフィールド (シェル / prior snapshot 由来):
-  branch        git rev-parse --abbrev-ref HEAD ("unknown" にフォールバック)
+Resolved fields (shell / prior snapshot), added to the record:
+  branch        git rev-parse --abbrev-ref HEAD (falls back to "unknown")
   generated_at  UTC ISO-8601
-  delta         直近の audit-*.json に対する {resolved, new, carried} カウント。
-                (file, message) で照合。初回は全て 0 + note "first run"。
+  delta         {resolved, new, carried} counts vs the most recent prior
+                audit-*.json, matched on (file, message); first run -> all 0 with
+                note "first run".
 """
 
 import glob
@@ -38,10 +38,10 @@ def finding_key(f):
 
 
 def compute_delta(current_raw, prior_raw):
-    """resolved = prior のみ、new = current のみ、carried = 両方に存在。
+    """resolved = in prior only, new = in current only, carried = in both.
 
-    prior snapshot が無いとき prior_raw は None。その場合は "first run" note を
-    記録する。
+    prior_raw is None when no prior snapshot exists; the caller records a
+    "first run" note in that case.
     """
     if prior_raw is None:
         return {"resolved": 0, "new": 0, "carried": 0, "note": "first run"}
@@ -55,11 +55,11 @@ def compute_delta(current_raw, prior_raw):
 
 
 def latest_prior_raw(history_dir):
-    """直近の prior audit-*.json の raw_findings。存在しなければ None。
+    """raw_findings of the most recent prior audit-*.json, or None if none exists.
 
-    ファイル名でソートする。名前に UTC timestamp が入るため辞書順が時系列に
-    なる。読めない、あるいは raw_findings を欠く prior ファイルは run を
-    中断せずスキップする。
+    Sorted by filename; the name embeds a UTC timestamp so lexical order is
+    chronological. A prior file that is unreadable or lacks raw_findings is
+    skipped rather than aborting the run.
     """
     priors = sorted(glob.glob(str(history_dir / "audit-*.json")), reverse=True)
     for path in priors:
@@ -81,6 +81,7 @@ def git_branch():
             capture_output=True,
             text=True,
             timeout=10,
+            check=False,
         )
         branch = out.stdout.strip()
         return branch or "unknown"

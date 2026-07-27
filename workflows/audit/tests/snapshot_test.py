@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Tests for workflows/audit/snapshot.py (deterministic audit-run recorder).
 
 Run: python3 workflows/audit/tests/snapshot_test.py
@@ -67,6 +66,7 @@ class CliTest(unittest.TestCase):
             capture_output=True,
             text=True,
             env=env,
+            check=False,
         )
 
     def test_writes_record_with_resolved_fields_and_first_run_delta(self):
@@ -108,6 +108,7 @@ class CliTest(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 env=env,
+                check=False,
             )
             self.assertEqual(result.returncode, 1)
             self.assertEqual(result.stdout, "")

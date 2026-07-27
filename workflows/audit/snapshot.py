@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Usage: snapshot.py   (audit payload JSON on stdin)
 
 Record one audit run to $HOME/.claude/workspace/history/ and compute the
@@ -82,6 +81,7 @@ def git_branch():
             capture_output=True,
             text=True,
             timeout=10,
+            check=False,
         )
         branch = out.stdout.strip()
         return branch or "unknown"

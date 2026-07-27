@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 """Usage:
-  worktree.py <session-id>             assert worktree を新規作成する
-  worktree.py --cleanup <session-id>   assert worktree とその branch を削除する
+  worktree.py <session-id>             Create a fresh assert worktree
+  worktree.py --cleanup <session-id>   Remove the assert worktree and its branch
 
-branch と path は session id から導出するため、作成と cleanup が drift しない。
-branch = assert-<id>、path = .claude/worktrees/assert-<id>。git はプロセスの cwd
-(repo root) から実行するため、path はそこからの相対。
+The branch and path are derived from the session id so creation and cleanup
+never drift: branch = assert-<id>, path = .claude/worktrees/assert-<id>. git runs
+from the process cwd (the repo root), so the path is relative to it.
 
-作成はまず古い worktree と branch を除去し、続けて HEAD から新規に add する。
+Create removes any stale worktree and branch first, then adds a fresh one from
+HEAD.
 
 stdout (create):  JSON {branch, path, status: "created"}
 stdout (cleanup): JSON {branch, path, status: "removed"}
-作成失敗時: JSON {branch, path, status: "error", reason, stderr}、exit 1
-(env failure、references/phase-4.md § Bootstrap Failure Handling)。cleanup は
-best-effort で、古い状態の除去失敗は無視し run を失敗させない。
+On create failure: JSON {branch, path, status: "error", reason, stderr}, exit 1
+(env failure, references/phase-4.md § Bootstrap Failure Handling). Cleanup
+is best-effort: stale-state removals are ignored and it never fails the run.
 """
 
 import json
@@ -22,7 +23,7 @@ import sys
 
 
 def _real_runner(cmd):
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     return proc.returncode, proc.stderr
 
 
@@ -33,13 +34,13 @@ def paths(session_id):
 
 
 def _remove(branch, path, runner):
-    """worktree とその branch を best-effort で除去する。エラーは無視する。"""
+    """Best-effort removal of a worktree and its branch. Errors are ignored."""
     runner(["git", "worktree", "remove", path, "--force"])
     runner(["git", "branch", "-D", branch])
 
 
 def create(session_id, runner=_real_runner):
-    """古い worktree を除去してから新規作成する。結果 dict を返す。"""
+    """Remove any stale worktree, then create a fresh one. Return the result dict."""
     branch, path = paths(session_id)
     _remove(branch, path, runner)
     rc, stderr = runner(["git", "worktree", "add", "-b", branch, path, "HEAD"])
@@ -55,7 +56,7 @@ def create(session_id, runner=_real_runner):
 
 
 def cleanup(session_id, runner=_real_runner):
-    """worktree と branch を除去する。結果 dict を返す (エラーにならない)。"""
+    """Remove the worktree and branch. Return the result dict (never errors)."""
     branch, path = paths(session_id)
     _remove(branch, path, runner)
     return {"branch": branch, "path": path, "status": "removed"}

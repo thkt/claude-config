@@ -23,7 +23,7 @@ import sys
 
 
 def _real_runner(cmd):
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     return proc.returncode, proc.stderr
 
 
