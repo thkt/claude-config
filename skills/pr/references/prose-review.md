@@ -4,8 +4,6 @@ Write for a teammate who shares the context and can open the links. A PR carries
 
 ## Structure
 
-Confirm the structure the PR body must satisfy.
-
 | Check          | Question                                                             |
 | -------------- | -------------------------------------------------------------------- |
 | Why stated     | Is the why of the change, not just the what, in the top 1-3 lines?   |
@@ -13,3 +11,10 @@ Confirm the structure the PR body must satisfy.
 | Scope          | Is the change focused, or does it bundle unrelated edits?            |
 | Reviewer focus | Is the review priority clear via "focus on X" or "skim Y"?           |
 | Risk surfaced  | Are migration, rollback, or performance risks called out explicitly? |
+
+## Redundancy patterns
+
+| Pattern                | Fix                                                                                                                                 |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Diff transcription     | Drop enumerations of changed files or functions; the diff carries them. Keep the intent of the change                               |
+| One claim per sentence | Cut a sentence exceeding ~25 words (Japanese: 60 characters), or a paragraph packing change + rationale + references, at each claim |

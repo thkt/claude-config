@@ -16,7 +16,7 @@ herdr ペイン内 (`HERDR_ENV=1`) で、thkt.agentchat プラグインが insta
 
 1. 自分を leader と命名する。`herdr agent rename "$HERDR_PANE_ID" leader`
 2. coder を起動する。`herdr plugin action invoke thkt.agentchat.start-coder` (右ペインに codex が承認なしモードで立つ。結果は `herdr plugin log list --plugin thkt.agentchat`)
-3. coder の初回ダイアログを解消する。`herdr agent read coder --source visible` に `Press t to trust` が見えたら `herdr agent send-keys coder t`、`Press enter to view hooks` が見えたら `herdr agent send-keys coder esc`。ダイアログ表示中に送った本文は吸われて消えるため、素の入力待ちを確認してから Phase 2 に進む
+3. coder の初回ダイアログを解消する。`herdr agent read coder --source visible` の出力で分岐する。`Press t to trust` なら `herdr agent send-keys coder t` を送る。`Press enter to view hooks` なら `herdr agent send-keys coder esc` を送る。ダイアログ表示中に送った本文は吸われて消えるため、素の入力待ちを確認してから Phase 2 に進む
 
 ## Phase 2. 委譲
 

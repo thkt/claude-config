@@ -13,14 +13,14 @@ How `/fix` uses TDD for bug fixes. Builds on ${CLAUDE_SKILL_DIR}/SKILL.md (RGRC 
 
 ## Workflow
 
+Execution follows the canonical RGRC Cycle in `SKILL.md`. Bug-driven differs in that Red reproduces the exact bug scenario, and edge-case expansion is optional and only after Green.
+
 | Step | Action                                              |
 | ---- | --------------------------------------------------- |
 | 1    | Reproduce bug → Write failing test → Verify fails   |
 | 2    | Fix bug → Minimal implementation → Test passes      |
 | 3    | Prevent regression → Add edge case tests (optional) |
 | 4    | Verify all tests passing                            |
-
-Execution follows the canonical RGRC Cycle in `SKILL.md`. Bug-driven differs in that Red reproduces the exact bug scenario, and edge-case expansion is optional and only after Green.
 
 ## Key Characteristics
 

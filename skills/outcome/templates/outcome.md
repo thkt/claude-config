@@ -4,7 +4,7 @@ Stub template for `.claude/OUTCOME.md`. The `/outcome` skill reads this file dur
 
 ## Template
 
-Each repository's `.claude/OUTCOME.md` follows the structure below. `{...}` is replaced with content at generation time. Behavior is required; Indicators are optional, included only when they sharpen a Behavior and dropped with the heading otherwise.
+Each repository's `.claude/OUTCOME.md` follows the structure below. `{...}` is replaced with content at generation time. Behavior is required; Indicators are optional, included only when they sharpen a Behavior and dropped with the heading otherwise. Write TBD for an item you cannot settle; downstream treats a file whose items are all TBD as an absent outcome.
 
 ```markdown
 # OUTCOME

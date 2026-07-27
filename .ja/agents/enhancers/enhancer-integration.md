@@ -32,7 +32,7 @@ Challenger 結果 (critic-audit) と Verifier 結果 (critic-evidence) は、呼
       "original_severity": "high",
       "adjusted_severity": null,
       "reasoning": "One sentence naming the verdict trigger.",
-      "evidence": "file:line refs, marker quotes, ADR refs"
+      "evidence": "file:line refs, marker quotes, DR refs"
     }
   ],
   "summary": {

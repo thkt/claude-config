@@ -4,7 +4,7 @@
 Deterministically render the build workflow's draft-PR fact tail from structured
 data build.js already holds. The PR body is a fail-closed surface -- it must
 always carry the verify result and the standing note that heavier assurance
-(/audit, /polish review) is human-invoked on this PR (ADR-0085). The agent writes
+(/audit, /polish review) is human-invoked on this PR (DR-0085). The agent writes
 only the lead "## Summary" (the human reviewer's entry point) and appends this
 tail below it.
 
@@ -22,9 +22,9 @@ safety-critical key (tests_pass / gates_pass) exits 1 with nothing on
 stdout, rather than a plausible-looking "clean" body -- a missing key must surface
 (via the caller's `&&` chain aborting the PR), not default to a reassuring value.
 
-stdin:  JSON {issue, assumptions[], scope_deviations[], missing_tests[],
-              code_anomalies[], tests_pass, gates_pass, verify_output,
-              conformance[], structure[]}
+stdin:  JSON {issue, assumptions[], scope_deviations[], untouched_plan_files[],
+              missing_tests[], code_anomalies[], tests_pass, gates_pass,
+              verify_output, conformance[], structure[]}
 stdout: the markdown fact tail, led by a blank line + horizontal rule.
 exit 0 on a completed run. exit 1 on a parse error or a missing required key.
 """
@@ -47,6 +47,7 @@ LABELS = {
         "manual_checks": "Manual verification checklist (complete before merge)",
         "assumptions": "Assumptions (veto targets)",
         "scope_deviations": "Files outside the plan's scope",
+        "untouched_plan_files": "Planned files never changed",
         "missing_tests": "Planned test statements not found",
         "conformance": "Issue conformance (review independently)",
         "structure": "Structural deviations from the reference module",
@@ -59,6 +60,7 @@ LABELS = {
         "manual_checks": "実機確認 (merge 前に実施)",
         "assumptions": "前提 (veto 対象)",
         "scope_deviations": "Plan スコープ外の変更ファイル",
+        "untouched_plan_files": "一度も変更されていない plan の files",
         "missing_tests": "テストとして見つからない plan の言明",
         "conformance": "Issue 適合性 (独立レビュー)",
         "structure": "参照モジュールからの構造逸脱",
@@ -107,6 +109,7 @@ def render(payload):
     tests = "pass" if payload.get("tests_pass") else "FAIL"
     gates = "pass" if payload.get("gates_pass") else "FAIL"
     scope = _list(payload.get("scope_deviations"))
+    untouched = _list(payload.get("untouched_plan_files"))
     missing = _list(payload.get("missing_tests"))
     lang = (payload.get("language") or "english").lower()
     L = LABELS.get(lang, LABELS["english"])
@@ -122,6 +125,10 @@ def render(payload):
         f"<code>scope-deviations {len(scope)}</code> · "
         f"<code>missing-tests {len(missing)}</code>"
     )
+    # The summary is all that shows while the tail is folded, so a non-empty untouched
+    # list surfaces here too; left inside the fold it goes unnoticed (kizalas #596 U-003).
+    if untouched:
+        summary += f" · <code>untouched-plan-files {len(untouched)}</code>"
     folded = [L["audit_invite"]]
 
     if tests == "FAIL" or gates == "FAIL":
@@ -154,6 +161,9 @@ def render(payload):
     section(L["manual_checks"], payload.get("manual_checks"), lambda s: f"[ ] {s}")
     section(L["assumptions"], payload.get("assumptions"), str)
     section(L["scope_deviations"], scope, lambda f: f"`{f}`")
+    # The inverse of scope_deviations: a file the plan named but nothing touched can be
+    # the trace of a unit that went unimplemented and still passed (kizalas #596 U-003).
+    section(L["untouched_plan_files"], untouched, lambda f: f"`{f}`")
     section(L["missing_tests"], missing, str)
     section(
         L["conformance"],

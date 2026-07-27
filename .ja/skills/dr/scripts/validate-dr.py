@@ -51,7 +51,7 @@ def lint_check(path):
     ]
     config = next((c for c in candidates if c and Path(c).is_file()), None)
     cmd = ["markdownlint-cli2"] + (["--config", config] if config else []) + [str(path)]
-    if subprocess.run(cmd, capture_output=True).returncode == 0:
+    if subprocess.run(cmd, capture_output=True, check=False).returncode == 0:
         return "checks", "markdown_lint=ok"
     return "warnings", "markdown_lint=issues (run markdownlint-cli2 for details)"
 
@@ -67,7 +67,7 @@ def main():
     results = {"errors": [], "warnings": [], "checks": []}
 
     for section in REQUIRED_SECTIONS:
-        if re.search(rf"^#{{2,3}} {re.escape(section)}\s*$", text, flags=re.M):
+        if re.search(rf"^#{{2,3}} {re.escape(section)}\s*$", text, flags=re.MULTILINE):
             results["checks"].append(f"section:{section}=ok")
         else:
             results["errors"].append(f"missing_section:{section}")

@@ -1,12 +1,12 @@
 # MADR: Markdown Architectural Decision Records
 
-MADR is a streamlined markdown template for recording architectural decisions. This file assumes v4.
+MADR is a streamlined markdown template for recording decisions. This file assumes v4. The A expanded to Any in 2022 and back to Architectural in 2024, yet upstream allowed recording any decision throughout; what moved was the focus. This skill steps off the wobbling name by saying DR, covering decisions beyond architecture.
 
 ## Key Points
 
 | Aspect      | Convention                                                          |
 | ----------- | ------------------------------------------------------------------- |
-| Granularity | One markdown file per architectural decision                        |
+| Granularity | One markdown file per decision                                      |
 | Filename    | `nnnn-title-with-dashes.md`. 4-digit number, lowercase dashed title |
 | Location    | `docs/decisions/`. The MADR default, fixed by this skill            |
 
@@ -33,10 +33,10 @@ Confirmation is optional in upstream MADR v4 but treated as required by this ski
 
 ## Status Lifecycle
 
-| Status                 | Meaning                                 |
-| ---------------------- | --------------------------------------- |
-| proposed               | Awaiting review                         |
-| accepted               | Approved, implementing or completed     |
-| rejected               | Considered but not adopted              |
-| deprecated             | Retired without a replacement ADR       |
-| superseded by ADR-NNNN | Replaced by another ADR (record the ID) |
+| Status                | Meaning                                |
+| --------------------- | -------------------------------------- |
+| proposed              | Awaiting review                        |
+| accepted              | Approved, implementing or completed    |
+| rejected              | Considered but not adopted             |
+| deprecated            | Retired without a replacement DR       |
+| superseded by DR-NNNN | Replaced by another DR (record the ID) |

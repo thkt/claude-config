@@ -15,22 +15,19 @@ argument-hint: "[PR URL or number]"
 
 ## Execution
 
-| Step | Action                                                                                                       |
-| ---- | ------------------------------------------------------------------------------------------------------------ |
-| 1    | Identify PR: `gh pr view $ARGUMENTS --json number,title,body,labels,files,url`. On failure, retry without `$ARGUMENTS` |
-| 2    | Abort if no PR found or working tree is dirty. Check via `git status --porcelain`                                     |
-| 3    | Checkout PR: `gh pr checkout $PR`                                                                            |
-| 4    | Gather PR context in parallel (§ PR context gathering)                                                                    |
-| 5    | Read each changed file in full, including code outside the diff hunks                                        |
-| 6    | Review per process: overview → per-file → dependency impact → findings                                       |
-| 7    | Output structured screening report                                                                           |
+1. Identify PR: `gh pr view $ARGUMENTS --json number,title,body,labels,files,url`. On failure, retry without `$ARGUMENTS`
+2. Abort if no PR found or working tree is dirty. Check via `git status --porcelain`
+3. Checkout PR: `gh pr checkout $PR`
+4. Gather PR context in parallel (§ PR context gathering)
+5. Read each changed file in full, including code outside the diff hunks
+6. Review per process: overview → per-file → dependency impact → findings
+7. Output structured screening report
 
 ### PR Context Gathering
 
-```bash
-# Metadata
-gh pr view --json title,body,labels,files,url $PR
+Never include `author` in gh output fields.
 
+```bash
 # Diff
 gh pr diff $PR
 
@@ -41,8 +38,6 @@ gh pr view --comments $PR
 gh api repos/{owner}/{repo}/pulls/{number}/comments \
   --jq '.[] | {file: .path, user: .user.login, comment: .body}'
 ```
-
-Never include `author` in gh output fields.
 
 ## Comment Labels
 
@@ -67,38 +62,7 @@ Never include `author` in gh output fields.
 
 ## Output
 
-```markdown
-## PR Screening Report
-
-### Overview
-
-{Background and purpose in 2-3 sentences}
-
-### Changes Summary
-
-| File | Change Summary |
-| ---- | -------------- |
-
-### Dependency Impact
-
-{Affected files, regression risk}
-
----
-
-### Requires Action
-
-{`[must]` and `[want]` findings with file:line}
-
-### Awareness
-
-{`[imo]`, `[ask]`, `[nits]`, `[info]` items with file:line}
-
----
-
-### Proposed Review Comments
-
-{Grouped by file, with labels}
-```
+Generate the report from the `${CLAUDE_SKILL_DIR}/templates/screening-report.md` skeleton and emit it to the conversation.
 
 ## Rules
 

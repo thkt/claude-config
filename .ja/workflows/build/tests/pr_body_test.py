@@ -67,7 +67,7 @@ class RenderTest(unittest.TestCase):
         self.assertLess(body.index("Auto-generated"), body.index("Closes"))
 
     def test_audit_invite_is_always_present(self):
-        # Heavy assurance is human-invoked (ADR-0085): the standing /audit invitation
+        # Heavy assurance is human-invoked (DR-0085): the standing /audit invitation
         # must render on full and clean runs alike.
         for payload in (FULL, CLEAN):
             body = pr_body.render(payload)
@@ -84,9 +84,21 @@ class RenderTest(unittest.TestCase):
         self.assertIn("- rejects negative amounts", body)
         self.assertIn("**Anomalies (Red unconfirmed)**", body)
         self.assertIn("- U-001 (no-red): flaky", body)
-        # The audit fan-out is retired from build (ADR-0085): no residual section.
+        # The audit fan-out is retired from build (DR-0085): no residual section.
         self.assertNotIn("Unresolved", body)
         self.assertNotIn("re-audit", body)
+
+    def test_untouched_plan_files_render_and_reach_the_summary(self):
+        # plan が files に挙げたのに触られていないファイルは、unit の実装漏れが green の
+        # まま通った跡。畳まれた本文の中だけだと気づかれないので summary にも出す。
+        body = pr_body.render({**FULL, "untouched_plan_files": ["app/schema.ts"]})
+        self.assertIn("**Planned files never changed**", body)
+        self.assertIn("- `app/schema.ts`", body)
+        self.assertIn("<code>untouched-plan-files 1</code>", body)
+
+    def test_untouched_plan_files_absent_keeps_the_summary_unchanged(self):
+        # 0 件のときに summary へ足すと、既存の 3 項目より情報量のない項目が常駐する。
+        self.assertNotIn("untouched-plan-files", pr_body.render(FULL))
 
     def test_conformance_is_a_separate_section_not_in_deviation_counts(self):
         # reviewer-conformance's issue-axis findings surface in their own section and

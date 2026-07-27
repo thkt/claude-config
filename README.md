@@ -34,7 +34,7 @@ This repository contains personal configurations for Claude AI, including:
 │   ├── generators/       # Test generation (generator-test only)
 │   ├── resolvers/        # Build error resolvers
 │   └── reviewers/        # Code review agents (18 reviewers)
-├── docs/                  # Design docs & guides (ADRs under decisions/)
+├── docs/                  # Design docs & guides (DRs under decisions/)
 ├── hooks/                 # Pre/Post tool-use hooks
 ├── output-styles/         # Output style definitions
 ├── .claude-plugin/        # Plugin marketplace config

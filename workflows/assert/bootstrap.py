@@ -125,6 +125,7 @@ def _real_runner(cmd, cwd, timeout):
             timeout=timeout,
             capture_output=True,
             text=True,
+            check=False,
         )
         return proc.returncode
     except subprocess.TimeoutExpired:

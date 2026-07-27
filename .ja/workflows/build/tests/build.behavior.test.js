@@ -1,4 +1,4 @@
-// ADR-0085: build.js が Load (fetch -> Plan 節必須 -> 決定論 id 収集 -> extract -> validate +
+// DR-0085: build.js が Load (fetch -> Plan 節必須 -> 決定論 id 収集 -> extract -> validate +
 // id cross-check) / Revalidate / Branch / Code (sonnet) / Verify (決定論スコープ + T-NNN 照合 ∥
 // conformance) / Polish (cleanup のみ) / Ship の実行ループになることの行動検証。
 // audit fan-out / fix loop の不在・fail-close 分岐・phase 順・stopped 値 snapshot を自動検証する。
@@ -131,7 +131,7 @@ const makeStubs = ({
       }
       case "branch":
         // head は分岐点 sha。既定で返すことで happy path は本番と同じ per-unit commit
-        // 経路 (ADR-0088) を通る。sha 以外を返す override で fallback 経路を踏める。
+        // 経路 (DR-0088) を通る。sha 以外を返す override で fallback 経路を踏める。
         return branch ?? { branch: "feat/sample-branch", head: "a1b2c3d4e5f6a7b8" };
       case "untracked":
         return untracked ?? { untracked: [] };
@@ -160,7 +160,7 @@ const makeStubs = ({
         }
       );
     // 実 runtime の意味論: 未知の workflow 名は throw する。sibling() は code を先に試して
-    // ここで解決するので build:code へ fallback しない。audit は ADR-0085 で build から
+    // ここで解決するので build:code へ fallback しない。audit は DR-0085 で build から
     // 外れたので、呼ばれたらこの throw が (fallback ではなく) テストを落とす。
     throw new Error(`unknown workflow: ${name}`);
   },
@@ -233,7 +233,7 @@ test("数字単体 / #数字 / issue URL を repo 付き args で渡すと同じ
 });
 
 // Plan 節なし issue は build 内の draftPlan (generate → critique) が plan を下書きし、
-// build は続行する (ADR-0086)。extract label は使わず、下書き plan で Ship まで進む。
+// build は続行する (DR-0086)。extract label は使わず、下書き plan で Ship まで進む。
 test("Plan 節なし本文は build 内 draftPlan で plan を下書きし Ship まで進む", async () => {
   const noPlan = await runWorkflow(buildJs, {
     args,
@@ -254,7 +254,7 @@ test("Plan 節なし本文は build 内 draftPlan で plan を下書きし Ship 
 });
 
 // draftPlan の critic-design が NO-GO なら stopped: generated-plan-rejected で fail-close
-// し、Code へ進まない (ADR-0086)。
+// し、Code へ進まない (DR-0086)。
 test("critic-design NO-GO は stopped: generated-plan-rejected で Code へ進まない", async () => {
   const rejected = await runWorkflow(buildJs, {
     args,
@@ -583,6 +583,28 @@ test("files 3 つ / tests 4 個の上限値ちょうどの plan は停止せず�
   assert.ok(calls.phase.includes("Ship"), "上限値ちょうどの plan は Ship まで続行する (既存挙動)");
 });
 
+// 上限の実体は UNIT_CAPS にしか無く、/think Phase 3 はそれを prose で複写している。
+// 片側だけ変えても実行時には何も落ちないので、この静的照合が同一コミットでの追従を強制する。
+const thinkSkill = join(here, "..", "..", "..", "skills", "think", "SKILL.md");
+
+test("UNIT_CAPS の数値と seam 除外が /think SKILL.md の unit 上限記述と一致する", () => {
+  const caps = readFileSync(buildJs, "utf8").match(
+    /const UNIT_CAPS = \{ files: (\d+), tests: (\d+) \};/,
+  );
+  assert.ok(caps, "build.js から UNIT_CAPS の数値を読める");
+  const skill = readFileSync(thinkSkill, "utf8");
+  assert.ok(
+    skill.includes(`files ${caps[1]} つ、tests ${caps[2]} 個`),
+    `SKILL.md が上限を files ${caps[1]} / tests ${caps[2]} と書いている`,
+  );
+  assert.match(skill, /non-seam unit の上限/, "SKILL.md の上限が non-seam 限定と書かれている");
+  assert.match(
+    skill,
+    /seam unit .{0,60}この上限の対象外/,
+    "SKILL.md が seam unit を上限の対象外と書いている",
+  );
+});
+
 // draftPlan (## Plan 節なし) 経路にも UNIT_CAPS 超過検出を適用する。generate agent の初回
 // plan が超過なら、超過 unit 一覧を feedback して generate agent を 1 回だけ再実行する
 // (critique-plan は攻撃項目に unit 肥大が増えるだけで、肥大単独で NO-GO にはしない)。
@@ -756,7 +778,7 @@ test("happy path の phase 順が Load → Revalidate → Branch → Code → Cl
   assert.equal(cleanupCalls[0].opts.model, "sonnet", "cleanup agent は sonnet 固定");
 
   // sibling() は素の dev tree 形 (code) を先に試し、解決すれば build:code に fallback しない。
-  // dev tree では code が返るので capture には code のみが現れる。audit は集合に現れない (ADR-0085)。
+  // dev tree では code が返るので capture には code のみが現れる。audit は集合に現れない (DR-0085)。
   const names = new Set(calls.workflow.map((c) => c.name));
   assert.deepEqual(
     [...names].sort(),
@@ -768,7 +790,7 @@ test("happy path の phase 順が Load → Revalidate → Branch → Code → Cl
   }
 });
 
-// ---- Verify: 決定論スコープ検査 + T-NNN 言明照合 (ADR-0085 の選択ベース担保) ----
+// ---- Verify: 決定論スコープ検査 + T-NNN 言明照合 (DR-0085 の選択ベース担保) ----
 
 test("Verify のスコープ検査が plan 外の diff file を surface し、.claude/workspace/ 配下は除外する", async () => {
   const { calls, result } = await runWorkflow(buildJs, {
@@ -869,7 +891,7 @@ test("tests 空の unit は invalid-plan にならず、言明 0 件なら prese
   assert.ok(calls.phase.includes("Ship"), "直接実装 unit だけの plan でも Ship まで完走する");
 });
 
-// ---- ADR-0088: unit ごとの commit と分岐点基準の diff ----
+// ---- DR-0088: unit ごとの commit と分岐点基準の diff ----
 // Code が unit ごとに commit すると HEAD は分岐点でなくなる。Verify の 3 つの review が
 // `git diff HEAD` のままだと差分が空になり、scope 逸脱も conformance も無言で 0 件に
 // なる (可視の失敗ではなく silent pass)。基準を Branch が返す分岐点 sha に固定する。
@@ -963,7 +985,7 @@ test("per-unit commit 有効時の Ship prompt は残余 commit 指示になり�
   );
 });
 
-test("stopped 値集合の snapshot が 13 値と exact match し、audit 経路の残骸が無い", () => {
+test("stopped 値集合の snapshot が 14 値と exact match し、audit 経路の残骸が無い", () => {
   const source = readFileSync(buildJs, "utf8");
   const stopped = new Set();
   for (const m of source.matchAll(/stopped:\s*"([^"]+)"/g)) stopped.add(m[1]);
@@ -971,6 +993,7 @@ test("stopped 値集合の snapshot が 13 値と exact match し、audit 経路
     [...stopped].sort(),
     [
       "code-failed",
+      "dirty-branch-point",
       "extraction-failed",
       "extraction-mismatch",
       "generated-plan-rejected",
@@ -984,11 +1007,11 @@ test("stopped 値集合の snapshot が 13 値と exact match し、audit 経路
       "revalidate-failed",
       "revalidate-incomplete",
     ],
-    "stopped リテラル集合が 13 値と exact match する (UNIT_CAPS 超過検出で oversized-unit が build.js に入る)",
+    "stopped リテラル集合が 14 値と exact match する (base 指定時の分岐点汚染検出で dirty-branch-point が build.js に入る)",
   );
   const explore = source.match(/agentType:\s*"Explore"/g) || [];
   assert.equal(explore.length, 0, 'agentType: "Explore" が 0 件');
-  // ADR-0085 の regression guard: audit fan-out / fix loop の残骸が無い。
+  // DR-0085 の regression guard: audit fan-out / fix loop の残骸が無い。
   assert.ok(!source.includes('sibling("audit"'), "audit workflow の呼び出しが残っていない");
   assert.ok(!source.includes("MAX_FIX_ROUNDS"), "fix → 再監査 loop が残っていない");
   assert.ok(!source.includes("reaudited"), "reaudited flag が残っていない");

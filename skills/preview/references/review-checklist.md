@@ -12,14 +12,14 @@ If no plan is found, fall back to PR description + commit messages as intent sou
 
 ### Step 2: Checks
 
+Quote the intent line behind every flag. A `wrong` or `missing` flag with no quoted U-NNN / T-NNN line is impression-based; drop it. This screening covers the same three conformance categories as reviewer-conformance; for a deep standalone pass on any branch, run that agent instead.
+
 | Check         | Source                                     | Condition  | Flag as      |
 | ------------- | ------------------------------------------ | ---------- | ------------ |
 | Unit coverage | U-NNN units in the Plan section            | plan found | missing      |
 | Test coverage | T-NNN acceptance tests in the Plan section | plan found | missing      |
 | Scope creep   | diff vs all intent sources                 | always     | out-of-scope |
 | Impl-wrong    | diff behavior vs a unit goal or T-NNN      | always     | wrong        |
-
-Quote the intent line behind every flag. A `wrong` or `missing` flag with no quoted U-NNN / T-NNN line is impression-based; drop it. This screening covers the same three conformance categories as reviewer-conformance; for a deep standalone pass on any branch, run that agent instead.
 
 ### Output format
 
@@ -53,13 +53,6 @@ Skip silently if no intent source is available at all.
 | Interface contracts | Verify unchanged function signatures         |
 | Shared state        | Check global/module state mutations          |
 | Test coverage       | Existing tests still valid for changed paths |
-
-## Comment Sections
-
-| Section         | Content                              |
-| --------------- | ------------------------------------ |
-| Requires action | `[must]`, `[want]` findings          |
-| Awareness only  | `[imo]`, `[ask]`, `[nits]`, `[info]` |
 
 ## Test Assessment
 

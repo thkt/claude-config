@@ -56,6 +56,9 @@ const anchor = (p) =>
 // この workflow の付属 script。loader は workflows/ 直下の .js しか読まないため、
 // subdir は資産置き場として安全 (指示とリファレンスは workflow に内包する)。
 const SCRIPTS = "$HOME/.claude/workflows/assert";
+// OUTCOME.md の空判定の基準は /outcome が持つので、Bootstrap は TBD を目視せず
+// その判定結果を読む。
+const OUTCOME_VALIDATOR = "$HOME/.claude/skills/outcome/scripts/validate-outcome.py";
 
 // merge-findings.py の 2 規則を JS に inline する。P1 -> high、P2 -> medium、P3 -> 落とす。
 // critical / high / medium / low は素通し。認識できない severity は順位付け不能なので落とす。
@@ -235,7 +238,7 @@ const scopeInstr = scope
 const bootstrapPrompt = anchor(
   `assert の Bootstrap 段階を担当する。順に実行する。\n` +
     `1. \`command -v codex\` で codex CLI の有無を確認する。無ければ codex_available: false とし、以降を省いて mode: none で返す。\n` +
-    `2. .claude/OUTCOME.md を読み、Behavior / Non-goals / Constraints を outcome に要約する。不在または全項 TBD なら outcome: "absent"。stub 生成はしない。\n` +
+    `2. "${OUTCOME_VALIDATOR}" .claude/OUTCOME.md を実行する。JSON の state が absent または empty なら outcome: "absent"。それ以外は本文を読み、Behavior / Non-goals / Constraints を outcome に要約する。stub 生成はしない。\n` +
     `3. ${scopeInstr}\n` +
     `4. mode が none でなければ、"${SCRIPTS}/worktree.py" "$CLAUDE_SESSION_ID" で isolated worktree を用意し (JSON の status が error なら worktree_ok: false、reason に stderr を写す)、続けて "${SCRIPTS}/bootstrap.py" "<worktree path>" を実行して install / build / reason を JSON から写す。diff_kind が uncommitted のときは worktree に uncommitted 変更を反映する (\`git diff HEAD\` を worktree 側で apply し、scope_files 中の untracked ファイルは cp する)。\n` +
     `コードの review や修正はしない。この段階の仕事は環境の準備と事実の記録だけ。`,

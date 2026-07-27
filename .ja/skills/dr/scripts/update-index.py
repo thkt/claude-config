@@ -9,7 +9,7 @@ stderr: directory not found etc. with exit 1
 import os
 import sys
 import tempfile
-from datetime import date
+from datetime import datetime
 
 from dr_common import fail, guard_skill_dir, resolve_dr_dir, split_frontmatter
 
@@ -99,7 +99,9 @@ def main():
                 f"- **{num}**: {title}" for num, title in sorted(by_status[key])
             )
             parts.append(f"### {heading}\n\n{entries}\n")
-    parts.append(FOOTER.format(update_date=date.today().isoformat()))
+    parts.append(
+        FOOTER.format(update_date=datetime.now().astimezone().date().isoformat())
+    )
 
     index_file = dr_dir / "README.md"
     fd, temp_path = tempfile.mkstemp(dir=dr_dir)

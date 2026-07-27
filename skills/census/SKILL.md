@@ -62,11 +62,11 @@ Findings with `incomplete-contract=Yes` are promoted regardless of `documented?`
 
 ### 5b Devil's Advocate Challenge
 
-Spawn `critic-design` via Task with the initial promotion candidate list and `${CLAUDE_SKILL_DIR}/references/decision-criteria.md`. `critic-design` challenges each candidate with the challenge angles and returns one of `keep` / `downgrade` / `drop`. Record the verdict alongside the initial ranking.
+Spawn `critic-design` via Task with the initial promotion candidate list and `~/.claude/skills/census/references/decision-criteria.md`. `${CLAUDE_SKILL_DIR}` does not expand inside a subagent, so hand it the absolute form. The agent returns what its own definition specifies: verdict (confirmed / weakened / needs_revision) and weaknesses. `/census` matches those weaknesses against each candidate and assigns keep / downgrade / drop from the table in decision-criteria.md. Record the assignment alongside the initial ranking.
 
 ## Phase 6: Report Output
 
-Write the report following `${CLAUDE_SKILL_DIR}/templates/report-template.md`, substituting placeholders from findings. Add a single repo-wide summary line `keep N / downgrade N / drop N` right after the DR Promotion Candidates table. After writing, print a console summary: candidate count, DR promotion candidate count.
+Write the report following `${CLAUDE_SKILL_DIR}/templates/report-template.md`, substituting placeholders from findings. Put a single repo-wide summary line `keep N / downgrade N / drop N` right before the DR Promotion Candidates table. After writing, print a console summary: candidate count, DR promotion candidate count.
 
 ```bash
 mkdir -p docs/audit

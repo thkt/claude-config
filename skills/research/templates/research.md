@@ -23,7 +23,7 @@ Prior research: {slug of inherited file, or "none found"}
 
 ## Key Findings
 
-<!-- Phase 4 findings, integrated, source-checked, and triaged in Phase 7. All findings, most important first. Facts use file:line, inferences use inferred from X, unverified uses unknown, requires X. Only findings passing triage carry a Next Action, with the linkage (question / OUTCOME / incident) stated in the action cell. All others read record only. -->
+<!-- Phase 4 findings, integrated, source-checked, and triaged in Phase 7. All findings, most important first. Sources follow the Phase 4 source notation. Only findings passing triage carry a Next Action, with the linkage (question / OUTCOME / incident) stated in the action cell. All others read record only. -->
 
 | Priority   | Finding   | Source   | Next Action   |
 | ---------- | --------- | -------- | ------------- |
@@ -39,7 +39,7 @@ Prior research: {slug of inherited file, or "none found"}
 
 ## Constraints
 
-<!-- Phase 1 (OUTCOME) / Phase 2 inherited + Phase 4 discovered. Omit a row when that category has no constraint. Omit this section when all rows would be empty. -->
+<!-- Phase 1 OUTCOME plus Phase 2 inherited, and Phase 4 discovered. Omit a row when that category has no constraint. Omit this section when all rows would be empty. -->
 
 | Category   | Constraint   |
 | ---------- | ------------ |

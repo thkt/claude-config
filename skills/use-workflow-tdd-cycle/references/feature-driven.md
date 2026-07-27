@@ -13,14 +13,14 @@ How `/code` uses TDD for new feature development. Builds on ${CLAUDE_SKILL_DIR}/
 
 ## Workflow
 
+Per-test execution follows the canonical RGRC Cycle in `SKILL.md`. Feature-driven differs in that Red starts by removing `.skip` from the next selected test.
+
 | Step | Action                                                      |
 | ---- | ----------------------------------------------------------- |
 | 1    | Read spec.md → Extract FR-xxx → Identify Given-When-Then    |
 | 2    | Generate skipped tests (`it.skip()`) ordered simple→complex |
 | 3    | Interactive activation: [Y]es/[S]kip/[Q]uit → RGRC cycle    |
 | 4    | Repeat until all tests active and passing                   |
-
-Per-test execution follows the canonical RGRC Cycle in `SKILL.md`. Feature-driven differs in that Red starts by removing `.skip` from the next selected test.
 
 ## Framework Skip Markers
 

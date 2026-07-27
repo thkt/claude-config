@@ -1,5 +1,5 @@
 // U-004: polish workflow の fix agent (general-purpose) は effort: high、
-// challenge (critic-audit) agent は effort: xhigh のまま。
+// challenge (critic-audit) agent は難易度軸で effort: xhigh。
 // runWorkflow behavioral capture で Review -> Challenge -> Fix まで到達させ、
 // 各段の opts.effort を検査して per-stage 配分をテストで固定する。
 import { test } from "node:test";
@@ -51,7 +51,7 @@ test("fix agent の effort が high である", async () => {
   assert.equal(fixCalls[0].opts.effort, "high", "fix agent の effort が high である");
 });
 
-test("challenge agent の effort が xhigh のままである", async () => {
+test("challenge agent の effort が xhigh である", async () => {
   const { calls } = await runToFix();
   const challengeCalls = calls.agent.filter((c) => c.opts && c.opts.label === "challenge");
   assert.equal(challengeCalls.length, 1, "challenge agent (critic-audit) が 1 回呼ばれる");

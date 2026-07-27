@@ -233,6 +233,9 @@ if (mode !== "cleanup") {
         label: "challenge",
         schema: VERDICTS_SCHEMA,
         model: "opus",
+        // Judge stages take xhigh on the difficulty criterion (the docs' "the hardest coding
+        // and agentic tasks"). They run for minutes, short of the long-horizon threshold, but
+        // the quality of rejecting a finding drives false positives, so spend on accuracy.
         effort: "xhigh",
       },
     );

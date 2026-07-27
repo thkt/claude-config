@@ -56,6 +56,9 @@ const anchor = (p) =>
 // Scripts bundled with this workflow. The loader only reads .js directly under workflows/,
 // so a subdir is a safe asset home (instructions and references live inside the workflow).
 const SCRIPTS = "$HOME/.claude/workflows/assert";
+// /outcome owns the emptiness criteria for OUTCOME.md, so Bootstrap reads its verdict
+// instead of judging TBD markers by eye.
+const OUTCOME_VALIDATOR = "$HOME/.claude/skills/outcome/scripts/validate-outcome.py";
 
 // Inline the two rules of merge-findings.py in JS. P1 -> high, P2 -> medium, P3 -> dropped.
 // critical / high / medium / low pass through. Unrecognized severities cannot be ranked,
@@ -238,7 +241,7 @@ const scopeInstr = scope
 const bootstrapPrompt = anchor(
   `You handle the Bootstrap stage of assert. Perform these in order.\n` +
     `1. Check for the codex CLI with \`command -v codex\`. If missing, set codex_available: false, skip the rest, and return mode: none.\n` +
-    `2. Read .claude/OUTCOME.md and digest Behavior / Non-goals / Constraints into outcome. If absent or all items are TBD, set outcome: "absent". Do not generate a stub.\n` +
+    `2. Run "${OUTCOME_VALIDATOR}" .claude/OUTCOME.md. If the JSON state is absent or empty, set outcome: "absent". Otherwise read the file and digest Behavior / Non-goals / Constraints into outcome. Do not generate a stub.\n` +
     `3. ${scopeInstr}\n` +
     `4. Unless mode is none, prepare an isolated worktree with "${SCRIPTS}/worktree.py" "$CLAUDE_SESSION_ID" (if the JSON status is error, set worktree_ok: false and copy stderr into reason), then run "${SCRIPTS}/bootstrap.py" "<worktree path>" and copy install / build / reason from its JSON. When diff_kind is uncommitted, mirror the uncommitted changes into the worktree (apply \`git diff HEAD\` on the worktree side, and cp untracked files among scope_files).\n` +
     `Do not review or fix code. This stage's job is environment setup and recording facts only.`,

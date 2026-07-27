@@ -1,6 +1,6 @@
 # Mirror Conventions
 
-Conventions for how `.ja/` and the English files correspond (ADR-0073).
+Conventions for how `.ja/` and the English files correspond (DR-0073).
 
 ## Canonical side and mirroring
 

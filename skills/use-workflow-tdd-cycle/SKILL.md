@@ -94,15 +94,13 @@ Right (vertical):
 
 ## Test Failure Judgment
 
-When a test fails, decide whether to fix the test or the implementation.
+When a test fails, decide whether to fix the test or the implementation. For `/fix`'s bug-driven flow, reproduction steps serve as the spec.
 
 | Judgment | Condition                 | Action                               |
 | -------- | ------------------------- | ------------------------------------ |
 | Impl bug | Test matches spec/FR-xxx  | Fix implementation. Don't touch test |
 | Test bug | Test diverges from spec   | Fix test                             |
 | Unclear  | Spec ambiguous or missing | Escalate to user                     |
-
-For `/fix`'s bug-driven flow, reproduction steps serve as the spec.
 
 ## Test Design
 
@@ -114,19 +112,13 @@ For `/fix`'s bug-driven flow, reproduction steps serve as the spec.
 
 ## Assertion Quality
 
-Every test must verify a specific outcome. Weak assertions alone are forbidden.
+Every test must verify a specific outcome. Weak assertions alone are forbidden. Bad is `expect(result).toBeTruthy()`; good is `expect(result).toEqual({ id: 1, name: "Alice" })`. One test, one concept: if two tests assert the same function with the same argument pattern, merge or parameterize with `test.each`.
 
 | Category           | Matchers                                                                | When acceptable                                   |
 | ------------------ | ----------------------------------------------------------------------- | ------------------------------------------------- |
 | Weak (existence)   | toBeTruthy, toBeDefined, toBeFalsy, toBeNull, toBeUndefined             | Only with a meaningful assertion in the same test |
 | Meaningful (value) | toBe, toEqual, toStrictEqual, toMatch, toContain, toThrow, toHaveLength | Always preferred                                  |
 | Meaningful (call)  | toHaveBeenCalledWith, toHaveBeenCalledTimes, toHaveReturnedWith         | When verifying side effects                       |
-
-Bad. `expect(result).toBeTruthy()`
-
-Good. `expect(result).toEqual({ id: 1, name: "Alice" })`
-
-One test, one concept. If two tests assert the same function with the same argument pattern, merge or parameterize with `test.each`.
 
 ## Mock
 

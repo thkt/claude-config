@@ -17,11 +17,13 @@ Subject 2+ approaches to `critic-design` critique, and let only the surviving ap
 
 ## Phase 1: Establish the Why
 
-Read `.claude/OUTCOME.md`. If it does not exist, generate it via `/outcome`. Who needs this and with what pain (with evidence), what counts as success, and why now. Design starts only once this Why is readable from $ARGUMENTS and the conversation. Do not proceed on placeholders; pin it down via AskUserQuestion.
+Read `.claude/OUTCOME.md`. If it does not exist, generate it via `/outcome`. The Why is three things: who needs this and with what pain, what counts as success, and why now. Attach evidence to the pain. Design starts only once this Why is readable from $ARGUMENTS and the conversation. Do not proceed on placeholders; pin it down via AskUserQuestion.
 
 ## Phase 2: Design Exploration
 
 Ground the approaches in the real code and existing research. Read the relevant code, and read any research output under `.claude/workspace/research/` that matches the task. Treat findings whose Next Action reads `record only` as background knowledge, not plan scope. Generate 2+ approaches from distinct perspectives (simplest thing that works / structure and extensibility / developer experience). Do not bundle independent technical decisions into one question; ask each separately with a recommendation and trade-offs.
+
+When the task, the issue, or a research report cites a mock image or screenshot, open that image file with Read before designing. Absence from the text is not evidence the element does not exist.
 
 1. Launch `critic-design` on the approaches. Include the task title verbatim in the prompt, and have it return a single JSON object `{ verdict: "GO" | "NO-GO", weaknesses: string[], actionable: string[] }`
 2. On NO-GO, resolve blockers inline before proceeding. Present the surviving design to the user with trade-off rationale, and wait for approval
@@ -29,34 +31,42 @@ Ground the approaches in the real code and existing research. Read the relevant 
 
 ## Phase 3: Plan Generation
 
-Decompose the approved design into units, independently implementable bundles of outcome, in implementation order, and serialize them into PLAN_SCHEMA-equivalent JSON `{ test_command, reference_module, units: [{ id, goal, contract, files: string[], tests: [{ id, name }], seam }] }`. Construct the decomposition tests-first, so unit size is decided mechanically from the test bundles. Enumerate acceptance-test candidates from the whole design, group them into bundles of 4 or fewer per unit of outcome, and assign each bundle the files it touches to form a unit. Split any bundle whose assignment reaches 4 or more files. Outcomes with no verifiable behavior (docs / config) are added separately as units with empty tests.
+Decompose the approved design into units, independently implementable bundles of outcome, in implementation order, and serialize them into PLAN_SCHEMA-equivalent JSON `{ test_command, reference_module, units: [{ id, goal, contract, files: string[], tests: [{ id, name }], seam }] }`. Construct the decomposition tests-first, so unit size is decided mechanically from the test bundles. Enumerate acceptance-test candidates from the whole design, group them into bundles per unit of outcome, and assign each bundle the files it touches to form a unit. Keep each bundle within the non-seam unit caps, and split any bundle that exceeds them. An outcome with no verifiable behavior (docs / config) yields no acceptance-test candidates, so add it as a unit of its own.
 
 1. Assign sequential ids in U-001 / T-001 format, with T-NNN unique across the whole plan
 2. tests[].name is a one-line condition + expected-result statement. The code workflow uses it verbatim as the test name, and build matches it as a fixed string
-3. A unit with no verifiable behavior (docs / config) gets an empty tests array. build handles that unit as direct implementation
+3. A unit with no verifiable behavior (docs / config) gets an empty tests array. build advances that unit as a single direct-implementation step rather than Red-Green
 4. Each unit's tests stub that unit's own boundaries, so once 2 or more units carry tests, place exactly one seam unit last and mark it `seam: true`. Its tests run the real modules across the unit boundary, fake only I/O with external systems, and assert the connections between units. build's `validate()` rejects a plan with no seam unit
-5. A unit's caps are 3 files and 4 tests. Split any unit over the caps along outcomes, and confirm the resulting new unit composition with the user. Candidates carved out of scope stay out of the plan and go to backlog candidates. This cap is enforced deterministically as `UNIT_CAPS` in `workflows/build.js`. Change this description and `UNIT_CAPS` in the same commit
-6. Pass the self-check (missing required fields, duplicate ids, empty units / tests / goal / contract) and the pre-writeout verification, then write the plan following the `${CLAUDE_SKILL_DIR}/templates/plan.md` skeleton to `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md`. The slug is the lowercase hyphenated title. Include both the `## Plan` and `## Backlog candidates` sections
+5. A non-seam unit's caps are 3 files and 4 tests. A seam unit's tests cross the unit boundary, so its file count legitimately grows and the caps do not apply to it. Split any unit over the caps along outcomes, and confirm the resulting new unit composition with the user. Candidates carved out of scope stay out of the plan and go to backlog candidates. `UNIT_CAPS` in `workflows/build.js` enforces these caps deterministically, seam exemption included. Change this description and `UNIT_CAPS` in the same commit
+6. Pass the self-check (missing required fields, duplicate ids, empty units / files / goal / contract) and the pre-writeout verification, then write the plan following the `${CLAUDE_SKILL_DIR}/templates/plan.md` skeleton to `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md`. The slug is the lowercase hyphenated title. Include both the `## Plan` and `## Backlog candidates` sections
+
+### test_command
+
+A test_command failure must be attributable to the planned scope alone. On a repository carrying pre-existing debt such as repo-wide type errors or format drift, scope the gate by paths: lint the touched directories and filter type-check output by path patterns, never by content grep. Both build's Revalidate and code's verify run from the repository root, so write a command that works from there.
+
+### base
+
+`base:` names the branch the plan will be implemented against (the PR base). Read it from the task description or the conversation; when nothing names one, write the current checkout's branch.
 
 ### reference_module
 
-A contract cites a behavior at one call site, which cannot stop the surrounding structure from being hand-rolled. Search for an existing module with the same shape as the one being planned (a matching set of screens or layers, in any domain), record it as `reference_module: { path, files, instances }`. The `reference_module` section itself is what carries the structure, and every unit refers to it. Make U-001 its structure replication (same directory layout, component names, export names; tests is an empty array) only when the skeleton fits under 4 files; otherwise split units by layer and let each unit replicate its own slice. State the shared conventions to keep (which shared components it composes, where formatting lives, how state is passed); deviating is allowed only with a stated reason in the plan. When several candidates match, pick the one whose screen set is closest and name the others in the prose. When none matches, write null and say in the prose why this shape is new (a null with no reason is a planning defect). When instances is 2 or more, say "Nth instance" in the prose, telling the implementer to replicate rather than design.
+A contract can cite a behavior at one call site only, which does not stop the surrounding structure from being hand-rolled. So search for an existing module whose set of screens or layers matches the one being planned, in any domain, and record it as `reference_module: { path, files, instances }`. Write the structure in the `reference_module` section, and every unit refers to it.
 
-### contract
-
-Select, do not generate. Never sketch behavior in prose or invent new code fragments; a contract is a citation plus one intent line. Pick the citation in this priority order: an existing shape in the codebase (path + public symbol, under the same stable-anchor rules as Preconditions) > a docs/wiki page > a deep link into the pinned version's official docs; external libraries follow SOURCING.md. For a new shape with no citable source, do not invent a signature; leave the shape to implementation and let the acceptance tests pin the behavior. Cited paths + symbols also go into `### Preconditions`.
+1. Make U-001 its structure replication (same directory layout, component names, export names; tests is an empty array) only when the skeleton fits under 4 files. Otherwise split units by layer and let each unit replicate its own slice
+2. State the shared conventions to keep (which shared components it composes, where formatting lives, how state is passed). Deviating is allowed only with a stated reason in the plan
+3. When several candidates match, pick the one whose screen set is closest and name the others in the prose
+4. When none matches, write null and say in the prose why this shape is new. A null with no reason is a planning defect
+5. When instances is 2 or more, say "Nth instance" in the prose, telling the implementer to replicate rather than design
 
 ### Preconditions
 
 List existing dependencies only, each line repo-root-relative in one of two forms: path only, or path + stable anchor. An anchor is limited to a single exported / public symbol name that `ugrep -F` matches as a literal fixed string; never private implementation details, comment strings, or line numbers. When no stable symbol exists, write the line as path only. Files newly created by a unit are never listed.
 
-### test_command
+### contract
 
-A test_command failure must be attributable to the planned scope alone. On a repository with pre-existing debt (repo-wide type errors, format drift), scope the gate by paths: lint the touched directories and filter type-check output by path patterns, never by content grep.
+Select, do not generate. Never sketch behavior in prose or invent new code fragments; a contract is a citation plus one intent line. Pick the citation in this priority order: an existing shape in the codebase (path + public symbol, under the same stable-anchor rules as Preconditions) > a docs/wiki page > a deep link into the pinned version's official docs; external libraries follow SOURCING.md. For a new shape with no citable source, do not invent a signature; leave the shape to implementation and let the acceptance tests pin the behavior. Cited paths + symbols also go into `### Preconditions`.
 
-### base
-
-`base:` names the branch the plan will be implemented against (the PR base). Read it from the task description or the conversation; when nothing names one, write the current checkout's branch.
+When a mock or design document carries UI wording verbatim (labels, placeholders, button text, option names), copy it into the contract as-is with the source path attached.
 
 ### Pre-writeout verification
 
@@ -67,7 +77,7 @@ Verify from the same repository root as the build workflow's Revalidate; fix or 
 3. If any unit touches an existing file while `### Preconditions` is empty or absent, that is a failure; add a line anchoring the load-bearing dependency
 4. A `reference_module: null` with no stated reason in the prose fails
 5. No overflow against the line-count rules in templates/plan.md
-6. Count each unit's `files` entries and T-NNN entries; no unit has 4 or more files or 5 or more tests. If one does, split it and re-verify
+6. Count each non-seam unit's `files` entries and T-NNN entries; every count stays within the unit caps. If one exceeds them, split it and re-verify
 7. Run test_command once from the repository root. On a failure whose cause predates the plan (missing script, repo-wide debt), rescope the command per `### test_command` and state the scoping reason in the plan prose
 
 ## Output

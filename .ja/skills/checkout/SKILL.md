@@ -15,7 +15,7 @@ argument-hint: "[context or ticket number]"
 
 ## 実行
 
-1. `git status` と `git diff` を並列で実行し、変更内容を読む
+1. `git status` と `git diff HEAD` を並列で実行し、変更内容を読む。`git diff` だけではステージ済みの変更が見えない
 2. 変更内容と `$ARGUMENTS` から、命名規約に沿ったブランチ名候補を 3 つ生成する
 3. `AskUserQuestion` で各候補に選定理由を添えて提示し、ユーザーに 1 つ選ばせる
 4. `git checkout -b <選択した名前>` で新しいブランチを作成する
@@ -31,7 +31,7 @@ argument-hint: "[context or ticket number]"
 
 | Prefix    | 用途              | トリガー                     |
 | --------- | ----------------- | ---------------------------- |
-| feature/  | 新機能            | 新規ファイル、コンポーネント |
+| feat/     | 新機能            | 新規ファイル、コンポーネント |
 | fix/      | バグ修正          | エラー修正                   |
 | refactor/ | コード改善        | 再構造化                     |
 | docs/     | ドキュメント      | .md ファイル、README         |
@@ -39,9 +39,9 @@ argument-hint: "[context or ticket number]"
 | chore/    | メンテナンス      | 依存、設定                   |
 | perf/     | パフォーマンス    | 最適化、キャッシュ           |
 
-- 小文字とハイフン区切りで構成し、空白 / アンダースコア / CamelCase は使わない
+- 小文字とハイフン区切りで構成し、空白/アンダースコア/CamelCase は使わない
 - scope と description は 2〜4 単語で簡潔にし、update のような曖昧な語を避ける
-- `$ARGUMENTS` にチケット ID があれば `<ticket>` の位置に含め、日付は含めない
+- `$ARGUMENTS` にチケット ID があれば `<ticket>` の位置に含める。このスキルが作る名前に日付は入れない
 
 ## エラー処理
 

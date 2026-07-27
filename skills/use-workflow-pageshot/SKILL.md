@@ -11,12 +11,12 @@ user-invocable: false
 
 ## Input
 
+PR body is passed as a string from `/pr`. If either field below is missing, return `mode: failed` with the missing field name and let `/pr` decide.
+
 | Field       | Source                                                      |
 | ----------- | ----------------------------------------------------------- |
 | Preview URL | The leading `Preview URL: <URL>` line in the PR body        |
 | Steps       | Numbered list under the `## How to Test` section in PR body |
-
-PR body is passed as a string from `/pr`. If Preview URL or How to Test is missing, return `mode: failed` with the missing field name and let `/pr` decide.
 
 ## Browser engine
 
@@ -48,14 +48,14 @@ Pass `--session pageshot --engine chrome` on every agent-browser call. The defau
 
 ## Video Flow (2+ steps)
 
+Insert `agent-browser wait 500` between steps. Run `snapshot` before each operation to identify elements.
+
 | #   | Command                                                                |
 | --- | ---------------------------------------------------------------------- |
 | 1   | `agent-browser record start {outdir}/capture.webm`                     |
 | 2   | For each step run `snapshot` then the operation in order               |
 | 3   | `agent-browser record stop`                                            |
 | 4   | `ffmpeg -i {outdir}/capture.webm -vcodec libx264 {outdir}/capture.mp4` |
-
-Insert `agent-browser wait 500` between steps. Run `snapshot` before each operation to identify elements.
 
 ## Output
 
@@ -65,7 +65,7 @@ Single stdout line.
 mode=screenshot artifact=/absolute/path/to/step-01.png
 ```
 
-or
+On video capture.
 
 ```
 mode=video artifact=/absolute/path/to/capture.mp4

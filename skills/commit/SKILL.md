@@ -21,7 +21,7 @@ argument-hint: "[context or issue reference]"
 
 ## Type Detection
 
-Infer type from diff context. Default to feat if unclear.
+Infer type from diff context. When it cannot be told, use chore. feat declares a semver minor bump, so do not pick it without grounds.
 
 | Type     | When to use                                |
 | -------- | ------------------------------------------ |
@@ -46,12 +46,15 @@ feat(api)!: remove deprecated endpoints  # BREAKING CHANGE
 
 ## Sandbox-Compatible Commit
 
+Confirm the target repository with the leading `git rev-parse --show-toplevel`. If the output differs from the intended one, stop without committing and report the mismatch.
+
 ```bash
-cat > /tmp/claude/commit-msg.txt << 'EOF'
+git rev-parse --show-toplevel
+cat > "$TMPDIR/commit-msg.txt" << 'EOF'
 <message>
 EOF
-git commit -F /tmp/claude/commit-msg.txt
-mv /tmp/claude/commit-msg.txt ~/.Trash/ 2>/dev/null || true
+git commit -F "$TMPDIR/commit-msg.txt"
+mv "$TMPDIR/commit-msg.txt" ~/.Trash/ 2>/dev/null || true
 ```
 
 ## Error Handling
