@@ -1,7 +1,7 @@
 ---
 name: qualify
-description: issue が build に投入できる形かを検分し、verdict (build-ready / needs-plan / needs-fix) と指摘を返す。issue の起票には使わない (/issue を使う)。PR のスクリーニングには使わない (/preview を使う)。
-when_to_use: issue検分, build投入可否, build-ready 判定, issue品質チェック, qualify issue, check issue before build
+description: issue が build に投入できる形かを検分し、verdict (build-ready / needs-plan / needs-fix) と指摘を返す。起票には使わない (/issue)。PR のスクリーニングには使わない (/preview)。
+when_to_use: 実装可否, build-ready 判定, issue 品質チェック, qualify issue, check issue before build
 allowed-tools: Bash(gh issue view:*) Bash(ugrep:*) Read AskUserQuestion
 model: opus
 argument-hint: "[issue number or URL]"
@@ -31,12 +31,7 @@ Plan 節があるときは、build.js の判定条件を書き写さず実行時
 
 ### id クロスチェック
 
-build は本文の U-NNN と T-NNN の id 集合を抽出結果と厳密比較する。qualify は抽出を行わないので、代わりに本文側の id が一意で連番になっているかを見る。重複と欠番は blocker。
-
-| 収集位置                     | 対象 |
-| ---------------------------- | ---- |
-| `### U-NNN` で始まる行       | unit |
-| リストマーカー直後の `T-NNN` | test |
+build は本文の U-NNN と T-NNN の id 集合を抽出結果と厳密比較する。qualify は抽出を行わないので、代わりに本文側の id が一意で連番になっているかを見る。id は `### U-NNN` で始まる行と、リストマーカー直後の `T-NNN` から集める。重複と欠番は blocker。
 
 ## Phase 3: 形式の検分
 

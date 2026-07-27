@@ -1,7 +1,7 @@
 ---
 name: qualify
 description: Inspect whether an issue is in shape to hand to build, returning a verdict (build-ready / needs-plan / needs-fix) and the findings. Do NOT use to file an issue (use /issue) or to screen a PR (use /preview).
-when_to_use: qualify issue, check issue before build, build-ready verdict, issue quality check, issue検分, build投入可否
+when_to_use: 実装可否, build-ready 判定, issue 品質チェック, qualify issue, check issue before build
 allowed-tools: Bash(gh issue view:*) Bash(ugrep:*) Read AskUserQuestion
 model: opus
 argument-hint: "[issue number or URL]"
@@ -31,12 +31,7 @@ With a `## Plan` section, read build.js's own conditions at run time rather than
 
 ### Id cross-check
 
-Build compares the U-NNN and T-NNN id sets in the body against the extraction by exact match. qualify does not extract, so check instead that the body's own ids are unique and consecutive. Duplicates and gaps are blockers.
-
-| Collected from                    | Target |
-| --------------------------------- | ------ |
-| Lines starting with `### U-NNN`   | unit   |
-| `T-NNN` right after a list marker | test   |
+Build compares the U-NNN and T-NNN id sets in the body against the extraction by exact match. qualify does not extract, so check instead that the body's own ids are unique and consecutive. Collect the ids from lines starting with `### U-NNN` and from a `T-NNN` right after a list marker. Duplicates and gaps are blockers.
 
 ## Phase 3: Inspect the format
 
