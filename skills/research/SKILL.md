@@ -27,7 +27,7 @@ Derive the lowercase hyphenated subject slug from `$ARGUMENTS` and run `${CLAUDE
 
 - No candidates: note "No prior research found for `<slug>`" and move on
 - A candidate with shared >= 2: carry forward per the table below
-- A candidate with shared == 1: the filename overlap alone is too weak to trust as a match, so read the file and judge relevance to `$ARGUMENTS` before deciding. When relevant, carry forward per the table below. When not relevant, mark it excluded from the Constraints carry-over table below and do not extract from it
+- A candidate with shared == 1: the filename overlap alone is too weak to trust as a match, so it is excluded from the carry-over table below and lands only in the report's References, with its path and shared count
 
 | Extract                 | Carry to | Handling                           |
 | ----------------------- | -------- | ---------------------------------- |

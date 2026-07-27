@@ -126,8 +126,8 @@ test("allowed-tools が research の scripts 配下の実行を許可する", ()
 });
 
 const SHARED_ONE_KEYWORDS = {
-  ja: { relevance: "関連性", exclusion: "対象外" },
-  en: { relevance: "relevance", exclusion: "excluded" },
+  ja: { landing: "References", exclusion: "対象外" },
+  en: { landing: "References", exclusion: "excluded" },
 };
 
 test("SKILL.md の Phase 2 が共有 1 件のヒットを Constraints 引き継ぎ表の対象外と定める", () => {
@@ -139,11 +139,11 @@ test("SKILL.md の Phase 2 が共有 1 件のヒットを Constraints 引き継�
       /shared["']?\s*(:|=|==)?\s*1\b/.test(phase2),
       `${lang}: Phase 2 が shared 1 件のケースに言及する`,
     );
-    const { relevance, exclusion } = SHARED_ONE_KEYWORDS[lang];
-    assert.ok(phase2.includes(relevance), `${lang}: Phase 2 が関連性判定に言及する`);
+    const { landing, exclusion } = SHARED_ONE_KEYWORDS[lang];
     assert.ok(
       phase2.includes(exclusion),
       `${lang}: Phase 2 が Constraints 引き継ぎ表の対象外である旨を定める`,
     );
+    assert.ok(phase2.includes(landing), `${lang}: Phase 2 が References を着地先として名指しする`);
   }
 });
