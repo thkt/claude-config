@@ -335,7 +335,8 @@ const draftPlan = async () => {
       agentType: "critic-design",
       schema: CRITIQUE_SCHEMA,
       model: "opus",
-      effort: "xhigh",
+      // Opus 5 は high が推奨の出発点で、前世代からの xhigh 持ち越しを docs が否定する。
+      effort: "high",
     },
   );
   // 明示 NO-GO だけ止める。critic が死んだ (null) 場合は fail-open で、flaky な reviewer が

@@ -3,7 +3,7 @@ export const meta = {
   description:
     'TDD workflow that takes a structured plan (units / test_command) and implements per unit under script enforcement. A unit with test scenarios runs Red -> Green; a unit with no tests (docs / config, no verifiable behavior) runs a single direct-implementation step, so whether TDD applies is selected in the plan, not decided at runtime. An unconfirmed Red is recorded as an anomaly, and at the end an independent agent verifies the full suite + lint + type-check. With commit: true each unit lands as its own commit carrying the plan\'s instruction as trailers (DR-0088). Callable standalone or nested from build via workflow("code").',
   whenToUse:
-    "Headless plan implementation. args is {plan, repo, model, commit, issue, untracked_baseline}; plan is a structured plan with units / test_command (as produced by the think skill). model (optional) propagates only to the implementation agents (defaults to sonnet). commit: true commits each unit as it completes; issue / untracked_baseline feed the commit trailers and the never-stage set. The implementation agents run at effort xhigh.",
+    "Headless plan implementation. args is {plan, repo, model, commit, issue, untracked_baseline}; plan is a structured plan with units / test_command (as produced by the think skill). model (optional) propagates only to the implementation agents (defaults to sonnet). commit: true commits each unit as it completes; issue / untracked_baseline feed the commit trailers and the never-stage set. The implementation agents run at effort high.",
   phases: [{ title: "Implement" }, { title: "Verify" }],
 };
 
@@ -65,8 +65,10 @@ const stopUnit = (stopped, unit, why) => ({
 });
 // Shared by every implementation agent so a model/effort change lands once. Implementation
 // executes the plan's contract / tests, so sonnet suffices; repeated failure here signals a
-// defective plan.
-const implementOpts = { model: input.model || "sonnet", effort: "xhigh" };
+// defective plan. effort is high, the Claude 5 generation's recommended starting point: an
+// implementation agent's wall-clock is dominated by generating its output tokens, most of
+// which are thinking.
+const implementOpts = { model: input.model || "sonnet", effort: "high" };
 
 const RED_SCHEMA = {
   type: "object",

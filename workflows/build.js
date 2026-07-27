@@ -347,7 +347,9 @@ const draftPlan = async () => {
       agentType: "critic-design",
       schema: CRITIQUE_SCHEMA,
       model: "opus",
-      effort: "xhigh",
+      // high is Opus 5's recommended starting point; the docs reject carrying xhigh over
+      // from an earlier model.
+      effort: "high",
     },
   );
   // Only an explicit NO-GO stops. A dead critic (null) fails open so a flaky reviewer

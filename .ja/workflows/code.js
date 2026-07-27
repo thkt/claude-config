@@ -3,7 +3,7 @@ export const meta = {
   description:
     '構造化 plan (units / test_command) を受け取り、unit ごとに script 制御で実装する TDD workflow。test scenario を持つ unit は Red → Green で実装し、tests が空の unit (docs / 設定など検証可能な振る舞いが無いもの) は直接実装 1 段で扱う。TDD の要否は runtime でなく plan が選択する。未確認の Red は anomaly として記録し、最後に実装へ関与していない独立 agent が全 suite + lint + type-check を検証する。commit: true のとき、各 unit は plan の指示を trailer に載せた独立コミットとして着地する (DR-0088)。単独でも build からの workflow("code") でも呼べる。',
   whenToUse:
-    "headless の plan 実装。args は {plan, repo, model, commit, issue, untracked_baseline}。plan は units / test_command を持つ構造化 plan (think skill が生成する形)。model (任意) は実装 agent にのみ伝播する (default は sonnet)。commit: true は unit の完了ごとにコミットし、issue / untracked_baseline は commit trailer と never-stage 集合になる。実装 agent は effort xhigh で走る。",
+    "headless の plan 実装。args は {plan, repo, model, commit, issue, untracked_baseline}。plan は units / test_command を持つ構造化 plan (think skill が生成する形)。model (任意) は実装 agent にのみ伝播する (default は sonnet)。commit: true は unit の完了ごとにコミットし、issue / untracked_baseline は commit trailer と never-stage 集合になる。実装 agent は effort high で走る。",
   phases: [{ title: "Implement" }, { title: "Verify" }],
 };
 
@@ -66,7 +66,9 @@ const stopUnit = (stopped, unit, why) => ({
 });
 // 全実装 agent で共有し、model / effort の変更を 1 箇所にする。実装は plan の contract /
 // tests を実行する段なので sonnet で足りる。ここで失敗が続くなら plan の欠陥シグナル。
-const implementOpts = { model: input.model || "sonnet", effort: "xhigh" };
+// effort は Claude 5 世代の推奨出発点に合わせて high。実装 agent 1 体の wall-clock は
+// 出力 tokens (大半が thinking) の生成時間が支配する。
+const implementOpts = { model: input.model || "sonnet", effort: "high" };
 
 const RED_SCHEMA = {
   type: "object",
