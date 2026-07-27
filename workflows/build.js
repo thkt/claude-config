@@ -975,6 +975,12 @@ const SHIP_SCHEMA = obj(["committed", "pr_url"], {
   },
   pr_url: { type: "string" },
   notes: { type: "string" },
+  unstaged: {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "Paths left unstaged: untracked paths that predate the build, and out-of-scope tracked modifications",
+  },
 });
 
 // With the units already in history, an empty remainder is a normal outcome. Forcing a
@@ -983,11 +989,17 @@ const commitInstruction = perUnitCommits
   ? `This build already committed each implementation unit (${unitCommits.length} commit(s)). Commit whatever is still uncommitted - the cleanup edits and anything the unit commits left behind - as one Conventional Commits commit; you write the commit message. If applying the staging rules below leaves nothing staged, skip the commit entirely and go straight to the push; that is a normal outcome, not an error. `
   : `Turn this build's changes into a single Conventional Commits commit; you write the commit message (summarize the diff). `;
 
+// Tracked modifications Verify judged outside the plan's scope. They carry a concurrent
+// session's edits or work that predates this build, so Ship must not sweep them into the
+// commit. The sentinel string from an unavailable diff listing is not a path, so it stays
+// out of the never-stage set.
+const outOfScopeTracked = diff && Array.isArray(diff.files) ? scopeDeviations : [];
+
 const ship = await agent(
   anchor(
     commitInstruction +
-      `Scope what you stage yourself; never use \`git add -A\` or \`git add .\`. Modifications to tracked files may be staged as they are, but stage an untracked path (a "??" line in \`git status --porcelain --untracked-files=all\`, judged per file, never per directory) only when it appears in the plan's files ${JSON.stringify([...planFiles])} or you created it during this run. ` +
-      `Every other untracked path predates this build and must stay unstaged, otherwise specification documents, research notes, and local config leak into the PR. List any untracked path you left unstaged in your result.\n` +
+      `Scope what you stage yourself; never use \`git add -A\` or \`git add .\`. Modifications to tracked files may be staged as they are, except for the never-stage set below, which stays unstaged even though those paths are tracked: ${JSON.stringify(outOfScopeTracked)}. Verify judged them outside the plan's scope, so they are not this build's work. Stage an untracked path (a "??" line in \`git status --porcelain --untracked-files=all\`, judged per file, never per directory) only when it appears in the plan's files ${JSON.stringify([...planFiles])} or you created it during this run. ` +
+      `Every other untracked path predates this build and must stay unstaged, otherwise specification documents, research notes, and local config leak into the PR. List every path you left unstaged in your result, tracked and untracked alike.\n` +
       `Push the branch, then open a draft pull request. Its body is a human-facing part you write from a PR template, followed by deterministic fact sections rendered from data (do not hand-write the fact sections). The steps are as follows.\n` +
       `(1) Read \`language\` from \`$HOME/.claude/settings.json\` (default English if unset) and write the human-facing body in that language, keeping code, identifiers, and technical terms untranslated. Choose the PR template: the repository's if present (case-insensitive, priority \`.github/pull_request_template.md\` > \`pull_request_template.md\` > \`docs/pull_request_template.md\` > a \`PULL_REQUEST_TEMPLATE/\` directory), otherwise the bundled \`${bundled("skills/pr/templates/pr.md")}\`; read the skeleton and fold it into the body file. Fill only the human-facing sections, ordered so a reviewer grasps it fast: lead with the problem this solves and the outcome it reaches (${JSON.stringify(plan.outcome)}), then what changed and the approach, then where to focus review. Put the review-focus content under the skeleton's nearest section, or as a \`## Review focus\` section when it has none. A change belongs in Changes only when the diff does not carry its rationale, never as an inventory of files. No filler, no invented facts. Skip Related / Closes; the tail emits \`Closes #\`. Skip Scope / Backlog too; out-of-scope candidates do not go in the PR. Fill Design Decisions from the plan decisions (${JSON.stringify(plan.decisions || [])}) and the actual diff; omit the section if empty rather than inventing.\n` +
       `(2) write this exact JSON to a temp file.\n${JSON.stringify(shipPayload)}\n` +
