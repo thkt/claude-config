@@ -23,13 +23,11 @@ Take the body and labels with `gh issue view <ref> --json number,title,body,labe
 
 With no `## Plan` section, set the verdict to needs-plan and go to Phase 4 without inspecting further. Build stops as no-plan anyway, so no other finding changes the decision to hand it over.
 
-With a `## Plan` section, apply build.js's own conditions. Read them at run time rather than transcribing them.
+With a `## Plan` section, read build.js's own conditions at run time rather than transcribing them, apply them, and treat every violation as a blocker. Build stops on the same conditions, so none of them degrade to advice.
 
 1. Locate them with `ugrep -n "const validate = |const UNIT_CAPS = |const oversizedUnits = " ~/.claude/workflows/build.js`
 2. Read the places it hits
 3. Apply what you read to the issue's Plan section and list the violations
-
-Treat every violation of those conditions as a blocker. Build stops on the same conditions, so none of them degrade to advice.
 
 ### Id cross-check
 
@@ -64,7 +62,7 @@ Return the output in conversation. The order is the verdict on one line, the blo
 
 ### Questions
 
-Turn a finding into a question when reading the body alone does not settle it, which covers gaps in the spec and undecided judgments; for a format defect, write the correction directly instead of asking. Attach the answer you expect to each question as a hypothesis. The reader corrects the hypothesis instead of explaining from scratch, and your level of understanding shows at the same time.
+Turn a finding into a question when reading the body alone does not settle it, which covers gaps in the spec and undecided judgments; for a format defect, write the correction directly instead of asking. Attach the answer you expect to each question as a hypothesis. The reader corrects the hypothesis instead of explaining from scratch.
 
 Address the questions to whoever invoked this skill. That person chooses whether to settle the answers themselves or send the questions to the issue author. Nothing is posted to GitHub.
 
