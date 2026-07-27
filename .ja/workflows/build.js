@@ -941,6 +941,11 @@ const SHIP_SCHEMA = obj(["committed", "pr_url"], {
   },
   pr_url: { type: "string" },
   notes: { type: "string" },
+  unstaged: {
+    type: "array",
+    items: { type: "string" },
+    description: "stage しなかったパス。build 以前からの未追跡ファイルと、スコープ外の追跡済み変更",
+  },
 });
 
 // unit が既に履歴にあるとき、残余ゼロは正常な結末。空コミットを強いると Ship が
@@ -949,12 +954,17 @@ const commitInstruction = perUnitCommits
   ? `この build は既に実装 unit ごとに commit 済み (${unitCommits.length} 件)。未 commit のまま残っているもの — cleanup の編集と unit commit が残したもの — を 1 つの Conventional Commits commit にまとめる。commit メッセージは自分で書く。下の stage 規則を適用して stage されるものが残らなければ commit 自体を skip して push へ進む。これは異常でなく正常な結末。`
   : `この build の変更を 1 つの Conventional Commits commit にまとめる。commit メッセージは自分で書く (diff を要約する)。`;
 
+// Verify が plan スコープ外と判定した追跡済み変更。並行セッションの編集や build 以前の
+// 作業が混ざるので、Ship はこれを commit に巻き込まない。diff 一覧を取れなかったときの
+// センチネル文字列はパスでないため never-stage 集合から外す。
+const outOfScopeTracked = diff && Array.isArray(diff.files) ? scopeDeviations : [];
+
 const ship = await agent(
   anchor(
     commitInstruction +
-      `stage する範囲は自分で絞る。\`git add -A\` と \`git add .\` は使わない。追跡済みファイルの変更はそのまま stage してよいが、` +
+      `stage する範囲は自分で絞る。\`git add -A\` と \`git add .\` は使わない。追跡済みファイルの変更はそのまま stage してよいが、次の never-stage 集合は追跡済みでも stage しない。${JSON.stringify(outOfScopeTracked)}。Verify が plan スコープ外と判定した変更で、この build の成果ではない。` +
       `未追跡ファイル (\`git status --porcelain --untracked-files=all\` の "??" 行。ディレクトリ単位に畳まずファイル単位で判定する) は、plan の files ${JSON.stringify([...planFiles])} に含まれるか、この run で自分が作成したものだけを stage する。` +
-      `それ以外の未追跡ファイルは build 以前から作業ツリーにあったものなので stage しない (仕様書・調査メモ・ローカル設定が PR に混入する)。stage しなかった未追跡パスは結果に列挙する。\n` +
+      `それ以外の未追跡ファイルは build 以前から作業ツリーにあったものなので stage しない (仕様書・調査メモ・ローカル設定が PR に混入する)。stage しなかったパスは、未追跡か追跡済みかを問わず結果に列挙する。\n` +
       `ブランチを push し、draft pull request を開く。本文は PR テンプレートから自分で書く人間向けパートと、データから決定論レンダリングされる fact セクションで構成する (fact セクションを手書きしない)。手順は以下。\n` +
       `(1) \`$HOME/.claude/settings.json\` から \`language\` を読み (未設定なら英語)、その言語で人間向け本文を書く。コード / 識別子 / 専門用語は翻訳しない。PR テンプレートはリポジトリのものがあれば使う (大文字小文字の区別なし、優先順 \`.github/pull_request_template.md\` > \`pull_request_template.md\` > \`docs/pull_request_template.md\` > \`PULL_REQUEST_TEMPLATE/\` ディレクトリ)。無ければ同梱の \`${bundled("skills/pr/templates/pr.md")}\` を使う。骨格を読んで body ファイルへ折り込む。人間向けセクションだけを、レビュアーが速く掴める順で埋める。先頭に解決する問題と到達する成果 (${JSON.stringify(plan.outcome)})、次に変更内容とアプローチ、最後にレビューの注目点。レビューの注目点は、骨格の該当節か、無ければ \`## Review focus\` 節として書く。Changes に書くのは diff が理由を運ばない変更だけで、ファイルの目録は書かない。埋め草と事実の捏造をしない。Related / Closes は書かない (tail が \`Closes #\` を出す)。Scope / Backlog も書かない。スコープ外候補は PR に載せない。Design Decisions は plan の decisions (${JSON.stringify(plan.decisions || [])}) と実 diff から埋め、空なら節ごと省略する。\n` +
       `(2) この JSON をそのまま一時ファイルに書く。\n${JSON.stringify(shipPayload)}\n` +

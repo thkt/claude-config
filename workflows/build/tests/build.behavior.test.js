@@ -698,7 +698,32 @@ test("Verify のスコープ検査が plan 外の diff file を surface し、.c
     shipCalls[0].prompt.includes('"scope_deviations":["extra.js"]'),
     "scope_deviations が ship prompt (PR body payload) に載る",
   );
+  // 検出しても staging 判断に繋いでいなければ、Ship が追跡済みの逸脱を commit へ巻き込む。
+  const neverStage = shipCalls[0].prompt.slice(shipCalls[0].prompt.indexOf("never-stage"));
+  assert.ok(
+    neverStage.startsWith("never-stage") && neverStage.includes('["extra.js"]'),
+    "scope_deviations が ship prompt の never-stage 集合に載る",
+  );
   assert.ok(calls.phase.includes("Ship"), "スコープ逸脱があっても fail-open で Ship まで進む");
+});
+
+test("diff 一覧が取れないとき never-stage 集合は空になり、診断文字列がパスとして渡らない", async () => {
+  const { calls, result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ diff: { files: null } }),
+  });
+  // 診断文字列の文面は言語ごとに違うので、件数だけを見る。
+  assert.equal(
+    result.scope_deviations.length,
+    1,
+    "diff 一覧が無いとき scope_deviations は診断行を 1 件持つ",
+  );
+  const shipCalls = agentCallsOf(calls, "ship");
+  const neverStage = shipCalls[0].prompt.slice(shipCalls[0].prompt.indexOf("never-stage"));
+  assert.ok(
+    neverStage.startsWith("never-stage") && neverStage.includes("[]"),
+    "診断文字列は never-stage 集合に入らない",
+  );
 });
 
 test("Verify の T-NNN 照合が見つからない言明を surface し、verifier への relay prompt に checks JSON が載る", async () => {
