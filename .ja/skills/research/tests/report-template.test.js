@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const LANGS = ["ja", "en"];
@@ -76,5 +77,73 @@ test("SKILL.md が名前で指す verification.md の見出しが実在する", 
       );
       assert.ok(skill.includes(heading), `${lang}: SKILL.md が ${heading} を名前で指す`);
     }
+  }
+});
+
+// Phase 2 が代わりにスクリプトを呼ぶ (ADR: .ja/skills/outcome/SKILL.md の呼び出し形に倣う)。
+// 名指しされたスクリプトが実在せず実行もできなければ、Phase 2 の指示は絵に描いた餅になる。
+function extractPhase(skillText, n) {
+  const re = new RegExp(`^## Phase ${n}[\\s\\S]*?(?=^## Phase ${n + 1})`, "m");
+  return skillText.match(re)?.[0] ?? "";
+}
+
+test("SKILL.md の Phase 2 が名指しするスクリプトが実在し実行して JSON を返す", () => {
+  for (const lang of LANGS) {
+    const skill = read(skills[lang]);
+    const phase2 = extractPhase(skill, 2);
+    assert.ok(phase2.length > 0, `${lang}: Phase 2 セクションが存在する`);
+    const scriptMatch = phase2.match(/\$\{CLAUDE_SKILL_DIR\}\/scripts\/([\w.-]+\.py)/);
+    assert.ok(
+      scriptMatch,
+      `${lang}: Phase 2 が \${CLAUDE_SKILL_DIR}/scripts/ 配下のスクリプトを名指しする`,
+    );
+    const scriptPath = join(dirname(skills[lang]), "scripts", scriptMatch[1]);
+    assert.ok(existsSync(scriptPath), `${lang}: 名指しされたスクリプト ${scriptPath} が実在する`);
+    const result = spawnSync(
+      "python3",
+      [scriptPath, "dummy-slug", join(root, "does-not-exist-dir")],
+      { encoding: "utf8" },
+    );
+    assert.strictEqual(result.status, 0, `${lang}: スクリプトが exit 0 で終了する`);
+    let parsed = null;
+    assert.doesNotThrow(() => {
+      parsed = JSON.parse(result.stdout);
+    }, `${lang}: スクリプトの標準出力が JSON としてパースできる`);
+    assert.ok(parsed && typeof parsed === "object", `${lang}: JSON が object を返す`);
+  }
+});
+
+test("allowed-tools が research の scripts 配下の実行を許可する", () => {
+  for (const lang of LANGS) {
+    const skill = read(skills[lang]);
+    const frontmatter = skill.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? "";
+    const allowedToolsLine = frontmatter.match(/^allowed-tools:\s*(.+)$/m)?.[1] ?? "";
+    assert.ok(
+      /Bash\(\$HOME\/\.claude\/skills\/research\/scripts\/\*\)/.test(allowedToolsLine),
+      `${lang}: allowed-tools が Bash($HOME/.claude/skills/research/scripts/*) を許可する`,
+    );
+  }
+});
+
+const SHARED_ONE_KEYWORDS = {
+  ja: { landing: "References", exclusion: "対象外" },
+  en: { landing: "References", exclusion: "excluded" },
+};
+
+test("SKILL.md の Phase 2 が共有 1 件のヒットを Constraints 引き継ぎ表の対象外と定める", () => {
+  for (const lang of LANGS) {
+    const skill = read(skills[lang]);
+    const phase2 = extractPhase(skill, 2);
+    assert.ok(phase2.length > 0, `${lang}: Phase 2 セクションが存在する`);
+    assert.ok(
+      /shared["']?\s*(:|=|==)?\s*1\b/.test(phase2),
+      `${lang}: Phase 2 が shared 1 件のケースに言及する`,
+    );
+    const { landing, exclusion } = SHARED_ONE_KEYWORDS[lang];
+    assert.ok(
+      phase2.includes(exclusion),
+      `${lang}: Phase 2 が Constraints 引き継ぎ表の対象外である旨を定める`,
+    );
+    assert.ok(phase2.includes(landing), `${lang}: Phase 2 が References を着地先として名指しする`);
   }
 });
