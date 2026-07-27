@@ -119,3 +119,7 @@ daemon/
 daemon.lock
 daemon.status.json
 gh-pr-status-cache.json
+
+# グローバル gitignore の build/ が workflows/build/ をソースごと除外するため打ち消す
+!workflows/build/
+!.ja/workflows/build/
