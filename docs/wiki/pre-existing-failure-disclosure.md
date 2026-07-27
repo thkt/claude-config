@@ -11,10 +11,6 @@ PR の verify でテストが失敗したとき、その PR の変更に起因�
 3. 意図的な gate (env 変数や手動受け入れ待ち) は、gate であることと解除条件を書く
 4. 変更起因の失敗と件数を分けて書く
 
-## 参照コード
-
-- `workflows/build/tests/build.behavior.test.js` の `ADR0085_MANUAL_ACCEPTANCE` gate (env 未設定のとき意図的に fail するテスト)
-
 ## 根拠
 
 - #167 #178 #179 #180 変更起因でない fail を verify 節で切り分ける運用の初出
