@@ -84,7 +84,7 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 1. Present the issue preview. Collect any inline tentative marks into a tentative block. Add no new content, mirror what the body already carries, and omit the block at zero items. Then confirm via AskUserQuestion: "Create this issue?"
 2. Write the body to a temp file, attach labels, and run `gh issue create --title "<title>" --body-file <path>`. Capture the issue URL from its output
 3. If split was approved in Phase 1, suggest running /slice with the published epic number. Do not launch it automatically
-4. For an issue that is not split, suggest the next step. A fix confined to 1-3 files goes to `/fix <number>`; 4 or more files, or a new feature, goes to the build workflow with the number. Launch neither automatically
+4. For an issue that is not split, suggest the next step. A fix confined to 1-3 files goes to `/fix <number>`; 4 or more files, or a new feature, goes to the build workflow with the number. Build stops as no-plan without a `## Plan` section, so an issue that has none gets a plan via `/think`, transferred by this skill, before it is handed over. `/qualify` inspects it before the hand-off. Launch none of them automatically
 
 ### Labels
 
