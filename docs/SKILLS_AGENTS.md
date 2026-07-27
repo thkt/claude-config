@@ -175,6 +175,6 @@ Reason: Claude truncates deep nesting with `head -100`, causing information loss
 
 ## Related
 
-- [COMMANDS.md](./COMMANDS.md) - Command design
+- [COMMANDS.md](./COMMANDS.md) - Commands, workflows, and the build-centered development flow
 - [SKILLS](../rules/conventions/SKILLS.md) - Skill definition format
 - [SUBAGENT](../rules/conventions/SUBAGENT.md) - Sub-agent definition format

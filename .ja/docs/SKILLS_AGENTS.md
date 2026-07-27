@@ -171,6 +171,6 @@ SKILL.md → reference.md (1 階層のみ)
 
 ## 関連
 
-- [COMMANDS.md](./COMMANDS.md). コマンド設計
+- [COMMANDS.md](./COMMANDS.md). コマンドと workflow の関係、build 中心の開発フロー
 - [SKILLS](../rules/conventions/SKILLS.md). Skill 定義書式
 - [SUBAGENT](../rules/conventions/SUBAGENT.md). サブエージェント定義書式
