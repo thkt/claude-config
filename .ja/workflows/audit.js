@@ -456,6 +456,9 @@ const [challenged, verified] = await parallel([
         phase: "Challenge",
         label: "challenge",
         model: "sonnet",
+        // judge 段は難易度軸で xhigh を選ぶ (docs の "the hardest coding and agentic tasks")。
+        // 所要時間は数分で long-horizon の基準には届かないが、finding を退ける判断の質が
+        // false positive を左右するので token でなく精度側に振る。
         effort: "xhigh",
       },
     ),

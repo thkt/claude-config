@@ -225,8 +225,10 @@ if (mode !== "cleanup") {
         label: "challenge",
         schema: VERDICTS_SCHEMA,
         model: "opus",
-        // Opus 5 は high が推奨の出発点で、前世代からの xhigh 持ち越しを docs が否定する。
-        effort: "high",
+        // judge 段は難易度軸で xhigh を選ぶ (docs の "the hardest coding and agentic tasks")。
+        // 所要時間は数分で long-horizon の基準には届かないが、finding を退ける判断の質が
+        // false positive を左右するので token でなく精度側に振る。
+        effort: "xhigh",
       },
     );
     // challenge が落ちたら全 findings を confirmed 扱いで前進する (fail-open)
@@ -305,7 +307,7 @@ if (mode !== "cleanup") {
         label: "rejudge",
         schema: REJUDGE_SCHEMA,
         model: "opus",
-        effort: "high",
+        effort: "xhigh",
       },
     );
     if (rejudged) {
