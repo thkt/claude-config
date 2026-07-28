@@ -8,54 +8,56 @@ argument-hint: "[index path]"
 
 # /stock - REFERENCE_INDEX drift detection and index candidate proposal
 
+Verify each index row and propose index candidates from the unindexed docs. No index rewriting.
+
 ## Input
 
-`$ARGUMENTS` is the repo-relative path of the index file under audit. When omitted, use `docs/REFERENCE_INDEX.md`. The row format (the 3 columns glob/description/path, the meaning of a `-` row, the supported glob subset) is authoritative at ${CLAUDE_SKILL_DIR}/references/reference-index-format.md. Read it once before applying Phase 2 and later.
+The repo-relative path of the index file under audit comes in as `$ARGUMENTS`. Empty means `docs/REFERENCE_INDEX.md`. The row format is authoritative at `${CLAUDE_SKILL_DIR}/references/reference-index-format.md`, which defines the 3 columns glob, description, and path, the meaning of a `-` row, and the supported glob subset. Read it once before applying Phase 2 and later.
 
 ## Phase 1: Run the script
 
-Run `node ${CLAUDE_SKILL_DIR}/scripts/check-index.js <repo root> <index path>`. Pass any path inside the repository (usually `.`) as `<repo root>`, and the index file's absolute or relative path settled in the Input section as `<index path>`. The script matches each index row against the tracked-file list from `git ls-files` and returns JSON on stdout carrying `dangling`/`noMatch`/`unsupported`/`unreferenced`/`size`/`exitCode`.
+Run `node ${CLAUDE_SKILL_DIR}/scripts/check-index.js <repo root> <index path>`. Pass any path inside the repository (usually `.`) as `<repo root>`, and the index file's absolute or relative path settled in Input as `<index path>`. The script matches each index row against the tracked-file list from `git ls-files` and returns JSON on stdout carrying dangling, noMatch, unsupported, unreferenced, size, and exitCode.
 
 ## Phase 2: Present the report
 
 Present the Phase 1 JSON as a table per category. When dangling rows exist, state fixing the index side (correct the path or delete the row) as the priority task.
 
-| Category     | Meaning                                                                                                                                                              | Severity                                        |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| dangling     | The path column's referenced target does not exist                                                                                                                   | Error (the direct cause of a non-zero exitCode) |
-| noMatch      | The glob column matches no tracked file                                                                                                                              | Warning                                         |
-| unsupported  | The glob column falls outside the supported character set (${CLAUDE_SKILL_DIR}/references/reference-index-format.md's Supported glob subset) or contains a bare `**` | Warning                                         |
-| unreferenced | An md under `docs/` not referenced by any row's path column                                                                                                          | Input to Phase 3                                |
-| size         | The index table's line count (surrounding prose is not counted) and whether it exceeds the one-screen threshold (30 lines, ADR-0091)                                 | Warning only when the threshold is exceeded     |
+| Category     | Meaning                                                                                                                                | Severity                                        |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| dangling     | The path column's referenced target does not exist                                                                                     | Error (the direct cause of a non-zero exitCode) |
+| noMatch      | The glob column matches no tracked file                                                                                                | Warning                                         |
+| unsupported  | The glob column falls outside the supported character set (reference-index-format.md § Supported glob subset), or contains a bare `**` | Warning                                         |
+| unreferenced | An md under `docs/` not referenced by any row's path column                                                                            | Input to Phase 3                                |
+| size         | The index table's line count (surrounding prose is not counted) and whether it exceeds the one-screen threshold (30 lines, ADR-0091)   | Warning only when the threshold is exceeded     |
 
 ## Phase 3: Propose candidates
 
-For each docs path in unreferenced, build an index candidate through the steps below.
+For each docs path in unreferenced, build an index candidate through Step 1 to Step 3 in order.
 
-### 3a Infer a candidate glob
+### Step 1: Infer a candidate glob
 
-From the directory name holding the unreferenced doc, infer a source-side directory it likely corresponds to (e.g. `docs/conventions/component-tsx.md` suggests a same-name prefix such as `src/**/*.tsx`). A doc with no corresponding source-side directory (no source directory name matches, or it cuts across multiple domains) is routed to 3c instead.
+From the directory name holding the unreferenced doc, infer a source-side directory it likely corresponds to. For example `docs/conventions/component-tsx.md` gets a same-name prefix such as `src/**/*.tsx`. A doc matching no source directory name, and a doc cutting across multiple domains, are routed to Step 3.
 
-### 3b Rank and cap
+### Step 2: Rank and cap
 
-For each doc that yielded a candidate glob in 3a, use the count of tracked files that glob matches as the rank score (a higher match count means a more concrete correspondence between the doc and the code, ranking it higher). Sort by rank descending and present the top 10 as a candidate table (the 3 columns glob/description/path, matching the row format in ${CLAUDE_SKILL_DIR}/references/reference-index-format.md). Beyond 10, state only the excess count in one line. When the target doc count exceeds 20, confirm the narrowing target (by directory, top N, etc.) via AskUserQuestion before presenting the candidate table.
+A doc that yielded a candidate glob in Step 1 takes the count of tracked files that glob matches as its rank score. A higher match count means a more concrete correspondence between the doc and the code, ranking it higher. Sort by rank descending and present the top 10 as a candidate table. The table carries the 3 columns glob, description, and path, matching the row format in reference-index-format.md. Beyond 10, state only the excess count in one line. When the target doc count exceeds 20, confirm the narrowing target (by directory, top N, etc.) via AskUserQuestion before presenting the candidate table.
 
-### 3c Never propose a `-` row
+### Step 3: Never propose a `-` row
 
-A doc for which 3a found no source-side directory correspondence is excluded from the candidate table. List it separately as "manual-addition recommended" with only the path and the reason no correspondence was found, and never propose a row with `-` written in the glob column. A `-` row requires human judgment outside glob matching per ${CLAUDE_SKILL_DIR}/references/reference-index-format.md, so leave the addition itself to human manual work.
+A doc for which Step 1 found no source-side directory correspondence is excluded from the candidate table. List it separately as manual-addition recommended, carrying only the path and the reason no correspondence was found. Never propose a row with `-` written in the glob column. A `-` row requires human judgment outside glob matching, as reference-index-format.md § Meaning of a `-` row defines, so leave the addition itself to human manual work.
 
 ## Handoff
 
-- Present the candidate table (3b) and the manual-addition-recommended list (3c); the accept/reject decision is made per row by the human
-- This skill never rewrites the index. Adding accepted rows and fixing dangling/noMatch/unsupported stay human work, and validating individual candidates is out of scope, left to `/fix` or direct editing
+- Present the candidate table (Step 2) and the manual-addition-recommended list (Step 3); the accept/reject decision is made per row by the human
+- This skill never rewrites the index. Adding accepted rows and fixing dangling, noMatch, and unsupported stay human work, and validating individual candidates is out of scope, left to `/fix` or direct editing
 
 ## Completion condition
 
-Finish only when all of the following are satisfied. State the reason for any item that cannot be satisfied.
+Do not finish until all are satisfied. State the reason for any item that cannot be satisfied.
 
 | Item                        | Condition                                                                                               |
 | --------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Report                      | All categories dangling/noMatch/unsupported/unreferenced/size are presented                             |
+| Report                      | All categories dangling, noMatch, unsupported, unreferenced, and size are presented                     |
 | Candidate table             | Docs from unreferenced for which a candidate glob was inferred, presented rank-descending, capped at 10 |
 | Manual-addition recommended | Docs for which no candidate glob was inferred, listed with a reason and without a `-` row               |
 | Handoff                     | States explicitly that the accept/reject decision is left to the human's per-row judgment               |
