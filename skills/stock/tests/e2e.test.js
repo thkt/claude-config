@@ -1,0 +1,118 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { spawnSync, execFileSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+const scriptPath = join(root, "skills", "stock", "scripts", "check-index.mjs");
+
+// U-007 (seam unit)。U-002〜U-006 はそれぞれ判定ロジック単体 (check-index.test.js)・
+// argv/git 連携 (check-index.cli.test.js)・glob 判定の code.js との同値性 (glob-parity.test.js)・
+// size/unreferenced (check-index.report.test.js)・SKILL.md からの参照 (skill-contract.test.js)
+// を個別に緑にしてきたが、それらが単一の子プロセス実行で一つに繋がって動くことは
+// まだどのテストも見ていない。ここでは fixture リポジトリを実際に git init し、
+// check-index.mjs を child_process 経由で 1 回実行して、dangling/noMatch/unsupported/
+// unreferenced/size の全区分が仕込んだ件数どおりに返ることを検証する。
+
+function initRepo() {
+  const dir = mkdtempSync(join(tmpdir(), "check-index-e2e-"));
+  execFileSync("git", ["init", "-q"], { cwd: dir });
+  execFileSync("git", ["config", "user.email", "test@example.com"], { cwd: dir });
+  execFileSync("git", ["config", "user.name", "Test"], { cwd: dir });
+  return dir;
+}
+
+function commitAll(dir) {
+  execFileSync("git", ["add", "-A"], { cwd: dir });
+  execFileSync("git", ["commit", "-q", "-m", "fixture"], { cwd: dir });
+}
+
+// execFileSync は非ゼロ終了で例外を投げるため、exit code そのものを見たい T-012 では
+// 使えない。spawnSync は終了コードを status として返すだけで例外を投げないので、
+// 0 / 非ゼロの両方を同じ形で受け取れる。
+function runCli(repoRootArg, indexPath, cwd) {
+  const result = spawnSync("node", [scriptPath, repoRootArg, indexPath], {
+    cwd,
+    encoding: "utf8",
+  });
+  return { status: result.status, json: JSON.parse(result.stdout) };
+}
+
+test("dangling/no-match/unsupported/unreferenced/size を同時に仕込んだ fixture への 1 回の実行で全区分が件数どおり返る", () => {
+  const dir = initRepo();
+  mkdirSync(join(dir, "src"), { recursive: true });
+  mkdirSync(join(dir, "docs"), { recursive: true });
+
+  // dangling 用: glob は tracked file と一致させ noMatch に混ざらないようにし、
+  // path は存在しないファイルを指して dangling だけを単独で発生させる。
+  writeFileSync(join(dir, "src", "a.tsx"), "export const A = () => null;\n");
+  // no-match / unsupported の参照先として実在させる。
+  writeFileSync(join(dir, "docs", "existing.md"), "# existing\n");
+  // どの行からも参照されない docs 配下の md (unreferenced として拾われる想定)。
+  writeFileSync(join(dir, "docs", "orphan.md"), "# orphan\n");
+
+  const header = ["| glob | description | path |", "| --- | --- | --- |"];
+  const dangling = ["| src/a.tsx | dangling 検証 | docs/missing-target.md |"];
+  const noMatch = ["| src/nomatch.foo | no-match 検証 | docs/existing.md |"];
+  const unsupported = ["| src/** | unsupported 検証 (裸の double star) | docs/existing.md |"];
+  // index ファイル自身を tracked docs/*.md として拾わせないための自己参照行。
+  const selfRef = ["| - | index 自己参照 | docs/REFERENCE_INDEX.md |"];
+  // size 警告 (閾値 30 行, ADR-0091) を超えさせるための埋め草行。drift 判定に影響しない
+  // よう glob は `-` に固定する。
+  const padding = Array.from({ length: 30 }, (_, i) => `| - | 埋め草 ${i} | docs/existing.md |`);
+  const table = [...header, ...dangling, ...noMatch, ...unsupported, ...selfRef, ...padding].join(
+    "\n",
+  );
+  const indexPath = join(dir, "docs", "REFERENCE_INDEX.md");
+  writeFileSync(indexPath, table);
+  commitAll(dir);
+
+  const { status, json } = runCli(".", indexPath, dir);
+
+  assert.equal(json.dangling.length, 1);
+  assert.equal(json.dangling[0].path, "docs/missing-target.md");
+  assert.equal(json.noMatch.length, 1);
+  assert.equal(json.noMatch[0].glob, "src/nomatch.foo");
+  assert.equal(json.unsupported.length, 1);
+  assert.equal(json.unsupported[0].glob, "src/**");
+  assert.deepEqual(json.unreferenced, ["docs/orphan.md"]);
+  assert.equal(json.size.lines, table.split("\n").length);
+  assert.equal(json.size.warning, true);
+  assert.notEqual(status, 0);
+  assert.equal(json.exitCode, status);
+});
+
+test("dangling の有無だけを変えた 2 つの fixture で exit code が 0 と非ゼロに分かれる", () => {
+  function buildFixture({ withDangling }) {
+    const dir = initRepo();
+    mkdirSync(join(dir, "src"), { recursive: true });
+    mkdirSync(join(dir, "docs"), { recursive: true });
+    writeFileSync(join(dir, "src", "a.tsx"), "export const A = () => null;\n");
+    if (!withDangling) {
+      writeFileSync(join(dir, "docs", "target.md"), "# target\n");
+    }
+    const indexPath = join(dir, "docs", "REFERENCE_INDEX.md");
+    writeFileSync(
+      indexPath,
+      [
+        "| glob | description | path |",
+        "| --- | --- | --- |",
+        "| src/a.tsx | dangling 有無の切り替え | docs/target.md |",
+      ].join("\n"),
+    );
+    commitAll(dir);
+    return { dir, indexPath };
+  }
+
+  const withDangling = buildFixture({ withDangling: true });
+  const withoutDangling = buildFixture({ withDangling: false });
+
+  const danglingResult = runCli(".", withDangling.indexPath, withDangling.dir);
+  const cleanResult = runCli(".", withoutDangling.indexPath, withoutDangling.dir);
+
+  assert.notEqual(danglingResult.status, 0);
+  assert.equal(cleanResult.status, 0);
+});
