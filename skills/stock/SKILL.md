@@ -10,7 +10,7 @@ argument-hint: "[index path]"
 
 ## Input
 
-`$ARGUMENTS` is the repo-relative path of the index file under audit. When omitted, use `docs/REFERENCE_INDEX.md`. The row format (the 3 columns glob/description/path, the meaning of a `-` row, the supported glob subset) is authoritative at ${CLAUDE_SKILL_DIR}/references/reference-index-format.md. Read it once before reading the judgments below.
+`$ARGUMENTS` is the repo-relative path of the index file under audit. When omitted, use `docs/REFERENCE_INDEX.md`. The row format (the 3 columns glob/description/path, the meaning of a `-` row, the supported glob subset) is authoritative at ${CLAUDE_SKILL_DIR}/references/reference-index-format.md. Read it once before applying Phase 2 and later.
 
 ## Phase 1: Run the script
 
@@ -18,7 +18,7 @@ Run `node ${CLAUDE_SKILL_DIR}/scripts/check-index.js <repo root> <index path>`. 
 
 ## Phase 2: Present the report
 
-Present the Phase 1 JSON as a table per category.
+Present the Phase 1 JSON as a table per category. When dangling rows exist, state fixing the index side (correct the path or delete the row) as the priority task.
 
 | Category     | Meaning                                                                                                                                                              | Severity                                        |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
@@ -28,19 +28,17 @@ Present the Phase 1 JSON as a table per category.
 | unreferenced | An md under `docs/` not referenced by any row's path column                                                                                                          | Input to Phase 3                                |
 | size         | The index table's line count (surrounding prose is not counted) and whether it exceeds the one-screen threshold (30 lines, ADR-0091)                                 | Warning only when the threshold is exceeded     |
 
-When `exitCode` is non-zero, state explicitly that at least one dangling row exists. A dangling row points at a file that does not exist, so present fixing the index side (correct the path or delete the row) as the priority task.
-
 ## Phase 3: Propose candidates
 
 For each docs path in unreferenced, build an index candidate through the steps below.
 
 ### 3a Infer a candidate glob
 
-From the directory name holding the unreferenced doc, infer a source-side directory it likely corresponds to (e.g. `docs/conventions/component-tsx.md` suggests a same-name prefix such as `src/**/*.tsx`). A doc with no corresponding source-side directory (no source directory name matches, or it cuts across multiple domains) is routed to 3b instead.
+From the directory name holding the unreferenced doc, infer a source-side directory it likely corresponds to (e.g. `docs/conventions/component-tsx.md` suggests a same-name prefix such as `src/**/*.tsx`). A doc with no corresponding source-side directory (no source directory name matches, or it cuts across multiple domains) is routed to 3c instead.
 
 ### 3b Rank and cap
 
-For each doc that yielded a candidate glob in 3a, use the count of tracked files that glob matches as the rank score (a higher match count means a more concrete correspondence between the doc and the code, ranking it higher). Sort by rank descending and present the top 10 as a candidate table (the 3 columns glob/description/path, matching the row format in ${CLAUDE_SKILL_DIR}/references/reference-index-format.md). Beyond 10, state only the excess count in one line and make no individual proposal for the 11th and beyond. When the target doc count exceeds 20, confirm the narrowing target (by directory, top N, etc.) via AskUserQuestion before presenting the candidate table.
+For each doc that yielded a candidate glob in 3a, use the count of tracked files that glob matches as the rank score (a higher match count means a more concrete correspondence between the doc and the code, ranking it higher). Sort by rank descending and present the top 10 as a candidate table (the 3 columns glob/description/path, matching the row format in ${CLAUDE_SKILL_DIR}/references/reference-index-format.md). Beyond 10, state only the excess count in one line. When the target doc count exceeds 20, confirm the narrowing target (by directory, top N, etc.) via AskUserQuestion before presenting the candidate table.
 
 ### 3c Never propose a `-` row
 
@@ -48,9 +46,8 @@ A doc for which 3a found no source-side directory correspondence is excluded fro
 
 ## Handoff
 
-- Present the candidate table (3b) and the manual-addition-recommended list (3c) to the human; the accept/reject decision is made per row by the human. An accepted row is reflected into `docs/REFERENCE_INDEX.md` by the human as an addition
-- dangling/noMatch/unsupported are presented only as fix tasks on the index side; this skill itself never rewrites the index
-- Validating individual candidates and actually adding a `-` row are out of scope. Out-of-scope work is left to `/fix` or direct editing
+- Present the candidate table (3b) and the manual-addition-recommended list (3c); the accept/reject decision is made per row by the human
+- This skill never rewrites the index. Adding accepted rows and fixing dangling/noMatch/unsupported stay human work, and validating individual candidates is out of scope, left to `/fix` or direct editing
 
 ## Completion condition
 

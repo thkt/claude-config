@@ -1,6 +1,6 @@
 # REFERENCE_INDEX.md フォーマット仕様
 
-規約パス `docs/REFERENCE_INDEX.md` が持つべき行形式の正本。`workflows/code.js` の `parseReferenceIndexRows`/`SUPPORTED_GLOB_CHARS`/`BARE_DOUBLE_STAR` が読み取る実装挙動を正として定義する (ADR-0091)。#281 (scribe の index 行追記) と #280 (backfill/drift 検出) はこの文書を行形式の参照先にする。
+規約パス `docs/REFERENCE_INDEX.md` が持つべき行形式の正本。`workflows/code.js` の `parseReferenceIndexRows`/`SUPPORTED_GLOB_CHARS`/`BARE_DOUBLE_STAR` が読み取る実装挙動を正として定義する (ADR-0091)。
 
 ## 行形式
 
@@ -59,4 +59,4 @@
 
 ## 見張り基準
 
-インデックスが 1 画面を超えたら注入過多の兆候として見張る (ADR-0091)。行数の具体的な閾値と機械検出は #280 が担う。
+インデックスが 1 画面を超えたら注入過多の兆候として見張る (ADR-0091)。行数の閾値と機械検出は stock skill の check-index.js が担う。

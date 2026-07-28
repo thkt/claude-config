@@ -10,7 +10,7 @@ argument-hint: "[index path]"
 
 ## 入力
 
-`$ARGUMENTS` は監査対象の index ファイルのリポジトリ相対パス。省略時は `docs/REFERENCE_INDEX.md` とする。行フォーマット (glob/description/path の 3 列、`-` 行の意味、対応 glob サブセット) の正は ${CLAUDE_SKILL_DIR}/references/reference-index-format.md。判定を読む前に一読する。
+`$ARGUMENTS` は監査対象の index ファイルのリポジトリ相対パス。省略時は `docs/REFERENCE_INDEX.md` とする。行フォーマット (glob/description/path の 3 列、`-` 行の意味、対応 glob サブセット) の正は ${CLAUDE_SKILL_DIR}/references/reference-index-format.md。Phase 2 以降を適用する前に一読する。
 
 ## Phase 1: script 実行
 
@@ -18,7 +18,7 @@ argument-hint: "[index path]"
 
 ## Phase 2: レポート提示
 
-Phase 1 の JSON を区分ごとの表として提示する。
+Phase 1 の JSON を区分ごとの表として提示する。dangling があるときは、index 側の修正 (path 訂正または行削除) を優先課題として明記する。
 
 | 区分         | 意味                                                                                                                                 | 深刻度                             |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
@@ -28,19 +28,17 @@ Phase 1 の JSON を区分ごとの表として提示する。
 | unreferenced | `docs/` 配下の md で、index のどの行の path 列からも参照されていない                                                                 | Phase 3 の入力                     |
 | size         | index 表の行数 (前後の散文は数えない) と 1 画面閾値 (30 行、ADR-0091) 超過の有無                                                     | 閾値超過時のみ警告                 |
 
-`exitCode` が非ゼロなら dangling が 1 件以上ある旨を明記する。dangling は存在しないファイルを指す行なので、index 側の修正 (path 訂正または行削除) を優先課題として提示する。
-
 ## Phase 3: 候補提案
 
 unreferenced の各 docs パスについて、索引化候補を以下の手順で作る。
 
 ### 3a 候補 glob の推測
 
-unreferenced の doc が置かれたディレクトリ名から、対応しそうなソース側ディレクトリ (例 `docs/conventions/component-tsx.md` なら `src/**/*.tsx` のような同名接頭辞) を推測する。対応するソース側ディレクトリが見つからない doc (どのソースディレクトリ名とも対応しない、複数ドメインを横断する等) は 3b へ回す。
+unreferenced の doc が置かれたディレクトリ名から、対応しそうなソース側ディレクトリ (例 `docs/conventions/component-tsx.md` なら `src/**/*.tsx` のような同名接頭辞) を推測する。対応するソース側ディレクトリが見つからない doc (どのソースディレクトリ名とも対応しない、複数ドメインを横断する等) は 3c へ回す。
 
 ### 3b ランク付けと上限
 
-3a で候補 glob を得られた doc について、その glob が一致する tracked file 数を rank スコアとする (一致数が多いほど、その doc とソースコードの対応が具体的で上位)。rank 降順で並べ、上位 10 件までを候補表 (glob/description/path の 3 列、${CLAUDE_SKILL_DIR}/references/reference-index-format.md の行形式に合わせる) として提示する。10 件を超える場合は、超過件数のみを一行で示し、11 件目以降の個別提案はしない。対象 doc 数が 20 件を超える場合は、候補表を出す前に AskUserQuestion で絞り込み対象 (ディレクトリ単位、上位 N 件など) を確認する。
+3a で候補 glob を得られた doc について、その glob が一致する tracked file 数を rank スコアとする (一致数が多いほど、その doc とソースコードの対応が具体的で上位)。rank 降順で並べ、上位 10 件までを候補表 (glob/description/path の 3 列、${CLAUDE_SKILL_DIR}/references/reference-index-format.md の行形式に合わせる) として提示する。10 件を超えた分は超過件数のみを 1 行で示す。対象 doc 数が 20 件を超える場合は、候補表を出す前に AskUserQuestion で絞り込み対象 (ディレクトリ単位、上位 N 件など) を確認する。
 
 ### 3c `-` 行は提案しない
 
@@ -48,9 +46,8 @@ unreferenced の doc が置かれたディレクトリ名から、対応しそ�
 
 ## 引き継ぎ
 
-- 候補表 (3b) と手動追記推奨リスト (3c) を人間に提示し、採否は行単位で人間が決める。採用行は `docs/REFERENCE_INDEX.md` への追記として人間が反映する
-- dangling/noMatch/unsupported は index 側の修正課題として提示するのみで、本 skill 自身は index を書き換えない
-- 個々の候補の妥当性検証や `-` 行の実際の追記は範囲外。範囲外の作業は `/fix` や直接編集に委ねる
+- 候補表 (3b) と手動追記推奨リスト (3c) を提示し、採否は行単位で人間が決める
+- 本 skill は index を書き換えない。採用行の追記と dangling/noMatch/unsupported の修正は人間の作業に残し、個々の候補の妥当性検証は範囲外として `/fix` や直接編集に委ねる
 
 ## 完了条件
 
