@@ -279,7 +279,7 @@ const parseReferenceIndexRows = (table) => {
   return rows;
 };
 
-// `**/` also matches zero directory levels; `*` does not cross `/` (U-002, issue #270).
+// `**/` also matches zero directory levels; `*` does not cross `/`.
 const globToRegExp = (glob) => {
   const body = glob
     .split(/(\*\*\/|\*)/)
@@ -334,7 +334,7 @@ const referenceIndexCandidates = referenceIndexRows.filter((row) => row.glob ===
 
 // Injected only into steps that write implementation code (direct implementation / Green).
 // The Red step writes only tests, so it is excluded. The order is generic (candidates)
-// first, specific (read orders) after (issue #270 AC). Combined with the "later line wins"
+// first, specific (read orders) after. Combined with the "later line wins"
 // rule, a mandatory read order matched by glob is never buried under discretionary
 // candidate rows.
 const referenceIndexCtx = (unit) => {

@@ -1,9 +1,9 @@
-// U-001 (Issue #270): 規約インデックス (docs/reference-index.md) を unit ループ前に reader agent
-// 1 体が読み、script が表を glob 照合して実装 step の prompt に注入する。ADR-0091 のフラット
-// インデックス + glob 照合を workflows/code.js の referenceModuleCtx 節 (ctx 追補形) に倣って実装する。
-// contract: 注入ブロックは delimiter を持ち、インデックス本文が data であり指示ではない旨と、
-// 矛盾時は後の行が勝つ規則を明記する。glob 精度 (**, * の / 境界など) は U-002 の対象なので、
-// ここでは完全一致名だけの単純な glob 行で最小限を検証する。
+// 規約インデックス (docs/reference-index.md) を unit ループ前に reader agent 1 体が読み、
+// script が表を glob 照合して実装 step の prompt に注入する。ADR-0091 のフラットインデックス +
+// glob 照合を workflows/code.js の referenceModuleCtx 節 (ctx 追補形) に倣って実装する。
+// 注入ブロックは delimiter を持ち、インデックス本文が data であり指示ではない旨と、
+// 矛盾時は後の行が勝つ規則を明記する。glob 精度 (**, * の / 境界など) は後段の照合テスト群で
+// 検証するので、ここでは完全一致名だけの単純な glob 行で最小限を検証する。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -13,7 +13,7 @@ import { runWorkflow } from "../../_lib/run-workflow.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const codeJs = join(here, "..", "..", "code.js");
 
-// インデックス行は「対象 glob、1 行説明、リファレンスパス」の表 (issue #270 Plan)。
+// インデックス行は「対象 glob、1 行説明、リファレンスパス」の表。
 // sample.js に一致する glob 行 1 本と、glob 無し (常に判断候補として提示される) 行 1 本。
 const INDEX_TABLE =
   "| glob | description | path |\n" +
@@ -169,7 +169,7 @@ test("glob の無い行は説明文とパスが判断候補として提示され
 });
 
 test("注入順は汎用 (判断候補) が先、具体 (読了命令) が後になる", async () => {
-  // 「後の行を優先する」規則と組むと、後置された読了命令が判断候補より優先される (issue #270 AC)。
+  // 「後の行を優先する」規則と組むと、後置された読了命令が判断候補より優先される。
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: implPlan(["sample.js"]), repo: "" },
     stubs: { agent: stubWith(foundIndex) },
@@ -183,7 +183,7 @@ test("注入順は汎用 (判断候補) が先、具体 (読了命令) が後に
   assert.ok(candidateAt < mandatoryAt, "判断候補 (汎用) が読了命令 (具体) より前に置かれる");
 });
 
-// U-002 (Issue #270): U-001 は完全一致名だけの最小実装だったので、`**/` と `*` を持つ実用的な
+// 完全一致名だけでは `**/` と `*` を持つ実用的な
 // glob 行が実運用のファイルパスに照合できない。ここでは glob サブセット (`**/` はゼロ階層にも
 // 一致、`*` は `/` を跨がない) の照合規則と、両辺の先頭 `./` `/` 正規化、未対応メタ文字を含む行が
 // 静かに無視されず anomaly として記録されることを検証する。
@@ -330,7 +330,7 @@ test("`/` が続かない裸の `**` を含む行は照合対象から外れ ano
   );
 });
 
-// U-005 (Issue #270): 通し実行の連結検証。U-001〜U-004 はそれぞれ単体では緑でも、reader が
+// 通し実行の連結検証。各機能は単体では緑でも、reader が
 // 複数 unit を跨いで正しく 1 回だけ呼ばれるか、anomaly の shape が全 push サイトで揃っているかは
 // 未検証だった。ここでは 2 unit plan を実 runWorkflow で通し、reader 呼び出し回数と anomaly の
 // 構造的一貫性を検証する。

@@ -274,7 +274,7 @@ const parseReferenceIndexRows = (table) => {
   return rows;
 };
 
-// `**/` はゼロ階層にも一致し、`*` は `/` を跨がない (U-002, issue #270)。
+// `**/` はゼロ階層にも一致し、`*` は `/` を跨がない。
 const globToRegExp = (glob) => {
   const body = glob
     .split(/(\*\*\/|\*)/)
@@ -324,7 +324,7 @@ const REF_INDEX_END = "---- reference-index end ----";
 const referenceIndexCandidates = referenceIndexRows.filter((row) => row.glob === "-");
 
 // 実装コードを書く step (直接実装 / Green) にだけ注入する。Red step はテストしか書かないので
-// 対象外。並びは汎用 (判断候補) が先、具体 (読了命令) が後 (issue #270 AC)。「後の行を優先する」
+// 対象外。並びは汎用 (判断候補) が先、具体 (読了命令) が後。「後の行を優先する」
 // 規則と合わせ、glob 一致した必須の読了命令が任意判断の候補行に埋もれない。
 const referenceIndexCtx = (unit) => {
   if (!referenceIndexRows.length) return "";

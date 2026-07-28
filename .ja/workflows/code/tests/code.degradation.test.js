@@ -47,7 +47,7 @@ test("red agent が null を返す時、stopped が red-failed の返り値に w
   assert.equal(typeof result.why, "string", "why は理由を伝える文字列");
 });
 
-// U-003: reader agent (label: reference-index, ADR-0091) の例外や、読めた表の部分解析失敗で
+// reader agent (label: reference-index, ADR-0091) の例外や、読めた表の部分解析失敗で
 // run 全体を止めない。WORKFLOWS.md § Degradation recording の要求どおり、損失は粒度付きで
 // 残す。契約: anomalies の要素形 {unit, kind, notes} は変えず、run 級 (特定 unit に属さない)
 // anomaly は unit に固定値 "run" を入れる。tests が空の 1 unit (直接実装 1 段) を使い、
