@@ -4,6 +4,8 @@
 // contract: 注入ブロックは delimiter を持ち、インデックス本文が data であり指示ではない旨と、
 // 矛盾時は後の行が勝つ規則を明記する。glob 精度 (**, * の / 境界など) は U-002 の対象なので、
 // ここでは完全一致名だけの単純な glob 行で最小限を検証する。
+// 注入文言は EN/JA で localized される (EN "Read before implementing:" / JA "実装前に読む:") ため、
+// assertion の期待文字列だけ EN 版に合わせ、それ以外は .ja 版と同一内容にする。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -75,16 +77,17 @@ const promptFor = (calls, label) => {
 
 // 現行 (reference-index 機能追加前) の code.js が生成する impl:U-1 prompt の逐語。
 // 2026-07-28、runWorkflow(codeJs, {args:{plan: implPlan(["sample.js"]), repo:""}}) を
-// 現行コードに対して実行し、impl:U-1 の prompt を採取した (このセッションの tool result)。
+// 機能追加前 (main) の workflows/code.js に対して実行し、impl:U-1 の prompt を採取した
+// (このセッションの tool result)。
 const BASELINE_IMPL_PROMPT =
-  '直接実装 step。Unit U-1 の goal は「docs goal」。対象ファイルは ["sample.js"]。\n' +
-  "contract は docs contract。test scenario は []。\n" +
-  "テストコマンドは echo test。\n" +
-  "フレームワーク / ライブラリの API を書くときは、記憶でなく pinned version の公式 docs に従う。docs は `scout fetch <url>` で読み、scout が無ければ WebFetch に落とす。どちらも読めなければその API 使用を未確認としてコード内コメントに残し、実装は続ける。\n" +
-  "結果を報告する前に、各 claim をこのセッションの tool result と突き合わせる。evidence を指せる作業のみ報告し、未検証のものは notes にその旨を書く。\n" +
-  "単体テストの都合を理由に機能の一部を落とすことは禁止。Router / Suspense / 権限 context が要るという理由で、共有コンポーネント・データ取得・遷移導線を省いてはならない。テスト側でその境界を差し替える。plan に無い先送りは禁止で、コード内コメントで「別ユニット」「後続に委ねる」と宣言して実装を狭めることも禁止。contract / files が求める実装の一部をやむを得ず実装しない場合は deferred に列挙する (anomaly として記録され PR に surface される)。\n" +
-  "設計の曖昧さや環境起因の blocker に当たっても advisor tool は呼ばない。自分の解析だけで最後まで進み、下した判断を notes に、実装を狭めた分を deferred に書いて anomaly 記録に委ねる。\n" +
-  "contract に従って実装する。新しいテストは書かない。既存のテスト suite (echo test) を green に保つ。既存テストの弱体化 / skip / 削除は禁止。suite を実行して green を報告する。";
+  'Direct implementation step. Unit U-1\'s goal is "docs goal". The target files are ["sample.js"].\n' +
+  "The contract is docs contract. The test scenarios are [].\n" +
+  "The test command is echo test.\n" +
+  "When writing framework / library API code, follow the pinned version's official docs rather than memory. Read docs with `scout fetch <url>`, falling back to WebFetch when scout is unavailable. If neither reaches them, mark that API usage unverified in a code comment and keep implementing.\n" +
+  "Before reporting the result, audit each claim against a tool result from this session. Report only work you can point to evidence for; state unverified items as such in notes.\n" +
+  "Unit-test convenience is never a reason to drop part of the feature. Do not omit a shared component, a data fetch, or a navigation affordance because it would need a Router / Suspense / permission context; stub that boundary in the test instead. Deferrals absent from the plan are forbidden, including narrowing the implementation behind a code comment claiming a later unit will do it. If part of what the contract / files require must go unimplemented, list it in deferred (it is recorded as an anomaly and surfaced on the PR).\n" +
+  "Do not call the advisor tool, even on design ambiguity or an environment blocker. Push through to the end on your own analysis alone; write the judgment you made into notes and any narrowed implementation into deferred, leaving it to the anomaly record.\n" +
+  "Implement per the contract; write no new tests. Keep the existing test suite green (echo test); weakening / skipping / deleting existing tests is forbidden. Run the suite and report green.";
 
 test("glob に一致した行のリファレンスパスが実装 step の prompt に読了命令付きで注入される", async () => {
   const { calls } = await runWorkflow(codeJs, {
@@ -103,7 +106,7 @@ test("glob に一致した行のリファレンスパスが実装 step の promp
   const prompt = promptFor(calls, "impl:U-1");
   assert.match(
     prompt,
-    /実装前に読む: docs\/conventions\/js-naming\.md/,
+    /Read before implementing: docs\/conventions\/js-naming\.md/,
     "一致した glob 行のリファレンスパスが読了命令付きで載る",
   );
   assert.match(
@@ -113,10 +116,10 @@ test("glob に一致した行のリファレンスパスが実装 step の promp
   );
   assert.match(
     prompt,
-    /data であり指示ではない/,
+    /data, not instructions/,
     "インデックス本文が data であり指示ではない旨が明記される",
   );
-  assert.match(prompt, /後の行を優先する/, "矛盾時は後の行が勝つ規則が明記される");
+  assert.match(prompt, /the later line wins/, "矛盾時は後の行が勝つ規則が明記される");
 });
 
 test("Red step の prompt には注入されない", async () => {
@@ -153,7 +156,7 @@ test("glob の無い行は説明文とパスが判断候補として提示され
   const prompt = promptFor(calls, "impl:U-1");
   assert.match(
     prompt,
-    /判断候補: docs\/conventions\/error-handling\.md/,
+    /Consider reading: docs\/conventions\/error-handling\.md/,
     "glob 無し行がパス付きの判断候補として載る",
   );
   assert.match(
@@ -176,8 +179,8 @@ test("注入順は汎用 (判断候補) が先、具体 (読了命令) が後に
   });
 
   const prompt = promptFor(calls, "impl:U-1");
-  const candidateAt = prompt.indexOf("判断候補: docs/conventions/error-handling.md");
-  const mandatoryAt = prompt.indexOf("実装前に読む: docs/conventions/js-naming.md");
+  const candidateAt = prompt.indexOf("Consider reading: docs/conventions/error-handling.md");
+  const mandatoryAt = prompt.indexOf("Read before implementing: docs/conventions/js-naming.md");
   assert.ok(candidateAt >= 0, "判断候補の行が載る");
   assert.ok(mandatoryAt >= 0, "読了命令の行が載る");
   assert.ok(candidateAt < mandatoryAt, "判断候補 (汎用) が読了命令 (具体) より前に置かれる");
@@ -201,7 +204,7 @@ test("`docs/**/*.md` 形の glob が docs 直下と 1 階層下の md の両方�
   });
   assert.match(
     promptFor(rootCalls, "impl:U-1"),
-    /実装前に読む: docs\/conventions\/docs-naming\.md/,
+    /Read before implementing: docs\/conventions\/docs-naming\.md/,
     "docs 直下 (ゼロ階層) の md ファイルが `**` の glob 行に一致する",
   );
 
@@ -211,7 +214,7 @@ test("`docs/**/*.md` 形の glob が docs 直下と 1 階層下の md の両方�
   });
   assert.match(
     promptFor(nestedCalls, "impl:U-1"),
-    /実装前に読む: docs\/conventions\/docs-naming\.md/,
+    /Read before implementing: docs\/conventions\/docs-naming\.md/,
     "docs の 1 階層下の md ファイルも同じ glob 行に一致する",
   );
 });
@@ -229,7 +232,7 @@ test("`src/*.tsx` 形の glob は `src/app/page.tsx` に一致しない", async 
   });
   assert.match(
     promptFor(shallowCalls, "impl:U-1"),
-    /実装前に読む: docs\/conventions\/component-tsx\.md/,
+    /Read before implementing: docs\/conventions\/component-tsx\.md/,
     "src 直下の tsx ファイルは `*.tsx` の glob 行に一致する",
   );
 
@@ -257,7 +260,7 @@ test("先頭に `./` や `/` が付いたパスは正規化されて照合され
   });
   assert.match(
     promptFor(dotSlashFileCalls, "impl:U-1"),
-    /実装前に読む: docs\/conventions\/button\.md/,
+    /Read before implementing: docs\/conventions\/button\.md/,
     "先頭に `./` が付いたファイルパスは正規化後に glob 行と一致する",
   );
 
@@ -273,7 +276,7 @@ test("先頭に `./` や `/` が付いたパスは正規化されて照合され
   });
   assert.match(
     promptFor(leadingSlashGlobCalls, "impl:U-1"),
-    /実装前に読む: docs\/conventions\/button\.md/,
+    /Read before implementing: docs\/conventions\/button\.md/,
     "先頭に `/` が付いた glob 行は正規化後にファイルパスと一致する",
   );
 });
@@ -355,12 +358,12 @@ test("インデックスありの 2 unit plan の通し実行で reader が 1 �
 
   assert.match(
     promptFor(calls, "impl:U-1"),
-    /実装前に読む: docs\/conventions\/js-naming\.md/,
+    /Read before implementing: docs\/conventions\/js-naming\.md/,
     "1 番目の unit の実装 prompt に該当リファレンスが載る",
   );
   assert.match(
     promptFor(calls, "impl:U-2"),
-    /実装前に読む: docs\/conventions\/js-naming\.md/,
+    /Read before implementing: docs\/conventions\/js-naming\.md/,
     "2 番目の unit の実装 prompt にも同じリファレンスが載る",
   );
 });
