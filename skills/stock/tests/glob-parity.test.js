@@ -1,5 +1,5 @@
-// U-004: skills/stock/scripts/check-index.mjs の glob 判定 (checkIndex) と
-// workflows/code.js の reference-index 節の glob 判定は、check-index.mjs の先頭コメント
+// U-004: skills/stock/scripts/check-index.js の glob 判定 (checkIndex) と
+// workflows/code.js の reference-index 節の glob 判定は、check-index.js の先頭コメント
 // ("The glob rule follows the same rule as workflows/code.js's reference-index section")
 // が宣言する通り、同じ規則を 2 箇所に複製したものである。複製は改修時にずれ得るので、
 // 共通 fixture 表 (glob, path の組) を両者に同じ入力として与え、判定結果が常に一致することを
@@ -18,7 +18,7 @@ import { runWorkflow } from "../../../workflows/_lib/run-workflow.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..", "..");
-const scriptPath = join(root, "skills", "stock", "scripts", "check-index.mjs");
+const scriptPath = join(root, "skills", "stock", "scripts", "check-index.js");
 const codeJs = join(root, "workflows", "code.js");
 
 // リファレンス先パスは判定結果を運ぶだけなので、全行で固定の 1 パスにする。

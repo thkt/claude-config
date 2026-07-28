@@ -10,23 +10,23 @@ argument-hint: "[index path]"
 
 ## 入力
 
-`$ARGUMENTS` は監査対象の index ファイルのリポジトリ相対パス。省略時は `docs/REFERENCE_INDEX.md` とする。行フォーマット (glob/description/path の 3 列、`-` 行の意味、対応 glob サブセット) の正は `docs/REFERENCE_INDEX_FORMAT.md`。判定を読む前に一読する。
+`$ARGUMENTS` は監査対象の index ファイルのリポジトリ相対パス。省略時は `docs/REFERENCE_INDEX.md` とする。行フォーマット (glob/description/path の 3 列、`-` 行の意味、対応 glob サブセット) の正は ${CLAUDE_SKILL_DIR}/references/reference-index-format.md。判定を読む前に一読する。
 
 ## Phase 1: script 実行
 
-`node ${CLAUDE_SKILL_DIR}/scripts/check-index.mjs <repo root> <index path>` を実行する。`<repo root>` にはリポジトリ内の任意のパス (通常は `.`) を、`<index path>` には入力節で確定した index ファイルの絶対または相対パスを渡す。script は `git ls-files` 由来の tracked file 一覧と index の各行を照合し、`dangling`/`noMatch`/`unsupported`/`unreferenced`/`size`/`exitCode` を持つ JSON を標準出力に返す。
+`node ${CLAUDE_SKILL_DIR}/scripts/check-index.js <repo root> <index path>` を実行する。`<repo root>` にはリポジトリ内の任意のパス (通常は `.`) を、`<index path>` には入力節で確定した index ファイルの絶対または相対パスを渡す。script は `git ls-files` 由来の tracked file 一覧と index の各行を照合し、`dangling`/`noMatch`/`unsupported`/`unreferenced`/`size`/`exitCode` を持つ JSON を標準出力に返す。
 
 ## Phase 2: レポート提示
 
 Phase 1 の JSON を区分ごとの表として提示する。
 
-| 区分         | 意味                                                                                                         | 深刻度                             |
-| ------------ | ------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
-| dangling     | path 列の参照先が存在しない                                                                                  | エラー (exitCode 非ゼロの直接要因) |
-| noMatch      | glob 列がどの tracked file にも一致しない                                                                    | 警告                               |
-| unsupported  | glob 列が対応文字集合 (`docs/REFERENCE_INDEX_FORMAT.md` の Supported glob subset) 外、または裸の `**` を含む | 警告                               |
-| unreferenced | `docs/` 配下の md で、index のどの行の path 列からも参照されていない                                         | Phase 3 の入力                     |
-| size         | index 表の行数 (前後の散文は数えない) と 1 画面閾値 (30 行、ADR-0091) 超過の有無                             | 閾値超過時のみ警告                 |
+| 区分         | 意味                                                                                                                                 | 深刻度                             |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
+| dangling     | path 列の参照先が存在しない                                                                                                          | エラー (exitCode 非ゼロの直接要因) |
+| noMatch      | glob 列がどの tracked file にも一致しない                                                                                            | 警告                               |
+| unsupported  | glob 列が対応文字集合 (${CLAUDE_SKILL_DIR}/references/reference-index-format.md の Supported glob subset) 外、または裸の `**` を含む | 警告                               |
+| unreferenced | `docs/` 配下の md で、index のどの行の path 列からも参照されていない                                                                 | Phase 3 の入力                     |
+| size         | index 表の行数 (前後の散文は数えない) と 1 画面閾値 (30 行、ADR-0091) 超過の有無                                                     | 閾値超過時のみ警告                 |
 
 `exitCode` が非ゼロなら dangling が 1 件以上ある旨を明記する。dangling は存在しないファイルを指す行なので、index 側の修正 (path 訂正または行削除) を優先課題として提示する。
 
@@ -40,11 +40,11 @@ unreferenced の doc が置かれたディレクトリ名から、対応しそ�
 
 ### 3b ランク付けと上限
 
-3a で候補 glob を得られた doc について、その glob が一致する tracked file 数を rank スコアとする (一致数が多いほど、その doc とソースコードの対応が具体的で上位)。rank 降順で並べ、上位 10 件までを候補表 (glob/description/path の 3 列、`docs/REFERENCE_INDEX_FORMAT.md` の行形式に合わせる) として提示する。10 件を超える場合は、超過件数のみを一行で示し、11 件目以降の個別提案はしない。対象 doc 数が 20 件を超える場合は、候補表を出す前に AskUserQuestion で絞り込み対象 (ディレクトリ単位、上位 N 件など) を確認する。
+3a で候補 glob を得られた doc について、その glob が一致する tracked file 数を rank スコアとする (一致数が多いほど、その doc とソースコードの対応が具体的で上位)。rank 降順で並べ、上位 10 件までを候補表 (glob/description/path の 3 列、${CLAUDE_SKILL_DIR}/references/reference-index-format.md の行形式に合わせる) として提示する。10 件を超える場合は、超過件数のみを一行で示し、11 件目以降の個別提案はしない。対象 doc 数が 20 件を超える場合は、候補表を出す前に AskUserQuestion で絞り込み対象 (ディレクトリ単位、上位 N 件など) を確認する。
 
 ### 3c `-` 行は提案しない
 
-3a でソース側ディレクトリ対応が見つからなかった doc は、候補表に含めない。「手動追記推奨」として path と対応が見つからなかった理由だけを別リストに列挙し、glob 列に `-` を書いた行は提案しない。`-` 行は `docs/REFERENCE_INDEX_FORMAT.md` が定めるとおり glob 照合を離れた人間の判断を必要とするため、追記そのものを人間の手作業に残す。
+3a でソース側ディレクトリ対応が見つからなかった doc は、候補表に含めない。「手動追記推奨」として path と対応が見つからなかった理由だけを別リストに列挙し、glob 列に `-` を書いた行は提案しない。`-` 行は ${CLAUDE_SKILL_DIR}/references/reference-index-format.md が定めるとおり glob 照合を離れた人間の判断を必要とするため、追記そのものを人間の手作業に残す。
 
 ## 引き継ぎ
 

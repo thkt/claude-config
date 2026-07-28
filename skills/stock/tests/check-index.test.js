@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const scriptPath = join(root, "skills", "stock", "scripts", "check-index.mjs");
+const scriptPath = join(root, "skills", "stock", "scripts", "check-index.js");
 
 // U-002 の型付き判定 (dangling-path/no-match/unsupported/drift 除外) を検証する。
 // checkIndex({ table, exists, trackedFiles }) は workflows/code.js の reference-index 節が

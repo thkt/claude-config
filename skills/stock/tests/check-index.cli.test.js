@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { initRepo, commitAll } from "./_git-fixture.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const scriptPath = join(root, "skills", "stock", "scripts", "check-index.mjs");
+const scriptPath = join(root, "skills", "stock", "scripts", "check-index.js");
 
 // U-003 の argv/git 連携を検証する。U-002 (check-index.test.js) は exists/trackedFiles を
 // 注入した固定 fixture で判定ロジックだけを見る一方、ここでは実 git リポジトリを立てて CLI

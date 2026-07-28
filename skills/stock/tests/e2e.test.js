@@ -7,14 +7,14 @@ import { fileURLToPath } from "node:url";
 import { initRepo, commitAll } from "./_git-fixture.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const scriptPath = join(root, "skills", "stock", "scripts", "check-index.mjs");
+const scriptPath = join(root, "skills", "stock", "scripts", "check-index.js");
 
 // U-007 (seam unit)。U-002〜U-006 はそれぞれ判定ロジック単体 (check-index.test.js)・
 // argv/git 連携 (check-index.cli.test.js)・glob 判定の code.js との同値性 (glob-parity.test.js)・
 // size/unreferenced (check-index.report.test.js)・SKILL.md からの参照 (skill-contract.test.js)
 // を個別に緑にしてきたが、それらが単一の子プロセス実行で一つに繋がって動くことは
 // まだどのテストも見ていない。ここでは fixture リポジトリを実際に git init し、
-// check-index.mjs を child_process 経由で 1 回実行して、dangling/noMatch/unsupported/
+// check-index.js を child_process 経由で 1 回実行して、dangling/noMatch/unsupported/
 // unreferenced/size の全区分が仕込んだ件数どおりに返ることを検証する。
 
 // execFileSync は非ゼロ終了で例外を投げるため、exit code そのものを見たい T-012 では
