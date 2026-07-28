@@ -26,7 +26,14 @@ const normalizeMatchPath = (p) => String(p).replace(/^(?:\.\/|\/)+/, "");
 const SUPPORTED_GLOB_CHARS = /^[\w.\-/*]*$/;
 const BARE_DOUBLE_STAR = /\*\*(?!\/)/;
 
+// 「1 画面」の行数を、use-context-reviewer-readability スキルが既に定義する関数行数の
+// 閾値 (≤30、根拠: 1 画面の可読性) から流用する (ADR-0091)。
+const SIZE_THRESHOLD_LINES = 30;
+
 export function checkIndex({ table, exists, trackedFiles }) {
+  const lineCount = table.split("\n").length;
+  const size = { lines: lineCount, warning: lineCount > SIZE_THRESHOLD_LINES };
+
   const dataLines = table
     .split("\n")
     .map((line) => line.trim())
@@ -56,10 +63,21 @@ export function checkIndex({ table, exists, trackedFiles }) {
     return !trackedFiles.some((file) => matcher.test(normalizeMatchPath(file)));
   });
 
+  // path 列は `-` 行を含む全行が実パスを持つ (glob 列とは異なり `-` を許さない、
+  // REFERENCE_INDEX_FORMAT.md)。参照済み判定はこの全行の path 集合と比較する。
+  const referencedPaths = new Set(rows.map((row) => normalizeMatchPath(row.path)));
+  const unreferenced = trackedFiles.filter(
+    (file) =>
+      /^docs\/.*\.md$/.test(normalizeMatchPath(file)) &&
+      !referencedPaths.has(normalizeMatchPath(file)),
+  );
+
   return {
     dangling,
     noMatch,
     unsupported,
+    unreferenced,
+    size,
     exitCode: dangling.length > 0 ? 1 : 0,
   };
 }

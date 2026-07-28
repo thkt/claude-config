@@ -29,7 +29,14 @@ const normalizeMatchPath = (p) => String(p).replace(/^(?:\.\/|\/)+/, "");
 const SUPPORTED_GLOB_CHARS = /^[\w.\-/*]*$/;
 const BARE_DOUBLE_STAR = /\*\*(?!\/)/;
 
+// Reuses the readability skill's already-defined function-line-count threshold (<=30,
+// rationale: readable within one screen) as the line count for "one screen" (ADR-0091).
+const SIZE_THRESHOLD_LINES = 30;
+
 export function checkIndex({ table, exists, trackedFiles }) {
+  const lineCount = table.split("\n").length;
+  const size = { lines: lineCount, warning: lineCount > SIZE_THRESHOLD_LINES };
+
   const dataLines = table
     .split("\n")
     .map((line) => line.trim())
@@ -60,10 +67,22 @@ export function checkIndex({ table, exists, trackedFiles }) {
     return !trackedFiles.some((file) => matcher.test(normalizeMatchPath(file)));
   });
 
+  // Every row, including `-` rows, carries a real path in the path column (unlike the glob
+  // column, `-` is not allowed there; see REFERENCE_INDEX_FORMAT.md). The referenced check
+  // compares against this full-row path set.
+  const referencedPaths = new Set(rows.map((row) => normalizeMatchPath(row.path)));
+  const unreferenced = trackedFiles.filter(
+    (file) =>
+      /^docs\/.*\.md$/.test(normalizeMatchPath(file)) &&
+      !referencedPaths.has(normalizeMatchPath(file)),
+  );
+
   return {
     dangling,
     noMatch,
     unsupported,
+    unreferenced,
+    size,
     exitCode: dangling.length > 0 ? 1 : 0,
   };
 }
