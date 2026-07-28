@@ -42,6 +42,7 @@ const noTestPlan = {
 // 4 calls (red, red2, green, green2) get captured.
 const retryingAgentStub = (prompt, opts) => {
   const label = opts.label ?? "";
+  if (label === "reference-index") return { found: false, table: "" };
   if (label.startsWith("red2:"))
     return { red_confirmed: true, test_files: ["t.test.js"], notes: "" };
   if (label.startsWith("red:"))
@@ -58,6 +59,7 @@ const retryingAgentStub = (prompt, opts) => {
 
 const happyAgentStub = (prompt, opts) => {
   const label = opts.label ?? "";
+  if (label === "reference-index") return { found: false, table: "" };
   if (label.startsWith("red:"))
     return { red_confirmed: true, test_files: ["t.test.js"], notes: "" };
   if (label.startsWith("green:")) return { green: true, notes: "" };
@@ -140,6 +142,7 @@ test("seam: true の unit だけ Red / Green の prompt に内部層 stub 禁止
 test("direct impl / Red / Green の prompt に advisor 禁止と anomaly 記録への誘導が載り Verify には載らない", async () => {
   const directStub = (prompt, opts) => {
     const label = opts.label ?? "";
+    if (label === "reference-index") return { found: false, table: "" };
     if (label.startsWith("impl:")) return { green: true, notes: "" };
     if (label === "verify") return { tests_pass: true, gates_pass: true, output_tail: "" };
     throw new Error(`unexpected label: ${label}`);
@@ -173,6 +176,7 @@ test("direct impl / Red / Green の prompt に advisor 禁止と anomaly 記録�
 test("tests 空の unit は Red / Green を呼ばず直接実装 (impl) 1 段で完走し、model / effort が伝播する", async () => {
   const directStub = (prompt, opts) => {
     const label = opts.label ?? "";
+    if (label === "reference-index") return { found: false, table: "" };
     if (label.startsWith("impl:")) return { green: true, notes: "" };
     if (label === "verify") return { tests_pass: true, gates_pass: true, output_tail: "" };
     throw new Error(`unexpected label: ${label}`);
@@ -197,6 +201,7 @@ test("tests 空の unit は Red / Green を呼ばず直接実装 (impl) 1 段で
 test("tests 空の unit の直接実装が 2 回失敗すると stopped: unit-failed で fail-close する", async () => {
   const failingStub = (prompt, opts) => {
     const label = opts.label ?? "";
+    if (label === "reference-index") return { found: false, table: "" };
     if (label.startsWith("impl2:")) return { green: false, notes: "still red" };
     if (label.startsWith("impl:")) return { green: false, notes: "suite failed" };
     throw new Error(`unexpected label: ${label}`);
