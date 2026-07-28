@@ -222,11 +222,9 @@ const REFERENCE_INDEX_SCHEMA = {
   },
 };
 
-// reader agent (label: reference-index) の例外は run 全体を止めない。読了は補助的な
-// 注入源であり、これが読めなくても各 unit の実装自体は contract だけで成立するため、
-// 例外は anomaly (kind: reader-failed) に記録して found: false 相当へ fail-open する
-// (WORKFLOWS.md § Degradation recording)。unit をまたぐ run 級の anomaly なので unit は
-// 固定値 "run" を入れる。
+// reader の例外で run は止めない。読了は補助的な注入源で、unit の実装は contract だけで
+// 成立するため、anomaly に記録して fail-open する (WORKFLOWS.md § Degradation recording)。
+// unit をまたぐ run 級の anomaly なので unit は固定値 "run" を入れる。
 let referenceIndex;
 try {
   referenceIndex = await agent(
@@ -250,11 +248,9 @@ try {
   referenceIndex = { found: false, table: "" };
 }
 
-// 表を `{ glob, description, path }` の行配列にする。ヘッダ行と区切り行 (先頭 2 行) を除き、
-// セル数が 3 でない壊れた行は読み飛ばす。glob 列が "-" の行は照合の対象外で常に判断候補として
-// 提示する。glob 照合は `**/` と `*` のみをサポートするサブセット (U-002, issue #270)。
-// 壊れた行があるとき、解析済み行数と総データ行数を log に出す (WORKFLOWS.md § Degradation
-// recording。損失を件数だけで終わらせず、読者が「何行中何行が解析できたか」を再構成できる形)。
+// glob 列が "-" の行は照合の対象外で、常に判断候補として提示する。壊れた行を読み飛ばすとき、
+// 読者が「何行中何行が解析できたか」を再構成できるよう解析済み行数と総データ行数を log に出す
+// (WORKFLOWS.md § Degradation recording)。
 const parseReferenceIndexRows = (table) => {
   const dataLines = table
     .split("\n")
@@ -278,8 +274,7 @@ const parseReferenceIndexRows = (table) => {
   return rows;
 };
 
-// glob 行を正規表現へ変換する (U-002, issue #270)。`**/` はゼロ階層にも一致 (`(?:.*/)?`)、
-// `*` は `/` を跨がない 1 セグメント内の任意文字列 (`[^/]*`) として扱う。
+// `**/` はゼロ階層にも一致し、`*` は `/` を跨がない (U-002, issue #270)。
 const globToRegExp = (glob) => {
   const body = glob
     .split(/(\*\*\/|\*)/)
@@ -295,17 +290,13 @@ const globToRegExp = (glob) => {
 // 両辺とも先頭の `./` `/` を除いてから照合する (glob 行・unit.files のどちらが付けていても揃う)。
 const normalizeMatchPath = (p) => String(p).replace(/^(?:\.\/|\/)+/, "");
 
-// 対応するメタ文字は `**/` と `*` のみ。`?` `[` `{` などそれ以外のメタ文字を含む glob 行は
-// 未対応の照合規則を暗黙に真として通すと静かに false negative / false positive を生むため、
-// 照合対象から外し anomaly (kind: unsupported-glob) に記録して人間が気付けるようにする。
-// `/` が続かない裸の `**` (例 `src/**`) も文字集合は通るがトークン化が `*` 2 つに分解して
-// 1 セグメント照合に化けるため、同じく未対応として除外する。
+// 対応は `**/` と `*` のみ。未対応メタ文字を暗黙に真として通すと静かな誤マッチを生むため、
+// 照合から外して anomaly に記録し人間が気付けるようにする。`/` が続かない裸の `**` も、
+// 文字集合は通るがトークン化が `*` 2 つに分解して 1 セグメント照合に化けるため同じく除外する。
 const SUPPORTED_GLOB_CHARS = /^[\w.\-/*]*$/;
 const BARE_DOUBLE_STAR = /\*\*(?!\/)/;
 
-// glob 行の正規表現は行ごとに固定なので、unit ループに入る前に 1 回だけコンパイルする
-// (unit × row の組み合わせごとに毎回コンパイルし直さない)。glob 無し行 ("-") は照合しないので
-// コンパイル対象から外す。
+// 正規表現は行ごとに固定なので、unit ループに入る前に 1 回だけコンパイルする。
 const referenceIndexRows = (
   referenceIndex && referenceIndex.found ? parseReferenceIndexRows(referenceIndex.table) : []
 )
@@ -332,9 +323,8 @@ const REF_INDEX_END = "---- reference-index end ----";
 // glob 無し行 (常に判断候補) は unit に依存しないので、unit ループの外で 1 回だけ絞る。
 const referenceIndexCandidates = referenceIndexRows.filter((row) => row.glob === "-");
 
-// unit の files に一致した glob 行は読了命令、glob 無し行は判断候補として、実装コードを書く
-// step (直接実装 / Green) の prompt にだけ注入する。Red step はテストしか書かないので対象外。
-// 並びは汎用 (判断候補) が先、具体 (読了命令) が後 (issue #270 AC)。「後の行を優先する」
+// 実装コードを書く step (直接実装 / Green) にだけ注入する。Red step はテストしか書かないので
+// 対象外。並びは汎用 (判断候補) が先、具体 (読了命令) が後 (issue #270 AC)。「後の行を優先する」
 // 規則と合わせ、glob 一致した必須の読了命令が任意判断の候補行に埋もれない。
 const referenceIndexCtx = (unit) => {
   if (!referenceIndexRows.length) return "";

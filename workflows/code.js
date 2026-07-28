@@ -225,12 +225,10 @@ const REFERENCE_INDEX_SCHEMA = {
   },
 };
 
-// An exception from the reader agent (label: reference-index) does not stop the whole run.
-// The read is a supplementary injection source: each unit's implementation stands on its
-// contract alone even when it cannot be read, so the exception is recorded as an anomaly
-// (kind: reader-failed) and the run fails open to the found: false equivalent
-// (WORKFLOWS.md § Degradation recording). It is a run-level anomaly spanning units, so
-// unit holds the fixed value "run".
+// A reader exception does not stop the run. The read is a supplementary injection source
+// and each unit's implementation stands on its contract alone, so the exception is recorded
+// as an anomaly and the run fails open (WORKFLOWS.md § Degradation recording). It is a
+// run-level anomaly spanning units, so unit holds the fixed value "run".
 let referenceIndex;
 try {
   referenceIndex = await agent(
@@ -254,13 +252,10 @@ try {
   referenceIndex = { found: false, table: "" };
 }
 
-// Turn the table into an array of { glob, description, path } rows. Skip the header and
-// separator lines (the first 2) and any broken line whose cell count is not 3. A row whose
-// glob column is "-" is excluded from matching and always presented as a candidate. Glob
-// matching supports only the `**/` and `*` subset (U-002, issue #270). When broken lines
-// exist, log parsed rows out of total data lines (WORKFLOWS.md § Degradation recording:
-// not just a count of losses, but a form letting the reader reconstruct how many of how
-// many lines parsed).
+// A row whose glob column is "-" is excluded from matching and always presented as a
+// candidate. When broken lines are skipped, log parsed rows out of total data lines so a
+// reader can reconstruct how many of how many lines parsed (WORKFLOWS.md § Degradation
+// recording).
 const parseReferenceIndexRows = (table) => {
   const dataLines = table
     .split("\n")
@@ -284,9 +279,7 @@ const parseReferenceIndexRows = (table) => {
   return rows;
 };
 
-// Convert a glob row to a regular expression (U-002, issue #270). `**/` also matches zero
-// directory levels (`(?:.*/)?`); `*` is any string within one segment that does not cross
-// `/` (`[^/]*`).
+// `**/` also matches zero directory levels; `*` does not cross `/` (U-002, issue #270).
 const globToRegExp = (glob) => {
   const body = glob
     .split(/(\*\*\/|\*)/)
@@ -303,19 +296,15 @@ const globToRegExp = (glob) => {
 // the glob row or unit.files carries the prefix).
 const normalizeMatchPath = (p) => String(p).replace(/^(?:\.\/|\/)+/, "");
 
-// The supported metacharacters are `**/` and `*` only. A glob row containing any other
-// metacharacter such as `?` `[` `{` would silently produce false negatives / false
-// positives if its unsupported matching rule were implicitly passed as true, so it is
-// excluded from matching and recorded as an anomaly (kind: unsupported-glob) for a human
-// to notice. A bare `**` not followed by `/` (e.g. `src/**`) also passes the character-set
-// check but tokenizes into two `*` tokens and degrades to single-segment matching, so it
-// is excluded as unsupported the same way.
+// Only `**/` and `*` are supported. Implicitly passing an unsupported metacharacter as
+// true would produce silent mis-matches, so the row is excluded from matching and recorded
+// as an anomaly for a human to notice. A bare `**` not followed by `/` also passes the
+// character-set check but tokenizes into two `*` tokens and degrades to single-segment
+// matching, so it is excluded the same way.
 const SUPPORTED_GLOB_CHARS = /^[\w.\-/*]*$/;
 const BARE_DOUBLE_STAR = /\*\*(?!\/)/;
 
-// Each glob row's regular expression is fixed per row, so compile once before entering the
-// unit loop (not recompiled for every unit × row combination). Rows without a glob ("-")
-// are not matched, so they are excluded from compilation.
+// Each row's regular expression is fixed, so compile once before entering the unit loop.
 const referenceIndexRows = (
   referenceIndex && referenceIndex.found ? parseReferenceIndexRows(referenceIndex.table) : []
 )
@@ -343,12 +332,11 @@ const REF_INDEX_END = "---- reference-index end ----";
 // outside the unit loop.
 const referenceIndexCandidates = referenceIndexRows.filter((row) => row.glob === "-");
 
-// Glob rows matching the unit's files become read-before-implementing orders and globless
-// rows become candidates, injected only into the prompts of steps that write implementation
-// code (direct implementation / Green). The Red step writes only tests, so it is excluded.
-// The order is generic (candidates) first, specific (read orders) after (issue #270 AC).
-// Combined with the "later line wins" rule, a mandatory read order matched by glob is never
-// buried under discretionary candidate rows.
+// Injected only into steps that write implementation code (direct implementation / Green).
+// The Red step writes only tests, so it is excluded. The order is generic (candidates)
+// first, specific (read orders) after (issue #270 AC). Combined with the "later line wins"
+// rule, a mandatory read order matched by glob is never buried under discretionary
+// candidate rows.
 const referenceIndexCtx = (unit) => {
   if (!referenceIndexRows.length) return "";
   const matched = referenceIndexRows.filter(
