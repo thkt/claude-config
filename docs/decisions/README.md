@@ -97,6 +97,7 @@ This directory contains important decisions about the project.
 | [0088](0088-commit-each-unit-in-build-with-plan-anchors-as-trailers.md) | ADR-0088: build の実装を unit ごとにコミットし、plan のアンカーを trailer に載せる | accepted | 2026-07-25 |
 | [0089](0089-retire-build-plan-drafting-and-hand-plan-less-issues-back.md) | ADR-0089: Plan 節なし issue の plan 自律生成をやめ、build は issue へ差し戻す | accepted | 2026-07-27 |
 | [0090](0090-unify-workspace-and-history-storage-locations.md) | Unify workspace and history storage locations | accepted | 2026-07-28 |
+| [0091](0091-adopt-flat-index-reference-injection-for-workflows.md) | ADR-0091: リファレンス注入をフラットインデックスと glob 照合で決定的に行う | accepted | 2026-07-28 |
 
 ## By Status
 
@@ -184,6 +185,7 @@ This directory contains important decisions about the project.
 - **0088**: ADR-0088: build の実装を unit ごとにコミットし、plan のアンカーを trailer に載せる
 - **0089**: ADR-0089: Plan 節なし issue の plan 自律生成をやめ、build は issue へ差し戻す
 - **0090**: Unify workspace and history storage locations
+- **0091**: ADR-0091: リファレンス注入をフラットインデックスと glob 照合で決定的に行う
 
 ### Superseded
 
