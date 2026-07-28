@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const scriptPath = join(root, "skills", "stock", "scripts", "check-index.js");
+const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const scriptPath = join(root, ".ja", "skills", "stock", "scripts", "check-index.js");
 
 // exists / trackedFiles を注入するのは、実 fs / git ls-files を呼ばずに判定ロジックだけを
 // 固定 fixture で検証するため (argv/git 連携は check-index.cli.test.js が担う)。

@@ -6,8 +6,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { initRepo, commitAll } from "./_git-fixture.js";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const scriptPath = join(root, "skills", "stock", "scripts", "check-index.js");
+const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const scriptPath = join(root, ".ja", "skills", "stock", "scripts", "check-index.js");
 
 // 他のテストが個別に緑にした判定を、実 git リポジトリへの 1 回の子プロセス実行で通しに
 // 繋げて見る。区分ごとの単体検証はそれぞれのテストが持つ。

@@ -78,9 +78,7 @@ async function codeMatches(glob, path) {
   });
   const impl = calls.agent.find((c) => (c.opts.label ?? "") === "impl:U-1");
   assert.ok(impl, "impl:U-1 agent が呼ばれる");
-  return new RegExp(`Read before implementing: ${REF_PATH.replace(/\./g, "\\.")}`).test(
-    impl.prompt,
-  );
+  return new RegExp(`実装前に読む: ${REF_PATH.replace(/\./g, "\\.")}`).test(impl.prompt);
 }
 
 test("共通 fixture 表の全 (glob, path) 組で code.js の注入有無と script の一致判定が同じ結果になる", async () => {

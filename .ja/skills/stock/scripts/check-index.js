@@ -1,6 +1,5 @@
-// docs/REFERENCE_INDEX.md の各行を dangling-path (参照先が実在しない) / no-match (glob が
-// tracked ファイルに一致しない) として検証する。glob 判定は workflows/code.js の
-// reference-index 節 (`**/` はゼロ階層にも一致、`*` は `/` を跨がない) と同じ規則にする。
+// docs/REFERENCE_INDEX.md の各行を検証する。glob 判定は workflows/code.js の reference-index
+// 節と同じ規則を複製したもので、ずれは glob-parity.test.js が見張る。
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
@@ -21,8 +20,8 @@ const globToRegExp = (glob) => {
 // glob 行・trackedFiles のどちらが接頭辞を持っていても揃うように、先頭の `./` `/` を剥がす。
 const normalizeMatchPath = (p) => String(p).replace(/^(?:\.\/|\/)+/, "");
 
-// 対応するのは `**/` と `*` のみ。裸の `**` (`/` を伴わない) はトークン化すると `*` 2 個に
-// 分解され単一階層一致に劣化するので、未対応として除外する (workflows/code.js と同じ規則)。
+// 裸の `**` (`/` を伴わない) はトークン化すると `*` 2 個に分解され単一階層一致に劣化するので、
+// 文字集合は通っても未対応として除外する。
 const SUPPORTED_GLOB_CHARS = /^[\w.\-/*]*$/;
 const BARE_DOUBLE_STAR = /\*\*(?!\/)/;
 
@@ -50,8 +49,8 @@ export function checkIndex({ table, exists, trackedFiles, indexPath }) {
     .filter((cells) => cells.length === 3)
     .map(([glob, description, path]) => ({ glob, description, path }));
 
-  // `-` 行 (無条件候補) と未対応 glob の行は drift 判定 (dangling/no-match) から除外する。
-  // 未対応行は unsupported として別掲するが、`-` 行はどちらの一覧にも出さない。
+  // `-` 行は glob を持たないため、drift 判定にかけると常に no-match になる。未対応行は
+  // 誤判定を招くので同じく drift から外し、unsupported として別掲する。
   const isUnsupportedGlob = (glob) =>
     !SUPPORTED_GLOB_CHARS.test(glob) || BARE_DOUBLE_STAR.test(glob);
   const unsupported = rows.filter((row) => row.glob !== "-" && isUnsupportedGlob(row.glob));
@@ -64,9 +63,8 @@ export function checkIndex({ table, exists, trackedFiles, indexPath }) {
     return !trackedFiles.some((file) => matcher.test(normalizeMatchPath(file)));
   });
 
-  // path 列は `-` 行を含む全行が実パスを持つ (glob 列とは異なり `-` を許さない、
-  // references/reference-index-format.md)。参照済み判定はこの全行の path 集合と比較する。index
-  // ファイル自身は自分の path 列に載れないため、除外しないと恒久的に unreferenced に残る。
+  // path 列は `-` 行も含め全行が実パスを持つので、参照済み判定は全行の path 集合と比較する。
+  // index ファイル自身は自分の path 列に載れないため、除外しないと恒久的に unreferenced に残る。
   const referencedPaths = new Set(rows.map((row) => normalizeMatchPath(row.path)));
   const indexSelf = indexPath ? normalizeMatchPath(indexPath) : null;
   const unreferenced = trackedFiles.filter(
@@ -86,10 +84,8 @@ export function checkIndex({ table, exists, trackedFiles, indexPath }) {
   };
 }
 
-// CLI エントリポイント。repo root と index パスを argv で受け、git ls-files 由来のファイル
-// 列挙で checkIndex を実行する。git rev-parse --show-toplevel で実行 cwd に依らない絶対 repo
-// root を確定させ、git ls-files はその repo root から実行して repo-root 相対のパス形に揃える
-// (サブディレクトリ起動でも repo root 起動と同一のトラック済みファイル一覧になる)。
+// git rev-parse --show-toplevel で実行 cwd に依らない絶対 repo root を確定させ、git ls-files
+// はその repo root から実行する。サブディレクトリ起動でも repo root 起動と同じ一覧になる。
 function main([repoRootArg, indexPathArg]) {
   const repoRootHint = resolve(process.cwd(), repoRootArg);
   const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {

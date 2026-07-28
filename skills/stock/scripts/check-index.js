@@ -1,7 +1,5 @@
-// Verifies each row of docs/REFERENCE_INDEX.md as dangling-path (referenced path does not
-// exist) / no-match (glob matches no tracked file). The glob rule follows the same rule as
-// workflows/code.js's reference-index section (`**/` also matches zero directory levels;
-// `*` does not cross `/`).
+// Verifies each row of docs/REFERENCE_INDEX.md. The glob rule duplicates the one in
+// workflows/code.js's reference-index section; glob-parity.test.js watches for drift.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
@@ -23,9 +21,9 @@ const globToRegExp = (glob) => {
 // the glob row or trackedFiles carries the prefix).
 const normalizeMatchPath = (p) => String(p).replace(/^(?:\.\/|\/)+/, "");
 
-// Only `**/` and `*` are supported. A bare `**` (not followed by `/`) tokenizes into two
-// `*` tokens and degrades to single-segment matching, so it is excluded as unsupported
-// (same rule as workflows/code.js).
+// A bare `**` (not followed by `/`) tokenizes into two `*` tokens and degrades to
+// single-segment matching, so it is excluded as unsupported even though it passes the
+// character-set check.
 const SUPPORTED_GLOB_CHARS = /^[\w.\-/*]*$/;
 const BARE_DOUBLE_STAR = /\*\*(?!\/)/;
 
@@ -53,9 +51,9 @@ export function checkIndex({ table, exists, trackedFiles, indexPath }) {
     .filter((cells) => cells.length === 3)
     .map(([glob, description, path]) => ({ glob, description, path }));
 
-  // A `-` row (unconditional candidate) and a row with an unsupported glob are excluded
-  // from the drift check (dangling/no-match). An unsupported row is listed separately as
-  // unsupported; a `-` row appears in neither list.
+  // A `-` row carries no glob, so running it through the drift check would always report
+  // no-match. An unsupported row invites the same misjudgment, so it is likewise excluded
+  // from drift and listed separately as unsupported.
   const isUnsupportedGlob = (glob) =>
     !SUPPORTED_GLOB_CHARS.test(glob) || BARE_DOUBLE_STAR.test(glob);
   const unsupported = rows.filter((row) => row.glob !== "-" && isUnsupportedGlob(row.glob));
@@ -68,10 +66,9 @@ export function checkIndex({ table, exists, trackedFiles, indexPath }) {
     return !trackedFiles.some((file) => matcher.test(normalizeMatchPath(file)));
   });
 
-  // Every row, including `-` rows, carries a real path in the path column (unlike the glob
-  // column, `-` is not allowed there; see references/reference-index-format.md). The referenced check
-  // compares against this full-row path set. The index file itself can never appear in its
-  // own path column, so without the exclusion it would stay in unreferenced permanently.
+  // Every row, `-` rows included, carries a real path in the path column, so the referenced
+  // check compares against the full-row path set. The index file itself can never appear in
+  // its own path column, so without the exclusion it would stay in unreferenced permanently.
   const referencedPaths = new Set(rows.map((row) => normalizeMatchPath(row.path)));
   const indexSelf = indexPath ? normalizeMatchPath(indexPath) : null;
   const unreferenced = trackedFiles.filter(
@@ -91,11 +88,9 @@ export function checkIndex({ table, exists, trackedFiles, indexPath }) {
   };
 }
 
-// CLI entry point. Receives the repo root and index path via argv and runs checkIndex against
-// the tracked-file enumeration from git ls-files. git rev-parse --show-toplevel resolves the
-// absolute repo root independent of the invoking cwd, and git ls-files then runs from that repo
-// root so the paths line up in repo-root-relative form (a subdirectory launch yields the same
-// tracked-file list as a repo-root launch).
+// git rev-parse --show-toplevel resolves an absolute repo root independent of the invoking
+// cwd, and git ls-files runs from that repo root. A subdirectory launch yields the same list
+// as a repo-root launch.
 function main([repoRootArg, indexPathArg]) {
   const repoRootHint = resolve(process.cwd(), repoRootArg);
   const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {

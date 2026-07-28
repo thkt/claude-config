@@ -6,8 +6,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { initRepo, commitAll } from "./_git-fixture.js";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const scriptPath = join(root, "skills", "stock", "scripts", "check-index.js");
+const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const scriptPath = join(root, ".ja", "skills", "stock", "scripts", "check-index.js");
 
 // 実 git リポジトリを立てて CLI プロセスを起動し、argv で受けた repo root と index パスの
 // 解決結果が git の状態と一致するかを見る (判定ロジック単体は check-index.test.js)。

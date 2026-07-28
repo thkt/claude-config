@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const scriptPath = join(root, "skills", "stock", "scripts", "check-index.js");
+const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+const scriptPath = join(root, ".ja", "skills", "stock", "scripts", "check-index.js");
 
 // result.size は ADR-0091「インデックスが 1 画面を超えたら注入過多の兆候として見張る」を
 // 行数閾値に落としたもの。
