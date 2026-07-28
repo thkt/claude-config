@@ -1,6 +1,11 @@
 // docs/REFERENCE_INDEX.md の各行を dangling-path (参照先が実在しない) / no-match (glob が
 // tracked ファイルに一致しない) として検証する。glob 判定は workflows/code.js の
 // reference-index 節 (`**/` はゼロ階層にも一致、`*` は `/` を跨がない) と同じ規則にする。
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 const globToRegExp = (glob) => {
   const body = glob
     .split(/(\*\*\/|\*)/)
@@ -57,4 +62,32 @@ export function checkIndex({ table, exists, trackedFiles }) {
     unsupported,
     exitCode: dangling.length > 0 ? 1 : 0,
   };
+}
+
+// CLI エントリポイント。repo root と index パスを argv で受け、git ls-files 由来のファイル
+// 列挙で checkIndex を実行する。git rev-parse --show-toplevel で実行 cwd に依らない絶対 repo
+// root を確定させ、git ls-files はその repo root から実行して repo-root 相対のパス形に揃える
+// (サブディレクトリ起動でも repo root 起動と同一のトラック済みファイル一覧になる)。
+function main([repoRootArg, indexPathArg]) {
+  const repoRootHint = resolve(process.cwd(), repoRootArg);
+  const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+    cwd: repoRootHint,
+    encoding: "utf8",
+  }).trim();
+  const trackedFiles = execFileSync("git", ["ls-files"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  })
+    .split("\n")
+    .filter((line) => line.length > 0);
+  const table = readFileSync(indexPathArg, "utf8");
+  const exists = (path) => existsSync(join(repoRoot, path));
+
+  const result = checkIndex({ table, exists, trackedFiles });
+  process.stdout.write(`${JSON.stringify(result)}\n`);
+  process.exitCode = result.exitCode;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main(process.argv.slice(2));
 }

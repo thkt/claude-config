@@ -2,6 +2,11 @@
 // exist) / no-match (glob matches no tracked file). The glob rule follows the same rule as
 // workflows/code.js's reference-index section (`**/` also matches zero directory levels;
 // `*` does not cross `/`).
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 const globToRegExp = (glob) => {
   const body = glob
     .split(/(\*\*\/|\*)/)
@@ -61,4 +66,33 @@ export function checkIndex({ table, exists, trackedFiles }) {
     unsupported,
     exitCode: dangling.length > 0 ? 1 : 0,
   };
+}
+
+// CLI entry point. Receives the repo root and index path via argv and runs checkIndex against
+// the tracked-file enumeration from git ls-files. git rev-parse --show-toplevel resolves the
+// absolute repo root independent of the invoking cwd, and git ls-files then runs from that repo
+// root so the paths line up in repo-root-relative form (a subdirectory launch yields the same
+// tracked-file list as a repo-root launch).
+function main([repoRootArg, indexPathArg]) {
+  const repoRootHint = resolve(process.cwd(), repoRootArg);
+  const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+    cwd: repoRootHint,
+    encoding: "utf8",
+  }).trim();
+  const trackedFiles = execFileSync("git", ["ls-files"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  })
+    .split("\n")
+    .filter((line) => line.length > 0);
+  const table = readFileSync(indexPathArg, "utf8");
+  const exists = (path) => existsSync(join(repoRoot, path));
+
+  const result = checkIndex({ table, exists, trackedFiles });
+  process.stdout.write(`${JSON.stringify(result)}\n`);
+  process.exitCode = result.exitCode;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main(process.argv.slice(2));
 }
