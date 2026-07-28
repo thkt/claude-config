@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { initRepo, commitAll } from "./_git-fixture.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const scriptPath = join(root, "skills", "stock", "scripts", "check-index.mjs");
@@ -12,19 +12,6 @@ const scriptPath = join(root, "skills", "stock", "scripts", "check-index.mjs");
 // U-003 の argv/git 連携を検証する。U-002 (check-index.test.js) は exists/trackedFiles を
 // 注入した固定 fixture で判定ロジックだけを見る一方、ここでは実 git リポジトリを立てて CLI
 // プロセスを起動し、repo root と index パスを argv で受けた結果が git 状態と一致するかを見る。
-
-function initRepo() {
-  const dir = mkdtempSync(join(tmpdir(), "check-index-cli-"));
-  execFileSync("git", ["init", "-q"], { cwd: dir });
-  execFileSync("git", ["config", "user.email", "test@example.com"], { cwd: dir });
-  execFileSync("git", ["config", "user.name", "Test"], { cwd: dir });
-  return dir;
-}
-
-function commitAll(dir) {
-  execFileSync("git", ["add", "-A"], { cwd: dir });
-  execFileSync("git", ["commit", "-q", "-m", "fixture"], { cwd: dir });
-}
 
 function runCli(repoRootArg, indexPath, cwd) {
   const stdout = execFileSync("node", [scriptPath, repoRootArg, indexPath], {
@@ -35,7 +22,7 @@ function runCli(repoRootArg, indexPath, cwd) {
 }
 
 test("サブディレクトリから起動しても repo root 起動と同一のレポートが返る", () => {
-  const dir = initRepo();
+  const dir = initRepo("cli");
   mkdirSync(join(dir, "src"), { recursive: true });
   mkdirSync(join(dir, "docs"), { recursive: true });
   mkdirSync(join(dir, "sub"), { recursive: true });
@@ -59,7 +46,7 @@ test("サブディレクトリから起動しても repo root 起動と同一の
 });
 
 test("git 管理外のファイルは glob 照合の対象にならない", () => {
-  const dir = initRepo();
+  const dir = initRepo("cli");
   mkdirSync(join(dir, "src"), { recursive: true });
   mkdirSync(join(dir, "docs"), { recursive: true });
   writeFileSync(join(dir, "docs", "reference.md"), "# reference\n");

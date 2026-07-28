@@ -31,11 +31,10 @@ const BARE_DOUBLE_STAR = /\*\*(?!\/)/;
 const SIZE_THRESHOLD_LINES = 30;
 
 export function checkIndex({ table, exists, trackedFiles }) {
-  const lineCount = table.split("\n").length;
-  const size = { lines: lineCount, warning: lineCount > SIZE_THRESHOLD_LINES };
+  const lines = table.split("\n");
+  const size = { lines: lines.length, warning: lines.length > SIZE_THRESHOLD_LINES };
 
-  const dataLines = table
-    .split("\n")
+  const dataLines = lines
     .map((line) => line.trim())
     .filter((line) => line.startsWith("|"))
     .slice(2);

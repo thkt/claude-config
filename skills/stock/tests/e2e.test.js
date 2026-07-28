@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { spawnSync, execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { initRepo, commitAll } from "./_git-fixture.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const scriptPath = join(root, "skills", "stock", "scripts", "check-index.mjs");
@@ -16,19 +16,6 @@ const scriptPath = join(root, "skills", "stock", "scripts", "check-index.mjs");
 // まだどのテストも見ていない。ここでは fixture リポジトリを実際に git init し、
 // check-index.mjs を child_process 経由で 1 回実行して、dangling/noMatch/unsupported/
 // unreferenced/size の全区分が仕込んだ件数どおりに返ることを検証する。
-
-function initRepo() {
-  const dir = mkdtempSync(join(tmpdir(), "check-index-e2e-"));
-  execFileSync("git", ["init", "-q"], { cwd: dir });
-  execFileSync("git", ["config", "user.email", "test@example.com"], { cwd: dir });
-  execFileSync("git", ["config", "user.name", "Test"], { cwd: dir });
-  return dir;
-}
-
-function commitAll(dir) {
-  execFileSync("git", ["add", "-A"], { cwd: dir });
-  execFileSync("git", ["commit", "-q", "-m", "fixture"], { cwd: dir });
-}
 
 // execFileSync は非ゼロ終了で例外を投げるため、exit code そのものを見たい T-012 では
 // 使えない。spawnSync は終了コードを status として返すだけで例外を投げないので、
@@ -42,7 +29,7 @@ function runCli(repoRootArg, indexPath, cwd) {
 }
 
 test("dangling/no-match/unsupported/unreferenced/size を同時に仕込んだ fixture への 1 回の実行で全区分が件数どおり返る", () => {
-  const dir = initRepo();
+  const dir = initRepo("e2e");
   mkdirSync(join(dir, "src"), { recursive: true });
   mkdirSync(join(dir, "docs"), { recursive: true });
 
@@ -87,7 +74,7 @@ test("dangling/no-match/unsupported/unreferenced/size を同時に仕込んだ f
 
 test("dangling の有無だけを変えた 2 つの fixture で exit code が 0 と非ゼロに分かれる", () => {
   function buildFixture({ withDangling }) {
-    const dir = initRepo();
+    const dir = initRepo("e2e");
     mkdirSync(join(dir, "src"), { recursive: true });
     mkdirSync(join(dir, "docs"), { recursive: true });
     writeFileSync(join(dir, "src", "a.tsx"), "export const A = () => null;\n");
