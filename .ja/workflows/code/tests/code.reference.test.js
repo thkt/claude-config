@@ -168,6 +168,126 @@ test("glob の無い行は説明文とパスが判断候補として提示され
   );
 });
 
+// U-002 (Issue #270): U-001 は完全一致名だけの最小実装だったので、`**/` と `*` を持つ実用的な
+// glob 行が実運用のファイルパスに照合できない。ここでは glob サブセット (`**/` はゼロ階層にも
+// 一致、`*` は `/` を跨がない) の照合規則と、両辺の先頭 `./` `/` 正規化、未対応メタ文字を含む行が
+// 静かに無視されず anomaly として記録されることを検証する。
+
+test("`docs/**/*.md` 形の glob が docs 直下と 1 階層下の md の両方に一致する", async () => {
+  const table =
+    "| glob | description | path |\n" +
+    "| --- | --- | --- |\n" +
+    "| docs/**/*.md | ドキュメント規約 | docs/conventions/docs-naming.md |\n";
+  const index = { found: true, table };
+
+  const { calls: rootCalls } = await runWorkflow(codeJs, {
+    args: { plan: implPlan(["docs/readme.md"]), repo: "" },
+    stubs: { agent: stubWith(index) },
+  });
+  assert.match(
+    promptFor(rootCalls, "impl:U-1"),
+    /実装前に読む: docs\/conventions\/docs-naming\.md/,
+    "docs 直下 (ゼロ階層) の md ファイルが `**` の glob 行に一致する",
+  );
+
+  const { calls: nestedCalls } = await runWorkflow(codeJs, {
+    args: { plan: implPlan(["docs/sub/readme.md"]), repo: "" },
+    stubs: { agent: stubWith(index) },
+  });
+  assert.match(
+    promptFor(nestedCalls, "impl:U-1"),
+    /実装前に読む: docs\/conventions\/docs-naming\.md/,
+    "docs の 1 階層下の md ファイルも同じ glob 行に一致する",
+  );
+});
+
+test("`src/*.tsx` 形の glob は `src/app/page.tsx` に一致しない", async () => {
+  const table =
+    "| glob | description | path |\n" +
+    "| --- | --- | --- |\n" +
+    "| src/*.tsx | コンポーネント規約 | docs/conventions/component-tsx.md |\n";
+  const index = { found: true, table };
+
+  const { calls: shallowCalls } = await runWorkflow(codeJs, {
+    args: { plan: implPlan(["src/button.tsx"]), repo: "" },
+    stubs: { agent: stubWith(index) },
+  });
+  assert.match(
+    promptFor(shallowCalls, "impl:U-1"),
+    /実装前に読む: docs\/conventions\/component-tsx\.md/,
+    "src 直下の tsx ファイルは `*.tsx` の glob 行に一致する",
+  );
+
+  const { calls: nestedCalls } = await runWorkflow(codeJs, {
+    args: { plan: implPlan(["src/app/page.tsx"]), repo: "" },
+    stubs: { agent: stubWith(index) },
+  });
+  assert.doesNotMatch(
+    promptFor(nestedCalls, "impl:U-1"),
+    /docs\/conventions\/component-tsx\.md/,
+    "`*` は `/` を跨がないので 1 階層下の tsx ファイルは glob 行に一致しない",
+  );
+});
+
+test("先頭に `./` や `/` が付いたパスは正規化されて照合される", async () => {
+  const table =
+    "| glob | description | path |\n" +
+    "| --- | --- | --- |\n" +
+    "| src/button.tsx | ボタン規約 | docs/conventions/button.md |\n";
+  const index = { found: true, table };
+
+  const { calls: dotSlashFileCalls } = await runWorkflow(codeJs, {
+    args: { plan: implPlan(["./src/button.tsx"]), repo: "" },
+    stubs: { agent: stubWith(index) },
+  });
+  assert.match(
+    promptFor(dotSlashFileCalls, "impl:U-1"),
+    /実装前に読む: docs\/conventions\/button\.md/,
+    "先頭に `./` が付いたファイルパスは正規化後に glob 行と一致する",
+  );
+
+  const tableLeadingSlash =
+    "| glob | description | path |\n" +
+    "| --- | --- | --- |\n" +
+    "| /src/button.tsx | ボタン規約 | docs/conventions/button.md |\n";
+  const indexLeadingSlash = { found: true, table: tableLeadingSlash };
+
+  const { calls: leadingSlashGlobCalls } = await runWorkflow(codeJs, {
+    args: { plan: implPlan(["src/button.tsx"]), repo: "" },
+    stubs: { agent: stubWith(indexLeadingSlash) },
+  });
+  assert.match(
+    promptFor(leadingSlashGlobCalls, "impl:U-1"),
+    /実装前に読む: docs\/conventions\/button\.md/,
+    "先頭に `/` が付いた glob 行は正規化後にファイルパスと一致する",
+  );
+});
+
+test("未対応メタ文字を含む行は照合対象から外れ anomaly に記録される", async () => {
+  const table =
+    "| glob | description | path |\n" +
+    "| --- | --- | --- |\n" +
+    "| src/file?.js | 未対応メタ文字を含む行 | docs/conventions/unsupported.md |\n";
+  const index = { found: true, table };
+
+  const { calls, result } = await runWorkflow(codeJs, {
+    args: { plan: implPlan(["src/file1.js"]), repo: "" },
+    stubs: { agent: stubWith(index) },
+  });
+
+  assert.doesNotMatch(
+    promptFor(calls, "impl:U-1"),
+    /docs\/conventions\/unsupported\.md/,
+    "未対応メタ文字 (`?`) を含む glob 行は照合対象から外れ、実装 prompt に注入されない",
+  );
+  assert.ok(
+    result.anomalies.some(
+      (a) => a.kind === "unsupported-glob" && String(a.notes).includes("src/file?.js"),
+    ),
+    "未対応メタ文字を含む行が anomaly (kind: unsupported-glob) として記録される",
+  );
+});
+
 test("インデックス不在では実装 prompt が現行のまま変わらない", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: implPlan(["sample.js"]), repo: "" },

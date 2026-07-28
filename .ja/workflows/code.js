@@ -239,7 +239,7 @@ const referenceIndex = await agent(
 
 // 表を `{ glob, description, path }` の行配列にする。ヘッダ行と区切り行 (先頭 2 行) を除き、
 // セル数が 3 でない壊れた行は読み飛ばす。glob 列が "-" の行は照合の対象外で常に判断候補として
-// 提示する。glob 照合は完全一致名のみの最小実装 (**, * の境界などパターン精度は別 unit の対象)。
+// 提示する。glob 照合は `**/` と `*` のみをサポートするサブセット (U-002, issue #270)。
 const parseReferenceIndexRows = (table) =>
   table
     .split("\n")
@@ -255,8 +255,41 @@ const parseReferenceIndexRows = (table) =>
     .filter((cells) => cells.length === 3)
     .map(([glob, description, path]) => ({ glob, description, path }));
 
-const referenceIndexRows =
-  referenceIndex && referenceIndex.found ? parseReferenceIndexRows(referenceIndex.table) : [];
+// glob 行を正規表現へ変換する (U-002, issue #270)。`**/` はゼロ階層にも一致 (`(?:.*/)?`)、
+// `*` は `/` を跨がない 1 セグメント内の任意文字列 (`[^/]*`) として扱う。
+const globToRegExp = (glob) => {
+  const body = glob
+    .split(/(\*\*\/|\*)/)
+    .map((part) => {
+      if (part === "**/") return "(?:.*/)?";
+      if (part === "*") return "[^/]*";
+      return part.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+    })
+    .join("");
+  return new RegExp(`^${body}$`);
+};
+
+// 両辺とも先頭の `./` `/` を除いてから照合する (glob 行・unit.files のどちらが付けていても揃う)。
+const normalizeMatchPath = (p) => String(p).replace(/^(?:\.\/|\/)+/, "");
+
+const matchesGlob = (glob, filePath) =>
+  globToRegExp(normalizeMatchPath(glob)).test(normalizeMatchPath(filePath));
+
+// 対応するメタ文字は `**/` と `*` のみ。`?` `[` `{` などそれ以外のメタ文字を含む glob 行は
+// 未対応の照合規則を暗黙に真として通すと静かに false negative / false positive を生むため、
+// 照合対象から外し anomaly (kind: unsupported-glob) に記録して人間が気付けるようにする。
+const SUPPORTED_GLOB_CHARS = /^[\w.\-/*]*$/;
+
+const referenceIndexRows = (
+  referenceIndex && referenceIndex.found ? parseReferenceIndexRows(referenceIndex.table) : []
+).filter((row) => {
+  if (row.glob === "-" || SUPPORTED_GLOB_CHARS.test(row.glob)) return true;
+  anomalies.push({
+    kind: "unsupported-glob",
+    notes: `${row.glob} (対応外のメタ文字を含む glob 行のため照合対象から除外)`,
+  });
+  return false;
+});
 
 const REF_INDEX_START = "---- reference-index start ----";
 const REF_INDEX_END = "---- reference-index end ----";
@@ -266,7 +299,7 @@ const REF_INDEX_END = "---- reference-index end ----";
 const referenceIndexCtx = (unit) => {
   if (!referenceIndexRows.length) return "";
   const matched = referenceIndexRows.filter(
-    (row) => row.glob !== "-" && unit.files.includes(row.glob),
+    (row) => row.glob !== "-" && unit.files.some((file) => matchesGlob(row.glob, file)),
   );
   const candidates = referenceIndexRows.filter((row) => row.glob === "-");
   if (!matched.length && !candidates.length) return "";
