@@ -32,23 +32,15 @@ Present the Phase 1 JSON as a table per category. When dangling rows exist, stat
 
 ## Phase 3: Propose candidates
 
-For each docs path in unreferenced, build an index candidate through Step 1 to Step 3 in order.
+For each docs path in unreferenced, build an index candidate in the following order.
 
-### Step 1: Infer a candidate glob
-
-From the directory name holding the unreferenced doc, infer a source-side directory it likely corresponds to. For example `docs/conventions/component-tsx.md` gets a same-name prefix such as `src/**/*.tsx`. A doc matching no source directory name, and a doc cutting across multiple domains, are routed to Step 3.
-
-### Step 2: Rank and cap
-
-A doc that yielded a candidate glob in Step 1 takes the count of tracked files that glob matches as its rank score. A higher match count means a more concrete correspondence between the doc and the code, ranking it higher. Sort by rank descending and present the top 10 as a candidate table. The table carries the 3 columns glob, description, and path, matching the row format in reference-index-format.md. Beyond 10, state only the excess count in one line. When the target doc count exceeds 20, confirm the narrowing target (by directory, top N, etc.) via AskUserQuestion before presenting the candidate table.
-
-### Step 3: Never propose a `-` row
-
-A doc for which Step 1 found no source-side directory correspondence is excluded from the candidate table. List it separately as manual-addition recommended, carrying only the path and the reason no correspondence was found. Never propose a row with `-` written in the glob column. A `-` row requires human judgment outside glob matching, as reference-index-format.md § Meaning of a `-` row defines, so leave the addition itself to human manual work.
+1. Infer a candidate glob. From the directory name holding the doc, guess the source-side directory it likely corresponds to. For example `docs/conventions/component-tsx.md` yields a same-name prefix such as `src/**/*.tsx`. A doc matching no source directory name, and a doc cutting across multiple domains, are routed to 3
+2. Rank the docs that yielded a candidate glob. The count of tracked files that glob matches is the rank score, and a higher match count means a more concrete correspondence between the doc and the code, ranking it higher. Present the top 10 by rank descending as a candidate table. The table carries the 3 columns glob, description, and path, matching the row format in `${CLAUDE_SKILL_DIR}/references/reference-index-format.md`. Beyond 10, state only the excess count in one line. When the target doc count exceeds 20, confirm the narrowing target (by directory, top N, etc.) via AskUserQuestion before presenting the candidate table
+3. A doc for which 1 found no source-side directory correspondence is excluded from the candidate table and listed separately as manual-addition recommended, carrying only the path and the reason. Never propose a row with `-` written in the glob column. A `-` row requires human judgment outside glob matching, as `${CLAUDE_SKILL_DIR}/references/reference-index-format.md` § Meaning of a `-` row defines, so leave the addition itself to human manual work
 
 ## Handoff
 
-- Present the candidate table (Step 2) and the manual-addition-recommended list (Step 3); the accept/reject decision is made per row by the human
+- Present the candidate table and the manual-addition-recommended list; the accept/reject decision is made per row by the human
 - This skill never rewrites the index. Adding accepted rows and fixing dangling, noMatch, and unsupported stay human work, and validating individual candidates is out of scope, left to `/fix` or direct editing
 
 ## Completion condition

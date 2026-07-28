@@ -32,23 +32,15 @@ Phase 1 の JSON を区分ごとの表として提示する。dangling がある
 
 ## Phase 3: 候補提案
 
-unreferenced の各 docs パスについて、Step 1 から Step 3 の順に索引化候補を作る。
+unreferenced の各 docs パスについて、以下の順に索引化候補を作る。
 
-### Step 1: 候補 glob の推測
-
-unreferenced の doc が置かれたディレクトリ名から、対応しそうなソース側ディレクトリを推測する。たとえば `docs/conventions/component-tsx.md` なら `src/**/*.tsx` のような同名接頭辞を当てる。どのソースディレクトリ名とも対応しない doc、複数ドメインを横断する doc は Step 3 へ回す。
-
-### Step 2: ランク付けと上限
-
-Step 1 で候補 glob を得られた doc は、その glob が一致する tracked file 数を rank スコアとする。一致数が多いほど doc とソースコードの対応が具体的で、上位に来る。rank 降順で並べ、上位 10 件までを候補表として提示する。表は glob と description と path の 3 列で、reference-index-format.md の行形式に合わせる。10 件を超えた分は超過件数のみを 1 行で示す。対象 doc 数が 20 件を超えるときは、候補表を出す前に AskUserQuestion で絞り込み対象 (ディレクトリ単位、上位 N 件など) を確認する。
-
-### Step 3: `-` 行は提案しない
-
-Step 1 でソース側ディレクトリ対応が見つからなかった doc は、候補表に含めない。手動追記推奨として path と対応が見つからなかった理由だけを別リストに列挙する。glob 列に `-` を書いた行は提案しない。`-` 行は reference-index-format.md § `-` 行の意味が定めるとおり glob 照合を離れた人間の判断を必要とするので、追記そのものを人間の手作業に残す。
+1. 候補 glob を推測する。doc が置かれたディレクトリ名から、対応しそうなソース側ディレクトリを当てる。たとえば `docs/conventions/component-tsx.md` なら `src/**/*.tsx` のような同名接頭辞になる。どのソースディレクトリ名とも対応しない doc と、複数ドメインを横断する doc は 3 へ回す
+2. 候補 glob を得られた doc をランク付けする。glob が一致する tracked file 数を rank スコアとし、一致数が多いほど doc とソースコードの対応が具体的で上位に来る。rank 降順で上位 10 件までを候補表として提示する。表は glob と description と path の 3 列で、`${CLAUDE_SKILL_DIR}/references/reference-index-format.md` の行形式に合わせる。10 件を超えた分は超過件数のみを 1 行で示す。対象 doc 数が 20 件を超えるときは、候補表を出す前に AskUserQuestion で絞り込み対象 (ディレクトリ単位、上位 N 件など) を確認する
+3. 1 でソース側ディレクトリ対応が見つからなかった doc は候補表に含めず、手動追記推奨として path と理由だけを別リストに列挙する。glob 列に `-` を書いた行は提案しない。`-` 行は `${CLAUDE_SKILL_DIR}/references/reference-index-format.md` § `-` 行の意味が定めるとおり glob 照合を離れた人間の判断を必要とするので、追記そのものを人間の手作業に残す
 
 ## 引き継ぎ
 
-- 候補表 (Step 2) と手動追記推奨リスト (Step 3) を提示し、採否は行単位で人間が決める
+- 候補表と手動追記推奨リストを提示し、採否は行単位で人間が決める
 - 本 skill は index を書き換えない。採用行の追記と dangling、noMatch、unsupported の修正は人間の作業に残し、個々の候補の妥当性検証は範囲外として `/fix` や直接編集に委ねる
 
 ## 完了条件
