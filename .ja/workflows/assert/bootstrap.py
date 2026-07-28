@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
 """Usage: bootstrap.py <worktree-path>
 
-Detect the project type inside <worktree-path>, install dependencies, and run a
-build smoke test. Per-step timeouts (install 180s, build 600s) are enforced via
-subprocess so the result holds on platforms without timeout(1) (e.g. macOS).
+<worktree-path> 内のプロジェクト種別を検出し、依存を install して build smoke test を
+実行する。ステップごとの timeout (install 180s、build 600s) は subprocess で課すため、
+timeout(1) が無いプラットフォーム (macOS 等) でも成立する。
 
 stdout: JSON {project_type, install, build, install_cmd, build_cmd, reason}
-  install: ok | fail | skip   (skip = project type has no dependency step)
+  install: ok | fail | skip   (skip = そのプロジェクト種別に依存ステップが無い)
   build:   pass | fail | skipped
-exit 0 on a completed run (read the verdict from JSON); exit 1 on usage / path error.
+exit 0 は run 完走 (verdict は JSON から読む)、exit 1 は usage / path エラー。
 
-Gate routing (caller, references/phase-4.md § Bootstrap Failure Handling). The
-trichotomy is encoded by (install, build) jointly, not by build alone:
+Gate routing (呼び出し側、references/phase-4.md § Bootstrap Failure Handling)。三値は
+build 単独ではなく (install, build) の組で決まる。
 
-  install=fail  + build=skipped  -> env failure         -> Ready (caveat) path
-  install=ok    + build=fail     -> build smoke broken  -> NotReady
-  install=ok/skip + build=skipped -> no build concept          -> proceed normally
-  install=ok/skip + build=pass    -> clean                     -> proceed normally
+  install=fail  + build=skipped   -> env 失敗          -> Ready (caveat) 経路
+  install=ok    + build=fail      -> build smoke 破損  -> NotReady
+  install=ok/skip + build=skipped -> build 概念なし    -> 通常どおり前進
+  install=ok/skip + build=pass    -> 問題なし          -> 通常どおり前進
 
-A build timeout that fires after the build started is reported as build=fail: a
-hanging build is indistinguishable from a broken one, and treating it as
-environmental would let it reach Ready (caveat) (references/phase-0.md 0b).
+build 開始後に発火した build timeout は build=fail として報告する。ハングした build は
+壊れた build と区別できず、環境起因として扱うと Ready (caveat) に達してしまう
+(references/phase-0.md 0b)。
 """
 
 import json
@@ -31,7 +31,7 @@ from pathlib import Path
 INSTALL_TIMEOUT = 180
 BUILD_TIMEOUT = 600
 
-# Project type detection: first match in this order wins (references/phase-0.md).
+# プロジェクト種別検出: この順で最初に一致したものを採用 (references/phase-0.md)。
 PROJECT_MARKERS = [
     ("package.json", "node"),
     ("Cargo.toml", "rust"),
@@ -41,7 +41,7 @@ PROJECT_MARKERS = [
     ("Gemfile", "ruby"),
 ]
 
-# npm install command by lock file, first match wins.
+# lock ファイル別の npm install コマンド。最初に一致したものを採用。
 NPM_LOCK_COMMANDS = [
     ("bun.lockb", ["bun", "install", "--frozen-lockfile"]),
     ("pnpm-lock.yaml", ["pnpm", "install", "--frozen-lockfile"]),
@@ -50,7 +50,7 @@ NPM_LOCK_COMMANDS = [
 ]
 NPM_INSTALL_DEFAULT = ["npm", "install"]
 
-# Non-node install commands. None means the type has no dependency step.
+# node 以外の install コマンド。None はその種別に依存ステップが無いことを表す。
 INSTALL_COMMANDS = {
     "rust": ["cargo", "fetch"],
     "make": None,
@@ -59,7 +59,7 @@ INSTALL_COMMANDS = {
     "ruby": ["bundle", "install"],
 }
 
-# Build commands. None means the type has no build concept (build=skipped, proceed).
+# build コマンド。None はその種別に build 概念が無いことを表す (build=skipped、前進)。
 BUILD_COMMANDS = {
     "rust": ["cargo", "build"],
     "make": ["make", "build"],
@@ -82,7 +82,7 @@ def detect_project_type(worktree):
 
 
 def install_command(worktree, ptype):
-    """Return the install command (list) for ptype, or None if there is none."""
+    """ptype の install コマンド (list) を返す。無ければ None。"""
     if ptype == "node":
         for lock, cmd in NPM_LOCK_COMMANDS:
             if (worktree / lock).is_file():
@@ -92,10 +92,10 @@ def install_command(worktree, ptype):
 
 
 def build_command(worktree, ptype):
-    """Return the build command (list) for ptype, or None for no build concept.
+    """ptype の build コマンド (list) を返す。build 概念が無ければ None。
 
-    For node the build step exists only when package.json has a scripts.build
-    entry; otherwise there is no build concept and build is skipped.
+    node では package.json に scripts.build がある場合のみ build ステップが存在する。
+    無ければ build 概念は無く build は skip される。
     """
     if ptype == "node":
         if _has_npm_build_script(worktree):
@@ -113,7 +113,7 @@ def _has_npm_build_script(worktree):
     return isinstance(scripts, dict) and bool(scripts.get("build"))
 
 
-# Sentinel exit code meaning "the step timed out".
+# 「ステップが timeout した」ことを表す sentinel exit code。
 TIMED_OUT = object()
 
 
@@ -135,7 +135,7 @@ def _real_runner(cmd, cwd, timeout):
 
 
 def run(worktree, runner=_real_runner):
-    """Detect, install, build. Return the result dict (never raises on step failure)."""
+    """検出・install・build を行う。結果 dict を返す (ステップ失敗では raise しない)。"""
     ptype = detect_project_type(worktree)
     result = {
         "project_type": ptype,

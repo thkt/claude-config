@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Tests for workflows/build/verify-tests.py (deterministic test-statement presence).
+"""workflows/build/verify-tests.py (決定的な test-statement 存在確認) のテスト。
 
 Run: python3 workflows/build/tests/verify_tests_test.py
 
-run() is exercised directly against a temp tree; the CLI contract (stdin JSON ->
-stdout JSON, fail-closed exit 1 on a bad payload) is exercised via subprocess.
+run() は temp tree に対して直接呼ぶ。CLI contract (stdin JSON -> stdout JSON、
+壊れた payload には fail-closed で exit 1) は subprocess 経由で確認する。
 """
 
 import importlib.util
@@ -17,7 +17,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SCRIPT = HERE.parent / "verify-tests.py"
-# verify-tests.py has a hyphen, so load it by path rather than import name.
+# verify-tests.py は hyphen を含むので、import 名でなく path でロードする。
 _spec = importlib.util.spec_from_file_location("verify_tests", SCRIPT)
 verify_tests = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(verify_tests)
@@ -55,8 +55,8 @@ class RunTest(unittest.TestCase):
         self.assertEqual(results, [{"name": "rejects negative amounts", "found": False}])
 
     def test_search_is_scoped_to_the_units_own_files(self):
-        # The statement exists in foo.test.js, but this unit only lists foo.js:
-        # presence in another unit's file must not count.
+        # statement は foo.test.js に存在するが、この unit は foo.js しか挙げていない。
+        # 別 unit のファイルにある存在を数えてはならない。
         results = self._run([{"files": ["foo.js"], "names": ["rejects negative amounts"]}])
         self.assertEqual(results, [{"name": "rejects negative amounts", "found": False}])
 
