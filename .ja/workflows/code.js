@@ -222,30 +222,46 @@ const REFERENCE_INDEX_SCHEMA = {
   },
 };
 
-const referenceIndex = await agent(
-  anchor(
-    "docs/reference-index.md を読む。存在すれば found: true とし、" +
-      "`| glob | description | path |` 形式の表の全文をそのまま table に入れる。" +
-      '存在しなければ found: false, table: "" を返す。',
-  ),
-  {
-    label: "reference-index",
-    phase: "Implement",
-    agentType: "general-purpose",
-    schema: REFERENCE_INDEX_SCHEMA,
-    ...implementOpts,
-  },
-);
+// reader agent (label: reference-index) の例外は run 全体を止めない。読了は補助的な
+// 注入源であり、これが読めなくても各 unit の実装自体は contract だけで成立するため、
+// 例外は anomaly (kind: reader-failed) に記録して found: false 相当へ fail-open する
+// (WORKFLOWS.md § Degradation recording)。unit をまたぐ run 級の anomaly なので unit は
+// 固定値 "run" を入れる。
+let referenceIndex;
+try {
+  referenceIndex = await agent(
+    anchor(
+      "docs/reference-index.md を読む。存在すれば found: true とし、" +
+        "`| glob | description | path |` 形式の表の全文をそのまま table に入れる。" +
+        '存在しなければ found: false, table: "" を返す。',
+    ),
+    {
+      label: "reference-index",
+      phase: "Implement",
+      agentType: "general-purpose",
+      schema: REFERENCE_INDEX_SCHEMA,
+      ...implementOpts,
+    },
+  );
+} catch (err) {
+  const why = (err && err.message) || String(err);
+  anomalies.push({ unit: "run", kind: "reader-failed", notes: why });
+  log(`reference-index: reader agent が例外 (${why})。注入なしで続行する。`);
+  referenceIndex = { found: false, table: "" };
+}
 
 // 表を `{ glob, description, path }` の行配列にする。ヘッダ行と区切り行 (先頭 2 行) を除き、
 // セル数が 3 でない壊れた行は読み飛ばす。glob 列が "-" の行は照合の対象外で常に判断候補として
 // 提示する。glob 照合は `**/` と `*` のみをサポートするサブセット (U-002, issue #270)。
-const parseReferenceIndexRows = (table) =>
-  table
+// 壊れた行があるとき、解析済み行数と総データ行数を log に出す (WORKFLOWS.md § Degradation
+// recording。損失を件数だけで終わらせず、読者が「何行中何行が解析できたか」を再構成できる形)。
+const parseReferenceIndexRows = (table) => {
+  const dataLines = table
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.startsWith("|"))
-    .slice(2)
+    .slice(2);
+  const rows = dataLines
     .map((line) =>
       line
         .split("|")
@@ -254,6 +270,13 @@ const parseReferenceIndexRows = (table) =>
     )
     .filter((cells) => cells.length === 3)
     .map(([glob, description, path]) => ({ glob, description, path }));
+  if (rows.length < dataLines.length) {
+    log(
+      `reference-index: 表の解析 ${rows.length}/${dataLines.length} 行 (壊れた行 ${dataLines.length - rows.length} 件をスキップ)。`,
+    );
+  }
+  return rows;
+};
 
 // glob 行を正規表現へ変換する (U-002, issue #270)。`**/` はゼロ階層にも一致 (`(?:.*/)?`)、
 // `*` は `/` を跨がない 1 セグメント内の任意文字列 (`[^/]*`) として扱う。
