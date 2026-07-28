@@ -288,6 +288,92 @@ test("未対応メタ文字を含む行は照合対象から外れ anomaly に�
   );
 });
 
+// U-005 (Issue #270): 通し実行の連結検証。U-001〜U-004 はそれぞれ単体では緑でも、reader が
+// 複数 unit を跨いで正しく 1 回だけ呼ばれるか、anomaly の shape が全 push サイトで揃っているかは
+// 未検証だった。ここでは 2 unit plan を実 runWorkflow で通し、reader 呼び出し回数と anomaly の
+// 構造的一貫性を検証する。
+
+// 2 unit とも直接実装 (tests 空) の plan。reader 呼び出し回数と両 unit の prompt 注入だけを見る。
+const twoUnitImplPlan = (filesA, filesB) => ({
+  test_command: "echo test",
+  units: [
+    { id: "U-1", goal: "goal a", files: filesA, contract: "contract a", tests: [], seam: false },
+    { id: "U-2", goal: "goal b", files: filesB, contract: "contract b", tests: [], seam: false },
+  ],
+});
+
+test("インデックスありの 2 unit plan の通し実行で reader が 1 回だけ呼ばれ両 unit の実装 prompt に該当リファレンスが載る", async () => {
+  const { calls } = await runWorkflow(codeJs, {
+    args: { plan: twoUnitImplPlan(["sample.js"], ["sample.js"]), repo: "" },
+    stubs: { agent: stubWith(foundIndex) },
+  });
+
+  const readerCalls = calls.agent.filter((c) => (c.opts.label ?? "") === "reference-index");
+  assert.equal(readerCalls.length, 1, "reader agent は 2 unit plan でも 1 回だけ呼ばれる");
+
+  assert.match(
+    promptFor(calls, "impl:U-1"),
+    /実装前に読む: docs\/conventions\/js-naming\.md/,
+    "1 番目の unit の実装 prompt に該当リファレンスが載る",
+  );
+  assert.match(
+    promptFor(calls, "impl:U-2"),
+    /実装前に読む: docs\/conventions\/js-naming\.md/,
+    "2 番目の unit の実装 prompt にも同じリファレンスが載る",
+  );
+});
+
+// no-red (U-1)・scope-cut (U-2)・unsupported-glob (reader 読了後、unit ループ前) の 3 種の
+// anomaly を 1 run で同時に発生させる plan。
+const anomalyPlan = () => ({
+  test_command: "echo test",
+  units: [
+    {
+      id: "U-1",
+      goal: "impl goal",
+      files: ["a.js"],
+      contract: "c1",
+      tests: [{ id: "T-1", name: "already implemented" }],
+      seam: false,
+    },
+    { id: "U-2", goal: "impl goal 2", files: ["b.js"], contract: "c2", tests: [], seam: false },
+  ],
+});
+
+const unsupportedGlobTable =
+  "| glob | description | path |\n" +
+  "| --- | --- | --- |\n" +
+  "| src/file?.js | 未対応メタ文字を含む行 | docs/conventions/unsupported.md |\n";
+const unsupportedGlobIndex = { found: true, table: unsupportedGlobTable };
+
+const stubForAnomalies = (prompt, opts) => {
+  const label = opts.label ?? "";
+  if (label === "reference-index") return unsupportedGlobIndex;
+  if (label.startsWith("impl:")) return { green: true, notes: "", deferred: ["部分実装"] };
+  if (label.startsWith("red:") || label.startsWith("red2:"))
+    return { red_confirmed: false, test_files: [], notes: "already implemented" };
+  if (label === "verify") return { tests_pass: true, gates_pass: true, output_tail: "" };
+  throw new Error(`unexpected label: ${label}`);
+};
+
+test("anomalies の各要素が unit と kind と notes を全て持つ", async () => {
+  const { result } = await runWorkflow(codeJs, {
+    args: { plan: anomalyPlan(), repo: "" },
+    stubs: { agent: stubForAnomalies },
+  });
+
+  assert.ok(
+    result.anomalies.length >= 3,
+    "no-red・scope-cut・unsupported-glob の 3 種の anomaly が記録される",
+  );
+  for (const anomaly of result.anomalies) {
+    assert.equal(typeof anomaly.unit, "string", `anomaly (${anomaly.kind}) は unit を持つ`);
+    assert.ok(anomaly.unit.length > 0, `anomaly (${anomaly.kind}) の unit は空文字でない`);
+    assert.equal(typeof anomaly.kind, "string", "anomaly は kind を持つ");
+    assert.equal(typeof anomaly.notes, "string", "anomaly は notes を持つ");
+  }
+});
+
 test("インデックス不在では実装 prompt が現行のまま変わらない", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: implPlan(["sample.js"]), repo: "" },

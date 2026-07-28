@@ -308,6 +308,7 @@ const referenceIndexRows = (
 ).filter((row) => {
   if (row.glob === "-" || SUPPORTED_GLOB_CHARS.test(row.glob)) return true;
   anomalies.push({
+    unit: "run",
     kind: "unsupported-glob",
     notes: `${row.glob} (対応外のメタ文字を含む glob 行のため照合対象から除外)`,
   });
