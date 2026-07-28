@@ -3,7 +3,7 @@
 
 stdout: JSON { file, state, flow, errors, warnings, checks }
   state: absent | empty | ok
-  flow:  generate | update  (the /outcome branch this file routes to)
+  flow:  generate | update  (このファイルが振り分ける /outcome の分岐)
 exit: 0 if no errors (warnings allowed), 1 if errors
 """
 
@@ -15,15 +15,15 @@ from pathlib import Path
 REQUIRED_SECTIONS = ("Outcome state", "Behavior", "Non-goals", "Constraints")
 FILLED_SECTIONS = ("Behavior", "Non-goals", "Constraints")
 INDICATORS = ("Time", "Error rate", "Value")
-# The template writes prompts as {...}, occupying either a whole line or a whole
-# table cell. Matching braces anywhere would flag a Behavior that names a JSON
-# shape such as {status, findings}.
+# テンプレートはプロンプトを {...} として、行全体か表セル全体を占める形で書く。
+# 位置を問わず brace に一致させると、{status, findings} のような JSON 形を挙げた
+# Behavior まで検出してしまう。
 PLACEHOLDER_LINE = re.compile(r"^[ \t]*(\{[^{}\n]+\})[ \t]*$", flags=re.MULTILINE)
 PLACEHOLDER_CELL = re.compile(r"\|[ \t]*(\{[^{}\n]+\})[ \t]*(?=\|)")
 
 
 def section_body(text, heading):
-    """Text under `heading` up to the next heading of the same or higher level."""
+    """`heading` 配下のテキストを、同レベル以上の次の heading まで返す。"""
     match = re.search(rf"^(#{{2,3}}) {re.escape(heading)}\s*$", text, flags=re.MULTILINE)
     if not match:
         return None
@@ -34,7 +34,7 @@ def section_body(text, heading):
 
 
 def is_unfilled(body):
-    """True when nothing but TBD markers sits under the heading."""
+    """heading 配下に TBD マーカーしか無いとき True。"""
     for line in body.splitlines():
         content = re.sub(r"^\s*([-*]|\d+\.)\s*", "", line).strip()
         if not content or content.upper() == "TBD":

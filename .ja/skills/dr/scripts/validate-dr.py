@@ -15,8 +15,8 @@ from pathlib import Path
 
 from dr_common import fail, split_frontmatter
 
-# Confirmation is an h3 under Decision Outcome; the others are h2. Section
-# detection allows either level so a valid h3 Confirmation is not flagged missing.
+# Confirmation は Decision Outcome 配下の h3 で、他は h2。section 検出はどちらの
+# レベルも許すので、正しい h3 の Confirmation が missing 扱いにならない。
 REQUIRED_SECTIONS = (
     "Context and Problem Statement",
     "Considered Options",
@@ -26,7 +26,7 @@ REQUIRED_SECTIONS = (
 
 
 def count_options(lines):
-    """Bullets or numbered items directly under ## Considered Options."""
+    """## Considered Options 直下の bullet または番号付き item を数える。"""
     in_options = False
     count = 0
     for line in lines:
@@ -41,7 +41,7 @@ def count_options(lines):
 
 
 def lint_check(path):
-    """('checks' | 'warnings', message) from markdownlint-cli2, if installed."""
+    """markdownlint-cli2 (インストール済みの場合) から ('checks' | 'warnings', message) を返す。"""
     if not shutil.which("markdownlint-cli2"):
         return "checks", "markdown_lint=skipped (markdownlint-cli2 not installed)"
     candidates = [
@@ -72,7 +72,7 @@ def main():
         else:
             results["errors"].append(f"missing_section:{section}")
 
-    # MADR v4 frontmatter: status and date are optional but recommended
+    # MADR v4 frontmatter: status と date は optional だが推奨
     frontmatter, _ = split_frontmatter(text)
     if frontmatter:
         results["checks"].append("frontmatter=present")
