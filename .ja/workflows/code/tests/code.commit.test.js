@@ -43,6 +43,7 @@ const noTestPlan = {
 // commit agent の戻り値だけ差し替えられる happy stub。
 const stubWith = (commitResult) => (prompt, opts) => {
   const label = opts.label ?? "";
+  if (label === "reference-index") return { found: false, table: "" };
   if (label.startsWith("commit:")) return commitResult;
   if (label.startsWith("red:"))
     return { red_confirmed: true, test_files: ["t.test.js"], notes: "" };
