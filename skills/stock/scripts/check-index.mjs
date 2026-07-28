@@ -3,8 +3,8 @@
 // workflows/code.js's reference-index section (`**/` also matches zero directory levels;
 // `*` does not cross `/`).
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const globToRegExp = (glob) => {
@@ -33,15 +33,16 @@ const BARE_DOUBLE_STAR = /\*\*(?!\/)/;
 // rationale: readable within one screen) as the line count for "one screen" (ADR-0091).
 const SIZE_THRESHOLD_LINES = 30;
 
-export function checkIndex({ table, exists, trackedFiles }) {
-  const lineCount = table.split("\n").length;
-  const size = { lines: lineCount, warning: lineCount > SIZE_THRESHOLD_LINES };
-
-  const dataLines = table
+export function checkIndex({ table, exists, trackedFiles, indexPath }) {
+  // size watches the index table's line count (ADR-0091). code.js's reader also extracts
+  // the table body alone, so headings and prose around the table are not counted.
+  const tableLines = table
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line.startsWith("|"))
-    .slice(2);
+    .filter((line) => line.startsWith("|"));
+  const size = { lines: tableLines.length, warning: tableLines.length > SIZE_THRESHOLD_LINES };
+
+  const dataLines = tableLines.slice(2);
   const rows = dataLines
     .map((line) =>
       line
@@ -69,11 +70,14 @@ export function checkIndex({ table, exists, trackedFiles }) {
 
   // Every row, including `-` rows, carries a real path in the path column (unlike the glob
   // column, `-` is not allowed there; see REFERENCE_INDEX_FORMAT.md). The referenced check
-  // compares against this full-row path set.
+  // compares against this full-row path set. The index file itself can never appear in its
+  // own path column, so without the exclusion it would stay in unreferenced permanently.
   const referencedPaths = new Set(rows.map((row) => normalizeMatchPath(row.path)));
+  const indexSelf = indexPath ? normalizeMatchPath(indexPath) : null;
   const unreferenced = trackedFiles.filter(
     (file) =>
       /^docs\/.*\.md$/.test(normalizeMatchPath(file)) &&
+      normalizeMatchPath(file) !== indexSelf &&
       !referencedPaths.has(normalizeMatchPath(file)),
   );
 
@@ -106,8 +110,11 @@ function main([repoRootArg, indexPathArg]) {
     .filter((line) => line.length > 0);
   const table = readFileSync(indexPathArg, "utf8");
   const exists = (path) => existsSync(join(repoRoot, path));
+  // git rev-parse returns a symlink-resolved absolute path, so realpath the index side too
+  // before relativizing (keeps the relative path aligned across macOS's /tmp -> /private/tmp).
+  const indexPath = relative(repoRoot, realpathSync(resolve(process.cwd(), indexPathArg)));
 
-  const result = checkIndex({ table, exists, trackedFiles });
+  const result = checkIndex({ table, exists, trackedFiles, indexPath });
   process.stdout.write(`${JSON.stringify(result)}\n`);
   process.exitCode = result.exitCode;
 }

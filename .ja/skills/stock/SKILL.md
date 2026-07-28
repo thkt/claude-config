@@ -26,7 +26,7 @@ Phase 1 の JSON を区分ごとの表として提示する。
 | noMatch      | glob 列がどの tracked file にも一致しない                                                                    | 警告                               |
 | unsupported  | glob 列が対応文字集合 (`docs/REFERENCE_INDEX_FORMAT.md` の Supported glob subset) 外、または裸の `**` を含む | 警告                               |
 | unreferenced | `docs/` 配下の md で、index のどの行の path 列からも参照されていない                                         | Phase 3 の入力                     |
-| size         | index の行数と 1 画面閾値 (30 行、ADR-0091) 超過の有無                                                       | 閾値超過時のみ警告                 |
+| size         | index 表の行数 (前後の散文は数えない) と 1 画面閾値 (30 行、ADR-0091) 超過の有無                             | 閾値超過時のみ警告                 |
 
 `exitCode` が非ゼロなら dangling が 1 件以上ある旨を明記する。dangling は存在しないファイルを指す行なので、index 側の修正 (path 訂正または行削除) を優先課題として提示する。
 

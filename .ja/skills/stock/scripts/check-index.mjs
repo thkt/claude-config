@@ -2,8 +2,8 @@
 // tracked ファイルに一致しない) として検証する。glob 判定は workflows/code.js の
 // reference-index 節 (`**/` はゼロ階層にも一致、`*` は `/` を跨がない) と同じ規則にする。
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const globToRegExp = (glob) => {
@@ -30,14 +30,16 @@ const BARE_DOUBLE_STAR = /\*\*(?!\/)/;
 // 閾値 (≤30、根拠: 1 画面の可読性) から流用する (ADR-0091)。
 const SIZE_THRESHOLD_LINES = 30;
 
-export function checkIndex({ table, exists, trackedFiles }) {
-  const lines = table.split("\n");
-  const size = { lines: lines.length, warning: lines.length > SIZE_THRESHOLD_LINES };
-
-  const dataLines = lines
+export function checkIndex({ table, exists, trackedFiles, indexPath }) {
+  // size が見張るのは index 表の行数 (ADR-0091)。code.js の reader が抽出するのも表本文
+  // だけなので、表の前後の見出しや散文は数えない。
+  const tableLines = table
+    .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line.startsWith("|"))
-    .slice(2);
+    .filter((line) => line.startsWith("|"));
+  const size = { lines: tableLines.length, warning: tableLines.length > SIZE_THRESHOLD_LINES };
+
+  const dataLines = tableLines.slice(2);
   const rows = dataLines
     .map((line) =>
       line
@@ -63,11 +65,14 @@ export function checkIndex({ table, exists, trackedFiles }) {
   });
 
   // path 列は `-` 行を含む全行が実パスを持つ (glob 列とは異なり `-` を許さない、
-  // REFERENCE_INDEX_FORMAT.md)。参照済み判定はこの全行の path 集合と比較する。
+  // REFERENCE_INDEX_FORMAT.md)。参照済み判定はこの全行の path 集合と比較する。index
+  // ファイル自身は自分の path 列に載れないため、除外しないと恒久的に unreferenced に残る。
   const referencedPaths = new Set(rows.map((row) => normalizeMatchPath(row.path)));
+  const indexSelf = indexPath ? normalizeMatchPath(indexPath) : null;
   const unreferenced = trackedFiles.filter(
     (file) =>
       /^docs\/.*\.md$/.test(normalizeMatchPath(file)) &&
+      normalizeMatchPath(file) !== indexSelf &&
       !referencedPaths.has(normalizeMatchPath(file)),
   );
 
@@ -99,8 +104,11 @@ function main([repoRootArg, indexPathArg]) {
     .filter((line) => line.length > 0);
   const table = readFileSync(indexPathArg, "utf8");
   const exists = (path) => existsSync(join(repoRoot, path));
+  // git rev-parse は symlink 解決済みの絶対パスを返すため、index 側も realpath で揃えてから
+  // repo-root 相対にする (macOS の /tmp -> /private/tmp などで相対化がずれない)。
+  const indexPath = relative(repoRoot, realpathSync(resolve(process.cwd(), indexPathArg)));
 
-  const result = checkIndex({ table, exists, trackedFiles });
+  const result = checkIndex({ table, exists, trackedFiles, indexPath });
   process.stdout.write(`${JSON.stringify(result)}\n`);
   process.exitCode = result.exitCode;
 }

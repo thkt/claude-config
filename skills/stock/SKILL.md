@@ -26,7 +26,7 @@ Present the Phase 1 JSON as a table per category.
 | noMatch      | The glob column matches no tracked file                                                                                                      | Warning                                         |
 | unsupported  | The glob column falls outside the supported character set (`docs/REFERENCE_INDEX_FORMAT.md`'s Supported glob subset) or contains a bare `**` | Warning                                         |
 | unreferenced | An md under `docs/` not referenced by any row's path column                                                                                  | Input to Phase 3                                |
-| size         | The index's line count and whether it exceeds the one-screen threshold (30 lines, ADR-0091)                                                  | Warning only when the threshold is exceeded     |
+| size         | The index table's line count (surrounding prose is not counted) and whether it exceeds the one-screen threshold (30 lines, ADR-0091)         | Warning only when the threshold is exceeded     |
 
 When `exitCode` is non-zero, state explicitly that at least one dangling row exists. A dangling row points at a file that does not exist, so present fixing the index side (correct the path or delete the row) as the priority task.
 
