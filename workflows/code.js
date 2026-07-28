@@ -207,7 +207,7 @@ const referenceModuleCtx = ref?.path
     `Deviating from the reference module is allowed only when the plan says so; state any deviation in your result.\n`
   : "";
 
-// Read the convention index (docs/reference-index.md) once before the unit loop (ADR-0091).
+// Read the convention index (docs/REFERENCE_INDEX.md) once before the unit loop (ADR-0091).
 // Leaving reference discovery to the LLM's own initiative adds a skipped-search dropout point
 // and makes the read unverifiable, so the read is an explicit agent call and the glob match
 // against units[].files is held by the script, deterministically.
@@ -216,7 +216,7 @@ const REFERENCE_INDEX_SCHEMA = {
   additionalProperties: false,
   required: ["found", "table"],
   properties: {
-    found: { type: "boolean", description: "true when docs/reference-index.md exists" },
+    found: { type: "boolean", description: "true when docs/REFERENCE_INDEX.md exists" },
     table: {
       type: "string",
       description:
@@ -233,7 +233,7 @@ let referenceIndex;
 try {
   referenceIndex = await agent(
     anchor(
-      "Read docs/reference-index.md. If it exists, return found: true and put the full text " +
+      "Read docs/REFERENCE_INDEX.md. If it exists, return found: true and put the full text " +
         "of the `| glob | description | path |` table verbatim into table. " +
         'If it does not exist, return found: false, table: "".',
     ),

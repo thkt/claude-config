@@ -204,7 +204,7 @@ const referenceModuleCtx = ref?.path
     `参照モジュールからの逸脱は plan が明記したときのみ許され、逸脱は結果に記す。\n`
   : "";
 
-// 規約インデックス (docs/reference-index.md) を unit ループ前に 1 回だけ読む (ADR-0091)。
+// 規約インデックス (docs/REFERENCE_INDEX.md) を unit ループ前に 1 回だけ読む (ADR-0091)。
 // リファレンスの発見を LLM の自発探索に任せると探索スキップという脱落点が増え、読了の検証も
 // できないため、読む行為を明示の agent 呼び出しにし、units[].files との glob 照合は script が
 // 握って決定的にする。
@@ -213,7 +213,7 @@ const REFERENCE_INDEX_SCHEMA = {
   additionalProperties: false,
   required: ["found", "table"],
   properties: {
-    found: { type: "boolean", description: "docs/reference-index.md が存在したとき true" },
+    found: { type: "boolean", description: "docs/REFERENCE_INDEX.md が存在したとき true" },
     table: {
       type: "string",
       description:
@@ -229,7 +229,7 @@ let referenceIndex;
 try {
   referenceIndex = await agent(
     anchor(
-      "docs/reference-index.md を読む。存在すれば found: true とし、" +
+      "docs/REFERENCE_INDEX.md を読む。存在すれば found: true とし、" +
         "`| glob | description | path |` 形式の表の全文をそのまま table に入れる。" +
         '存在しなければ found: false, table: "" を返す。',
     ),

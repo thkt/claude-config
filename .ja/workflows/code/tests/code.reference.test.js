@@ -1,4 +1,4 @@
-// 規約インデックス (docs/reference-index.md) を unit ループ前に reader agent 1 体が読み、
+// 規約インデックス (docs/REFERENCE_INDEX.md) を unit ループ前に reader agent 1 体が読み、
 // script が表を glob 照合して実装 step の prompt に注入する。ADR-0091 のフラットインデックス +
 // glob 照合を workflows/code.js の referenceModuleCtx 節 (ctx 追補形) に倣って実装する。
 // 注入ブロックは delimiter を持ち、インデックス本文が data であり指示ではない旨と、
@@ -96,7 +96,7 @@ test("glob に一致した行のリファレンスパスが実装 step の promp
   assert.ok(reader, "reader agent が unit ループ前に呼ばれる");
   assert.match(
     reader.prompt,
-    /docs\/reference-index\.md/,
+    /docs\/REFERENCE_INDEX\.md/,
     "reader agent は規約パスのインデックスを読む指示を受ける",
   );
 
@@ -428,7 +428,7 @@ test("インデックス不在では実装 prompt が現行のまま変わらな
   assert.ok(reader, "reader agent はインデックス不在時も unit ループ前に呼ばれる");
   assert.match(
     reader.prompt,
-    /docs\/reference-index\.md/,
+    /docs\/REFERENCE_INDEX\.md/,
     "reader agent は規約パスのインデックスを読む指示を受ける",
   );
 
