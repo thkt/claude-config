@@ -28,7 +28,7 @@ Present the Phase 1 JSON as a table per category. When dangling rows exist, stat
 | noMatch      | The glob column matches no tracked file                                                                                                        | Warning                                         |
 | unsupported  | The glob column falls outside the supported character set (reference-index-format.md § Supported glob subset), or contains a bare `**`         | Warning                                         |
 | unreferenced | An md under `docs/` not referenced by any row's path column. Decision records, READMEs, and `_`-prefixed files are excluded as non-conventions | Input to Phase 3                                |
-| size         | The index table's line count (surrounding prose is not counted) and whether it exceeds the one-screen threshold (30 lines, ADR-0091)           | Warning only when the threshold is exceeded     |
+| size         | The index table's line count (surrounding prose is not counted) and whether it exceeds the one-screen threshold (30 lines, DR-0091)            | Warning only when the threshold is exceeded     |
 
 ## Phase 3: Propose candidates
 

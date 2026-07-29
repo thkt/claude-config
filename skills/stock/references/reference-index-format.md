@@ -1,6 +1,6 @@
 # REFERENCE_INDEX.md Format Spec
 
-The canonical definition of the row format that `docs/REFERENCE_INDEX.md` must hold. It documents the implementation behavior read by `workflows/code.js`'s `parseReferenceIndexRows`/`SUPPORTED_GLOB_CHARS`/`BARE_DOUBLE_STAR` as the authority (ADR-0091).
+The canonical definition of the row format that `docs/REFERENCE_INDEX.md` must hold. It documents the implementation behavior read by `workflows/code.js`'s `parseReferenceIndexRows`/`SUPPORTED_GLOB_CHARS`/`BARE_DOUBLE_STAR` as the authority (DR-0091).
 
 ## Row format
 
@@ -63,4 +63,4 @@ A matched, specific row (`Read before implementing: <path>`) is placed after the
 
 ## Size watch
 
-Watch for an index exceeding one screen as a sign of over-injection (ADR-0091). The line-count threshold and its mechanical detection belong to the stock skill's check-index.js.
+Watch for an index exceeding one screen as a sign of over-injection (DR-0091). The line-count threshold and its mechanical detection belong to the stock skill's check-index.js.

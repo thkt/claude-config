@@ -26,7 +26,7 @@ const SUPPORTED_GLOB_CHARS = /^[\w.\-/*]*$/;
 const BARE_DOUBLE_STAR = /\*\*(?!\/)/;
 
 // 「1 画面」の行数を、use-context-reviewer-readability スキルが既に定義する関数行数の
-// 閾値 (≤30、根拠: 1 画面の可読性) から流用する (ADR-0091)。
+// 閾値 (≤30、根拠: 1 画面の可読性) から流用する (DR-0091)。
 const SIZE_THRESHOLD_LINES = 30;
 
 const unwrapCode = (cell) => cell.replace(/^`(.*)`$/, "$1").trim();
@@ -39,7 +39,7 @@ const EXCLUDED_FROM_CANDIDATES = [/^docs\/decisions\//, /(^|\/)README\.md$/, /(^
 // index の不在は異常ではなく、これから索引化する初期状態。空表として扱い、候補提案の入力
 // (unreferenced) だけ埋めたレポートを返す。found でその区別を呼び出し元へ伝える。
 export function checkIndex({ table, exists, trackedFiles, indexPath, found = true }) {
-  // size が見張るのは index 表の行数 (ADR-0091)。code.js の reader が抽出するのも表本文
+  // size が見張るのは index 表の行数 (DR-0091)。code.js の reader が抽出するのも表本文
   // だけなので、表の前後の見出しや散文は数えない。
   const tableLines = table
     .split("\n")

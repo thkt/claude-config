@@ -207,7 +207,7 @@ const referenceModuleCtx = ref?.path
     `Deviating from the reference module is allowed only when the plan says so; state any deviation in your result.\n`
   : "";
 
-// Read the convention index (docs/REFERENCE_INDEX.md) once before the unit loop (ADR-0091).
+// Read the convention index (docs/REFERENCE_INDEX.md) once before the unit loop (DR-0091).
 // Leaving reference discovery to the LLM's own initiative adds a skipped-search dropout point
 // and makes the read unverifiable, so the read is an explicit agent call and the glob match
 // against units[].files is held by the script, deterministically.

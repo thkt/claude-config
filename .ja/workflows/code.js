@@ -204,7 +204,7 @@ const referenceModuleCtx = ref?.path
     `参照モジュールからの逸脱は plan が明記したときのみ許され、逸脱は結果に記す。\n`
   : "";
 
-// 規約インデックス (docs/REFERENCE_INDEX.md) を unit ループ前に 1 回だけ読む (ADR-0091)。
+// 規約インデックス (docs/REFERENCE_INDEX.md) を unit ループ前に 1 回だけ読む (DR-0091)。
 // リファレンスの発見を LLM の自発探索に任せると探索スキップという脱落点が増え、読了の検証も
 // できないため、読む行為を明示の agent 呼び出しにし、units[].files との glob 照合は script が
 // 握って決定的にする。

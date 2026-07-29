@@ -28,7 +28,7 @@ const SUPPORTED_GLOB_CHARS = /^[\w.\-/*]*$/;
 const BARE_DOUBLE_STAR = /\*\*(?!\/)/;
 
 // Reuses the readability skill's already-defined function-line-count threshold (<=30,
-// rationale: readable within one screen) as the line count for "one screen" (ADR-0091).
+// rationale: readable within one screen) as the line count for "one screen" (DR-0091).
 const SIZE_THRESHOLD_LINES = 30;
 
 const unwrapCode = (cell) => cell.replace(/^`(.*)`$/, "$1").trim();
@@ -43,7 +43,7 @@ const EXCLUDED_FROM_CANDIDATES = [/^docs\/decisions\//, /(^|\/)README\.md$/, /(^
 // as an empty table, returning a report with only the candidate-proposal input (unreferenced)
 // filled in. found carries that distinction to the caller.
 export function checkIndex({ table, exists, trackedFiles, indexPath, found = true }) {
-  // size watches the index table's line count (ADR-0091). code.js's reader also extracts
+  // size watches the index table's line count (DR-0091). code.js's reader also extracts
   // the table body alone, so headings and prose around the table are not counted.
   const tableLines = table
     .split("\n")
