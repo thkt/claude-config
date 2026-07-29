@@ -132,6 +132,29 @@ const validate = (plan) => {
   const ids = new Set(units.map((u) => u.id));
   if (ids.size !== units.length) errors.push("duplicate unit ids");
 
+  // reference_module carries either "replicate this existing module" (kind: module,
+  // needs path) or "this shape has no existing module to replicate" (any other kind,
+  // needs reason). A bare null cannot carry that reason, so it is always a blocker;
+  // extract is expected to turn the existing `null (理由)` prose format into a kind-tagged
+  // object instead of leaving it null (DR-0093).
+  const refModule = plan.reference_module;
+  if (refModule === null) {
+    errors.push(
+      "reference_module is null with no reason. Record it as an object " +
+        "{ kind, reason } (kind: module/no-module/new-shape) instead of a bare null",
+    );
+  } else if (refModule && typeof refModule === "object" && "kind" in refModule) {
+    // A pre-DR-0093 object with no kind field (a bare path/files reference module) is
+    // left unchecked here for backward compatibility; the new check only applies once
+    // a plan opts in by carrying kind.
+    if (refModule.kind === "module") {
+      if (!String(refModule.path || "").trim())
+        errors.push("reference_module.path is empty while kind is module");
+    } else if (!String(refModule.reason || "").trim()) {
+      errors.push(`reference_module.reason is empty while kind is ${refModule.kind}`);
+    }
+  }
+
   const testIds = new Set();
   for (const [i, u] of units.entries()) {
     const tests = (Array.isArray(u.tests) ? u.tests : []).map((t, j) =>
@@ -233,8 +256,21 @@ const PLAN_SCHEMA = obj(
     reference_module: {
       type: ["object", "null"],
       description:
-        "Existing same-shaped module whose structure this feature replicates, or null when the shape is new. Later units keep its conventions",
+        "Existing same-shaped module whose structure this feature replicates, or an object recording why no such module is being referenced. Later units keep its conventions",
       properties: {
+        kind: {
+          type: "string",
+          enum: ["module", "no-module", "new-shape"],
+          description:
+            "module: path/files below name a real existing module to replicate. " +
+            "no-module: this unit only appends to an existing file, so no module search applies. " +
+            "new-shape: a module search happened but no existing module shares this shape",
+        },
+        reason: {
+          type: "string",
+          description:
+            "Required when kind is not module: why no existing module is being referenced",
+        },
         path: { type: "string", description: "Module root of the reference module" },
         files: {
           type: "array",
@@ -307,7 +343,8 @@ const plan = await agent(
       `Preserve every unit id (U-NNN) and test id (T-NNN) from the body. ` +
       `preconditions is the list of {path, pattern} of existing code the plan presupposes; backlog_candidates are out-of-scope candidates written in the issue. Empty arrays if absent from the body.\n` +
       `assumptions come from the whole body, not just the ## Plan section: collect every inline \`(tentative: ...)\` mark and every line of a Premises section. The marker stays English whatever language the body is written in. Empty array if the body carries none.\n` +
-      `seam is true only for a unit the body marks \`seam: true\`; every other unit is false. Do not infer it from the unit's content.\n\n${fencedBody}`,
+      `seam is true only for a unit the body marks \`seam: true\`; every other unit is false. Do not infer it from the unit's content.\n` +
+      `reference_module: when the body writes the existing \`null (reason)\` format, do not leave it as a bare null; turn it into an object carrying that reason. Set kind to module when the body names a real existing module path to replicate (and copy its path/files/instances/conventions); otherwise set kind to no-module when the reason says the unit only appends to an existing file with no module search, or new-shape when the reason says a module search found no matching shape, and copy the reason verbatim. Only emit a bare null when the body gives reference_module with no reason at all.\n\n${fencedBody}`,
   ),
   {
     label: "extract",

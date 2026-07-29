@@ -127,6 +127,27 @@ const validate = (plan) => {
   const ids = new Set(units.map((u) => u.id));
   if (ids.size !== units.length) errors.push("unit id が重複");
 
+  // reference_module は「既存モジュールを複製する」(kind: module、path が要る) か
+  // 「複製する既存モジュールが無い」(それ以外の kind、reason が要る) のいずれかを運ぶ。
+  // 素の null は理由を運べないので常に blocker にする。extract は既存の
+  // `null (理由)` 書式を null のまま残さず kind 付き object へ変換する想定 (DR-0093)。
+  const refModule = plan.reference_module;
+  if (refModule === null) {
+    errors.push(
+      "reference_module が理由の無い null。素の null ではなく " +
+        "{ kind, reason } (kind: module/no-module/new-shape) の object として記録する",
+    );
+  } else if (refModule && typeof refModule === "object" && "kind" in refModule) {
+    // kind フィールドの無い DR-0093 以前の object (path/files だけの参照モジュール) は
+    // 後方互換のためここでは検査しない。この検査は plan が kind を持って初めて働く。
+    if (refModule.kind === "module") {
+      if (!String(refModule.path || "").trim())
+        errors.push("kind が module なのに reference_module.path が空");
+    } else if (!String(refModule.reason || "").trim()) {
+      errors.push(`kind が ${refModule.kind} なのに reference_module.reason が空`);
+    }
+  }
+
   const testIds = new Set();
   for (const [i, u] of units.entries()) {
     const tests = (Array.isArray(u.tests) ? u.tests : []).map((t, j) =>
@@ -221,8 +242,20 @@ const PLAN_SCHEMA = obj(
     reference_module: {
       type: ["object", "null"],
       description:
-        "この機能が構造を複製する既存の同形モジュール。形が新規なら null。後続 unit はその慣例を維持する",
+        "この機能が構造を複製する既存の同形モジュール。または参照するモジュールが無い理由を記録する object。後続 unit はその慣例を維持する",
       properties: {
+        kind: {
+          type: "string",
+          enum: ["module", "no-module", "new-shape"],
+          description:
+            "module: 以下の path/files が複製する実在モジュールを指す。" +
+            "no-module: 既存ファイルへの追補のみでモジュール探索が要らない。" +
+            "new-shape: モジュール探索を行ったが同形の既存モジュールが無かった",
+        },
+        reason: {
+          type: "string",
+          description: "kind が module 以外のとき必須。参照するモジュールが無い理由",
+        },
         path: { type: "string", description: "参照モジュールのルート" },
         files: {
           type: "array",
@@ -294,7 +327,8 @@ const plan = await agent(
       `本文の unit id (U-NNN) と test id (T-NNN) をすべて保持する。` +
       `preconditions は plan が前提にする既存コードの {path, pattern} の一覧、backlog_candidates は issue に書かれたスコープ外候補。本文に無ければ空配列。\n` +
       `assumptions は ## Plan 節に限らず本文全体から集める。インラインの \`(tentative: ...)\` のマークと Premises 節の各行がすべて対象。マーカーは本文がどの言語でも英語のまま。本文に無ければ空配列。\n` +
-      `seam は本文が \`seam: true\` と記した unit だけ true、他はすべて false。unit の内容から推測しない。\n\n${fencedBody}`,
+      `seam は本文が \`seam: true\` と記した unit だけ true、他はすべて false。unit の内容から推測しない。\n` +
+      `reference_module: 本文が既存の \`null (理由)\` 書式を使っているときは、そのまま null に潰さず理由を運ぶ object に変換する。本文が複製すべき実在のモジュール path を名指ししていれば kind を module にし (path/files/instances/conventions もそこから写す)、理由が「既存ファイルへの追補でモジュール探索が要らない」旨なら no-module に、理由が「探索したが同形のモジュールが無かった」旨なら new-shape にし、いずれも reason を原文のまま写す。本文の reference_module に理由が一切無いときだけ素の null を出す。\n\n${fencedBody}`,
   ),
   {
     label: "extract",

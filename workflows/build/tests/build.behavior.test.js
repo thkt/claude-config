@@ -303,6 +303,61 @@ test("構造欠陥と content 空 (contract / name) はいずれも stopped: inv
   }
 });
 
+// reference_module は「既存の同形モジュールを複製する」か「この形は新規で理由がある」の
+// いずれかを構造化して運ぶ。素の null は理由を運べないので、object { kind, reason } を
+// 要求する検査が要る。
+test("理由の無い null の reference_module を持つ plan は invalid-plan で止まる", async () => {
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ plan: makePlan({ reference_module: null }) }),
+  });
+  assert.equal(result.stopped, "invalid-plan");
+  assert.ok(
+    result.blockers.some((b) => /reference_module/.test(String(b))),
+    "blockers に reference_module を指すエラー文言が載る",
+  );
+});
+
+test("kind が module で path が空の plan は invalid-plan で止まる", async () => {
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      plan: makePlan({ reference_module: { kind: "module", path: "" } }),
+    }),
+  });
+  assert.equal(result.stopped, "invalid-plan");
+  assert.ok(
+    result.blockers.some((b) => /reference_module/.test(String(b)) && /path/.test(String(b))),
+    "blockers に reference_module.path を指すエラー文言が載る",
+  );
+});
+
+test("kind が module 以外で reason が空の plan は invalid-plan で止まる", async () => {
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      plan: makePlan({ reference_module: { kind: "new", reason: "" } }),
+    }),
+  });
+  assert.equal(result.stopped, "invalid-plan");
+  assert.ok(
+    result.blockers.some((b) => /reference_module/.test(String(b)) && /reason/.test(String(b))),
+    "blockers に reference_module の reason を指すエラー文言が載る",
+  );
+});
+
+test("kind と reason を持つ plan は validate を通る", async () => {
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      plan: makePlan({
+        reference_module: { kind: "new", reason: "no existing module shares this shape" },
+      }),
+    }),
+  });
+  assert.notEqual(result.stopped, "invalid-plan", "kind + reason が揃えば validate を通る");
+});
+
 // unit ごとのテストは自分の境界を stub するため、各 unit が緑でも層が結線されない
 // (kizalas #558 / PR 575)。テストを持つ unit が 2 つ以上ある plan は seam unit を要求する。
 test("テストを持つ unit が 2 つ以上で seam unit が無い plan は stopped: invalid-plan、seam: true があれば通る", async () => {
