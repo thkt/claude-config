@@ -6,18 +6,19 @@ The tables below are a quick reference, not an exhaustive list. Before finalizin
 
 ## Define Concretely
 
-| Banned term                                               | Problem                                                     | Replace with                                                                   |
-| --------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| correct / normal / abnormal                               | No baseline                                                 | Condition and expected result                                                  |
-| usual / ordinary / standard / general                     | Whose usual?                                                | Default value or precondition                                                  |
-| expected value / as intended / as specified               | Empty reference                                             | Concrete value or behavior                                                     |
-| process (noun / verb)                                     | What operation?                                             | Transform, validate, persist, etc.                                             |
-| data / information                                        | What data?                                                  | User name, order list, etc.                                                    |
-| without issues                                            | What was actually checked?                                  | List verified conditions                                                       |
-| appropriately / properly                                  | What counts as appropriate?                                 | Concrete operation and criteria                                                |
-| robust / leverage / delve                                 | What improves, and how?                                     | Concrete property or operation                                                 |
-| Abstract verbs (works, layers, supports, etc.)            | Actual operation invisible                                  | Verbs naming the real operation and result                                     |
-| Compressed nouns (change impact, context retention, etc.) | Missing particles and verbs hide the relation between words | Phrase restored with particles and verbs. Established technical terms excepted |
+| Banned term                                               | Problem                                                      | Replace with                                                                   |
+| --------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| correct / normal / abnormal                               | No baseline                                                  | Condition and expected result                                                  |
+| usual / ordinary / standard / general                     | Whose usual?                                                 | Default value or precondition                                                  |
+| expected value / as intended / as specified               | Empty reference                                              | Concrete value or behavior                                                     |
+| process (noun / verb)                                     | What operation?                                              | Transform, validate, persist, etc.                                             |
+| data / information                                        | What data?                                                   | User name, order list, etc.                                                    |
+| without issues                                            | What was actually checked?                                   | List verified conditions                                                       |
+| appropriately / properly                                  | What counts as appropriate?                                  | Concrete operation and criteria                                                |
+| robust / leverage / delve                                 | What improves, and how?                                      | Concrete property or operation                                                 |
+| Abstract verbs (works, layers, supports, etc.)            | Actual operation invisible                                   | Verbs naming the real operation and result                                     |
+| Compressed nouns (change impact, context retention, etc.) | Missing particles and verbs hide the relation between words  | Phrase restored with particles and verbs. Established technical terms excepted |
+| Literal translation of another language's idiom           | Does not read to someone who does not know the source phrase | Drop the phrase and state what it refers to. Established phrases excepted      |
 
 ## State Comparison Baseline
 
@@ -42,15 +43,17 @@ Models do not generalize an instruction from one item to another, nor infer scop
 
 Write so the reader can predict the next sentence's role from the previous one. Do not leave the relation between sentences to the reader's guess; show it at the head and the end of each sentence.
 
-| Rule                        | Directive                                                                                                                                               |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Announce with connectives   | A sentence turning to contrast, concession, causation, or an example announces its role with a leading connective (in contrast, therefore, for example) |
-| Negation after the premise  | Drop the "not merely X" opener and state the content directly. When negating, first give the reason the reader would assume X                           |
-| Resolve raised questions    | After stating a problem, give its cause or handling; after stating an operation, give its result in the next sentence, then move on                     |
-| Connect with demonstratives | When the referent is unique in the previous sentence, receive it with "that" to signal continuation. When candidates are plural, rewrite the noun       |
-| Keep the subject            | Put a subject on any sentence where whose judgment or what action changes                                                                               |
-| Shift the temperature       | End problem sentences so the burden shows (cannot, must), and post-improvement sentences so the relief shows (becomes able to)                          |
-| No punch lines              | Drop the "the essence is" / "the only key is" staging and start directly from the content                                                               |
+| Rule                        | Directive                                                                                                                                                            |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Announce with connectives   | A sentence turning to contrast, concession, causation, or an example announces its role with a leading connective (in contrast, therefore, for example)              |
+| Negation after the premise  | Drop the "not merely X" opener and state the content directly. When negating, first give the reason the reader would assume X                                        |
+| Resolve raised questions    | After stating a problem, give its cause or handling; after stating an operation, give its result in the next sentence, then move on                                  |
+| Connect with demonstratives | When the referent is unique in the previous sentence, receive it with "that" to signal continuation. When candidates are plural, rewrite the noun                    |
+| Keep the subject            | Put a subject on any sentence where whose judgment or what action changes                                                                                            |
+| No personification          | Do not make a program, file, or test the subject of emotion, perception, or intent. Write "the formatter duplicates the row", not "the formatter dislikes it"        |
+| No life-or-death wording    | Replace alive / dead / surviving with the actual condition. Write "the hook does not fire", not "the hook is dead". Established terms such as dead code are excepted |
+| Shift the temperature       | End problem sentences so the burden shows (cannot, must), and post-improvement sentences so the relief shows (becomes able to)                                       |
+| No punch lines              | Drop the "the essence is" / "the only key is" staging and start directly from the content                                                                            |
 
 ## Delete Document-Updating Sentences
 
