@@ -604,17 +604,14 @@ if (revalidationTargets.length) {
       };
     }
   }
+  // Every precondition already has a result by this point (the unreported-retry gate
+  // above returns early otherwise), so `r &&` is a no-op guard for them; it only does
+  // real work for reference_module entries, whose missing result stays silent per the
+  // fail-open note above instead of blocking the build the way a missing precondition
+  // does.
   const drift = [];
-  for (const pc of preconditions) {
-    const r = resultByKey.get(keyOf(pc));
-    if (!r.exists || !r.matches) drift.push(r);
-  }
-  // reference_module entries report drift only when the relay actually returned a
-  // result for them; a missing entry stays silent per the fail-open note above, so a
-  // dropped reference-module row never blocks the build the way a missing
-  // precondition does.
-  for (const rm of refModuleEntries) {
-    const r = resultByKey.get(keyOf(rm));
+  for (const target of revalidationTargets) {
+    const r = resultByKey.get(keyOf(target));
     if (r && (!r.exists || !r.matches)) drift.push(r);
   }
   if (drift.length) {

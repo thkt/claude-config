@@ -578,16 +578,13 @@ if (revalidationTargets.length) {
       };
     }
   }
+  // ここに来た時点で全 precondition は結果を持つ (無ければ上の unreported-retry ゲートで
+  // 早期 return する)。よって `r &&` は precondition には no-op のガードで、実際に効くのは
+  // reference_module のエントリだけ。結果が無いエントリは前述の fail-open の注記どおり無言の
+  // ままにし、reference_module の行が欠落しても precondition のように build を止めない。
   const drift = [];
-  for (const pc of preconditions) {
-    const r = resultByKey.get(keyOf(pc));
-    if (!r.exists || !r.matches) drift.push(r);
-  }
-  // reference_module のエントリは relay が実際に結果を返したときだけ drift として報告する。
-  // 結果が無いエントリは前述の fail-open の注記どおり無言のままにし、reference_module の行が
-  // 欠落しても precondition のように build を止めることはない。
-  for (const rm of refModuleEntries) {
-    const r = resultByKey.get(keyOf(rm));
+  for (const target of revalidationTargets) {
+    const r = resultByKey.get(keyOf(target));
     if (r && (!r.exists || !r.matches)) drift.push(r);
   }
   if (drift.length) {
