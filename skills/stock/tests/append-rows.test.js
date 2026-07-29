@@ -21,8 +21,28 @@ test("index が無いとき、ヘッダー 2 行と採用行だけを持つ表�
   assert.deepEqual(written.trimEnd().split("\n"), [
     "| glob | description | path |",
     "| --- | --- | --- |",
-    "| src/*.tsx | コンポーネント規約 | docs/component.md |",
+    "| `src/*.tsx` | コンポーネント規約 | docs/component.md |",
   ]);
+});
+
+test("glob は inline code で囲んで書かれ、囲まれた行も囲まれていない行も同じ glob として読める", async () => {
+  // 裸で置くと markdown formatter が `*` を強調記号と解釈してエスケープし、`agents/**/*.md`
+  // が `agents/\*_/_.md` に化けて全行が対応外になる。既存の裸の行も読めるよう後方互換にする。
+  const { appendRows, checkIndex } = await import(scriptPath);
+
+  const written = appendRows("", [
+    { glob: "agents/**/*.md", description: "規約", path: "docs/a.md" },
+  ]);
+  assert.match(written, /\| `agents\/\*\*\/\*\.md` \|/);
+
+  const bare = [
+    "| glob | description | path |",
+    "| --- | --- | --- |",
+    "| agents/**/*.md | 規約 | docs/a.md |",
+  ].join("\n");
+  const deps = { exists: () => true, trackedFiles: ["agents/critics/critic-design.md"] };
+  assert.equal(checkIndex({ table: written, ...deps }).noMatch.length, 0, "囲まれた行が一致する");
+  assert.equal(checkIndex({ table: bare, ...deps }).noMatch.length, 0, "裸の行も一致する");
 });
 
 test("既存 index への追記でヘッダーが重複せず、既存行が残る", async () => {
@@ -41,7 +61,7 @@ test("既存 index への追記でヘッダーが重複せず、既存行が残�
     "| glob | description | path |",
     "| --- | --- | --- |",
     "| src/*.ts | 既存の規約 | docs/existing.md |",
-    "| src/*.tsx | 追加の規約 | docs/added.md |",
+    "| `src/*.tsx` | 追加の規約 | docs/added.md |",
   ]);
 });
 

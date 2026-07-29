@@ -27,6 +27,10 @@ The parser (`parseReferenceIndexRows`) collects lines starting with `|`, uncondi
 
 A row that does not split into 3 columns (a broken row) is excluded from the parsed result, and the excluded count is recorded in the `reference-index: parsed N/M table rows` log line.
 
+## Wrap the glob column in inline code
+
+Write the `glob` column wrapped in backticks. Left bare, a markdown formatter reads `*` as an emphasis marker and escapes it, turning `agents/**/*.md` into `agents/\*_/_.md` and every row into an unsupported glob. The parser strips the surrounding backticks before matching, so existing unwrapped rows still read fine.
+
 ## Supported glob subset
 
 The `glob` column may contain only the following character set (`SUPPORTED_GLOB_CHARS`).

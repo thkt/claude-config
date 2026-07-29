@@ -29,6 +29,8 @@ const BARE_DOUBLE_STAR = /\*\*(?!\/)/;
 // 閾値 (≤30、根拠: 1 画面の可読性) から流用する (ADR-0091)。
 const SIZE_THRESHOLD_LINES = 30;
 
+const unwrapCode = (cell) => cell.replace(/^`(.*)`$/, "$1").trim();
+
 // 実装 agent に読ませる規約でない docs は候補から外す。決定記録 (DR) は過去の判断の
 // 経緯を残すもので、実装時に読ませると 1 画面の閾値を即座に食い潰す。index (README) と
 // 作業中の候補置き場も規約ではない。
@@ -54,7 +56,9 @@ export function checkIndex({ table, exists, trackedFiles, indexPath, found = tru
         .map((cell) => cell.trim()),
     )
     .filter((cells) => cells.length === 3)
-    .map(([glob, description, path]) => ({ glob, description, path }));
+    // glob 列の backtick を剥がす。markdown formatter は裸の `*` を強調記号と解釈して
+    // エスケープするので、index 側は inline code で囲んで自衛する。
+    .map(([glob, description, path]) => ({ glob: unwrapCode(glob), description, path }));
 
   // `-` 行は glob を持たないため、drift 判定にかけると常に no-match になる。未対応行は
   // 誤判定を招くので同じく drift から外し、unsupported として別掲する。
@@ -130,7 +134,11 @@ export function appendRows(existingTable, rows) {
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.startsWith("|"));
-  const added = rows.map((row) => `| ${row.glob} | ${row.description} | ${row.path} |`);
+  // glob は inline code で囲んで書く。裸で置くと markdown formatter が `*` を強調記号と
+  // 解釈してエスケープし、全行が対応外 glob に化ける。
+  const added = rows.map(
+    (row) => `| \`${unwrapCode(row.glob)}\` | ${row.description} | ${row.path} |`,
+  );
   return [...(existingRows.length ? existingRows : INDEX_HEADER), ...added].join("\n") + "\n";
 }
 

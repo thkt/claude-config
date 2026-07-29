@@ -31,6 +31,8 @@ const BARE_DOUBLE_STAR = /\*\*(?!\/)/;
 // rationale: readable within one screen) as the line count for "one screen" (ADR-0091).
 const SIZE_THRESHOLD_LINES = 30;
 
+const unwrapCode = (cell) => cell.replace(/^`(.*)`$/, "$1").trim();
+
 // Docs that are not conventions for an implementation agent to read are kept out of the
 // candidates. A decision record (DR) preserves the history behind a past call, and feeding
 // those to implementation would eat the one-screen threshold instantly. An index (README)
@@ -58,7 +60,9 @@ export function checkIndex({ table, exists, trackedFiles, indexPath, found = tru
         .map((cell) => cell.trim()),
     )
     .filter((cells) => cells.length === 3)
-    .map(([glob, description, path]) => ({ glob, description, path }));
+    // Strip backticks from the glob column. A markdown formatter reads a bare `*` as an
+    // emphasis marker and escapes it, so the index side defends itself with inline code.
+    .map(([glob, description, path]) => ({ glob: unwrapCode(glob), description, path }));
 
   // A `-` row carries no glob, so running it through the drift check would always report
   // no-match. An unsupported row invites the same misjudgment, so it is likewise excluded
@@ -138,7 +142,11 @@ export function appendRows(existingTable, rows) {
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.startsWith("|"));
-  const added = rows.map((row) => `| ${row.glob} | ${row.description} | ${row.path} |`);
+  // Write the glob wrapped in inline code. Left bare, a markdown formatter reads `*` as an
+  // emphasis marker and escapes it, turning every row into an unsupported glob.
+  const added = rows.map(
+    (row) => `| \`${unwrapCode(row.glob)}\` | ${row.description} | ${row.path} |`,
+  );
   return [...(existingRows.length ? existingRows : INDEX_HEADER), ...added].join("\n") + "\n";
 }
 

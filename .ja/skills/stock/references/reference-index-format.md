@@ -27,6 +27,10 @@
 
 3 列に分割できない行 (列数が 3 以外になる壊れた行) は解析結果から除外され、`reference-index: parsed N/M table rows` のログで除外件数が記録される。
 
+## glob 列は inline code で囲む
+
+`glob` 列は backtick で囲んで書く。裸で置くと markdown formatter が `*` を強調記号と解釈してエスケープし、`agents/**/*.md` が `agents/\*_/_.md` に化けて全行が対応外 glob になる。パーサは両端の backtick を剥がしてから照合するので、囲まれていない既存行もそのまま読める。
+
 ## 対応 glob サブセット
 
 `glob` 列に書けるのは次の文字集合だけである (`SUPPORTED_GLOB_CHARS`)。

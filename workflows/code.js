@@ -256,6 +256,8 @@ try {
 // candidate. When broken lines are skipped, log parsed rows out of total data lines so a
 // reader can reconstruct how many of how many lines parsed (WORKFLOWS.md § Degradation
 // recording).
+const unwrapCode = (cell) => cell.replace(/^`(.*)`$/, "$1").trim();
+
 const parseReferenceIndexRows = (table) => {
   const dataLines = table
     .split("\n")
@@ -270,7 +272,9 @@ const parseReferenceIndexRows = (table) => {
         .map((cell) => cell.trim()),
     )
     .filter((cells) => cells.length === 3)
-    .map(([glob, description, path]) => ({ glob, description, path }));
+    // Strip backticks from the glob column. A markdown formatter reads a bare `*` as an
+    // emphasis marker and escapes it, so the index side defends itself with inline code.
+    .map(([glob, description, path]) => ({ glob: unwrapCode(glob), description, path }));
   if (rows.length < dataLines.length) {
     log(
       `reference-index: parsed ${rows.length}/${dataLines.length} table rows (skipped ${dataLines.length - rows.length} broken rows).`,
