@@ -9,23 +9,26 @@ const scriptPath = join(root, ".ja", "skills", "stock", "scripts", "check-index.
 // result.size は ADR-0091「インデックスが 1 画面を超えたら注入過多の兆候として見張る」を
 // 行数閾値に落としたもの。
 
-test("行数が閾値を超えると size 警告がレポートに載る", async () => {
+test("表の行数が 30 行までは size 警告が立たず、31 行で立つ", async () => {
   const { checkIndex } = await import(scriptPath);
   const header = ["| glob | description | path |", "| --- | --- | --- |"];
-  const dataRows = Array.from(
-    { length: 200 },
-    (_, i) => `| src/*.tsx | 規約 ${i} | docs/existing.md |`,
-  );
-  const table = [...header, ...dataRows].join("\n");
+  const tableOf = (dataRowCount) =>
+    [
+      ...header,
+      ...Array.from(
+        { length: dataRowCount },
+        (_, i) => `| src/*.tsx | 規約 ${i} | docs/existing.md |`,
+      ),
+    ].join("\n");
+  const deps = { exists: () => true, trackedFiles: ["src/button.tsx"] };
 
-  const result = checkIndex({
-    table,
-    exists: () => true,
-    trackedFiles: ["src/button.tsx"],
-  });
+  const atThreshold = checkIndex({ table: tableOf(28), ...deps });
+  assert.equal(atThreshold.size.lines, 30);
+  assert.equal(atThreshold.size.warning, false);
 
-  assert.equal(result.size.lines, table.split("\n").length);
-  assert.equal(result.size.warning, true);
+  const overThreshold = checkIndex({ table: tableOf(29), ...deps });
+  assert.equal(overThreshold.size.lines, 31);
+  assert.equal(overThreshold.size.warning, true);
 });
 
 test("表の前後の散文行は size の行数に数えられない", async () => {
@@ -47,7 +50,6 @@ test("表の前後の散文行は size の行数に数えられない", async ()
   });
 
   assert.equal(result.size.lines, tableLines.length);
-  assert.equal(result.size.warning, false);
 });
 
 test("監査対象の index ファイル自身は unreferenced に載らない", async () => {

@@ -57,7 +57,8 @@ test("dangling/no-match/unsupported/unreferenced/size を同時に仕込んだ f
   assert.equal(json.unsupported.length, 1);
   assert.equal(json.unsupported[0].glob, "src/**");
   assert.deepEqual(json.unreferenced, ["docs/orphan.md"]);
-  assert.equal(json.size.lines, table.split("\n").length);
+  // ヘッダー 2 行 + 判定対象 3 行 + 埋め草 30 行。
+  assert.equal(json.size.lines, 35);
   assert.equal(json.size.warning, true);
   assert.notEqual(status, 0);
   assert.equal(json.exitCode, status);
