@@ -47,6 +47,9 @@ const makePlan = (overrides = {}) => ({
   ],
   test_command: "echo test",
   preconditions: [{ path: "sample.js", pattern: "sampleSymbol" }],
+  // validate() rejects an absent reference_module, so the shared fixture carries the
+  // cheapest passing form: no module to replicate, with a reason.
+  reference_module: { kind: "no-module", reason: "sample reason" },
   backlog_candidates: [],
   ...overrides,
 });
@@ -305,7 +308,22 @@ test("構造欠陥と content 空 (contract / name) はいずれも stopped: inv
 
 // reference_module は「既存の同形モジュールを複製する」か「この形は新規で理由がある」の
 // いずれかを構造化して運ぶ。素の null は理由を運べないので、object { kind, reason } を
-// 要求する検査が要る。
+// 要求する検査が要る。フィールドごと欠けている形も同じく理由を運べないので、null と
+// 別の分岐で拾う。schema の required には入れない (extraction-failed は blockers を持たない)。
+test("reference_module のフィールドを持たない plan は invalid-plan で止まる", async () => {
+  const plan = makePlan();
+  delete plan.reference_module;
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ plan }),
+  });
+  assert.equal(result.stopped, "invalid-plan");
+  assert.ok(
+    result.blockers.some((b) => /reference_module/.test(String(b))),
+    "blockers に reference_module を指すエラー文言が載る",
+  );
+});
+
 test("理由の無い null の reference_module を持つ plan は invalid-plan で止まる", async () => {
   const { result } = await runWorkflow(buildJs, {
     args,
@@ -336,7 +354,7 @@ test("kind が module 以外で reason が空の plan は invalid-plan で止ま
   const { result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
-      plan: makePlan({ reference_module: { kind: "new", reason: "" } }),
+      plan: makePlan({ reference_module: { kind: "new-shape", reason: "" } }),
     }),
   });
   assert.equal(result.stopped, "invalid-plan");
@@ -351,7 +369,7 @@ test("kind と reason を持つ plan は validate を通る", async () => {
     args,
     stubs: makeStubs({
       plan: makePlan({
-        reference_module: { kind: "new", reason: "no existing module shares this shape" },
+        reference_module: { kind: "new-shape", reason: "no existing module shares this shape" },
       }),
     }),
   });
@@ -827,6 +845,31 @@ test("path を持たない reference_module では revalidate の payload に re
   assert.ok(
     withPayload.length > withoutPayload.length,
     "path 有りの reference_module では payload に行が追加され、path 無しより長くなる",
+  );
+});
+
+// resultByKey は path と pattern だけをキーにするので、reference_module.path が
+// pattern 無しの precondition と同じ path を指すと両者が同じ結果へ解決する。drift
+// ループがその結果を 2 回読むと、1 つの不在が 2 件として報告される。
+test("reference_module.path と同じ path の precondition があっても drift は 1 件になる", async () => {
+  const plan = makePlan({
+    preconditions: [{ path: "src/shared", pattern: "" }],
+    reference_module: { kind: "module", path: "src/shared", files: [] },
+  });
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      plan,
+      revalidate: {
+        results: [{ path: "src/shared", pattern: "", exists: false, matches: false }],
+      },
+    }),
+  });
+  assert.equal(result.stopped, "plan-drift");
+  assert.equal(
+    result.drift.length,
+    1,
+    "同じ結果を precondition と reference_module で二重に数えない",
   );
 });
 

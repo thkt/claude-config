@@ -129,10 +129,17 @@ const validate = (plan) => {
 
   // reference_module は「既存モジュールを複製する」(kind: module、path が要る) か
   // 「複製する既存モジュールが無い」(それ以外の kind、reason が要る) のいずれかを運ぶ。
-  // 素の null は理由を運べないので常に blocker にする。extract は既存の
+  // 素の null もフィールドごとの欠落も理由を運べないので blocker にする。schema の
+  // required には入れない。extract が key を落としたとき blockers 文言を持たない
+  // extraction-failed で止まり、書き直す手がかりが残らないため。extract は既存の
   // `null (理由)` 書式を null のまま残さず kind 付き object へ変換する想定 (DR-0093)。
   const refModule = plan.reference_module;
-  if (refModule === null) {
+  if (refModule === undefined) {
+    errors.push(
+      "reference_module が無い。{ kind, reason } " +
+        "(kind: module/no-module/new-shape) の object として記録する",
+    );
+  } else if (refModule === null) {
     errors.push(
       "reference_module が理由の無い null。素の null ではなく " +
         "{ kind, reason } (kind: module/no-module/new-shape) の object として記録する",
@@ -582,9 +589,16 @@ if (revalidationTargets.length) {
   // 早期 return する)。よって `r &&` は precondition には no-op のガードで、実際に効くのは
   // reference_module のエントリだけ。結果が無いエントリは前述の fail-open の注記どおり無言の
   // ままにし、reference_module の行が欠落しても precondition のように build を止めない。
+  // resultByKey は path と pattern だけをキーにするので、reference_module の path が
+  // pattern 無しの precondition と同じ path を指すと両者が同じ結果へ解決する。見た
+  // キーを控えて、同じ結果を drift に二重計上しないようにする。
   const drift = [];
+  const seenKeys = new Set();
   for (const target of revalidationTargets) {
-    const r = resultByKey.get(keyOf(target));
+    const key = keyOf(target);
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    const r = resultByKey.get(key);
     if (r && (!r.exists || !r.matches)) drift.push(r);
   }
   if (drift.length) {
@@ -595,7 +609,16 @@ if (revalidationTargets.length) {
       why: "issue の plan が前提にするコードが現在のコードベースに無い。issue を更新して再実行する。",
     };
   }
-  log(`Revalidate: 前提 ${revalidationTargets.length} 件すべて pass。`);
+  // reference_module のエントリは結果が欠けても fail-open で進むので、pass ではなく
+  // 検査できた件数を出す。全件を precondition として数えると、走っていない検査まで
+  // pass したと読める。
+  const refChecked = refModuleEntries.filter((t) => resultByKey.has(keyOf(t))).length;
+  log(
+    `Revalidate: 前提 ${preconditions.length} 件すべて pass。` +
+      (refModuleEntries.length
+        ? `reference_module の path は ${refChecked}/${refModuleEntries.length} 件を検査。`
+        : ""),
+  );
 }
 
 // checkout は並列実行済み。phase マーカーを drift gate の後に置き、plan-drift 停止が

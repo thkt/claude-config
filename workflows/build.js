@@ -134,11 +134,19 @@ const validate = (plan) => {
 
   // reference_module carries either "replicate this existing module" (kind: module,
   // needs path) or "this shape has no existing module to replicate" (any other kind,
-  // needs reason). A bare null cannot carry that reason, so it is always a blocker;
+  // needs reason). Neither a bare null nor an absent field can carry that reason, so
+  // both are blockers;
   // extract is expected to turn the existing `null (理由)` prose format into a kind-tagged
-  // object instead of leaving it null (DR-0093).
+  // object instead of leaving it null (DR-0093). The field stays out of the schema's
+  // required list: when extract drops the key, that would stop as extraction-failed,
+  // which carries no blockers text to rewrite the plan from.
   const refModule = plan.reference_module;
-  if (refModule === null) {
+  if (refModule === undefined) {
+    errors.push(
+      "reference_module is absent. Record it as an object " +
+        "{ kind, reason } (kind: module/no-module/new-shape)",
+    );
+  } else if (refModule === null) {
     errors.push(
       "reference_module is null with no reason. Record it as an object " +
         "{ kind, reason } (kind: module/no-module/new-shape) instead of a bare null",
@@ -609,9 +617,16 @@ if (revalidationTargets.length) {
   // real work for reference_module entries, whose missing result stays silent per the
   // fail-open note above instead of blocking the build the way a missing precondition
   // does.
+  // resultByKey is keyed on path and pattern alone, so a reference_module path that
+  // matches a pattern-less precondition path resolves to the same result. Track the
+  // keys already seen so one result is never counted into drift twice.
   const drift = [];
+  const seenKeys = new Set();
   for (const target of revalidationTargets) {
-    const r = resultByKey.get(keyOf(target));
+    const key = keyOf(target);
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    const r = resultByKey.get(key);
     if (r && (!r.exists || !r.matches)) drift.push(r);
   }
   if (drift.length) {
@@ -622,7 +637,16 @@ if (revalidationTargets.length) {
       why: "Code the issue's plan presupposes is absent from the current codebase. Update the issue and relaunch.",
     };
   }
-  log(`Revalidate: all ${revalidationTargets.length} precondition(s) pass.`);
+  // A reference_module entry advances fail-open when its result is missing, so report
+  // how many were actually checked rather than calling them all passed. Counting them
+  // as preconditions claims a verification that never ran.
+  const refChecked = refModuleEntries.filter((t) => resultByKey.has(keyOf(t))).length;
+  log(
+    `Revalidate: all ${preconditions.length} precondition(s) pass.` +
+      (refModuleEntries.length
+        ? ` reference_module path(s) checked: ${refChecked}/${refModuleEntries.length}.`
+        : ""),
+  );
 }
 
 // checkout already ran in parallel above. The phase marker sits after the drift
