@@ -64,6 +64,22 @@ test("dangling/no-match/unsupported/unreferenced/size を同時に仕込んだ f
   assert.equal(json.exitCode, status);
 });
 
+test("index が無いリポジトリでも落ちず、found: false と索引化候補を返す", () => {
+  // 索引化の入口は index がまだ無い状態。ここで落ちると backfill が始められない。
+  const dir = initRepo("e2e");
+  mkdirSync(join(dir, "docs"), { recursive: true });
+  writeFileSync(join(dir, "docs", "convention.md"), "# convention\n");
+  commitAll(dir);
+
+  const { status, json } = runCli(".", join(dir, "docs", "REFERENCE_INDEX.md"), dir);
+
+  assert.equal(json.found, false);
+  assert.deepEqual(json.unreferenced, ["docs/convention.md"]);
+  assert.equal(json.dangling.length, 0);
+  assert.equal(json.size.lines, 0);
+  assert.equal(status, 0);
+});
+
 test("dangling の有無だけを変えた 2 つの fixture で exit code が 0 と非ゼロに分かれる", () => {
   function buildFixture({ withDangling }) {
     const dir = initRepo("e2e");

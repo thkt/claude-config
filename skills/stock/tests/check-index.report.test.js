@@ -71,6 +71,25 @@ test("監査対象の index ファイル自身は unreferenced に載らない",
   assert.deepEqual(result.unreferenced, []);
 });
 
+test("実装 agent に読ませる規約でない docs は候補から外れる", async () => {
+  // 決定記録は過去の判断の経緯で、実装時に読ませると 1 画面の閾値を即座に食い潰す。
+  const { checkIndex } = await import(scriptPath);
+  const table = ["| glob | description | path |", "| --- | --- | --- |"].join("\n");
+
+  const result = checkIndex({
+    table,
+    exists: () => true,
+    trackedFiles: [
+      "docs/decisions/0091-adopt-flat-index.md",
+      "docs/decisions/README.md",
+      "docs/wiki/_candidates.md",
+      "docs/conventions/component-tsx.md",
+    ],
+  });
+
+  assert.deepEqual(result.unreferenced, ["docs/conventions/component-tsx.md"]);
+});
+
 test("index のどの行からも参照されない docs 配下の md が unreferenced として列挙される", async () => {
   const { checkIndex } = await import(scriptPath);
   const table = [

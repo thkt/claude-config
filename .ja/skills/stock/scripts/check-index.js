@@ -1,8 +1,8 @@
 // docs/REFERENCE_INDEX.md の各行を検証する。glob 判定は workflows/code.js の reference-index
 // 節と同じ規則を複製したもので、ずれは glob-parity.test.js が見張る。
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const globToRegExp = (glob) => {
@@ -29,7 +29,14 @@ const BARE_DOUBLE_STAR = /\*\*(?!\/)/;
 // 閾値 (≤30、根拠: 1 画面の可読性) から流用する (ADR-0091)。
 const SIZE_THRESHOLD_LINES = 30;
 
-export function checkIndex({ table, exists, trackedFiles, indexPath }) {
+// 実装 agent に読ませる規約でない docs は候補から外す。決定記録 (DR) は過去の判断の
+// 経緯を残すもので、実装時に読ませると 1 画面の閾値を即座に食い潰す。index (README) と
+// 作業中の候補置き場も規約ではない。
+const EXCLUDED_FROM_CANDIDATES = [/^docs\/decisions\//, /(^|\/)README\.md$/, /(^|\/)_[^/]*\.md$/];
+
+// index の不在は異常ではなく、これから索引化する初期状態。空表として扱い、候補提案の入力
+// (unreferenced) だけ埋めたレポートを返す。found でその区別を呼び出し元へ伝える。
+export function checkIndex({ table, exists, trackedFiles, indexPath, found = true }) {
   // size が見張るのは index 表の行数 (ADR-0091)。code.js の reader が抽出するのも表本文
   // だけなので、表の前後の見出しや散文は数えない。
   const tableLines = table
@@ -71,10 +78,12 @@ export function checkIndex({ table, exists, trackedFiles, indexPath }) {
     (file) =>
       /^docs\/.*\.md$/.test(normalizeMatchPath(file)) &&
       normalizeMatchPath(file) !== indexSelf &&
+      !EXCLUDED_FROM_CANDIDATES.some((pattern) => pattern.test(normalizeMatchPath(file))) &&
       !referencedPaths.has(normalizeMatchPath(file)),
   );
 
   return {
+    found,
     dangling,
     noMatch,
     unsupported,
@@ -98,17 +107,46 @@ function main([repoRootArg, indexPathArg]) {
   })
     .split("\n")
     .filter((line) => line.length > 0);
-  const table = readFileSync(indexPathArg, "utf8");
+  const absoluteIndexPath = resolve(process.cwd(), indexPathArg);
+  const found = existsSync(absoluteIndexPath);
+  const table = found ? readFileSync(absoluteIndexPath, "utf8") : "";
   const exists = (path) => existsSync(join(repoRoot, path));
   // git rev-parse は symlink 解決済みの絶対パスを返すため、index 側も realpath で揃えてから
   // repo-root 相対にする (macOS の /tmp -> /private/tmp などで相対化がずれない)。
-  const indexPath = relative(repoRoot, realpathSync(resolve(process.cwd(), indexPathArg)));
+  const indexPath = found ? relative(repoRoot, realpathSync(absoluteIndexPath)) : indexPathArg;
 
-  const result = checkIndex({ table, exists, trackedFiles, indexPath });
+  const result = checkIndex({ table, exists, trackedFiles, indexPath, found });
   process.stdout.write(`${JSON.stringify(result)}\n`);
   process.exitCode = result.exitCode;
 }
 
+const INDEX_HEADER = ["| glob | description | path |", "| --- | --- | --- |"];
+
+// 採用行を index へ追記する。ヘッダーは 2 行ちょうどでないと、先頭 2 行を無条件に読み飛ばす
+// パーサと噛み合わず、データ行を 1 つ食うか区切り行を幽霊行として拾う (references/
+// reference-index-format.md § 表の制約)。手書きさせず、ここで決定論的に出す。
+export function appendRows(existingTable, rows) {
+  const existingRows = existingTable
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("|"));
+  const added = rows.map((row) => `| ${row.glob} | ${row.description} | ${row.path} |`);
+  return [...(existingRows.length ? existingRows : INDEX_HEADER), ...added].join("\n") + "\n";
+}
+
+// 追記モード。採用行を {glob, description, path} の JSON 配列で受け、index へ書き戻す。
+// 採否は呼び出し元 (人間の判断) が済ませた前提で、ここは書き込みだけ担う。
+function applyRows(indexPathArg, rowsJson) {
+  const absoluteIndexPath = resolve(process.cwd(), indexPathArg);
+  const existing = existsSync(absoluteIndexPath) ? readFileSync(absoluteIndexPath, "utf8") : "";
+  const rows = JSON.parse(rowsJson);
+  mkdirSync(dirname(absoluteIndexPath), { recursive: true });
+  writeFileSync(absoluteIndexPath, appendRows(existing, rows));
+  process.stdout.write(`${JSON.stringify({ written: absoluteIndexPath, added: rows.length })}\n`);
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  if (argv[0] === "--apply") applyRows(argv[1], argv[2]);
+  else main(argv);
 }
