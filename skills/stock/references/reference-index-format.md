@@ -23,7 +23,7 @@ A row is a Markdown table row with 3 columns: `glob`/`description`/`path`.
 
 `docs/REFERENCE_INDEX.md` holds exactly one table. The first 2 lines (the header row `| glob | description | path |` and the separator row `| --- | --- | --- |`) are followed directly by the data rows.
 
-The parser (`parseReferenceIndexRows`) collects lines starting with `|`, unconditionally skips the first 2, and parses the rest as data rows. It never validates the header row's wording. Appending a second table to the same file therefore lets that table's separator row (`| --- | --- | --- |`) parse as a valid 3-column row, silently smuggling in a `glob: "---"` ghost row that never matches anything. Keep exactly one table.
+The parser (`parseReferenceIndexRows`) collects lines starting with `|`, unconditionally skips the first 2, and parses the rest as data rows. It never validates the header row's wording. Appending a second table to the same file therefore lets that table's separator row (`| --- | --- | --- |`) parse as a valid 3-column row, silently smuggling in a `glob: "---"` ghost row that never matches anything.
 
 A row that does not split into 3 columns (a broken row) is excluded from the parsed result, and the excluded count is recorded in the `reference-index: parsed N/M table rows` log line.
 
@@ -34,7 +34,7 @@ The `glob` column may contain only the following character set (`SUPPORTED_GLOB_
 - Alphanumerics and underscore (`\w`)
 - `.` `-` `/` `*`
 
-Within that subset, only 2 tokens carry metacharacter meaning: `**/` and `*` (`globToRegExp`).
+Within that character set, metacharacter meaning is limited to the following 2 tokens (`globToRegExp`).
 
 | Token | Match scope                                                                                                                    |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -51,7 +51,7 @@ A row whose `glob` column is `-` is excluded from glob matching and is always pr
 
 ## Handling of unsupported rows
 
-A row that fails the character-set check, or one containing a bare `**`, is excluded from matching and is not injected into the implementation prompt. The exclusion is never silent: it is recorded as a `kind: "unsupported-glob"` anomaly along with the `glob` column's value and the reason.
+A row judged unsupported is excluded from matching and is not injected into the implementation prompt. The exclusion is never silent: it is recorded as a `kind: "unsupported-glob"` anomaly along with the `glob` column's value and the reason.
 
 ## Injection order
 

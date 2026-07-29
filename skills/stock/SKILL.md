@@ -8,7 +8,7 @@ argument-hint: "[index path]"
 
 # /stock - REFERENCE_INDEX drift detection and index candidate proposal
 
-Verify each index row and propose index candidates from the unindexed docs. The human decides per row, and the accepted rows get written.
+Writing to the index is limited to appending accepted rows; existing rows are never modified.
 
 ## Input
 
@@ -16,11 +16,11 @@ The repo-relative path of the index file under audit comes in as `$ARGUMENTS`. E
 
 ## Phase 1: Run the script
 
-Run `node ${CLAUDE_SKILL_DIR}/scripts/check-index.js <repo root> <index path>`. Pass any path inside the repository (usually `.`) as `<repo root>`, and the index file's absolute or relative path settled in Input as `<index path>`. The script matches each index row against the tracked-file list from `git ls-files` and returns JSON on stdout carrying dangling, noMatch, unsupported, unreferenced, size, and exitCode.
+Run `node ${CLAUDE_SKILL_DIR}/scripts/check-index.js <repo root> <index path>`. Pass any path inside the repository (usually `.`) as `<repo root>`, and the index file's path as `<index path>`. The script matches each index row against the tracked-file list from `git ls-files` and returns JSON on stdout carrying dangling, noMatch, unsupported, unreferenced, size, and exitCode.
 
 ## Phase 2: Present the report
 
-Present the Phase 1 JSON as a table per category. When dangling rows exist, state fixing the index side (correct the path or delete the row) as the priority task. When `found` is false the index does not exist yet and there is nothing to drift-check; say so and move on to indexing in Phase 3.
+Present the Phase 1 JSON as a table per category. When dangling rows exist, state fixing the index side (correct the path or delete the row) as the priority task. When `found` is false the index does not exist yet and there is nothing to drift-check; say so and move on to Phase 3.
 
 | Category     | Meaning                                                                                                                                        | Severity                                        |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
@@ -35,8 +35,8 @@ Present the Phase 1 JSON as a table per category. When dangling rows exist, stat
 For each docs path in unreferenced, build an index candidate in the following order.
 
 1. Infer a candidate glob. From the directory name holding the doc, guess the source-side directory it likely corresponds to. For example `docs/conventions/component-tsx.md` yields a same-name prefix such as `src/**/*.tsx`. A doc matching no source directory name, and a doc cutting across multiple domains, are routed to 3
-2. Rank the docs that yielded a candidate glob. The count of tracked files that glob matches is the rank score, and a higher match count means a more concrete correspondence between the doc and the code, ranking it higher. Present the top 10 by rank descending as a candidate table. The table carries the 3 columns glob, description, and path, matching the row format in `${CLAUDE_SKILL_DIR}/references/reference-index-format.md`. Beyond 10, state only the excess count in one line. When the target doc count exceeds 20, confirm the narrowing target (by directory, top N, etc.) via AskUserQuestion before presenting the candidate table
-3. A doc for which 1 found no source-side directory correspondence is excluded from the candidate table and listed separately as manual-addition recommended, carrying only the path and the reason. Never propose a row with `-` written in the glob column. A `-` row requires human judgment outside glob matching, as `${CLAUDE_SKILL_DIR}/references/reference-index-format.md` § Meaning of a `-` row defines, so leave the addition itself to human manual work
+2. Rank the docs that yielded a candidate glob. The count of tracked files that glob matches is the rank score. A higher match count means a more concrete correspondence between the doc and the code, so present the top 10 by rank descending as a candidate table. The table carries the 3 columns glob, description, and path, matching the row format in reference-index-format.md. Beyond 10, state only the excess count in one line. When the target doc count exceeds 20, confirm the narrowing target (by directory, top N, etc.) via AskUserQuestion before presenting the candidate table
+3. A doc for which 1 found no source-side directory correspondence is excluded from the candidate table and listed separately as manual-addition recommended, carrying only the path and the reason. Never propose a row with `-` written in the glob column, because a `-` row requires human judgment outside glob matching, as reference-index-format.md § Meaning of a `-` row defines
 
 ## Phase 4: Write the accepted rows
 
@@ -48,9 +48,8 @@ After writing, run `node ${CLAUDE_SKILL_DIR}/scripts/check-index.js <repo root> 
 
 ## Handoff
 
-- The human decides per row. Only the judgment stays with the human; Phase 4 carries out the write
-- Rows on the manual-addition-recommended list and `-` rows are written by the human directly. They need judgment outside glob matching, so this skill neither proposes nor adds them
-- Fixing dangling, noMatch, and unsupported is human work. Whether to correct the path or drop the row is a judgment about intent, and like validating individual candidates it is left to `/fix` or direct editing
+- Rows on the manual-addition-recommended list and `-` rows are written into the index by the human directly
+- Fixing dangling, noMatch, and unsupported is out of scope. Whether to correct the path or drop the row is a judgment about intent, so like validating individual candidates it is left to `/fix` or direct editing
 
 ## Completion condition
 

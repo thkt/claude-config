@@ -8,7 +8,7 @@ argument-hint: "[index path]"
 
 # /stock - REFERENCE_INDEX drift 検出と索引化候補提案
 
-index の各行を検証し、未索引 docs から索引化候補を提案する。採否は人間が行単位で決め、採用行の書き込みまでを行う。
+index への書き込みは採用行の追記だけで、既存行の修正はしない。
 
 ## 入力
 
@@ -16,11 +16,11 @@ index の各行を検証し、未索引 docs から索引化候補を提案す�
 
 ## Phase 1: script 実行
 
-`node ${CLAUDE_SKILL_DIR}/scripts/check-index.js <repo root> <index path>` を実行する。`<repo root>` にはリポジトリ内の任意のパス (通常は `.`) を、`<index path>` には入力で確定した index ファイルの絶対または相対パスを渡す。script は `git ls-files` 由来の tracked file 一覧と index の各行を照合し、dangling、noMatch、unsupported、unreferenced、size、exitCode を持つ JSON を標準出力に返す。
+`node ${CLAUDE_SKILL_DIR}/scripts/check-index.js <repo root> <index path>` を実行する。`<repo root>` にはリポジトリ内の任意のパス (通常は `.`) を、`<index path>` には index ファイルのパスを渡す。script は `git ls-files` 由来の tracked file 一覧と index の各行を照合し、dangling、noMatch、unsupported、unreferenced、size、exitCode を持つ JSON を標準出力に返す。
 
 ## Phase 2: レポート提示
 
-Phase 1 の JSON を区分ごとの表として提示する。dangling があるときは、index 側の修正 (path 訂正または行削除) を優先課題として明記する。`found` が false なら index はまだ無く、drift 判定の対象が存在しない。その旨を述べて Phase 3 の索引化に進む。
+Phase 1 の JSON を区分ごとの表として提示する。dangling があるときは、index 側の修正 (path 訂正または行削除) を優先課題として明記する。`found` が false なら index はまだ無く、drift 判定の対象が存在しない。その旨を述べて Phase 3 へ進む。
 
 | 区分         | 意味                                                                                                                            | 深刻度                             |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
@@ -35,8 +35,8 @@ Phase 1 の JSON を区分ごとの表として提示する。dangling がある
 unreferenced の各 docs パスについて、以下の順に索引化候補を作る。
 
 1. 候補 glob を推測する。doc が置かれたディレクトリ名から、対応しそうなソース側ディレクトリを当てる。たとえば `docs/conventions/component-tsx.md` なら `src/**/*.tsx` のような同名接頭辞になる。どのソースディレクトリ名とも対応しない doc と、複数ドメインを横断する doc は 3 へ回す
-2. 候補 glob を得られた doc をランク付けする。glob が一致する tracked file 数を rank スコアとし、一致数が多いほど doc とソースコードの対応が具体的で上位に来る。rank 降順で上位 10 件までを候補表として提示する。表は glob と description と path の 3 列で、`${CLAUDE_SKILL_DIR}/references/reference-index-format.md` の行形式に合わせる。10 件を超えた分は超過件数のみを 1 行で示す。対象 doc 数が 20 件を超えるときは、候補表を出す前に AskUserQuestion で絞り込み対象 (ディレクトリ単位、上位 N 件など) を確認する
-3. 1 でソース側ディレクトリ対応が見つからなかった doc は候補表に含めず、手動追記推奨として path と理由だけを別リストに列挙する。glob 列に `-` を書いた行は提案しない。`-` 行は `${CLAUDE_SKILL_DIR}/references/reference-index-format.md` § `-` 行の意味が定めるとおり glob 照合を離れた人間の判断を必要とするので、追記そのものを人間の手作業に残す
+2. 候補 glob を得られた doc をランク付けする。glob が一致する tracked file 数を rank スコアとする。一致数が多いほど doc とソースコードの対応が具体的なので、rank 降順で上位 10 件までを候補表として提示する。表は glob と description と path の 3 列で、reference-index-format.md の行形式に合わせる。10 件を超えた分は超過件数のみを 1 行で示す。対象 doc 数が 20 件を超えるときは、候補表を出す前に AskUserQuestion で絞り込み対象 (ディレクトリ単位、上位 N 件など) を確認する
+3. 1 でソース側ディレクトリ対応が見つからなかった doc は候補表に含めず、手動追記推奨として path と理由だけを別リストに列挙する。glob 列に `-` を書いた行は提案しない。`-` 行は reference-index-format.md § `-` 行の意味が定めるとおり、glob 照合を離れた人間の判断を必要とするため
 
 ## Phase 4: 採用行の書き込み
 
@@ -48,9 +48,8 @@ unreferenced の各 docs パスについて、以下の順に索引化候補を�
 
 ## 引き継ぎ
 
-- 採否は行単位で人間が決める。判断だけを人間に残し、書き込みは Phase 4 が担う
-- 手動追記推奨リストの行と `-` 行は人間が直接書く。glob 照合を離れた判断が要るため、本 skill は提案も追記もしない
-- dangling、noMatch、unsupported の修正は人間の作業。path を直すか行を消すかは意図の判断で、個々の候補の妥当性検証と同じく `/fix` や直接編集に委ねる
+- 手動追記推奨リストの行と `-` 行は人間が直接 index へ書く
+- dangling、noMatch、unsupported の修正は範囲外。path を直すか行を消すかは意図の判断なので、個々の候補の妥当性検証と同じく `/fix` や直接編集に委ねる
 
 ## 完了条件
 
