@@ -724,6 +724,45 @@ test("reference_module の path が実在しないと plan-drift で止まる", 
   );
 });
 
+// kind: no-module は validate 側の path 空検査 (kind: module 限定) の対象外なので、
+// path を持っていても validate は reason だけを見て通す。その path が
+// refModuleEntries の組み立て (kind に関わらず path の truthy 判定のみ) を経て
+// revalidate へそのまま渡ることを、path 不在時の plan-drift で確認する。
+test("kind が no-module で path を持つ plan は validate を通り revalidate で path の実在検査を受ける", async () => {
+  const plan = refModulePreconditionsPlan({
+    kind: "no-module",
+    path: "src/existing",
+    files: ["src/existing/index.ts"],
+    reason: "the unit only appends to an existing file with no module search",
+  });
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      plan,
+      revalidate: {
+        results: [
+          { path: "sample.js", pattern: "sampleSymbol", exists: true, matches: true },
+          { path: "src/existing", pattern: "", exists: false, matches: false },
+        ],
+      },
+    }),
+  });
+  assert.notEqual(
+    result.stopped,
+    "invalid-plan",
+    "kind: no-module は path があっても reason があれば validate を通る",
+  );
+  assert.equal(
+    result.stopped,
+    "plan-drift",
+    "validate を通った path は revalidate の実在検査へそのまま渡り、不在なら plan-drift で止まる",
+  );
+  assert.ok(
+    JSON.stringify(result.drift).includes("src/existing"),
+    "drift 一覧に kind: no-module の reference_module.path が載る",
+  );
+});
+
 test("reference_module の files に実在しないものがあると plan-drift で止まる", async () => {
   const plan = refModulePreconditionsPlan({
     path: "src/existing",
