@@ -347,7 +347,11 @@ const referenceIndexCtx = (unit) => {
     (row) =>
       row.glob !== "-" && unit.files.some((file) => row.matcher.test(normalizeMatchPath(file))),
   );
-  if (!matched.length && !referenceIndexCandidates.length) return "";
+  // The glob subset has no brace expansion, so "N globs -> 1 doc" arises structurally whenever
+  // one doc spans several source categories. A candidate carries a description, so the two sets
+  // are never collapsed across each other.
+  const matchedPaths = [...new Set(matched.map((row) => row.path))];
+  if (!matchedPaths.length && !referenceIndexCandidates.length) return "";
   return (
     [
       REF_INDEX_START,
@@ -355,7 +359,7 @@ const referenceIndexCtx = (unit) => {
       ...referenceIndexCandidates.map(
         (row) => `Consider reading: ${row.path} (${row.description})`,
       ),
-      ...matched.map((row) => `Read before implementing: ${row.path}`),
+      ...matchedPaths.map((path) => `Read before implementing: ${path}`),
       REF_INDEX_END,
     ].join("\n") + "\n"
   );

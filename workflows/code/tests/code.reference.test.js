@@ -171,6 +171,53 @@ test("glob の無い行は説明文とパスが判断候補として提示され
   );
 });
 
+test("同じリファレンスパスを指す glob 行が複数一致しても読了命令は 1 行だけ載る", async () => {
+  // glob サブセットは brace 展開を持たないので、doc が source 種別より粗いと N glob → 1 doc は避けられない。
+  const table =
+    "| glob | description | path |\n" +
+    "| --- | --- | --- |\n" +
+    "| **/agents/**/*.md | agent 定義の書き方 | docs/SKILLS_AGENTS.md |\n" +
+    "| **/skills/**/SKILL.md | skill の設計意図 | docs/SKILLS_AGENTS.md |\n";
+
+  const { calls } = await runWorkflow(codeJs, {
+    args: {
+      plan: implPlan(["agents/reviewer-security.md", "skills/stock/SKILL.md"]),
+      repo: "",
+    },
+    stubs: { agent: stubWith({ found: true, table }) },
+  });
+
+  const prompt = promptFor(calls, "impl:U-1");
+  const occurrences = prompt.split("Read before implementing: docs/SKILLS_AGENTS.md").length - 1;
+  assert.equal(occurrences, 1, "両方の glob 行が一致しても同じパスの読了命令は 1 行に畳まれる");
+});
+
+test("同じパスの読了命令と判断候補は畳まれず両方載る", async () => {
+  // またいで畳むと、判断候補の説明文か読了命令の必読という強さのどちらかが落ちる。
+  const table =
+    "| glob | description | path |\n" +
+    "| --- | --- | --- |\n" +
+    "| - | 読むかは判断による | docs/SKILLS_AGENTS.md |\n" +
+    "| **/skills/**/SKILL.md | skill の設計意図 | docs/SKILLS_AGENTS.md |\n";
+
+  const { calls } = await runWorkflow(codeJs, {
+    args: { plan: implPlan(["skills/stock/SKILL.md"]), repo: "" },
+    stubs: { agent: stubWith({ found: true, table }) },
+  });
+
+  const prompt = promptFor(calls, "impl:U-1");
+  assert.match(
+    prompt,
+    /Consider reading: docs\/SKILLS_AGENTS\.md \(読むかは判断による\)/,
+    "判断候補は説明文ごと残る",
+  );
+  assert.match(
+    prompt,
+    /Read before implementing: docs\/SKILLS_AGENTS\.md/,
+    "同じパスでも読了命令は別に載る",
+  );
+});
+
 test("注入順は汎用 (判断候補) が先、具体 (読了命令) が後になる", async () => {
   // 「後の行を優先する」規則と組むと、後置された読了命令が判断候補より優先される。
   const { calls } = await runWorkflow(codeJs, {
