@@ -40,7 +40,7 @@ test("dangling/no-match/unsupported/unreferenced/size を同時に仕込んだ f
   const noMatch = ["| src/nomatch.foo | no-match 検証 | docs/existing.md |"];
   const unsupported = ["| src/** | unsupported 検証 (裸の double star) | docs/existing.md |"];
   // index ファイル自身は CLI が indexPath として除外するため、自己参照行は要らない。
-  // size 警告 (閾値 30 行, ADR-0091) を超えさせるための埋め草行。drift 判定に影響しない
+  // size 警告 (閾値 30 行, DR-0091) を超えさせるための埋め草行。drift 判定に影響しない
   // よう glob は `-` に固定する。
   const padding = Array.from({ length: 30 }, (_, i) => `| - | 埋め草 ${i} | docs/existing.md |`);
   const table = [...header, ...dangling, ...noMatch, ...unsupported, ...padding].join("\n");

@@ -1,6 +1,6 @@
 # REFERENCE_INDEX.md フォーマット仕様
 
-規約パス `docs/REFERENCE_INDEX.md` が持つべき行形式の正本。`workflows/code.js` の `parseReferenceIndexRows`/`SUPPORTED_GLOB_CHARS`/`BARE_DOUBLE_STAR` が読み取る実装挙動を正として定義する (ADR-0091)。
+規約パス `docs/REFERENCE_INDEX.md` が持つべき行形式の正本。`workflows/code.js` の `parseReferenceIndexRows`/`SUPPORTED_GLOB_CHARS`/`BARE_DOUBLE_STAR` が読み取る実装挙動を正として定義する (DR-0091)。
 
 ## 行形式
 
@@ -26,6 +26,10 @@
 パーサ (`parseReferenceIndexRows`) は `|` から始まる行を集め、先頭 2 行を無条件に読み飛ばして残りをデータ行として解釈する。ヘッダー行の文言そのものは検証しない。したがって 2 枚目の表を同一ファイルに追記すると、その区切り行 (`| --- | --- | --- |`) は 3 列の妥当な行として解釈され、`glob: "---"` という一致しない幽霊行が静かに紛れ込む。
 
 3 列に分割できない行 (列数が 3 以外になる壊れた行) は解析結果から除外され、`reference-index: parsed N/M table rows` のログで除外件数が記録される。
+
+## glob 列は inline code で囲む
+
+`glob` 列は backtick で囲んで書く。裸で置くと markdown formatter が `*` を強調記号と解釈してエスケープし、`agents/**/*.md` が `agents/\*_/_.md` に化けて全行が対応外 glob になる。パーサは両端の backtick を剥がしてから照合するので、囲まれていない既存行もそのまま読める。
 
 ## 対応 glob サブセット
 
@@ -59,4 +63,4 @@
 
 ## 見張り基準
 
-インデックスが 1 画面を超えたら注入過多の兆候として見張る (ADR-0091)。行数の閾値と機械検出は stock skill の check-index.js が担う。
+インデックスが 1 画面を超えたら注入過多の兆候として見張る (DR-0091)。行数の閾値と機械検出は stock skill の check-index.js が担う。

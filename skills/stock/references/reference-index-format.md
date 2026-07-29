@@ -1,6 +1,6 @@
 # REFERENCE_INDEX.md Format Spec
 
-The canonical definition of the row format that `docs/REFERENCE_INDEX.md` must hold. It documents the implementation behavior read by `workflows/code.js`'s `parseReferenceIndexRows`/`SUPPORTED_GLOB_CHARS`/`BARE_DOUBLE_STAR` as the authority (ADR-0091).
+The canonical definition of the row format that `docs/REFERENCE_INDEX.md` must hold. It documents the implementation behavior read by `workflows/code.js`'s `parseReferenceIndexRows`/`SUPPORTED_GLOB_CHARS`/`BARE_DOUBLE_STAR` as the authority (DR-0091).
 
 ## Row format
 
@@ -26,6 +26,10 @@ A row is a Markdown table row with 3 columns: `glob`/`description`/`path`.
 The parser (`parseReferenceIndexRows`) collects lines starting with `|`, unconditionally skips the first 2, and parses the rest as data rows. It never validates the header row's wording. Appending a second table to the same file therefore lets that table's separator row (`| --- | --- | --- |`) parse as a valid 3-column row, silently smuggling in a `glob: "---"` ghost row that never matches anything.
 
 A row that does not split into 3 columns (a broken row) is excluded from the parsed result, and the excluded count is recorded in the `reference-index: parsed N/M table rows` log line.
+
+## Wrap the glob column in inline code
+
+Write the `glob` column wrapped in backticks. Left bare, a markdown formatter reads `*` as an emphasis marker and escapes it, turning `agents/**/*.md` into `agents/\*_/_.md` and every row into an unsupported glob. The parser strips the surrounding backticks before matching, so existing unwrapped rows still read fine.
 
 ## Supported glob subset
 
@@ -59,4 +63,4 @@ A matched, specific row (`Read before implementing: <path>`) is placed after the
 
 ## Size watch
 
-Watch for an index exceeding one screen as a sign of over-injection (ADR-0091). The line-count threshold and its mechanical detection belong to the stock skill's check-index.js.
+Watch for an index exceeding one screen as a sign of over-injection (DR-0091). The line-count threshold and its mechanical detection belong to the stock skill's check-index.js.

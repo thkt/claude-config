@@ -28,7 +28,7 @@ Phase 1 の JSON を区分ごとの表として提示する。dangling がある
 | noMatch      | glob 列がどの tracked file にも一致しない                                                                                       | 警告                               |
 | unsupported  | glob 列が対応文字集合 (reference-index-format.md § 対応 glob サブセット) の外、または裸の `**` を含む                           | 警告                               |
 | unreferenced | `docs/` 配下の md で、index のどの行の path 列からも参照されていない。決定記録と README と `_` 始まりは規約でないので除外される | Phase 3 の入力                     |
-| size         | index 表の行数 (前後の散文は数えない) と 1 画面閾値 (30 行、ADR-0091) 超過の有無                                                | 閾値超過時のみ警告                 |
+| size         | index 表の行数 (前後の散文は数えない) と 1 画面閾値 (30 行、DR-0091) 超過の有無                                                | 閾値超過時のみ警告                 |
 
 ## Phase 3: 候補提案
 

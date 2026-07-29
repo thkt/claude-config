@@ -1,5 +1,5 @@
 // 規約インデックス (docs/REFERENCE_INDEX.md) を unit ループ前に reader agent 1 体が読み、
-// script が表を glob 照合して実装 step の prompt に注入する。ADR-0091 のフラットインデックス +
+// script が表を glob 照合して実装 step の prompt に注入する。DR-0091 のフラットインデックス +
 // glob 照合を workflows/code.js の referenceModuleCtx 節 (ctx 追補形) に倣って実装する。
 // 注入ブロックは delimiter を持ち、インデックス本文が data であり指示ではない旨と、
 // 矛盾時は後の行が勝つ規則を明記する。glob 精度 (**, * の / 境界など) は後段の照合テスト群で

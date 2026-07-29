@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const scriptPath = join(root, "skills", "stock", "scripts", "check-index.js");
 
-// result.size は ADR-0091「インデックスが 1 画面を超えたら注入過多の兆候として見張る」を
+// result.size は DR-0091「インデックスが 1 画面を超えたら注入過多の兆候として見張る」を
 // 行数閾値に落としたもの。
 
 test("表の行数が 30 行までは size 警告が立たず、31 行で立つ", async () => {
@@ -32,7 +32,7 @@ test("表の行数が 30 行までは size 警告が立たず、31 行で立つ"
 });
 
 test("表の前後の散文行は size の行数に数えられない", async () => {
-  // ADR-0091 が見張るのは index 表のサイズ。code.js の reader も表本文だけを抽出するため、
+  // DR-0091 が見張るのは index 表のサイズ。code.js の reader も表本文だけを抽出するため、
   // ファイル全行でなく `|` で始まる表行だけを数える。
   const { checkIndex } = await import(scriptPath);
   const prose = ["# REFERENCE_INDEX", "", "説明の散文が表の前後に並ぶ。", ""];

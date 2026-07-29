@@ -204,7 +204,7 @@ const referenceModuleCtx = ref?.path
     `参照モジュールからの逸脱は plan が明記したときのみ許され、逸脱は結果に記す。\n`
   : "";
 
-// 規約インデックス (docs/REFERENCE_INDEX.md) を unit ループ前に 1 回だけ読む (ADR-0091)。
+// 規約インデックス (docs/REFERENCE_INDEX.md) を unit ループ前に 1 回だけ読む (DR-0091)。
 // リファレンスの発見を LLM の自発探索に任せると探索スキップという脱落点が増え、読了の検証も
 // できないため、読む行為を明示の agent 呼び出しにし、units[].files との glob 照合は script が
 // 握って決定的にする。
@@ -251,6 +251,8 @@ try {
 // glob 列が "-" の行は照合の対象外で、常に判断候補として提示する。壊れた行を読み飛ばすとき、
 // 読者が「何行中何行が解析できたか」を再構成できるよう解析済み行数と総データ行数を log に出す
 // (WORKFLOWS.md § Degradation recording)。
+const unwrapCode = (cell) => cell.replace(/^`(.*)`$/, "$1").trim();
+
 const parseReferenceIndexRows = (table) => {
   const dataLines = table
     .split("\n")
@@ -265,7 +267,9 @@ const parseReferenceIndexRows = (table) => {
         .map((cell) => cell.trim()),
     )
     .filter((cells) => cells.length === 3)
-    .map(([glob, description, path]) => ({ glob, description, path }));
+    // glob 列の backtick を剥がす。markdown formatter は裸の `*` を強調記号と解釈して
+    // エスケープするので、index 側は inline code で囲んで自衛する。
+    .map(([glob, description, path]) => ({ glob: unwrapCode(glob), description, path }));
   if (rows.length < dataLines.length) {
     log(
       `reference-index: 表の解析 ${rows.length}/${dataLines.length} 行 (壊れた行 ${dataLines.length - rows.length} 件をスキップ)。`,

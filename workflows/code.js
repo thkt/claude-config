@@ -207,7 +207,7 @@ const referenceModuleCtx = ref?.path
     `Deviating from the reference module is allowed only when the plan says so; state any deviation in your result.\n`
   : "";
 
-// Read the convention index (docs/REFERENCE_INDEX.md) once before the unit loop (ADR-0091).
+// Read the convention index (docs/REFERENCE_INDEX.md) once before the unit loop (DR-0091).
 // Leaving reference discovery to the LLM's own initiative adds a skipped-search dropout point
 // and makes the read unverifiable, so the read is an explicit agent call and the glob match
 // against units[].files is held by the script, deterministically.
@@ -256,6 +256,8 @@ try {
 // candidate. When broken lines are skipped, log parsed rows out of total data lines so a
 // reader can reconstruct how many of how many lines parsed (WORKFLOWS.md § Degradation
 // recording).
+const unwrapCode = (cell) => cell.replace(/^`(.*)`$/, "$1").trim();
+
 const parseReferenceIndexRows = (table) => {
   const dataLines = table
     .split("\n")
@@ -270,7 +272,9 @@ const parseReferenceIndexRows = (table) => {
         .map((cell) => cell.trim()),
     )
     .filter((cells) => cells.length === 3)
-    .map(([glob, description, path]) => ({ glob, description, path }));
+    // Strip backticks from the glob column. A markdown formatter reads a bare `*` as an
+    // emphasis marker and escapes it, so the index side defends itself with inline code.
+    .map(([glob, description, path]) => ({ glob: unwrapCode(glob), description, path }));
   if (rows.length < dataLines.length) {
     log(
       `reference-index: parsed ${rows.length}/${dataLines.length} table rows (skipped ${dataLines.length - rows.length} broken rows).`,

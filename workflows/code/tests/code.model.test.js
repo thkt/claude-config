@@ -221,9 +221,7 @@ test("静的 gate が JA / EN の code.js と tests/*.js で pass する", () =>
   const targets = [
     join(root, ".ja", "workflows", "code.js"),
     join(root, "workflows", "code.js"),
-    join(root, ".ja", "workflows", "_lib", "run-workflow.js"),
     join(root, "workflows", "_lib", "run-workflow.js"),
-    join(root, ".ja", "workflows", "code", "tests", "code.model.test.js"),
     join(root, "workflows", "code", "tests", "code.model.test.js"),
   ];
   for (const file of targets) {

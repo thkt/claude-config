@@ -251,11 +251,12 @@ test("unit-failed の終端 return にも commits が載る", async () => {
   );
 });
 
+// テストは EN 側のみに置く (DR-0092) ので、静的 gate の対象も EN 側のテストだけになる。
+// .ja/workflows/code.js は実行物ではないが、正である以上は構文が壊れていないことを見る。
 test("静的 gate が JA / EN の code.js と本 test で pass する", () => {
   const targets = [
     join(root, ".ja", "workflows", "code.js"),
     join(root, "workflows", "code.js"),
-    join(root, ".ja", "workflows", "code", "tests", "code.commit.test.js"),
     join(root, "workflows", "code", "tests", "code.commit.test.js"),
   ];
   for (const file of targets) {
