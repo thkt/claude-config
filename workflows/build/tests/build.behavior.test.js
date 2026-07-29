@@ -691,6 +691,106 @@ test("Revalidate は 1 miss で stopped: plan-drift、全 pass で Branch へ進
   assert.ok(empty.calls.phase.includes("Branch"), "preconditions 空でも Branch phase に到達する");
 });
 
+// ---- U-003: reference_module の既存パス実在チェック (script 主導、LLM 非関与) ----
+// revalidate.py は {path, pattern?} の形を受けるので、reference_module.path / files も
+// 同じ形に合わせて payload に混ぜ、script の exists/matches 判定だけで drift を検出する。
+const refModulePreconditionsPlan = (reference_module) => makePlan({ reference_module });
+
+test("reference_module の path が実在しないと plan-drift で止まる", async () => {
+  const plan = refModulePreconditionsPlan({
+    path: "src/existing",
+    files: ["src/existing/index.ts"],
+  });
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      plan,
+      revalidate: {
+        results: [
+          { path: "sample.js", pattern: "sampleSymbol", exists: true, matches: true },
+          { path: "src/existing", pattern: "", exists: false, matches: false },
+        ],
+      },
+    }),
+  });
+  assert.equal(
+    result.stopped,
+    "plan-drift",
+    "reference_module.path が exists:false だと stopped: plan-drift",
+  );
+  assert.ok(
+    JSON.stringify(result.drift).includes("src/existing"),
+    "drift 一覧に reference_module.path が載る",
+  );
+});
+
+test("reference_module の files に実在しないものがあると plan-drift で止まる", async () => {
+  const plan = refModulePreconditionsPlan({
+    path: "src/existing",
+    files: ["src/existing/index.ts", "src/existing/missing.ts"],
+  });
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      plan,
+      revalidate: {
+        results: [
+          { path: "sample.js", pattern: "sampleSymbol", exists: true, matches: true },
+          { path: "src/existing", pattern: "", exists: true, matches: true },
+          { path: "src/existing/index.ts", pattern: "", exists: true, matches: true },
+          { path: "src/existing/missing.ts", pattern: "", exists: false, matches: false },
+        ],
+      },
+    }),
+  });
+  assert.equal(
+    result.stopped,
+    "plan-drift",
+    "reference_module.files の 1 件が exists:false だと stopped: plan-drift",
+  );
+  assert.ok(
+    JSON.stringify(result.drift).includes("src/existing/missing.ts"),
+    "drift 一覧に実在しない reference_module.files のパスが載る",
+  );
+});
+
+test("path を持たない reference_module では revalidate の payload に reference_module の行が入らない", async () => {
+  const withoutPath = refModulePreconditionsPlan({
+    kind: "new-shape",
+    reason: "no existing module shares this shape",
+  });
+  const withPath = refModulePreconditionsPlan({
+    path: "src/existing",
+    files: ["src/existing/index.ts"],
+  });
+  const revalidateStub = {
+    results: [
+      { path: "sample.js", pattern: "sampleSymbol", exists: true, matches: true },
+      { path: "src/existing", pattern: "", exists: true, matches: true },
+      { path: "src/existing/index.ts", pattern: "", exists: true, matches: true },
+    ],
+  };
+  const payloadOf = async (plan) => {
+    const run = await runWorkflow(buildJs, {
+      args,
+      stubs: makeStubs({ plan, revalidate: revalidateStub }),
+    });
+    const call = agentCallsOf(run.calls, "revalidate")[0];
+    return JSON.parse(call.prompt.trim().split("\n").pop());
+  };
+  const withoutPayload = await payloadOf(withoutPath);
+  const withPayload = await payloadOf(withPath);
+  assert.deepEqual(
+    withoutPayload,
+    withoutPath.preconditions,
+    "path 無しの reference_module では payload が plan.preconditions のまま (行が追加されない)",
+  );
+  assert.ok(
+    withPayload.length > withoutPayload.length,
+    "path 有りの reference_module では payload に行が追加され、path 無しより長くなる",
+  );
+});
+
 test("happy path の phase 順が Load → Revalidate → Branch → Code → Cleanup → Verify → Ship で、code に model: sonnet が渡り audit / polish / challenge / think / research が呼ばれない", async () => {
   const { calls } = await runWorkflow(buildJs, {
     args,

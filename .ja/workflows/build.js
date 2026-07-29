@@ -406,6 +406,24 @@ const REVALIDATE_SCHEMA = obj(["results"], {
 // (両者は plan のみに依存)。drift 停止時は作成済みブランチを stopped に載せて surface する。
 phase("Revalidate");
 const preconditions = plan.preconditions || [];
+// reference_module も preconditions と同じくらい plan が前提にする既存コードを名指しする。
+// path と files を revalidate.py が受ける同じ {path} 形に畳み込み、参照モジュールが
+// 移動・削除されていたときも drift として検出する。path を持つのは kind: module の
+// reference_module のみ (DR-0093)。no-module / new-shape には path が無い。
+// preconditions と異なり、reference_module の結果が欠落しても fail-open のまま進める
+// (unreported-retry / revalidate-incomplete の対象にしない)。参照モジュールは後続 unit
+// 向けの構造ドキュメントであり、precondition のように build をゲートする前提ではない。
+const refModule = plan.reference_module;
+const refModuleEntries =
+  refModule && typeof refModule === "object" && String(refModule.path || "").trim()
+    ? [refModule.path, ...(Array.isArray(refModule.files) ? refModule.files : [])].map((path) => ({
+        path,
+      }))
+    : [];
+// 1 回の relay payload にまとめて送り、下の resultByKey が単一の relay 呼び出しから
+// 両方を突き合わせられるようにする。unreported-retry / revalidate-incomplete のゲートは
+// 引き続き preconditions だけで判定する。
+const revalidationTargets = [...preconditions, ...refModuleEntries];
 // Code が unit ごとに commit するため run の途中で HEAD は分岐点でなくなり、下流の
 // `git diff HEAD` はすべて空を返す。可視の失敗でなく無言の pass になるので、基準を
 // 分岐点の sha で持つ (DR-0088)。
@@ -430,15 +448,15 @@ const UNTRACKED_SCHEMA = obj(["untracked"], {
 });
 const [reval, branchRes, baseline] = await parallel([
   () =>
-    preconditions.length
+    revalidationTargets.length
       ? agent(
           anchor(
             relayVerifier({
               what: "plan の前提",
               script: "workflows/build/revalidate.py",
               shape: '{"results":[{path,pattern,exists,matches}]}',
-              payload: preconditions,
-              count: preconditions.length,
+              payload: revalidationTargets,
+              count: revalidationTargets.length,
             }),
           ),
           {
@@ -513,7 +531,7 @@ if (baseBranch && Number(branchRes && branchRes.ahead_of_base) > 0) {
       `その差分を今回の起点として意図しているなら base を実際の起点ブランチに変えて再実行する。`,
   };
 }
-if (preconditions.length) {
+if (revalidationTargets.length) {
   if (!reval || !Array.isArray(reval.results)) {
     return {
       stopped: "revalidate-failed",
@@ -526,7 +544,8 @@ if (preconditions.length) {
   const keyOf = (o) => JSON.stringify([o.path, o.pattern || ""]);
   const resultByKey = new Map(reval.results.map((r) => [keyOf(r), r]));
   // 結果が返らなかった前提はファイル不在でなく relay の取りこぼしでありうるので、
-  // plan-drift と区別して止める。
+  // plan-drift と区別して止める。reference_module のエントリはこのゲートの対象外
+  // (前述の fail-open の注記を参照)。
   let unreported = preconditions.filter((pc) => !resultByKey.has(keyOf(pc)));
   if (unreported.length) {
     const retry = await agent(
@@ -564,6 +583,13 @@ if (preconditions.length) {
     const r = resultByKey.get(keyOf(pc));
     if (!r.exists || !r.matches) drift.push(r);
   }
+  // reference_module のエントリは relay が実際に結果を返したときだけ drift として報告する。
+  // 結果が無いエントリは前述の fail-open の注記どおり無言のままにし、reference_module の行が
+  // 欠落しても precondition のように build を止めることはない。
+  for (const rm of refModuleEntries) {
+    const r = resultByKey.get(keyOf(rm));
+    if (r && (!r.exists || !r.matches)) drift.push(r);
+  }
   if (drift.length) {
     return {
       stopped: "plan-drift",
@@ -572,7 +598,7 @@ if (preconditions.length) {
       why: "issue の plan が前提にするコードが現在のコードベースに無い。issue を更新して再実行する。",
     };
   }
-  log(`Revalidate: 前提 ${preconditions.length} 件すべて pass。`);
+  log(`Revalidate: 前提 ${revalidationTargets.length} 件すべて pass。`);
 }
 
 // checkout は並列実行済み。phase マーカーを drift gate の後に置き、plan-drift 停止が
@@ -734,7 +760,6 @@ const testChecks = plan.units
     names: u.tests.map((t) => t.name),
   }));
 const allTestNames = testChecks.flatMap((c) => c.names);
-const refModule = plan.reference_module;
 const [diff, testPresence, conformance, structure] = await parallel([
   () =>
     agent(

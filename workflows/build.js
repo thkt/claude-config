@@ -429,6 +429,23 @@ const REVALIDATE_SCHEMA = obj(["results"], {
 // surfaced in the stopped return.
 phase("Revalidate");
 const preconditions = plan.preconditions || [];
+// reference_module names existing code the plan presupposes just as much as
+// preconditions does; fold its path and files into the same {path} shape revalidate.py
+// accepts, so a moved-or-deleted reference module surfaces as drift too. Only a
+// kind: module reference_module carries path (DR-0093); no-module / new-shape have none.
+// Unlike preconditions, a dropped reference_module result stays fail-open (no
+// unreported-retry / revalidate-incomplete): it documents structure for later units
+// rather than gating the build the way a precondition does.
+const refModule = plan.reference_module;
+const refModuleEntries =
+  refModule && typeof refModule === "object" && String(refModule.path || "").trim()
+    ? [refModule.path, ...(Array.isArray(refModule.files) ? refModule.files : [])].map((path) => ({
+        path,
+      }))
+    : [];
+// Sent as one relay payload so resultByKey below binds both from a single relay call;
+// preconditions alone still drives the unreported-retry / revalidate-incomplete gate.
+const revalidationTargets = [...preconditions, ...refModuleEntries];
 // Code commits per unit, so HEAD stops being the branch point mid-run and every
 // downstream `git diff HEAD` comes back empty - a silent pass, not a visible failure.
 // Hold the base as the branch point's sha (DR-0088).
@@ -454,15 +471,15 @@ const UNTRACKED_SCHEMA = obj(["untracked"], {
 });
 const [reval, branchRes, baseline] = await parallel([
   () =>
-    preconditions.length
+    revalidationTargets.length
       ? agent(
           anchor(
             relayVerifier({
               what: "the plan's preconditions",
               script: "workflows/build/revalidate.py",
               shape: '{"results":[{path,pattern,exists,matches}]}',
-              payload: preconditions,
-              count: preconditions.length,
+              payload: revalidationTargets,
+              count: revalidationTargets.length,
             }),
           ),
           {
@@ -539,7 +556,7 @@ if (baseBranch && Number(branchRes && branchRes.ahead_of_base) > 0) {
       `is the intended starting point - set base to the actual starting branch and relaunch.`,
   };
 }
-if (preconditions.length) {
+if (revalidationTargets.length) {
   if (!reval || !Array.isArray(reval.results)) {
     return {
       stopped: "revalidate-failed",
@@ -552,8 +569,9 @@ if (preconditions.length) {
   // length identical.
   const keyOf = (o) => JSON.stringify([o.path, o.pattern || ""]);
   const resultByKey = new Map(reval.results.map((r) => [keyOf(r), r]));
-  // A precondition with no result can be a relay drop rather than an absent file,
-  // so it stops as revalidate-incomplete, distinct from plan-drift.
+  // A precondition with no result can be a relay drop rather than an absent file, so
+  // it stops as revalidate-incomplete, distinct from plan-drift. reference_module
+  // entries stay out of this gate (see the fail-open note above).
   let unreported = preconditions.filter((pc) => !resultByKey.has(keyOf(pc)));
   if (unreported.length) {
     const retry = await agent(
@@ -591,6 +609,14 @@ if (preconditions.length) {
     const r = resultByKey.get(keyOf(pc));
     if (!r.exists || !r.matches) drift.push(r);
   }
+  // reference_module entries report drift only when the relay actually returned a
+  // result for them; a missing entry stays silent per the fail-open note above, so a
+  // dropped reference-module row never blocks the build the way a missing
+  // precondition does.
+  for (const rm of refModuleEntries) {
+    const r = resultByKey.get(keyOf(rm));
+    if (r && (!r.exists || !r.matches)) drift.push(r);
+  }
   if (drift.length) {
     return {
       stopped: "plan-drift",
@@ -599,7 +625,7 @@ if (preconditions.length) {
       why: "Code the issue's plan presupposes is absent from the current codebase. Update the issue and relaunch.",
     };
   }
-  log(`Revalidate: all ${preconditions.length} precondition(s) pass.`);
+  log(`Revalidate: all ${revalidationTargets.length} precondition(s) pass.`);
 }
 
 // checkout already ran in parallel above. The phase marker sits after the drift
@@ -762,7 +788,6 @@ const testChecks = plan.units
     names: u.tests.map((t) => t.name),
   }));
 const allTestNames = testChecks.flatMap((c) => c.names);
-const refModule = plan.reference_module;
 const [diff, testPresence, conformance, structure] = await parallel([
   () =>
     agent(
