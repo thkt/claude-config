@@ -119,3 +119,93 @@ test("think SKILL.md の precondition 規則と書き出し前検証が stable a
   assert.match(en, /ugrep -F/, "en: ugrep -F 実在検証");
   assert.match(en, /^### Pre-writeout verification/m, "en: 書き出し前検証の節");
 });
+
+test("各言語の SKILL.md が Bug タスクで原因と根拠を問う規則を持つ", () => {
+  const ja = read(skills.ja);
+  assert.match(ja, /Bug/, "ja: Bug タスクへの言及");
+  assert.match(ja, /Bug[\s\S]{0,150}原因/, "ja: Bug 文脈で原因を問う");
+  assert.match(ja, /原因[\s\S]{0,60}根拠|根拠[\s\S]{0,60}原因/, "ja: 原因と根拠がセットで問われる");
+
+  const en = read(skills.en);
+  assert.match(en, /Bug/, "en: Bug task mention");
+  assert.match(en, /Bug[\s\S]{0,150}(root cause|cause)/i, "en: asks the cause in Bug context");
+  assert.match(
+    en,
+    /(root cause|cause)[\s\S]{0,80}(evidence|basis|grounds)|(evidence|basis|grounds)[\s\S]{0,80}(root cause|cause)/i,
+    "en: cause and evidence asked together",
+  );
+});
+
+test("各言語の SKILL.md が原因未確定の Bug を research へ回す分岐を持つ", () => {
+  const ja = read(skills.ja);
+  assert.match(ja, /原因.{0,20}(未確定|不明)/, "ja: 原因未確定の判定条件");
+  assert.match(
+    ja,
+    /(未確定|不明)[\s\S]{0,150}\/research|\/research[\s\S]{0,150}(未確定|不明)/,
+    "ja: 原因未確定を /research へ回す分岐",
+  );
+
+  const en = read(skills.en);
+  assert.match(
+    en,
+    /cause[\s\S]{0,20}(undetermined|unclear|unknown)/i,
+    "en: undetermined-cause condition",
+  );
+  assert.match(
+    en,
+    /(undetermined|unclear|unknown)[\s\S]{0,150}\/research|\/research[\s\S]{0,150}(undetermined|unclear|unknown)/i,
+    "en: routes undetermined-cause Bug to /research",
+  );
+});
+
+test("各言語の SKILL.md が reference_module の探索を設計の承認より前に置く", () => {
+  const ja = read(skills.ja);
+  const jaPhase2Start = ja.indexOf("## Phase 2");
+  const jaCriticLaunch = ja.indexOf("`critic-design` を起動する");
+  assert.ok(
+    jaPhase2Start !== -1 && jaCriticLaunch !== -1,
+    "ja: Phase 2 と critic-design 起動行が存在する",
+  );
+  const jaRefSearch = ja.indexOf("reference_module", jaPhase2Start);
+  assert.ok(
+    jaRefSearch !== -1 && jaRefSearch < jaCriticLaunch,
+    "ja: reference_module の探索が critic-design 起動より前に書かれている",
+  );
+
+  const en = read(skills.en);
+  const enPhase2Start = en.indexOf("## Phase 2");
+  const enCriticLaunch = en.indexOf("Launch `critic-design`");
+  assert.ok(
+    enPhase2Start !== -1 && enCriticLaunch !== -1,
+    "en: Phase 2 and critic-design launch line exist",
+  );
+  const enRefSearch = en.indexOf("reference_module", enPhase2Start);
+  assert.ok(
+    enRefSearch !== -1 && enRefSearch < enCriticLaunch,
+    "en: reference_module search precedes critic-design launch",
+  );
+});
+
+test("各言語の SKILL.md が探索結果を kind と理由で記録する規則を持つ", () => {
+  const ja = read(skills.ja);
+  assert.match(ja, /kind/, "ja: kind による記録");
+  assert.match(ja, /module\/no-module\/new-shape/, "ja: kind enum が module/no-module/new-shape");
+  assert.match(
+    ja,
+    /kind[\s\S]{0,80}理由|理由[\s\S]{0,80}kind/,
+    "ja: kind と理由がセットで記録される",
+  );
+
+  const en = read(skills.en);
+  assert.match(en, /kind/, "en: recorded by kind");
+  assert.match(
+    en,
+    /module\/no-module\/new-shape/,
+    "en: kind enum matches module/no-module/new-shape",
+  );
+  assert.match(
+    en,
+    /kind[\s\S]{0,80}reason|reason[\s\S]{0,80}kind/i,
+    "en: kind and reason recorded together",
+  );
+});

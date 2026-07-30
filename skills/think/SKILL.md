@@ -17,11 +17,11 @@ Subject 2+ approaches to `critic-design` critique, and let only the surviving ap
 
 ## Phase 1: Establish the Why
 
-Read `.claude/OUTCOME.md`. If it does not exist, generate it via `/outcome`. The Why is three things: who needs this and with what pain, what counts as success, and why now. Attach evidence to the pain. Design starts only once this Why is readable from $ARGUMENTS and the conversation. Do not proceed on placeholders; pin it down via AskUserQuestion.
+Read `.claude/OUTCOME.md`. If it does not exist, generate it via `/outcome`. The Why is three things, plus a fourth when the task is a Bug: who needs this and with what pain, what counts as success, why now, and for a Bug what the root cause is. Attach evidence to the pain. Identify the root cause together with evidence such as reproduction steps or logs; when the cause is undetermined, do not proceed to design and route to `/research` instead. Design starts only once this Why is readable from $ARGUMENTS and the conversation. Do not proceed on placeholders; pin it down via AskUserQuestion.
 
 ## Phase 2: Design Exploration
 
-Ground the approaches in the real code and existing research. Read the relevant code, and read any research output under `.claude/workspace/research/` that matches the task. Treat findings whose Next Action reads `record only` as background knowledge, not plan scope. Generate 2+ approaches from distinct perspectives (simplest thing that works / structure and extensibility / developer experience). Do not bundle independent technical decisions into one question; ask each separately with a recommendation and trade-offs.
+Ground the approaches in the real code and existing research. Read the relevant code, and read any research output under `.claude/workspace/research/` that matches the task. Treat findings whose Next Action reads `record only` as background knowledge, not plan scope. Before generating approaches, search once for an existing module whose set of screens or layers matches the one being planned, in any domain, as a reference_module candidate. Regardless of match or no match, record the result as kind (module/no-module/new-shape) together with a reason; this search closes in one round and Phase 3 does not repeat it. Generate 2+ approaches from distinct perspectives (simplest thing that works / structure and extensibility / developer experience). Do not bundle independent technical decisions into one question; ask each separately with a recommendation and trade-offs.
 
 When the task, the issue, or a research report cites a mock image or screenshot, open that image file with Read before designing. Absence from the text is not evidence the element does not exist.
 
@@ -50,7 +50,7 @@ A test_command failure must be attributable to the planned scope alone. On a rep
 
 ### reference_module
 
-A contract can cite a behavior at one call site only, which does not stop the surrounding structure from being hand-rolled. So search for an existing module whose set of screens or layers matches the one being planned, in any domain, and record it as `reference_module: { path, files, instances }`. Write the structure in the `reference_module` section, and every unit refers to it.
+A contract can cite a behavior at one call site only, which does not stop the surrounding structure from being hand-rolled. The candidate for an existing module whose set of screens or layers matches the one being planned, in any domain, is already searched once in Phase 2, so record its result here as `reference_module: { path, files, instances }` without searching again. Write the structure in the `reference_module` section, and every unit refers to it.
 
 1. Make U-001 its structure replication (same directory layout, component names, export names; tests is an empty array) only when the skeleton fits under 4 files. Otherwise split units by layer and let each unit replicate its own slice
 2. State the shared conventions to keep (which shared components it composes, where formatting lives, how state is passed). Deviating is allowed only with a stated reason in the plan
