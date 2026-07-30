@@ -127,6 +127,33 @@ const validate = (plan) => {
   const ids = new Set(units.map((u) => u.id));
   if (ids.size !== units.length) errors.push("unit id が重複");
 
+  // reference_module は複製する既存モジュールか、複製しない理由のいずれかを運ぶ。素の
+  // null もフィールドごとの欠落もその理由を運べないので blocker にする。schema の
+  // required には入れない。extract が key を落としたとき blockers 文言を持たない
+  // extraction-failed で止まり、書き直す手がかりが残らないため。extract は既存の
+  // `null (理由)` 書式を null のまま残さず kind 付き object へ変換する想定 (DR-0093)。
+  const refModule = plan.reference_module;
+  if (refModule === undefined) {
+    errors.push(
+      "reference_module が無い。{ kind, reason } " +
+        "(kind: module/no-module/new-shape) の object として記録する",
+    );
+  } else if (refModule === null) {
+    errors.push(
+      "reference_module が理由の無い null。素の null ではなく " +
+        "{ kind, reason } (kind: module/no-module/new-shape) の object として記録する",
+    );
+  } else if (refModule && typeof refModule === "object" && "kind" in refModule) {
+    // kind フィールドの無い DR-0093 以前の object (path/files だけ) は後方互換のため
+    // 検査しない。
+    if (refModule.kind === "module") {
+      if (!String(refModule.path || "").trim())
+        errors.push("kind が module なのに reference_module.path が空");
+    } else if (!String(refModule.reason || "").trim()) {
+      errors.push(`kind が ${refModule.kind} なのに reference_module.reason が空`);
+    }
+  }
+
   const testIds = new Set();
   for (const [i, u] of units.entries()) {
     const tests = (Array.isArray(u.tests) ? u.tests : []).map((t, j) =>
@@ -221,8 +248,20 @@ const PLAN_SCHEMA = obj(
     reference_module: {
       type: ["object", "null"],
       description:
-        "この機能が構造を複製する既存の同形モジュール。形が新規なら null。後続 unit はその慣例を維持する",
+        "この機能が構造を複製する既存の同形モジュール。または参照するモジュールが無い理由を記録する object。後続 unit はその慣例を維持する",
       properties: {
+        kind: {
+          type: "string",
+          enum: ["module", "no-module", "new-shape"],
+          description:
+            "module: 以下の path/files が複製する実在モジュールを指す。" +
+            "no-module: 既存ファイルへの追補のみでモジュール探索が要らない。" +
+            "new-shape: モジュール探索を行ったが同形の既存モジュールが無かった",
+        },
+        reason: {
+          type: "string",
+          description: "kind が module 以外のとき必須。参照するモジュールが無い理由",
+        },
         path: { type: "string", description: "参照モジュールのルート" },
         files: {
           type: "array",
@@ -294,7 +333,8 @@ const plan = await agent(
       `本文の unit id (U-NNN) と test id (T-NNN) をすべて保持する。` +
       `preconditions は plan が前提にする既存コードの {path, pattern} の一覧、backlog_candidates は issue に書かれたスコープ外候補。本文に無ければ空配列。\n` +
       `assumptions は ## Plan 節に限らず本文全体から集める。インラインの \`(tentative: ...)\` のマークと Premises 節の各行がすべて対象。マーカーは本文がどの言語でも英語のまま。本文に無ければ空配列。\n` +
-      `seam は本文が \`seam: true\` と記した unit だけ true、他はすべて false。unit の内容から推測しない。\n\n${fencedBody}`,
+      `seam は本文が \`seam: true\` と記した unit だけ true、他はすべて false。unit の内容から推測しない。\n` +
+      `reference_module: 本文は \`null (理由)\` の散文で書く。null に潰さず object に変換し、kind は schema の enum 説明に従って選び、reason は原文のまま写す。kind が module のときは path/files/instances/conventions も本文から写す。本文の reference_module に理由が一切無いときだけ素の null を出す。本文に reference_module の行が無ければフィールドを省く。\n\n${fencedBody}`,
   ),
   {
     label: "extract",
@@ -372,6 +412,24 @@ const REVALIDATE_SCHEMA = obj(["results"], {
 // (両者は plan のみに依存)。drift 停止時は作成済みブランチを stopped に載せて surface する。
 phase("Revalidate");
 const preconditions = plan.preconditions || [];
+// reference_module も preconditions と同じくらい plan が前提にする既存コードを名指しする。
+// path と files を revalidate.py が受ける同じ {path} 形に畳み込み、参照モジュールが
+// 移動・削除されていたときも drift として検出する。kind は見ない。no-module でも
+// 引用した形の path を書けるので、path があれば実在検査の対象にする。
+// preconditions と異なり、reference_module の結果が欠落しても fail-open のまま進める
+// (unreported-retry / revalidate-incomplete の対象にしない)。参照モジュールは後続 unit
+// 向けの構造ドキュメントであり、precondition のように build をゲートする前提ではない。
+const refModule = plan.reference_module;
+const refModuleEntries =
+  refModule && typeof refModule === "object" && String(refModule.path || "").trim()
+    ? [refModule.path, ...(Array.isArray(refModule.files) ? refModule.files : [])].map((path) => ({
+        path,
+      }))
+    : [];
+// 1 回の relay payload にまとめて送り、下の resultByKey が単一の relay 呼び出しから
+// 両方を突き合わせられるようにする。unreported-retry / revalidate-incomplete のゲートは
+// 引き続き preconditions だけで判定する。
+const revalidationTargets = [...preconditions, ...refModuleEntries];
 // Code が unit ごとに commit するため run の途中で HEAD は分岐点でなくなり、下流の
 // `git diff HEAD` はすべて空を返す。可視の失敗でなく無言の pass になるので、基準を
 // 分岐点の sha で持つ (DR-0088)。
@@ -396,15 +454,15 @@ const UNTRACKED_SCHEMA = obj(["untracked"], {
 });
 const [reval, branchRes, baseline] = await parallel([
   () =>
-    preconditions.length
+    revalidationTargets.length
       ? agent(
           anchor(
             relayVerifier({
               what: "plan の前提",
               script: "workflows/build/revalidate.py",
               shape: '{"results":[{path,pattern,exists,matches}]}',
-              payload: preconditions,
-              count: preconditions.length,
+              payload: revalidationTargets,
+              count: revalidationTargets.length,
             }),
           ),
           {
@@ -479,7 +537,7 @@ if (baseBranch && Number(branchRes && branchRes.ahead_of_base) > 0) {
       `その差分を今回の起点として意図しているなら base を実際の起点ブランチに変えて再実行する。`,
   };
 }
-if (preconditions.length) {
+if (revalidationTargets.length) {
   if (!reval || !Array.isArray(reval.results)) {
     return {
       stopped: "revalidate-failed",
@@ -492,7 +550,8 @@ if (preconditions.length) {
   const keyOf = (o) => JSON.stringify([o.path, o.pattern || ""]);
   const resultByKey = new Map(reval.results.map((r) => [keyOf(r), r]));
   // 結果が返らなかった前提はファイル不在でなく relay の取りこぼしでありうるので、
-  // plan-drift と区別して止める。
+  // plan-drift と区別して止める。reference_module のエントリはこのゲートの対象外
+  // (前述の fail-open の注記を参照)。
   let unreported = preconditions.filter((pc) => !resultByKey.has(keyOf(pc)));
   if (unreported.length) {
     const retry = await agent(
@@ -525,10 +584,21 @@ if (preconditions.length) {
       };
     }
   }
+  // ここに来た時点で全 precondition は結果を持つ (無ければ上の unreported-retry ゲートで
+  // 早期 return する)。よって `r &&` は precondition には no-op のガードで、実際に効くのは
+  // reference_module のエントリだけ。結果が無いエントリは前述の fail-open の注記どおり無言の
+  // ままにし、reference_module の行が欠落しても precondition のように build を止めない。
+  // resultByKey は path と pattern だけをキーにするので、reference_module の path が
+  // pattern 無しの precondition と同じ path を指すと両者が同じ結果へ解決し、target ごとに
+  // 読むと 1 つの不在を 2 件として数える。
   const drift = [];
-  for (const pc of preconditions) {
-    const r = resultByKey.get(keyOf(pc));
-    if (!r.exists || !r.matches) drift.push(r);
+  const seenKeys = new Set();
+  for (const target of revalidationTargets) {
+    const key = keyOf(target);
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    const r = resultByKey.get(key);
+    if (r && (!r.exists || !r.matches)) drift.push(r);
   }
   if (drift.length) {
     return {
@@ -538,7 +608,15 @@ if (preconditions.length) {
       why: "issue の plan が前提にするコードが現在のコードベースに無い。issue を更新して再実行する。",
     };
   }
-  log(`Revalidate: 前提 ${preconditions.length} 件すべて pass。`);
+  // reference_module のエントリは結果が欠けても fail-open で進むので、全件を
+  // precondition として数えると走っていない検査まで pass したと読める。
+  const refChecked = refModuleEntries.filter((t) => resultByKey.has(keyOf(t))).length;
+  log(
+    `Revalidate: 前提 ${preconditions.length} 件すべて pass。` +
+      (refModuleEntries.length
+        ? `reference_module の path は ${refChecked}/${refModuleEntries.length} 件を検査。`
+        : ""),
+  );
 }
 
 // checkout は並列実行済み。phase マーカーを drift gate の後に置き、plan-drift 停止が
@@ -700,7 +778,6 @@ const testChecks = plan.units
     names: u.tests.map((t) => t.name),
   }));
 const allTestNames = testChecks.flatMap((c) => c.names);
-const refModule = plan.reference_module;
 const [diff, testPresence, conformance, structure] = await parallel([
   () =>
     agent(

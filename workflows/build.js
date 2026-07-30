@@ -132,6 +132,35 @@ const validate = (plan) => {
   const ids = new Set(units.map((u) => u.id));
   if (ids.size !== units.length) errors.push("duplicate unit ids");
 
+  // reference_module carries either an existing module to replicate or the reason for
+  // not replicating one. Neither a bare null nor an absent field can carry that reason,
+  // so both are blockers;
+  // extract is expected to turn the existing `null (理由)` prose format into a kind-tagged
+  // object instead of leaving it null (DR-0093). The field stays out of the schema's
+  // required list: when extract drops the key, that would stop as extraction-failed,
+  // which carries no blockers text to rewrite the plan from.
+  const refModule = plan.reference_module;
+  if (refModule === undefined) {
+    errors.push(
+      "reference_module is absent. Record it as an object " +
+        "{ kind, reason } (kind: module/no-module/new-shape)",
+    );
+  } else if (refModule === null) {
+    errors.push(
+      "reference_module is null with no reason. Record it as an object " +
+        "{ kind, reason } (kind: module/no-module/new-shape) instead of a bare null",
+    );
+  } else if (refModule && typeof refModule === "object" && "kind" in refModule) {
+    // A pre-DR-0093 object with no kind field (bare path/files) goes unchecked for
+    // backward compatibility.
+    if (refModule.kind === "module") {
+      if (!String(refModule.path || "").trim())
+        errors.push("reference_module.path is empty while kind is module");
+    } else if (!String(refModule.reason || "").trim()) {
+      errors.push(`reference_module.reason is empty while kind is ${refModule.kind}`);
+    }
+  }
+
   const testIds = new Set();
   for (const [i, u] of units.entries()) {
     const tests = (Array.isArray(u.tests) ? u.tests : []).map((t, j) =>
@@ -233,8 +262,21 @@ const PLAN_SCHEMA = obj(
     reference_module: {
       type: ["object", "null"],
       description:
-        "Existing same-shaped module whose structure this feature replicates, or null when the shape is new. Later units keep its conventions",
+        "Existing same-shaped module whose structure this feature replicates, or an object recording why no such module is being referenced. Later units keep its conventions",
       properties: {
+        kind: {
+          type: "string",
+          enum: ["module", "no-module", "new-shape"],
+          description:
+            "module: path/files below name a real existing module to replicate. " +
+            "no-module: this unit only appends to an existing file, so no module search applies. " +
+            "new-shape: a module search happened but no existing module shares this shape",
+        },
+        reason: {
+          type: "string",
+          description:
+            "Required when kind is not module: why no existing module is being referenced",
+        },
         path: { type: "string", description: "Module root of the reference module" },
         files: {
           type: "array",
@@ -307,7 +349,8 @@ const plan = await agent(
       `Preserve every unit id (U-NNN) and test id (T-NNN) from the body. ` +
       `preconditions is the list of {path, pattern} of existing code the plan presupposes; backlog_candidates are out-of-scope candidates written in the issue. Empty arrays if absent from the body.\n` +
       `assumptions come from the whole body, not just the ## Plan section: collect every inline \`(tentative: ...)\` mark and every line of a Premises section. The marker stays English whatever language the body is written in. Empty array if the body carries none.\n` +
-      `seam is true only for a unit the body marks \`seam: true\`; every other unit is false. Do not infer it from the unit's content.\n\n${fencedBody}`,
+      `seam is true only for a unit the body marks \`seam: true\`; every other unit is false. Do not infer it from the unit's content.\n` +
+      `reference_module: the body writes it as \`null (reason)\` prose. Turn that into an object rather than a bare null, pick kind per its enum description, and copy the reason verbatim. When kind is module, copy path/files/instances/conventions from the body too. Emit a bare null only when the body's reference_module carries no reason at all. Omit the field when the body has no reference_module line.\n\n${fencedBody}`,
   ),
   {
     label: "extract",
@@ -392,6 +435,23 @@ const REVALIDATE_SCHEMA = obj(["results"], {
 // surfaced in the stopped return.
 phase("Revalidate");
 const preconditions = plan.preconditions || [];
+// reference_module names existing code the plan presupposes just as much as
+// preconditions does; fold its path and files into the same {path} shape revalidate.py
+// accepts, so a moved-or-deleted reference module surfaces as drift too. kind is not
+// consulted: a no-module plan can still cite a shape's path, so any path is checked.
+// Unlike preconditions, a dropped reference_module result stays fail-open (no
+// unreported-retry / revalidate-incomplete): it documents structure for later units
+// rather than gating the build the way a precondition does.
+const refModule = plan.reference_module;
+const refModuleEntries =
+  refModule && typeof refModule === "object" && String(refModule.path || "").trim()
+    ? [refModule.path, ...(Array.isArray(refModule.files) ? refModule.files : [])].map((path) => ({
+        path,
+      }))
+    : [];
+// Sent as one relay payload so resultByKey below binds both from a single relay call;
+// preconditions alone still drives the unreported-retry / revalidate-incomplete gate.
+const revalidationTargets = [...preconditions, ...refModuleEntries];
 // Code commits per unit, so HEAD stops being the branch point mid-run and every
 // downstream `git diff HEAD` comes back empty - a silent pass, not a visible failure.
 // Hold the base as the branch point's sha (DR-0088).
@@ -417,15 +477,15 @@ const UNTRACKED_SCHEMA = obj(["untracked"], {
 });
 const [reval, branchRes, baseline] = await parallel([
   () =>
-    preconditions.length
+    revalidationTargets.length
       ? agent(
           anchor(
             relayVerifier({
               what: "the plan's preconditions",
               script: "workflows/build/revalidate.py",
               shape: '{"results":[{path,pattern,exists,matches}]}',
-              payload: preconditions,
-              count: preconditions.length,
+              payload: revalidationTargets,
+              count: revalidationTargets.length,
             }),
           ),
           {
@@ -502,7 +562,7 @@ if (baseBranch && Number(branchRes && branchRes.ahead_of_base) > 0) {
       `is the intended starting point - set base to the actual starting branch and relaunch.`,
   };
 }
-if (preconditions.length) {
+if (revalidationTargets.length) {
   if (!reval || !Array.isArray(reval.results)) {
     return {
       stopped: "revalidate-failed",
@@ -515,8 +575,9 @@ if (preconditions.length) {
   // length identical.
   const keyOf = (o) => JSON.stringify([o.path, o.pattern || ""]);
   const resultByKey = new Map(reval.results.map((r) => [keyOf(r), r]));
-  // A precondition with no result can be a relay drop rather than an absent file,
-  // so it stops as revalidate-incomplete, distinct from plan-drift.
+  // A precondition with no result can be a relay drop rather than an absent file, so
+  // it stops as revalidate-incomplete, distinct from plan-drift. reference_module
+  // entries stay out of this gate (see the fail-open note above).
   let unreported = preconditions.filter((pc) => !resultByKey.has(keyOf(pc)));
   if (unreported.length) {
     const retry = await agent(
@@ -549,10 +610,22 @@ if (preconditions.length) {
       };
     }
   }
+  // Every precondition already has a result by this point (the unreported-retry gate
+  // above returns early otherwise), so `r &&` is a no-op guard for them; it only does
+  // real work for reference_module entries, whose missing result stays silent per the
+  // fail-open note above instead of blocking the build the way a missing precondition
+  // does.
+  // resultByKey is keyed on path and pattern alone, so a reference_module path that
+  // matches a pattern-less precondition path resolves to the same result, and reading it
+  // per target counts one absence twice.
   const drift = [];
-  for (const pc of preconditions) {
-    const r = resultByKey.get(keyOf(pc));
-    if (!r.exists || !r.matches) drift.push(r);
+  const seenKeys = new Set();
+  for (const target of revalidationTargets) {
+    const key = keyOf(target);
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    const r = resultByKey.get(key);
+    if (r && (!r.exists || !r.matches)) drift.push(r);
   }
   if (drift.length) {
     return {
@@ -562,7 +635,15 @@ if (preconditions.length) {
       why: "Code the issue's plan presupposes is absent from the current codebase. Update the issue and relaunch.",
     };
   }
-  log(`Revalidate: all ${preconditions.length} precondition(s) pass.`);
+  // A reference_module entry advances fail-open when its result is missing, so counting
+  // them all as passed preconditions claims a verification that never ran.
+  const refChecked = refModuleEntries.filter((t) => resultByKey.has(keyOf(t))).length;
+  log(
+    `Revalidate: all ${preconditions.length} precondition(s) pass.` +
+      (refModuleEntries.length
+        ? ` reference_module path(s) checked: ${refChecked}/${refModuleEntries.length}.`
+        : ""),
+  );
 }
 
 // checkout already ran in parallel above. The phase marker sits after the drift
@@ -725,7 +806,6 @@ const testChecks = plan.units
     names: u.tests.map((t) => t.name),
   }));
 const allTestNames = testChecks.flatMap((c) => c.names);
-const refModule = plan.reference_module;
 const [diff, testPresence, conformance, structure] = await parallel([
   () =>
     agent(
