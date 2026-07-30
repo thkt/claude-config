@@ -382,8 +382,8 @@ test("kind と reason を持つ plan は validate を通る", async () => {
 // issue title の [Bug] prefix (qualify SKILL.md § Title type) を Bug 分類の目印とする。
 // 原因を書かない Bug issue はそのまま Code 段へ進むと対症療法になりやすいので、Load 段の
 // validate で root_cause の記載を要求する。root_cause は PLAN_SCHEMA の required に入れない
-// (extract が key を落とすと、blockers 文言を持たない extraction-failed で止まってしまうため
-// - reference_module と同じ理由、304 行目コメント参照)。fetch が title を落とした場合は
+// (extract が key を落とすと、blockers 文言を持たない extraction-failed で止まってしまうため。
+// reference_module も同じ理由で required に入れていない)。fetch が title を落とした場合は
 // Bug 判定できないので root_cause を要求しない。
 test("title が Bug で root_cause が空の plan は invalid-plan で止まる", async () => {
   const { result } = await runWorkflow(buildJs, {

@@ -77,23 +77,9 @@ test("各言語の SKILL.md が needs-plan でも Bug の原因言明を見る�
     const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
     assert.match(phase2, /Bug/, `${lang}: Phase 2 が Bug を分岐条件として持つ`);
     assert.match(
-      lang === "ja" ? phase2 : phase2,
+      phase2,
       lang === "ja" ? /原因/ : /root cause/i,
       `${lang}: Phase 2 が Bug の原因言明を見る規則を持つ`,
-    );
-  }
-});
-
-// 打ち切りの理由文は「着手の判断は変えないが次の手は変わる」形に改まる契約。
-// 数字は build.js への委譲対象で、この節に混ざると単一情報源の原則が崩れる。
-test("Phase 2 節に数字が残らない既存の検査を通る", () => {
-  for (const [lang, path] of Object.entries(skills)) {
-    const doc = readFileSync(path, "utf8");
-    const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
-    assert.doesNotMatch(
-      phase2.replace(/^\d+\.\s/gm, "").replace(/Phase \d/g, ""),
-      /\d/,
-      `${lang}: Phase 2 に数字が残っていない`,
     );
   }
 });
