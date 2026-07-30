@@ -54,6 +54,24 @@ test("plan テンプレートが骨格 (id 記法・実装順・前提小節・1
   }
 });
 
+test("テンプレートの root_cause 見出し語が build.js の検査対象フィールド名と一致する", () => {
+  const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
+  const fieldMatch = buildJs.match(
+    /(\w+):\s*\{\s*type:\s*"string",\s*description:\s*\n\s*"Required when the issue title carries a \[Bug\] prefix/,
+  );
+  assert.ok(fieldMatch, "build.js から Bug 限定必須フィールドの名前を読める");
+  const fieldName = fieldMatch[1];
+  const headingToken = new RegExp(`^${fieldName}:`, "m");
+  for (const [lang, path] of Object.entries(templates)) {
+    const doc = read(path);
+    assert.match(
+      doc,
+      headingToken,
+      `${lang}: root_cause 見出し語 ${fieldName} が build.js の検査対象フィールド名と一致する`,
+    );
+  }
+});
+
 test("think SKILL.md の contract authoring 規則が選択 (引用ラダー) を強制している", () => {
   const ja = read(skills.ja);
   assert.match(ja, /生成でなく選択/, "ja: 選択 > 生成の原則");

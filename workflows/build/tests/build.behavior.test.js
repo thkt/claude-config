@@ -704,6 +704,28 @@ test("UNIT_CAPS の数値と seam 除外が /think SKILL.md の unit 上限記�
   );
 });
 
+// think が /think Phase 3 で教える reference_module.kind の語彙は、EXTRACT_SCHEMA の
+// enum を prose で複写している。英文言でなく enum トークンそのものが両言語のテンプレートに
+// 出ることを照合する (UNIT_CAPS 照合と同じ静的クロスチェックの形)。
+test("テンプレートの kind 語が build.js の enum と一致する", () => {
+  const source = readFileSync(buildJs, "utf8");
+  const enumMatch = source.match(/kind:\s*\{\s*type:\s*"string",\s*enum:\s*\[([^\]]+)\]/);
+  assert.ok(enumMatch, "build.js の kind enum を読める");
+  const kinds = enumMatch[1].split(",").map((s) => s.trim().replace(/^"|"$/g, ""));
+  const expectedToken = kinds.join("/");
+  const templates = {
+    en: join(here, "..", "..", "..", "skills", "think", "templates", "plan.md"),
+    ja: join(here, "..", "..", "..", ".ja", "skills", "think", "templates", "plan.md"),
+  };
+  for (const [lang, path] of Object.entries(templates)) {
+    const doc = readFileSync(path, "utf8");
+    assert.ok(
+      doc.includes(expectedToken),
+      `${lang}: kind enum トークン ${expectedToken} が build.js の enum と一致する`,
+    );
+  }
+});
+
 test("Revalidate は 1 miss で stopped: plan-drift、全 pass で Branch へ進み、preconditions 空なら agent を呼ばない", async () => {
   // miss case: exists: false を 1 件含む
   const driftPlan = makePlan({
