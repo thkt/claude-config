@@ -47,8 +47,8 @@ const makePlan = (overrides = {}) => ({
   ],
   test_command: "echo test",
   preconditions: [{ path: "sample.js", pattern: "sampleSymbol" }],
-  // validate() rejects an absent reference_module, so the shared fixture carries the
-  // cheapest passing form: no module to replicate, with a reason.
+  // validate() が reference_module の欠落を止めるので、共有 fixture は通る最小形
+  // (複製するモジュールが無い + 理由) を持つ。
   reference_module: { kind: "no-module", reason: "sample reason" },
   backlog_candidates: [],
   ...overrides,
@@ -742,10 +742,9 @@ test("reference_module の path が実在しないと plan-drift で止まる", 
   );
 });
 
-// kind: no-module は validate 側の path 空検査 (kind: module 限定) の対象外なので、
-// path を持っていても validate は reason だけを見て通す。その path が
-// refModuleEntries の組み立て (kind に関わらず path の truthy 判定のみ) を経て
-// revalidate へそのまま渡ることを、path 不在時の plan-drift で確認する。
+// no-module でも引用した形の path を書けるので、その path が実在検査を受けることを
+// 確かめる。validate は kind: module 以外では path を見ず、refModuleEntries も kind を
+// 見ないため、この経路はどちらの検査からも自明に読み取れない。
 test("kind が no-module で path を持つ plan は validate を通り revalidate で path の実在検査を受ける", async () => {
   const plan = refModulePreconditionsPlan({
     kind: "no-module",
@@ -849,8 +848,8 @@ test("path を持たない reference_module では revalidate の payload に re
 });
 
 // resultByKey は path と pattern だけをキーにするので、reference_module.path が
-// pattern 無しの precondition と同じ path を指すと両者が同じ結果へ解決する。drift
-// ループがその結果を 2 回読むと、1 つの不在が 2 件として報告される。
+// pattern 無しの precondition と同じ path を指すと両者が同じ結果へ解決し、1 つの不在が
+// 2 件として報告される。
 test("reference_module.path と同じ path の precondition があっても drift は 1 件になる", async () => {
   const plan = makePlan({
     preconditions: [{ path: "src/shared", pattern: "" }],

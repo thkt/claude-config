@@ -127,9 +127,8 @@ const validate = (plan) => {
   const ids = new Set(units.map((u) => u.id));
   if (ids.size !== units.length) errors.push("unit id が重複");
 
-  // reference_module は「既存モジュールを複製する」(kind: module、path が要る) か
-  // 「複製する既存モジュールが無い」(それ以外の kind、reason が要る) のいずれかを運ぶ。
-  // 素の null もフィールドごとの欠落も理由を運べないので blocker にする。schema の
+  // reference_module は複製する既存モジュールか、複製しない理由のいずれかを運ぶ。素の
+  // null もフィールドごとの欠落もその理由を運べないので blocker にする。schema の
   // required には入れない。extract が key を落としたとき blockers 文言を持たない
   // extraction-failed で止まり、書き直す手がかりが残らないため。extract は既存の
   // `null (理由)` 書式を null のまま残さず kind 付き object へ変換する想定 (DR-0093)。
@@ -145,8 +144,8 @@ const validate = (plan) => {
         "{ kind, reason } (kind: module/no-module/new-shape) の object として記録する",
     );
   } else if (refModule && typeof refModule === "object" && "kind" in refModule) {
-    // kind フィールドの無い DR-0093 以前の object (path/files だけの参照モジュール) は
-    // 後方互換のためここでは検査しない。この検査は plan が kind を持って初めて働く。
+    // kind フィールドの無い DR-0093 以前の object (path/files だけ) は後方互換のため
+    // 検査しない。
     if (refModule.kind === "module") {
       if (!String(refModule.path || "").trim())
         errors.push("kind が module なのに reference_module.path が空");
@@ -335,7 +334,7 @@ const plan = await agent(
       `preconditions は plan が前提にする既存コードの {path, pattern} の一覧、backlog_candidates は issue に書かれたスコープ外候補。本文に無ければ空配列。\n` +
       `assumptions は ## Plan 節に限らず本文全体から集める。インラインの \`(tentative: ...)\` のマークと Premises 節の各行がすべて対象。マーカーは本文がどの言語でも英語のまま。本文に無ければ空配列。\n` +
       `seam は本文が \`seam: true\` と記した unit だけ true、他はすべて false。unit の内容から推測しない。\n` +
-      `reference_module: 本文が既存の \`null (理由)\` 書式を使っているときは、そのまま null に潰さず理由を運ぶ object に変換する。本文が複製すべき実在のモジュール path を名指ししていれば kind を module にし (path/files/instances/conventions もそこから写す)、理由が「既存ファイルへの追補でモジュール探索が要らない」旨なら no-module に、理由が「探索したが同形のモジュールが無かった」旨なら new-shape にし、いずれも reason を原文のまま写す。本文の reference_module に理由が一切無いときだけ素の null を出す。\n\n${fencedBody}`,
+      `reference_module: 本文は \`null (理由)\` の散文で書く。null に潰さず object に変換し、kind は schema の enum 説明に従って選び、reason は原文のまま写す。kind が module のときは path/files/instances/conventions も本文から写す。本文の reference_module に理由が一切無いときだけ素の null を出す。本文に reference_module の行が無ければフィールドを省く。\n\n${fencedBody}`,
   ),
   {
     label: "extract",
@@ -415,8 +414,8 @@ phase("Revalidate");
 const preconditions = plan.preconditions || [];
 // reference_module も preconditions と同じくらい plan が前提にする既存コードを名指しする。
 // path と files を revalidate.py が受ける同じ {path} 形に畳み込み、参照モジュールが
-// 移動・削除されていたときも drift として検出する。path を持つのは kind: module の
-// reference_module のみ (DR-0093)。no-module / new-shape には path が無い。
+// 移動・削除されていたときも drift として検出する。kind は見ない。no-module でも
+// 引用した形の path を書けるので、path があれば実在検査の対象にする。
 // preconditions と異なり、reference_module の結果が欠落しても fail-open のまま進める
 // (unreported-retry / revalidate-incomplete の対象にしない)。参照モジュールは後続 unit
 // 向けの構造ドキュメントであり、precondition のように build をゲートする前提ではない。
@@ -590,8 +589,8 @@ if (revalidationTargets.length) {
   // reference_module のエントリだけ。結果が無いエントリは前述の fail-open の注記どおり無言の
   // ままにし、reference_module の行が欠落しても precondition のように build を止めない。
   // resultByKey は path と pattern だけをキーにするので、reference_module の path が
-  // pattern 無しの precondition と同じ path を指すと両者が同じ結果へ解決する。見た
-  // キーを控えて、同じ結果を drift に二重計上しないようにする。
+  // pattern 無しの precondition と同じ path を指すと両者が同じ結果へ解決し、target ごとに
+  // 読むと 1 つの不在を 2 件として数える。
   const drift = [];
   const seenKeys = new Set();
   for (const target of revalidationTargets) {
@@ -609,9 +608,8 @@ if (revalidationTargets.length) {
       why: "issue の plan が前提にするコードが現在のコードベースに無い。issue を更新して再実行する。",
     };
   }
-  // reference_module のエントリは結果が欠けても fail-open で進むので、pass ではなく
-  // 検査できた件数を出す。全件を precondition として数えると、走っていない検査まで
-  // pass したと読める。
+  // reference_module のエントリは結果が欠けても fail-open で進むので、全件を
+  // precondition として数えると走っていない検査まで pass したと読める。
   const refChecked = refModuleEntries.filter((t) => resultByKey.has(keyOf(t))).length;
   log(
     `Revalidate: 前提 ${preconditions.length} 件すべて pass。` +

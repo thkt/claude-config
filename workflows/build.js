@@ -132,10 +132,9 @@ const validate = (plan) => {
   const ids = new Set(units.map((u) => u.id));
   if (ids.size !== units.length) errors.push("duplicate unit ids");
 
-  // reference_module carries either "replicate this existing module" (kind: module,
-  // needs path) or "this shape has no existing module to replicate" (any other kind,
-  // needs reason). Neither a bare null nor an absent field can carry that reason, so
-  // both are blockers;
+  // reference_module carries either an existing module to replicate or the reason for
+  // not replicating one. Neither a bare null nor an absent field can carry that reason,
+  // so both are blockers;
   // extract is expected to turn the existing `null (理由)` prose format into a kind-tagged
   // object instead of leaving it null (DR-0093). The field stays out of the schema's
   // required list: when extract drops the key, that would stop as extraction-failed,
@@ -152,9 +151,8 @@ const validate = (plan) => {
         "{ kind, reason } (kind: module/no-module/new-shape) instead of a bare null",
     );
   } else if (refModule && typeof refModule === "object" && "kind" in refModule) {
-    // A pre-DR-0093 object with no kind field (a bare path/files reference module) is
-    // left unchecked here for backward compatibility; the new check only applies once
-    // a plan opts in by carrying kind.
+    // A pre-DR-0093 object with no kind field (bare path/files) goes unchecked for
+    // backward compatibility.
     if (refModule.kind === "module") {
       if (!String(refModule.path || "").trim())
         errors.push("reference_module.path is empty while kind is module");
@@ -352,7 +350,7 @@ const plan = await agent(
       `preconditions is the list of {path, pattern} of existing code the plan presupposes; backlog_candidates are out-of-scope candidates written in the issue. Empty arrays if absent from the body.\n` +
       `assumptions come from the whole body, not just the ## Plan section: collect every inline \`(tentative: ...)\` mark and every line of a Premises section. The marker stays English whatever language the body is written in. Empty array if the body carries none.\n` +
       `seam is true only for a unit the body marks \`seam: true\`; every other unit is false. Do not infer it from the unit's content.\n` +
-      `reference_module: when the body writes the existing \`null (reason)\` format, do not leave it as a bare null; turn it into an object carrying that reason. Set kind to module when the body names a real existing module path to replicate (and copy its path/files/instances/conventions); otherwise set kind to no-module when the reason says the unit only appends to an existing file with no module search, or new-shape when the reason says a module search found no matching shape, and copy the reason verbatim. Only emit a bare null when the body gives reference_module with no reason at all.\n\n${fencedBody}`,
+      `reference_module: the body writes it as \`null (reason)\` prose. Turn that into an object rather than a bare null, pick kind per its enum description, and copy the reason verbatim. When kind is module, copy path/files/instances/conventions from the body too. Emit a bare null only when the body's reference_module carries no reason at all. Omit the field when the body has no reference_module line.\n\n${fencedBody}`,
   ),
   {
     label: "extract",
@@ -439,8 +437,8 @@ phase("Revalidate");
 const preconditions = plan.preconditions || [];
 // reference_module names existing code the plan presupposes just as much as
 // preconditions does; fold its path and files into the same {path} shape revalidate.py
-// accepts, so a moved-or-deleted reference module surfaces as drift too. Only a
-// kind: module reference_module carries path (DR-0093); no-module / new-shape have none.
+// accepts, so a moved-or-deleted reference module surfaces as drift too. kind is not
+// consulted: a no-module plan can still cite a shape's path, so any path is checked.
 // Unlike preconditions, a dropped reference_module result stays fail-open (no
 // unreported-retry / revalidate-incomplete): it documents structure for later units
 // rather than gating the build the way a precondition does.
@@ -618,8 +616,8 @@ if (revalidationTargets.length) {
   // fail-open note above instead of blocking the build the way a missing precondition
   // does.
   // resultByKey is keyed on path and pattern alone, so a reference_module path that
-  // matches a pattern-less precondition path resolves to the same result. Track the
-  // keys already seen so one result is never counted into drift twice.
+  // matches a pattern-less precondition path resolves to the same result, and reading it
+  // per target counts one absence twice.
   const drift = [];
   const seenKeys = new Set();
   for (const target of revalidationTargets) {
@@ -637,9 +635,8 @@ if (revalidationTargets.length) {
       why: "Code the issue's plan presupposes is absent from the current codebase. Update the issue and relaunch.",
     };
   }
-  // A reference_module entry advances fail-open when its result is missing, so report
-  // how many were actually checked rather than calling them all passed. Counting them
-  // as preconditions claims a verification that never ran.
+  // A reference_module entry advances fail-open when its result is missing, so counting
+  // them all as passed preconditions claims a verification that never ran.
   const refChecked = refModuleEntries.filter((t) => resultByKey.has(keyOf(t))).length;
   log(
     `Revalidate: all ${preconditions.length} precondition(s) pass.` +
