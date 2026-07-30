@@ -21,7 +21,7 @@ Take the body and labels with `gh issue view <ref> --json number,title,body,labe
 
 ## Phase 2: Inspect the plan contract
 
-With no `## Plan` section, set the verdict to needs-plan and go to Phase 4 without inspecting further. Build stops as no-plan anyway, so no other finding changes the decision to hand it over.
+With no `## Plan` section, set the verdict to needs-plan and go to Phase 4 without inspecting further. The decision to pick it up does not change, but the next step does depend on the issue's type. When the title is `[Bug]`, check whether the body states a root cause; if not, set the next step to "pin down the root cause before drafting the plan". Other types keep "draft the plan" as the next step, so no other finding changes the decision to hand it over.
 
 With a `## Plan` section, read build.js's own conditions at run time rather than transcribing them, apply them, and treat every violation as a blocker. Build stops on the same conditions, so none of them degrade to advice.
 
