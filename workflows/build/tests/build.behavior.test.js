@@ -81,6 +81,7 @@ const kindOf = (opts) => {
 // happy path の戻り値を差し替える。diff / presence は値でも関数 (prompt を受ける) でもよい。
 const makeStubs = ({
   body,
+  title,
   plan,
   revalidate,
   conformance,
@@ -99,7 +100,9 @@ const makeStubs = ({
         // テストだけが translate stub を渡す。
         return translate ? translate(prompt) : { notes: "no-translations" };
       case "fetch":
-        return { found: true, body: body ?? bodyFor(["U-001"], ["T-001"]) };
+        // title は既定で省略する (extract が key を落とした状態を再現する)。Bug 判定を
+        // 検証するテストだけが title override を渡す。
+        return { found: true, title, body: body ?? bodyFor(["U-001"], ["T-001"]) };
       case "extract":
         return plan ?? makePlan();
       case "revalidate":
@@ -374,6 +377,55 @@ test("kind と reason を持つ plan は validate を通る", async () => {
     }),
   });
   assert.notEqual(result.stopped, "invalid-plan", "kind + reason が揃えば validate を通る");
+});
+
+// issue title の [Bug] prefix (qualify SKILL.md § Title type) を Bug 分類の目印とする。
+// 原因を書かない Bug issue はそのまま Code 段へ進むと対症療法になりやすいので、Load 段の
+// validate で root_cause の記載を要求する。root_cause は PLAN_SCHEMA の required に入れない
+// (extract が key を落とすと、blockers 文言を持たない extraction-failed で止まってしまうため
+// - reference_module と同じ理由、304 行目コメント参照)。fetch が title を落とした場合は
+// Bug 判定できないので root_cause を要求しない。
+test("title が Bug で root_cause が空の plan は invalid-plan で止まる", async () => {
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ title: "[Bug] login fails", plan: makePlan({ root_cause: "" }) }),
+  });
+  assert.equal(result.stopped, "invalid-plan");
+  assert.ok(
+    result.blockers.some((b) => /root_cause/.test(String(b))),
+    "blockers に root_cause を指すエラー文言が載る",
+  );
+});
+
+test("title が Bug で root_cause を持つ plan は validate を通る", async () => {
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      title: "[Bug] login fails",
+      plan: makePlan({ root_cause: "session token expires before the refresh call" }),
+    }),
+  });
+  assert.notEqual(result.stopped, "invalid-plan", "root_cause があれば validate を通る");
+});
+
+test("title が Bug 以外なら root_cause が空でも validate を通る", async () => {
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ title: "[Feature] add dark mode", plan: makePlan({ root_cause: "" }) }),
+  });
+  assert.notEqual(result.stopped, "invalid-plan", "Bug 以外は root_cause 不要で validate を通る");
+});
+
+test("fetch が title を取得できないときは Bug 判定を行わず root_cause を要求しない", async () => {
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ plan: makePlan({ root_cause: "" }) }),
+  });
+  assert.notEqual(
+    result.stopped,
+    "invalid-plan",
+    "title が無ければ Bug 判定できないので root_cause を要求しない",
+  );
 });
 
 // unit ごとのテストは自分の境界を stub するため、各 unit が緑でも層が結線されない

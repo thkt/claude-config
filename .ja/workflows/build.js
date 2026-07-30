@@ -84,6 +84,10 @@ const FETCH_SCHEMA = obj(["found", "body"], {
     type: "string",
     description: "issue 本文の逐語。要約や整形をしない",
   },
+  title: {
+    type: "string",
+    description: "issue タイトルの逐語。取得できなかったときは未設定のまま",
+  },
 });
 
 // ---- Load: 逐語 fetch → Plan 見出し確認 → 決定論 id 収集 → 抽出 → validate + クロスチェック ----
@@ -91,8 +95,8 @@ const FETCH_SCHEMA = obj(["found", "body"], {
 const fetchRef = issueRef.replace(/^#/, "");
 const fetched = await agent(
   anchor(
-    `\`gh issue view ${fetchRef} --json body --jq .body\` を正確に実行し、その stdout を body として逐語で返す。` +
-      `要約や整形をしない。` +
+    `\`gh issue view ${fetchRef} --json title,body\` を正確に実行し、その title フィールドを title として、body フィールドを body として、いずれも逐語で返す。` +
+      `どちらも要約や整形をしない。` +
       `コマンドが非ゼロで終了した場合 (issue が無い / 取得失敗) は found: false を返す。`,
   ),
   {
@@ -115,8 +119,16 @@ const body = fetched.body;
 // 扱う)。seam 規則があるのは、unit ごとのテストが自分の境界を stub するため、各 unit
 // が緑のまま層と層が結線されていない実装を ship しうるから。テストを持つ unit が
 // 2 つ以上あれば両者の間に継ぎ目があり、そこを横断するテストだけが結線漏れで落ちる。
-const validate = (plan) => {
+const validate = (plan, isBug) => {
   const errors = [];
+  // qualify SKILL.md § Title type は Bug issue のタイトルに `[Bug]` prefix を付ける。
+  // root_cause を書かない Bug plan は症状だけを code で回避しがちなので、title が
+  // Bug と分かった時点で Load が root_cause を要求する。schema の required には
+  // 入れない。理由は上の reference_module と同じで、extract が key を落とすと
+  // blockers 文言を持たない extraction-failed で止まってしまうため。
+  if (isBug && !String(plan.root_cause || "").trim()) {
+    errors.push("[Bug] issue なのに root_cause が空。症状でなく原因を記録する");
+  }
   // object でない要素は位置 placeholder id で surface させる。共有 id は偽の重複を出す。
   const units = (Array.isArray(plan.units) ? plan.units : []).map((u, i) =>
     u && typeof u === "object" && !Array.isArray(u) ? u : { id: `units[${i}]` },
@@ -245,6 +257,11 @@ const PLAN_SCHEMA = obj(
       type: "string",
       description: "テストコマンド。例 cargo test / bun test",
     },
+    root_cause: {
+      type: "string",
+      description:
+        "issue タイトルが [Bug] prefix のとき必須。症状でなく根底の原因。Bug 以外の issue ではフィールドを省く",
+    },
     reference_module: {
       type: ["object", "null"],
       description:
@@ -334,7 +351,8 @@ const plan = await agent(
       `preconditions は plan が前提にする既存コードの {path, pattern} の一覧、backlog_candidates は issue に書かれたスコープ外候補。本文に無ければ空配列。\n` +
       `assumptions は ## Plan 節に限らず本文全体から集める。インラインの \`(tentative: ...)\` のマークと Premises 節の各行がすべて対象。マーカーは本文がどの言語でも英語のまま。本文に無ければ空配列。\n` +
       `seam は本文が \`seam: true\` と記した unit だけ true、他はすべて false。unit の内容から推測しない。\n` +
-      `reference_module: 本文は \`null (理由)\` の散文で書く。null に潰さず object に変換し、kind は schema の enum 説明に従って選び、reason は原文のまま写す。kind が module のときは path/files/instances/conventions も本文から写す。本文の reference_module に理由が一切無いときだけ素の null を出す。本文に reference_module の行が無ければフィールドを省く。\n\n${fencedBody}`,
+      `reference_module: 本文は \`null (理由)\` の散文で書く。null に潰さず object に変換し、kind は schema の enum 説明に従って選び、reason は原文のまま写す。kind が module のときは path/files/instances/conventions も本文から写す。本文の reference_module に理由が一切無いときだけ素の null を出す。本文に reference_module の行が無ければフィールドを省く。\n` +
+      `root_cause: 本文が記載していれば (Root Cause / 原因の行など) 原文のまま写す。本文に記載が無ければフィールドを省く。\n\n${fencedBody}`,
   ),
   {
     label: "extract",
@@ -349,7 +367,10 @@ if (!plan) {
   return { stopped: "extraction-failed", why: "extract agent が plan を返さなかった。" };
 }
 
-const blockers = validate(plan);
+// qualify SKILL.md § Title type は Bug issue のタイトルに `[Bug]` prefix を付ける。
+// fetch が title を取得できなかったときは分類不能なので、空 fallback の startsWith
+// は Bug ではない側に倒れる (どちらかへの当て推量はしない)。
+const blockers = validate(plan, String(fetched.title || "").startsWith("[Bug]"));
 if (blockers.length) {
   return { stopped: "invalid-plan", blockers, why: "抽出した plan が構造 validation に失敗。" };
 }

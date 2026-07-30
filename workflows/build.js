@@ -87,6 +87,10 @@ const FETCH_SCHEMA = obj(["found", "body"], {
     type: "string",
     description: "The issue body verbatim. No summarizing or reformatting",
   },
+  title: {
+    type: "string",
+    description: "The issue title verbatim, unset when the fetch could not read it",
+  },
 });
 
 // ---- Load: verbatim fetch -> Plan heading check -> deterministic id collection -> extract -> validate + cross-check ----
@@ -94,8 +98,8 @@ const FETCH_SCHEMA = obj(["found", "body"], {
 const fetchRef = issueRef.replace(/^#/, "");
 const fetched = await agent(
   anchor(
-    `Run exactly \`gh issue view ${fetchRef} --json body --jq .body\` and return its stdout verbatim as body; ` +
-      `do not summarize or reformat. ` +
+    `Run exactly \`gh issue view ${fetchRef} --json title,body\` and return its title field as title and its body field as body, both verbatim; ` +
+      `do not summarize or reformat either. ` +
       `If the command exits non-zero (issue not found / fetch failed), return found: false.`,
   ),
   {
@@ -119,8 +123,16 @@ const body = fetched.body;
 // stub their own boundaries, so a plan whose units are each green can still ship
 // layers that were never connected to each other. Once two units carry tests there
 // is a seam between them, and only a test crossing it fails when the wiring is absent.
-const validate = (plan) => {
+const validate = (plan, isBug) => {
   const errors = [];
+  // qualify SKILL.md § Title type marks a Bug issue's title with a `[Bug]` prefix. A
+  // Bug plan that skips root_cause tends to code around the symptom instead of the
+  // cause, so Load requires it once title tells us the issue is a Bug. Kept out of
+  // PLAN_SCHEMA's required list for the same reason as reference_module above: a
+  // dropped key would stop as extraction-failed, which carries no blockers text.
+  if (isBug && !String(plan.root_cause || "").trim()) {
+    errors.push("root_cause is empty on a [Bug] issue. Record the cause, not just the symptom");
+  }
   // Non-object entries surface via a position placeholder id; a shared id would
   // emit a spurious duplicate.
   const units = (Array.isArray(plan.units) ? plan.units : []).map((u, i) =>
@@ -259,6 +271,11 @@ const PLAN_SCHEMA = obj(
       type: "string",
       description: "Test command, e.g. cargo test / bun test",
     },
+    root_cause: {
+      type: "string",
+      description:
+        "Required when the issue title carries a [Bug] prefix: the underlying cause, not just the symptom. Omit the field for a non-Bug issue",
+    },
     reference_module: {
       type: ["object", "null"],
       description:
@@ -350,7 +367,8 @@ const plan = await agent(
       `preconditions is the list of {path, pattern} of existing code the plan presupposes; backlog_candidates are out-of-scope candidates written in the issue. Empty arrays if absent from the body.\n` +
       `assumptions come from the whole body, not just the ## Plan section: collect every inline \`(tentative: ...)\` mark and every line of a Premises section. The marker stays English whatever language the body is written in. Empty array if the body carries none.\n` +
       `seam is true only for a unit the body marks \`seam: true\`; every other unit is false. Do not infer it from the unit's content.\n` +
-      `reference_module: the body writes it as \`null (reason)\` prose. Turn that into an object rather than a bare null, pick kind per its enum description, and copy the reason verbatim. When kind is module, copy path/files/instances/conventions from the body too. Emit a bare null only when the body's reference_module carries no reason at all. Omit the field when the body has no reference_module line.\n\n${fencedBody}`,
+      `reference_module: the body writes it as \`null (reason)\` prose. Turn that into an object rather than a bare null, pick kind per its enum description, and copy the reason verbatim. When kind is module, copy path/files/instances/conventions from the body too. Emit a bare null only when the body's reference_module carries no reason at all. Omit the field when the body has no reference_module line.\n` +
+      `root_cause: copy verbatim if the body states one (e.g. a Root Cause / 原因 line). Omit the field if the body states none.\n\n${fencedBody}`,
   ),
   {
     label: "extract",
@@ -365,7 +383,11 @@ if (!plan) {
   return { stopped: "extraction-failed", why: "The extract agent returned no plan." };
 }
 
-const blockers = validate(plan);
+// qualify SKILL.md § Title type marks a Bug issue's title with a `[Bug]` prefix.
+// fetch omits title when it could not read one, so classification then stays
+// undecidable and startsWith on the empty fallback reads as not-a-Bug rather
+// than guessing either way.
+const blockers = validate(plan, String(fetched.title || "").startsWith("[Bug]"));
 if (blockers.length) {
   return {
     stopped: "invalid-plan",
