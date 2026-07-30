@@ -70,6 +70,30 @@ test("think SKILL.md の contract authoring 規則が選択 (引用ラダー) �
   assert.match(en, /SOURCING/, "en: SOURCING.md の規律参照");
 });
 
+test("各言語のテンプレートが reference_module を kind と理由の形で示す", () => {
+  for (const [lang, path] of Object.entries(templates)) {
+    const doc = read(path);
+    assert.match(doc, /reference_module: \{kind/, `${lang}: reference_module 行が kind から始まる`);
+    assert.match(
+      doc,
+      /module\/no-module\/new-shape/,
+      `${lang}: kind enum が build.js の (module/no-module/new-shape) と揃う`,
+    );
+  }
+});
+
+test("各言語のテンプレートが Bug タスク用の root_cause 行を持つ", () => {
+  for (const [lang, path] of Object.entries(templates)) {
+    const doc = read(path);
+    assert.match(
+      doc,
+      /^Outcome:.*\n^root_cause:/m,
+      `${lang}: root_cause が Outcome の直後に置かれている`,
+    );
+    assert.match(doc, /Bug/, `${lang}: root_cause が Bug タスク限定と説明されている`);
+  }
+});
+
 test("think SKILL.md の precondition 規則と書き出し前検証が stable anchor と実在検証を含む", () => {
   const ja = read(skills.ja);
   assert.match(ja, /既存.{0,10}依存先のみ/, "ja: 既存依存先のみ");
