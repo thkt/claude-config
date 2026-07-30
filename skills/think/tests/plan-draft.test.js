@@ -56,10 +56,11 @@ test("plan テンプレートが骨格 (id 記法・実装順・前提小節・1
 
 test("テンプレートの root_cause 見出し語が build.js の検査対象フィールド名と一致する", () => {
   const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
-  const fieldMatch = buildJs.match(
-    /(\w+):\s*\{\s*type:\s*"string",\s*description:\s*\n\s*"Required when the issue title carries a \[Bug\] prefix/,
-  );
-  assert.ok(fieldMatch, "build.js から Bug 限定必須フィールドの名前を読める");
+  // validate() が Bug の plan で実際に読むキーを起点にする。schema の description に
+  // 当てると、英文言を書き換えただけでフィールドを見失い、検出したいトークンのずれと
+  // 無関係な理由でこの seam テストが壊れる。
+  const fieldMatch = buildJs.match(/isBug\s*&&\s*!String\(plan\.(\w+)\s*\|\|/);
+  assert.ok(fieldMatch, "build.js の validate から Bug 限定必須フィールドの名前を読める");
   const fieldName = fieldMatch[1];
   const headingToken = new RegExp(`^${fieldName}:`, "m");
   for (const [lang, path] of Object.entries(templates)) {

@@ -49,7 +49,7 @@ Check that the issue follows `/issue`'s output format and that the plan's premis
 
 ## Phase 4: Verdict and output
 
-Return the output in conversation. The order is the verdict on one line, the blockers, the advice, then the questions. Write "none" for a section with 0 entries. Evaluate the verdicts in the table below top to bottom and take the first one that matches.
+Return the output in conversation. The order is the verdict on one line, the blockers, the advice, then the questions. Write "none" for a section with 0 entries. Evaluate the verdicts in the table below top to bottom and take the first one that matches. The table's value is the default next step; when Phase 2 settled a different next step from the issue type, that one replaces it.
 
 | Verdict     | Condition            | Next step                                                             |
 | ----------- | -------------------- | --------------------------------------------------------------------- |
