@@ -12,10 +12,10 @@ ADR-0060 で agent-friendly CLI の 3 軸 + 補強パターンを採択した後
 
 ## Decision Drivers
 
-* agent / script との API 契約を一貫させる (JSON `error.code` ↔ exit code が同じエラー分類軸の表裏)
+* agent/script との API 契約を一貫させる (JSON `error.code` ↔ exit code が同じエラー分類軸の表裏)
 * 既存 Markdown 出力経路との互換性を保ちつつ JSON 経路を追加 (Phase 2 を非破壊化)
 * exit code 拡張 (Phase 3) は破壊的変更 → 適切な major bump タイミングで実施
-* 既存 Rust CLI 群 (yomu / recall / sae) の実装を再利用
+* 既存 Rust CLI 群 (yomu/recall/sae) の実装を再利用
 
 ## Considered Options
 
@@ -54,8 +54,8 @@ Phase 2 PR で JSON schema を `serde` 派生型として実装し、本 ADR の
 ### Option C. ADR なし
 
 * Good, ドキュメント工数ゼロ
-* Bad, 将来の改修時に「なぜこの schema / exit code か」が再考対象になる
-* Bad, Adoption Gate の 3 条件 (hard to reverse / surprising / real trade-off) すべて該当 → ADR が必要
+* Bad, 将来の改修時に「なぜこの schema/exit code か」が再考対象になる
+* Bad, Adoption Gate の 3 条件 (hard to reverse/surprising/real trade-off) すべて該当 → ADR が必要
 
 ## More Information
 
@@ -92,7 +92,7 @@ Phase 2 PR で JSON schema を `serde` 派生型として実装し、本 ADR の
 | `notes` | string[] | Yes (success) | 機能低下の理由・補足。`degraded` が true の時に non-empty |
 | `error.code` | string (enum) | Yes (error) | exit code 表と 1:1 対応 (下表) |
 | `error.message` | string | Yes (error) | 人間向けメッセージ |
-| `error.next_step` | string | Optional | 次の手 (例: "Set GEMINI_API_KEY") |
+| `error.next_step` | string | Optional | 次の手 (例: "Set BRAVE_SEARCH_API_KEY") |
 | `error.candidates` | string[] | Optional | 修正候補 (例: typo の OSA distance マッチ) |
 | `error.retryable` | bool | Yes (error) | リトライで成功する可能性があるか |
 
@@ -109,9 +109,9 @@ Phase 2 PR で JSON schema を `serde` 派生型として実装し、本 ADR の
 | Exit | Const / 出典 | JSON `error.code` | scout での発生条件 |
 | --- | --- | --- | --- |
 | 0 | EX_OK | (none) | Ok 経路 |
-| 64 | EX_USAGE | `USAGE_ERROR` | clap parse error, `conflicts_with` 違反, env var missing (GEMINI_API_KEY) |
+| 64 | EX_USAGE | `USAGE_ERROR` | clap parse error, `conflicts_with` 違反, env var missing (BRAVE_SEARCH_API_KEY) |
 | 65 | EX_DATAERR | `DATA_ERROR` | URL invalid, owner/repo malformed, encoding 不正 |
-| 66 | EX_NOINPUT | `NOT_FOUND` | repo / file not found, 404, search 0 件 |
+| 66 | EX_NOINPUT | `NOT_FOUND` | repo / file not found, 404 |
 | 70 | EX_SOFTWARE | `INTERNAL` | invariant violation, deserialize unexpected schema (起因が scout 自身) |
 | 74 | EX_IOERR | `IO_ERROR` | network IO error (retry 不可), write failure (BrokenPipe 除く) |
 | 75 | EX_TEMPFAIL | `TEMP_FAILURE` | rate limit, 5xx, retry で回復見込みあり (timeout 以外) |
@@ -122,7 +122,7 @@ Phase 2 PR で JSON schema を `serde` 派生型として実装し、本 ADR の
 
 ### Classification Priority
 
-複数分類が当てはまる場合の優先順位。scout の実エラーソース (clap parse / URL invalid / 404 / rate limit / timeout / JSON parse / network IO) から 5 段に絞る。
+複数分類が当てはまる場合の優先順位。scout の実エラーソース (clap parse/URL invalid/404/rate limit/timeout/JSON parse/network IO) から 5 段に絞る。
 
 | 優先 | ルール | 分類 |
 | --- | --- | --- |
@@ -144,7 +144,7 @@ Phase 2 PR で JSON schema を `serde` 派生型として実装し、本 ADR の
 | 2 | `--json` global flag + JSON schema 出力 | 非破壊 (Markdown 経路維持) | 0.8.x で minor bump |
 | 3 | exit code を 0/1/2 → 0/64/65/66/74/75 に拡張 | 破壊的 (既存 script 影響) | 1.0.0 で major bump |
 
-Phase 2 で JSON `error.code` を導入した時点で、内部の `ScoutError::user_error` / `internal` / `transient` から sysexits 6 種への分類関数を確定させる。Phase 3 では分類関数の出力を `ExitCode` に流すだけで完結する。
+Phase 2 で JSON `error.code` を導入した時点で、内部の `ScoutError::user_error`/`internal`/`transient` から sysexits 6 種への分類関数を確定させる。Phase 3 では分類関数の出力を `ExitCode` に流すだけで完結する。
 
 ### Trade-offs
 
@@ -158,7 +158,7 @@ Phase 2 で JSON `error.code` を導入した時点で、内部の `ScoutError::
 * sysexits 9 種で不足が出た場合、16 種フル準拠への拡張を本 ADR を superseded して新 ADR で記録
 * `data` 内 schema が共通化される兆候が出た場合、commands 横断 schema として別 ADR で抽出
 * `UNKNOWN` (104) の発生比率が増えた場合、分類設計を見直す
-* 他 CLI (xr / notch / yomu 系 / Hook tool 系) で本 policy を採用する流れになった場合、CLI 横断方針を別 ADR で抽出 (本 ADR は scout 固有のまま)
+* 他 CLI (xr/notch/yomu 系/Hook tool 系) で本 policy を採用する流れになった場合、CLI 横断方針を別 ADR で抽出 (本 ADR は scout 固有のまま)
 
 ### References
 
@@ -166,7 +166,8 @@ Phase 2 で JSON `error.code` を導入した時点で、内部の `ScoutError::
 * Audit: `/Users/thkt/GitHub/cli/scout/.claude/workspace/research/2026-05-07-adr-0060-scout-cli-gap.md`
 * Issue: thkt/scout#67
 * Phase 1 PR: thkt/scout#74
-* Revision (2026-05-13) follow-up issues: thkt/scout#83 (TIMEOUT 124), thkt/scout#84 (INTERNAL 70 / UNKNOWN 104), thkt/scout#85 (classification priority)
+* Revision (2026-05-13) follow-up issues: thkt/scout#83 (TIMEOUT 124), thkt/scout#84 (INTERNAL 70/UNKNOWN 104), thkt/scout#85 (classification priority)
+* Revision (2026-08-02): 決定当時の記述が現行 scout と食い違っていた 3 点を更新。(1) search backend が Brave に移行し (scout DR-0005/v2.0.0)、必須 env var 名が `GEMINI_API_KEY` から `BRAVE_SEARCH_API_KEY` に変わったため、上表の例示を現行名に置換。(2) search 0 件は `NOT_FOUND` (66) ではなく空出力で exit 0 を返すため (scout DR-0020: 1 行 1 URL 出力)、66 の発生条件から削除。(3) SIGINT/SIGTERM 由来の 130/143 が scout DR-0017 で追加されており、上表の 9 種には含まれない。exit code の割り当て自体は変えていない
 * Standards: sysexits.h, GNU coreutils `timeout`, MCP Tools spec
 * Inspiration: kodak_diary "終了コードを PJ 独自ルールにしすぎないための設計メモ" (https://zenn.dev/kodak_diary/articles/5a84d597c69b0b) - 数値↔文字列分離、分類優先順位、80-104 拡張枠の方針を参考
 * Existing exemplars: yomu (`--json` global), sae (`output.rs:6-8` two-stream output), recall (`USER_ERROR_MARKERS`), amici (`cli::exit_code::codes` で sysexits u8 定数 + `CliError` trait 提供済み)
