@@ -1,10 +1,10 @@
 ---
 name: issue
-description: Generate GitHub Issue with structured title and body. Standalone; requires no upstream stage. When challenge / research artifacts exist in the conversation, they feed the body's evidence; when a /think plan draft exists, it is transferred into the `## Plan` section.
-when_to_use: Issue作って, Issue書いて, Issue作成, GitHub Issue, prepare for build
+description: Generate GitHub Issue with structured title and body. Standalone; requires no upstream stage. When challenge / research artifacts exist in the conversation, they feed the body's evidence; when a /think plan draft exists, it is transferred into the `## Plan` section. Given an issue number, it transfers a plan into a filed issue that has no Plan section.
+when_to_use: Issue作って, Issue書いて, Issue作成, GitHub Issue, prepare for build, Plan転記
 allowed-tools: Bash(gh:*) Bash(cat:*) Bash(ugrep:*) Read AskUserQuestion
 model: opus
-argument-hint: "[issue description]"
+argument-hint: "[issue description | issue number]"
 ---
 
 # /issue - GitHub Issue Generator
@@ -14,6 +14,8 @@ A standalone issue-creation skill. When `/challenge` / `/research` / `/think` ar
 ## Input
 
 `$ARGUMENTS` is the issue description. If empty, prompt for it via AskUserQuestion.
+
+When it carries only an issue number or URL, transfer a plan into that filed issue. Take the body from `gh issue view <ref> --json title,body` as the already-drafted body, start at Phase 2, and replace Phase 4's creation with `gh issue edit <ref> --body-file <path>`. Without a plan draft, suggest running `/think` and stop; an issue that already has a `## Plan` goes to `/qualify` for inspection.
 
 ## Language
 
@@ -40,7 +42,7 @@ Default to `feature` if unclear. The title takes a bracketed prefix of the capit
 
 ### The /fix route for minor bugs
 
-A bug meeting all three criteria below is minor, and handling it directly via /fix without filing is an option. When filing anyway, add a footer note to the body, "minor; may be handled via /fix". An intermittent bug with the root cause unidentified does not qualify.
+What this decides is whether to file at all. A bug meeting all three criteria below is minor, and handling it directly via /fix without filing is an option. When filing anyway, add a footer note to the body, "minor; may be handled via /fix". An intermittent bug with the root cause unidentified does not qualify.
 
 | Criterion     | Content                                   |
 | ------------- | ----------------------------------------- |
@@ -64,7 +66,13 @@ List `.md` files via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLA
 
 ### Confidence marking
 
-Requirements the user decided stay unmarked. Add an inline `(tentative: <action at pickup>)` only to decisions the user left open and facts not yet verified. The marker is build's extraction keyword, so it stays `tentative` whatever language the body is written in. Issue-level premises that attach to no specific line go in the Premises section on feature and bug, which have one; on chore and docs, which do not, use inline tentative marks alone. build extracts tentative marks as assumptions and surfaces them on the draft PR as veto targets the user can overturn. Do not write an uncertain HOW at all.
+Requirements the user decided stay unmarked. Add an inline `(tentative: <action at pickup>)` only to decisions the user left open and facts not yet verified. Do not write an uncertain HOW at all.
+
+| Point                | Content                                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Marker language      | Stays `tentative` whatever language the body is in, as build's extraction keyword                          |
+| Issue-level premises | feature and bug put them in the Premises section; chore and docs mark them inline                          |
+| Downstream handling  | build extracts them as assumptions and surfaces them on the draft PR as veto targets the user can overturn |
 
 ### Split assessment
 
@@ -93,10 +101,10 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 
 ## Phase 4: Publishing
 
-1. Present the issue preview. Collect any inline tentative marks into a tentative block. Add no new content, mirror what the body already carries, and omit the block at zero items. Then confirm via AskUserQuestion: "Create this issue?"
+1. Present the issue preview. Collect any inline tentative marks into a tentative block. Add no new content, mirror what the body already carries, and omit the block at zero items. Then confirm via AskUserQuestion: "Create this issue?" When there is no `## Plan` section and the extent puts it on the build workflow, add "hold the filing and draft a plan via `/think`" as an option
 2. Write the body to a temp file, attach labels, and run `gh issue create --title "<title>" --body-file <path>`. Capture the issue URL from its output
 3. If split was approved in Phase 1, suggest running /slice with the published epic number. Do not launch it automatically
-4. For an issue that is not split, suggest the next step. A fix confined to 1-3 files goes to `/fix <number>`; 4 or more files, or a new feature, goes to the build workflow with the number. Build stops as no-plan without a `## Plan` section, so an issue that has none gets a plan via `/think`, transferred by this skill, before it is handed over. `/qualify` inspects it before the hand-off. Launch none of them automatically
+4. For an issue that is not split, suggest the next step. Where a filed issue goes is decided by its extent: a fix confined to 1-3 files goes to `/fix <number>`; 4 or more files, or a new feature, goes to the build workflow with the number. When an issue bound for the build workflow has no Plan section, it gets a plan via `/think`, transferred by `/issue <number>`, before it is handed over, and `/qualify` inspects it before the hand-off. Launch none of them automatically
 
 ### Labels
 

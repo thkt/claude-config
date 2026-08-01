@@ -50,6 +50,59 @@ test("仮マークが両言語で tentative に揃い、build の extract prompt
   }
 });
 
+// qualify の needs-plan と build の no-plan は「/think で plan を作り /issue で転記」を指す。
+// /issue は起票しかできないので、既存 issue モードが無いとその指示は実行できないまま残る。
+const qualifies = {
+  ja: join(root, ".ja", "skills", "qualify", "SKILL.md"),
+  en: join(root, "skills", "qualify", "SKILL.md"),
+};
+
+test("既存 issue への Plan 転記が両言語にあり、qualify の needs-plan がそこを指す", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    assert.match(
+      doc,
+      lang === "ja" ? /issue 番号か URL だけを受け取ったとき/ : /only an issue number or URL/,
+      `${lang}: 番号だけを受け取る分岐がある`,
+    );
+    assert.match(doc, /gh issue edit <ref> --body-file/, `${lang}: 本文へ書き戻す手順がある`);
+  }
+  for (const [lang, path] of Object.entries(qualifies)) {
+    const doc = readFileSync(path, "utf8");
+    assert.match(
+      doc,
+      lang === "ja" ? /`\/issue <番号>`/ : /`\/issue <number>`/,
+      `${lang}: needs-plan が番号を渡す形を指す`,
+    );
+  }
+});
+
+// chore と docs は Premises 節を持たない。テンプレートが仮マークに触れないと、SKILL.md が
+// この 2 種に割り当てたインライン限定の書き方が生成時に届かない。
+const TEMPLATE_TYPES = ["feature", "bug", "chore", "docs"];
+
+test("4 種のテンプレートが仮マークの書式と基準の在り処を持つ", () => {
+  for (const lang of ["ja", "en"]) {
+    for (const type of TEMPLATE_TYPES) {
+      const dir = lang === "ja" ? [root, ".ja"] : [root];
+      const doc = readFileSync(join(...dir, "skills", "issue", "templates", `${type}.md`), "utf8");
+      assert.match(doc, /\(tentative: <[^>]+>\)/, `${lang}/${type}: 仮マークの書式`);
+      assert.match(
+        doc,
+        lang === "ja" ? /SKILL\.md § 確信度マーキング/ : /SKILL\.md § Confidence marking/,
+        `${lang}/${type}: 基準の在り処`,
+      );
+      if (type === "chore" || type === "docs") {
+        assert.match(
+          doc,
+          lang === "ja" ? /Premises 節を持たないので/ : /no Premises section here/,
+          `${lang}/${type}: インライン限定の断り`,
+        );
+      }
+    }
+  }
+});
+
 test("feature テンプレートが UI に触れる issue 限定の任意 Accessibility 節を持つ", () => {
   for (const [lang, path] of Object.entries(targets)) {
     assert.ok(existsSync(path), `${path} が存在する`);
