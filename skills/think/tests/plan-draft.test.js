@@ -321,3 +321,43 @@ test("各言語の SKILL.md にフィールド描画 unit の T-NNN フィール
     "en: rule enumerating displayed fields as T-NNN",
   );
 });
+
+test("テンプレートの実機確認見出しが build.js の抽出正規表現に一致する", () => {
+  const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
+  // reconstruct でなく、build.js が実行時に使う正規表現そのものを走らせる。手元で
+  // トークンだけ再現すると (\b の非 ASCII 挙動など) 実行時の差分を見落とすため、この
+  // seam テストは production の正規表現リテラルをそのまま RegExp 化してテンプレートへ当てる。
+  const regexLineMatch = buildJs.match(/manualHeading\s*=\s*body\.match\((\/.+\/m)\)/);
+  assert.ok(regexLineMatch, "build.js から実機確認見出しの抽出正規表現行を読める");
+  const literal = regexLineMatch[1];
+  const lastSlash = literal.lastIndexOf("/");
+  const extractionRegex = new RegExp(literal.slice(1, lastSlash), literal.slice(lastSlash + 1));
+
+  assert.match(
+    read(templates.ja),
+    extractionRegex,
+    "ja: テンプレートの見出しが build.js の抽出正規表現 (実行時オブジェクト) に一致する",
+  );
+  assert.match(
+    read(templates.en),
+    extractionRegex,
+    "en: テンプレートの見出しが build.js の抽出正規表現 (実行時オブジェクト) に一致する",
+  );
+});
+
+test("SKILL.md とテンプレートが同じ見出し語を使う", () => {
+  const headingTokens = { ja: "実機確認", en: "Manual verification" };
+  for (const [lang, token] of Object.entries(headingTokens)) {
+    const templateDoc = read(templates[lang]);
+    assert.ok(
+      templateDoc.includes(`### ${token}`),
+      `${lang}: テンプレートに ### ${token} 見出しが存在する`,
+    );
+
+    const skillDoc = read(skills[lang]);
+    assert.ok(
+      skillDoc.includes(`\`### ${token}\``),
+      `${lang}: SKILL.md がテンプレートと同じ見出し語をバッククォート付きで参照する`,
+    );
+  }
+});
