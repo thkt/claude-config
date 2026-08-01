@@ -67,3 +67,33 @@ test("verdict 3 値と判定順が両言語で一致する", () => {
     );
   }
 });
+
+// Plan 節が無い issue は Phase 2 の早期終了で verdict を needs-plan に固定するが、
+// Bug は着手後にまず原因を詰める必要があり、他の種別と次の手が違う。この分岐が
+// 無いと needs-plan の Bug issue から「次に何をすべきか」が抜け落ちる。
+test("各言語の SKILL.md が needs-plan でも Bug の原因言明を見る規則を持つ", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
+    assert.match(phase2, /Bug/, `${lang}: Phase 2 が Bug を分岐条件として持つ`);
+    assert.match(
+      phase2,
+      lang === "ja" ? /原因/ : /root cause/i,
+      `${lang}: Phase 2 が Bug の原因言明を見る規則を持つ`,
+    );
+  }
+});
+
+// 打ち切りの理由文は「着手の判断は変えないが次の手は変わる」形に改まる契約。
+// 数字は build.js への委譲対象で、この節に混ざると単一情報源の原則が崩れる。
+test("Phase 2 節に数字が残らない既存の検査を通る", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
+    assert.doesNotMatch(
+      phase2.replace(/^\d+\.\s/gm, "").replace(/Phase \d/g, ""),
+      /\d/,
+      `${lang}: Phase 2 に数字が残っていない`,
+    );
+  }
+});

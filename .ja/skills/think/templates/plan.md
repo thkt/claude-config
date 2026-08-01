@@ -10,13 +10,14 @@
 ## Plan
 
 Outcome: {done 状態の 1 行。実装非依存、観測可能}
+root_cause: {issue タイトルが [Bug] 接頭辞を持つときだけ書く。症状でなく根本原因を記す}
 test_command: {テスト実行コマンド 1 行。例 cargo test / node --test tests/}
 base: {plan を実装するブランチ (PR のベース)。指定が無ければ現在の checkout のブランチ}
-reference_module: {既存の同形モジュールのルート。または null + この形が新規である理由}
+reference_module: {kind + reason を object で (kind: module/no-module/new-shape)。module なら path も下欄に書く}
 
 ### 参照モジュール
 
-{reference_module が null のときはこの小節を丸ごと省略する。}
+{kind が module 以外のときはこの小節を丸ごと省略する。}
 
 - instances: {この形を既に共有する既存機能の数。2 以上なら「N 例目」と書く}
 - files: {複製する各ファイルとその役割 (`src/foo/list.tsx` 一覧画面)}

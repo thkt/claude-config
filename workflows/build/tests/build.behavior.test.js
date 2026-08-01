@@ -81,6 +81,7 @@ const kindOf = (opts) => {
 // happy path の戻り値を差し替える。diff / presence は値でも関数 (prompt を受ける) でもよい。
 const makeStubs = ({
   body,
+  title,
   plan,
   revalidate,
   conformance,
@@ -99,7 +100,9 @@ const makeStubs = ({
         // テストだけが translate stub を渡す。
         return translate ? translate(prompt) : { notes: "no-translations" };
       case "fetch":
-        return { found: true, body: body ?? bodyFor(["U-001"], ["T-001"]) };
+        // title は既定で省略する (extract が key を落とした状態を再現する)。Bug 判定を
+        // 検証するテストだけが title override を渡す。
+        return { found: true, title, body: body ?? bodyFor(["U-001"], ["T-001"]) };
       case "extract":
         return plan ?? makePlan();
       case "revalidate":
@@ -376,6 +379,55 @@ test("kind と reason を持つ plan は validate を通る", async () => {
   assert.notEqual(result.stopped, "invalid-plan", "kind + reason が揃えば validate を通る");
 });
 
+// issue title の [Bug] prefix (qualify SKILL.md § Title type) を Bug 分類の目印とする。
+// 原因を書かない Bug issue はそのまま Code 段へ進むと対症療法になりやすいので、Load 段の
+// validate で root_cause の記載を要求する。root_cause は PLAN_SCHEMA の required に入れない
+// (extract が key を落とすと、blockers 文言を持たない extraction-failed で止まってしまうため。
+// reference_module も同じ理由で required に入れていない)。fetch が title を落とした場合は
+// Bug 判定できないので root_cause を要求しない。
+test("title が Bug で root_cause が空の plan は invalid-plan で止まる", async () => {
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ title: "[Bug] login fails", plan: makePlan({ root_cause: "" }) }),
+  });
+  assert.equal(result.stopped, "invalid-plan");
+  assert.ok(
+    result.blockers.some((b) => /root_cause/.test(String(b))),
+    "blockers に root_cause を指すエラー文言が載る",
+  );
+});
+
+test("title が Bug で root_cause を持つ plan は validate を通る", async () => {
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      title: "[Bug] login fails",
+      plan: makePlan({ root_cause: "session token expires before the refresh call" }),
+    }),
+  });
+  assert.notEqual(result.stopped, "invalid-plan", "root_cause があれば validate を通る");
+});
+
+test("title が Bug 以外なら root_cause が空でも validate を通る", async () => {
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ title: "[Feature] add dark mode", plan: makePlan({ root_cause: "" }) }),
+  });
+  assert.notEqual(result.stopped, "invalid-plan", "Bug 以外は root_cause 不要で validate を通る");
+});
+
+test("fetch が title を取得できないときは Bug 判定を行わず root_cause を要求しない", async () => {
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ plan: makePlan({ root_cause: "" }) }),
+  });
+  assert.notEqual(
+    result.stopped,
+    "invalid-plan",
+    "title が無ければ Bug 判定できないので root_cause を要求しない",
+  );
+});
+
 // unit ごとのテストは自分の境界を stub するため、各 unit が緑でも層が結線されない
 // (kizalas #558 / PR 575)。テストを持つ unit が 2 つ以上ある plan は seam unit を要求する。
 test("テストを持つ unit が 2 つ以上で seam unit が無い plan は stopped: invalid-plan、seam: true があれば通る", async () => {
@@ -650,6 +702,28 @@ test("UNIT_CAPS の数値と seam 除外が /think SKILL.md の unit 上限記�
     /caps do not apply to it/,
     "SKILL.md が seam unit を上限の対象外と書いている",
   );
+});
+
+// think が /think Phase 3 で教える reference_module.kind の語彙は、EXTRACT_SCHEMA の
+// enum を prose で複写している。英文言でなく enum トークンそのものが両言語のテンプレートに
+// 出ることを照合する (UNIT_CAPS 照合と同じ静的クロスチェックの形)。
+test("テンプレートの kind 語が build.js の enum と一致する", () => {
+  const source = readFileSync(buildJs, "utf8");
+  const enumMatch = source.match(/kind:\s*\{\s*type:\s*"string",\s*enum:\s*\[([^\]]+)\]/);
+  assert.ok(enumMatch, "build.js の kind enum を読める");
+  const kinds = enumMatch[1].split(",").map((s) => s.trim().replace(/^"|"$/g, ""));
+  const expectedToken = kinds.join("/");
+  const templates = {
+    en: join(here, "..", "..", "..", "skills", "think", "templates", "plan.md"),
+    ja: join(here, "..", "..", "..", ".ja", "skills", "think", "templates", "plan.md"),
+  };
+  for (const [lang, path] of Object.entries(templates)) {
+    const doc = readFileSync(path, "utf8");
+    assert.ok(
+      doc.includes(expectedToken),
+      `${lang}: kind enum トークン ${expectedToken} が build.js の enum と一致する`,
+    );
+  }
 });
 
 test("Revalidate は 1 miss で stopped: plan-drift、全 pass で Branch へ進み、preconditions 空なら agent を呼ばない", async () => {
