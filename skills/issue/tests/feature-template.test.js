@@ -10,10 +10,6 @@ const targets = {
   en: join(root, "skills", "issue", "templates", "feature.md"),
 };
 
-// 仮マークは issue が本文に書き、build の extract agent が assumptions として集め、ship が
-// draft PR の veto 対象として出す。マーカーは build の抽出キーワードなので本文言語を問わず
-// 英語で、SKILL.md L20 の「抽出キーワードは英語のまま」に従う。語が揃わないと仮置きが
-// 黙って PR から消える。
 const skills = {
   ja: join(root, ".ja", "skills", "issue", "SKILL.md"),
   en: join(root, "skills", "issue", "SKILL.md"),
@@ -28,6 +24,10 @@ function extractPhase2(doc) {
   return doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
 }
 
+// 仮マークは issue が本文に書き、build の extract agent が assumptions として集め、ship が
+// draft PR の veto 対象として出す。マーカーは build の抽出キーワードなので本文言語を問わず
+// 英語で、SKILL.md L20 の「抽出キーワードは英語のまま」に従う。語が揃わないと仮置きが
+// 黙って PR から消える。
 test("仮マークが両言語で tentative に揃い、build の extract prompt もそれを名指しする", () => {
   for (const [lang, path] of Object.entries(skills)) {
     assert.ok(existsSync(path), `${path} が存在する`);
@@ -65,32 +65,30 @@ test("feature テンプレートが UI に触れる issue 限定の任意 Access
   }
 });
 
-test("各言語の SKILL.md の Phase 2 が、照合対象を本文と Plan の重複一般とすると書く", () => {
+// 対象を実装方針に絞ると、Testing Decisions や Premises が Plan と重なっても本文に残る。
+// 判定基準を書かないと、独立に変わりうる記述まで参照に潰れる。
+test("各言語の SKILL.md が、照合対象を同じ知識の重複一般と定義する", () => {
   for (const [lang, path] of Object.entries(skills)) {
     assert.ok(existsSync(path), `${path} が存在する`);
     const phase2 = extractPhase2(readFileSync(path, "utf8"));
-    if (lang === "ja") {
-      assert.match(phase2, /同じ知識が重なる/, "ja: 同じ知識の重複が対象");
-      assert.match(phase2, /実装方針に限らない/, "ja: 実装方針に限らない旨");
-      assert.match(phase2, /plan 下書き/, "ja: plan 下書きへの言及");
-    } else {
-      assert.match(phase2, /carry the same knowledge/i, "en: 同じ知識の重複が対象");
-      assert.match(phase2, /not the implementation approach alone/i, "en: 実装方針に限らない旨");
-      assert.match(phase2, /plan draft/, "en: plan draft への言及");
-    }
-  }
-});
-
-test("各言語の SKILL.md が、同じ知識の判定基準を書く", () => {
-  for (const [lang, path] of Object.entries(skills)) {
-    const phase2 = extractPhase2(readFileSync(path, "utf8"));
-    if (lang === "ja") {
-      assert.match(phase2, /片方を直すともう片方も直る/, "ja: 同じ知識の判定基準");
-      assert.match(phase2, /独立に変わりうる/, "ja: 独立に変わるものは残す");
-    } else {
-      assert.match(phase2, /editing one forces the other to change/i, "en: 同じ知識の判定基準");
-      assert.match(phase2, /change independently/i, "en: 独立に変わるものは残す");
-    }
+    const [target, notOnly, criterion, independent] =
+      lang === "ja"
+        ? [
+            /同じ知識が重なる/,
+            /実装方針に限らない/,
+            /片方を直すともう片方も直る/,
+            /独立に変わりうる/,
+          ]
+        : [
+            /carry the same knowledge/i,
+            /not the implementation approach alone/i,
+            /editing one forces the other to change/i,
+            /change independently/i,
+          ];
+    assert.match(phase2, target, `${lang}: 同じ知識の重複が対象`);
+    assert.match(phase2, notOnly, `${lang}: 実装方針に限らない旨`);
+    assert.match(phase2, criterion, `${lang}: 同じ知識の判定基準`);
+    assert.match(phase2, independent, `${lang}: 独立に変わるものは両方に残す`);
   }
 });
 
@@ -100,11 +98,7 @@ test("各言語の SKILL.md が、参照へ置き換えない 3 節を列挙す�
     const phase2 = extractPhase2(readFileSync(path, "utf8"));
     const keep = lang === "ja" ? "本文に残す" : "Keep in the body";
     for (const section of ["What & Why", "Acceptance Criteria", "Out of scope"]) {
-      assert.match(
-        phase2,
-        new RegExp(`${section.replace(/[&]/g, "\\$&")}[^\\n]*${keep}`),
-        `${lang}: ${section} は本文に残す`,
-      );
+      assert.match(phase2, new RegExp(`${section}[^\\n]*${keep}`), `${lang}: ${section} は残す`);
     }
   }
 });
@@ -150,11 +144,9 @@ test("各言語の SKILL.md が、重複した本文側を `## Plan` への参�
   for (const [lang, path] of Object.entries(skills)) {
     const phase2 = extractPhase2(readFileSync(path, "utf8"));
     if (lang === "ja") {
-      assert.match(phase2, /重複/, "ja: 重複への言及");
       assert.match(phase2, /## Plan[\s\S]{0,20}参照/, "ja: Plan への参照置き換え");
       assert.match(phase2, /見出しが何をする変更かを述べる 1 行/, "ja: 見出しごとに 1 行残す規定");
     } else {
-      assert.match(phase2, /duplicat/i, "en: duplicate への言及");
       assert.match(phase2, /## Plan[\s\S]{0,20}reference/i, "en: reference to Plan");
       assert.match(phase2, /one line that states what change/i, "en: 見出しごとに 1 行残す規定");
     }

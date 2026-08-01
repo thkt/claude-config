@@ -74,11 +74,11 @@ When two or more criteria are each independently implementable, ask via AskUserQ
 
 1. Refine the body inline against `${CLAUDE_SKILL_DIR}/references/prose-review.md` plus the empty-phrase file matching the body language: `phrases.ja.md` for Japanese, `phrases.en.md` for English. The Plan section transferred in Phase 3 is out of scope; leave it untouched
 2. If a challenge verdict / findings exist in the conversation, fold only what belongs in the body, once. The verdict and findings themselves never enter the body
-3. When a plan draft exists, match the body against the plan for duplication per the Duplication match below. Work on the body as it stands after the preceding steps, and keep this step last in Phase 2. Read it from the conversation when a `/think` plan draft is present there, otherwise from the matching file under `.claude/workspace/planning/`. This matches the body's prose against the plan draft itself, not one plan-draft copy against another. Without a plan draft, skip this match
+3. When a plan draft exists, match the body as it stands after the preceding steps per the Duplication match below. Read the draft from the conversation when a `/think` plan draft is present there, otherwise from the matching file under `.claude/workspace/planning/`. Without a plan draft, skip this match
 
 ### Duplication match
 
-The target is every place the body and `## Plan` carry the same knowledge, not the implementation approach alone. Two places carry the same knowledge when editing one forces the other to change; what can change independently stays in both. Replace the duplicated body side with a `## Plan` reference, keeping one line that states what change that heading covers. The reference direction is fixed from the body to `## Plan`. `/think` writes the plan out to a standalone file before the body exists, so at that point a reference from the plan to a body section cannot be written. When they conflict, treat the plan as the source of truth and correct the body, keeping the rejection reason, its file:line grounds, and the pain description in the body.
+What gets matched is the body's prose against the plan draft itself, not one plan-draft copy against another. The target is every place the body and `## Plan` carry the same knowledge, not the implementation approach alone. Two places carry the same knowledge when editing one forces the other to change; what can change independently stays in both. Replace the duplicated body side with a `## Plan` reference. Even after the replacement, one line that states what change that heading covers, the rejection reason, its file:line grounds, and the pain description stay in the body. The reference direction is fixed from the body to `## Plan`. `/think` writes the plan out to a standalone file before the body exists, so at that point a reference from the plan to a body section cannot be written. When they conflict, treat the plan as the source of truth and correct the body.
 
 | Body section        | Plan counterpart | Handling                                                                 |
 | ------------------- | ---------------- | ------------------------------------------------------------------------ |
@@ -86,7 +86,7 @@ The target is every place the body and `## Plan` carry the same knowledge, not t
 | Testing Decisions   | T-NNN            | Replace with a reference                                                 |
 | Premises            | Preconditions    | Replace with a reference                                                 |
 | Scope, In scope     | files            | Replace with a reference                                                 |
-| What & Why          | None             | Keep in the body. The plan has no counterpart                            |
+| What & Why          | None             | Keep in the body                                                         |
 | Acceptance Criteria | Outcome          | Keep in the body. It drives the human merge call and never reaches build |
 | Scope, Out of scope | None             | Keep in the body. build does not read it                                 |
 
