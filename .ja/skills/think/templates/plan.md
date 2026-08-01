@@ -43,7 +43,7 @@ reference_module: {kind + reason を object で (kind: module/no-module/new-shap
 
 {自動テストで検証しきれない手順が残るときだけ書く。無ければ小節ごと省略する}
 
-- {実機で行う操作と確認する対象。1 件 1 行}
+- {この基準を引き取る機構と、実機で行う操作と確認する対象。1 件 1 行}
 
 ## Backlog candidates
 

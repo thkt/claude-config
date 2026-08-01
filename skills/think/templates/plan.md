@@ -43,7 +43,7 @@ Acceptance tests.
 
 {Write only when a step remains that automated tests cannot verify. Omit the whole subsection otherwise}
 
-- {operation to perform and what to check on the running app, one line each}
+- {the mechanism that takes this criterion on, plus the operation to perform and what to check on the running app, one line each}
 
 ## Backlog candidates
 

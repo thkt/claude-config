@@ -1007,7 +1007,7 @@ if (slots.length) {
 
 // 単体テストを持たない plan は受け入れ判定が人間の実機確認に残るが、PR に載らないと
 // merge 前に踏まれない。
-const manualHeading = body.match(/^###\s+(実機確認|Manual verification)\b.*$/m);
+const manualHeading = body.match(/^###\s+(実機確認|Manual verification)(?=\s|$).*$/m);
 let manualChecks = [];
 if (manualHeading) {
   const afterManual = body.slice(manualHeading.index + manualHeading[0].length);

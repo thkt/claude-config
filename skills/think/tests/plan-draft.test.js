@@ -345,6 +345,34 @@ test("テンプレートの実機確認見出しが build.js の抽出正規表�
   );
 });
 
+// 委譲先を書かせないと、基準が実機確認へ移った時点で「どの機構が引き取るか」が失われ、
+// merge 前チェックリストは操作だけが並んで検証手段を持たない。
+test("各言語が委譲した基準に引き取る機構を添えると定める", () => {
+  const expected = {
+    ja: { skill: /引き取る機構/, template: /この基準を引き取る機構/ },
+    en: { skill: /names the mechanism that takes it on/, template: /mechanism that takes this criterion on/ },
+  };
+  for (const [lang, re] of Object.entries(expected)) {
+    assert.match(read(skills[lang]), re.skill, `${lang}: SKILL.md が機構を添える規則を持つ`);
+    assert.match(read(templates[lang]), re.template, `${lang}: テンプレートが機構を求める`);
+  }
+});
+
+// 抽出正規表現は英語側 build.js だけを読んでいるので、.ja 側が取り残されても上の seam
+// テストは通る。MIRROR.md は .ja を canonical とするため、両者の一致をここで固定する。
+test("両言語の build.js が同じ実機確認抽出正規表現を持つ", () => {
+  const literalOf = (path) => {
+    const m = read(path).match(/manualHeading\s*=\s*body\.match\((\/.+\/m)\)/);
+    assert.ok(m, `${path} から抽出正規表現行を読める`);
+    return m[1];
+  };
+  assert.equal(
+    literalOf(join(root, ".ja", "workflows", "build.js")),
+    literalOf(join(root, "workflows", "build.js")),
+    "ja と en の build.js が同じ正規表現リテラルを持つ",
+  );
+});
+
 test("SKILL.md とテンプレートが同じ見出し語を使う", () => {
   const headingTokens = { ja: "実機確認", en: "Manual verification" };
   for (const [lang, token] of Object.entries(headingTokens)) {
