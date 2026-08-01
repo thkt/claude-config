@@ -261,3 +261,63 @@ test("受け入れテストの bullet は T-NNN のみで実機確認の bullet 
     "en: guideline stating acceptance-test bullets are T-NNN only, not mixed with manual-verification bullets",
   );
 });
+
+test("各言語の SKILL.md に test_command で実行できない基準の実機確認委譲規則が存在する", () => {
+  const ja = read(skills.ja);
+  const jaPhase3 = ja.slice(ja.indexOf("## Phase 3"), ja.indexOf("## 出力"));
+  assert.match(
+    jaPhase3,
+    /test_command[\s\S]{0,120}実行できない[\s\S]{0,150}実機確認|実機確認[\s\S]{0,150}test_command[\s\S]{0,120}実行できない/,
+    "ja: test_command で実行できない基準を実機確認へ委譲する規則",
+  );
+  assert.match(jaPhase3, /実機確認[\s\S]{0,40}(委譲|送る)/, "ja: 実機確認への委譲先の明記");
+  const jaVerification = jaPhase3.slice(jaPhase3.indexOf("### 書き出し前検証"));
+  assert.match(jaVerification, /実機確認/, "ja: 書き出し前検証に実機確認への対応項目がある");
+
+  const en = read(skills.en);
+  const enPhase3 = en.slice(en.indexOf("## Phase 3"), en.indexOf("## Output"));
+  assert.match(
+    enPhase3,
+    /test_command[\s\S]{0,120}cannot[\s\S]{0,150}[Mm]anual verification|[Mm]anual verification[\s\S]{0,150}test_command[\s\S]{0,120}cannot/,
+    "en: routes criteria test_command cannot execute to Manual verification",
+  );
+  assert.match(
+    enPhase3,
+    /[Mm]anual verification[\s\S]{0,40}(delegat|route|send)/i,
+    "en: delegation destination named",
+  );
+  const enVerification = enPhase3.slice(enPhase3.indexOf("### Pre-writeout verification"));
+  assert.match(
+    enVerification,
+    /[Mm]anual verification/i,
+    "en: pre-writeout verification covers manual verification routing",
+  );
+});
+
+test("各言語の SKILL.md にフィールド描画 unit の T-NNN フィールド列挙規則が存在する", () => {
+  const ja = read(skills.ja);
+  const jaPhase3 = ja.slice(ja.indexOf("## Phase 3"), ja.indexOf("## 出力"));
+  assert.match(
+    jaPhase3,
+    /ドメイン.{0,10}フィールド[\s\S]{0,20}描画/,
+    "ja: ドメインフィールドを描画する unit への言及",
+  );
+  assert.match(
+    jaPhase3,
+    /(表示フィールド|描画)[\s\S]{0,80}T-NNN|T-NNN[\s\S]{0,80}(表示フィールド|描画)/,
+    "ja: 表示フィールドを T-NNN に列挙する規則",
+  );
+
+  const en = read(skills.en);
+  const enPhase3 = en.slice(en.indexOf("## Phase 3"), en.indexOf("## Output"));
+  assert.match(
+    enPhase3,
+    /domain field[\s\S]{0,20}render|render[\s\S]{0,20}domain field/i,
+    "en: mention of a unit rendering domain fields",
+  );
+  assert.match(
+    enPhase3,
+    /(displayed field|rendered field)[\s\S]{0,80}T-NNN|T-NNN[\s\S]{0,80}(displayed field|rendered field)/i,
+    "en: rule enumerating displayed fields as T-NNN",
+  );
+});
