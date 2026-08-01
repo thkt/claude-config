@@ -74,6 +74,18 @@ When two or more criteria are each independently implementable, ask via AskUserQ
 
 1. Refine the body inline against `${CLAUDE_SKILL_DIR}/references/prose-review.md` plus the empty-phrase file matching the body language: `phrases.ja.md` for Japanese, `phrases.en.md` for English. The Plan section transferred in Phase 3 is out of scope; leave it untouched
 2. If a challenge verdict / findings exist in the conversation, fold only what belongs in the body, once. The verdict and findings themselves never enter the body
+3. When a plan draft exists, match the body as it stands after the preceding steps against the one plan draft you pick, per the Duplication match below. Pick the `/think` plan draft in the conversation when there is one, otherwise the matching file under `.claude/workspace/planning/`. Without a plan draft, skip this match
+
+### Duplication match
+
+The target is every place the body and `## Plan` carry the same knowledge. Two places carry the same knowledge when editing one forces the other to change; what can change independently stays in both. Replace the duplicated body side with a `## Plan` reference. Even after the replacement, one line that states what change that heading covers, the rejection reason, its file:line grounds, and the pain description stay in the body. The reference runs from the body to `## Plan`. `/think` writes the plan out to a standalone file that predates the body, and the body's sections come into existence after it. When they conflict, treat the plan as the source of truth and correct the body. Acceptance Criteria overlaps Outcome as well, and it stays in the body because it drives the human merge call and never reaches build.
+
+| Body section      | Plan counterpart |
+| ----------------- | ---------------- |
+| Approach          | unit contract    |
+| Testing Decisions | T-NNN            |
+| Premises          | Preconditions    |
+| Scope, In scope   | files            |
 
 ## Phase 3: Plan Transfer
 
