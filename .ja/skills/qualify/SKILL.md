@@ -51,11 +51,11 @@ issue の書式が `/issue` の出力形式に沿うか、plan の前提が現�
 
 出力は会話に返す。構成は verdict 1 行、blocker 一覧、advice 一覧、質問の順。blocker と advice が 0 件の節は「なし」と書く。verdict は下表を上から順に判定し、最初に該当したものを採る。次の手は下表の値を既定とし、Phase 2 が種別を見て別の次の手を決めていたなら、そちらで置き換える。
 
-| verdict     | 条件                    | 次の手                                               |
-| ----------- | ----------------------- | ---------------------------------------------------- |
-| needs-plan  | `## Plan` 節が無い      | `/think` で plan を作り `/issue` で `## Plan` へ転記 |
-| needs-fix   | blocker が 1 件以上ある | blocker を解消してから再度 `/qualify`                |
-| build-ready | blocker が 0 件         | build workflow に issue 番号を渡す                   |
+| verdict     | 条件                    | 次の手                                         |
+| ----------- | ----------------------- | ---------------------------------------------- |
+| needs-plan  | `## Plan` 節が無い      | `/think` で plan を作り `/issue <番号>` で転記 |
+| needs-fix   | blocker が 1 件以上ある | blocker を解消してから再度 `/qualify`          |
+| build-ready | blocker が 0 件         | build workflow に issue 番号を渡す             |
 
 ### 質問
 

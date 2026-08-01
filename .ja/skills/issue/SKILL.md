@@ -1,10 +1,10 @@
 ---
 name: issue
-description: 構造化されたタイトルと本文で GitHub Issue を生成する。単独で成立し、前段を要求しない。challenge / research の成果物が会話にあれば本文の根拠に使い、/think の plan 下書きがあれば `## Plan` 節へ移設する。
-when_to_use: Issue作って, Issue書いて, Issue作成, GitHub Issue, buildに渡す準備
+description: 構造化されたタイトルと本文で GitHub Issue を生成する。単独で成立し、前段を要求しない。challenge / research の成果物が会話にあれば本文の根拠に使い、/think の plan 下書きがあれば `## Plan` 節へ移設する。issue 番号を渡すと、起票済みで Plan 節を持たない issue へ plan を転記する。
+when_to_use: Issue作って, Issue書いて, Issue作成, GitHub Issue, buildに渡す準備, Plan転記
 allowed-tools: Bash(gh:*) Bash(cat:*) Bash(ugrep:*) Read AskUserQuestion
 model: opus
-argument-hint: "[issue description]"
+argument-hint: "[issue description | issue number]"
 ---
 
 # /issue - GitHub Issue 生成
@@ -13,7 +13,17 @@ argument-hint: "[issue description]"
 
 ## 入力
 
-`$ARGUMENTS` は Issue 説明。空なら AskUserQuestion で説明を尋ねる。
+`$ARGUMENTS` は Issue 説明。空なら AskUserQuestion で説明を尋ねる。issue 番号か URL だけを受け取ったときは、Phase 1 へ進まず「既存 issue への Plan 転記」を実施する。
+
+## 既存 issue への Plan 転記
+
+起票済みで `## Plan` 節を持たない issue に plan を入れる経路。`/qualify` の needs-plan と build の no-plan が指す先がここになる。
+
+1. `gh issue view <ref> --json title,body` で本文を取る。既に `## Plan` を持つ issue はこの経路の対象外で、`/qualify` の検分に回す
+2. Phase 3 と同じ規則で plan 下書きを選ぶ。下書きが無ければ `/think` の実行を提案して止まる
+3. `## Plan` と `## Backlog candidates` の両節を本文の末尾へ足す。移設した内容には手を入れない
+4. 足したあとの本文から、Plan と重なった記述を落とす。落とすのは本文側で、Plan には手を入れない
+5. プレビューを提示し AskUserQuestion で確認してから、`gh issue edit <ref> --body-file <path>` で書き戻す
 
 ## 言語
 
@@ -87,10 +97,10 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 
 ## Phase 4: 起票
 
-1. Issue プレビューを提示する。インライン仮マークがあれば仮ブロックに集約する。新規内容は足さず本文が持つものを写し、0 件なら省略する。最後に AskUserQuestion で `Create this issue?` と確認する
+1. Issue プレビューを提示する。インライン仮マークがあれば仮ブロックに集約する。新規内容は足さず本文が持つものを写し、0 件なら省略する。最後に AskUserQuestion で `Create this issue?` と確認する。`## Plan` 節が無く、4 ファイル以上か新機能で build workflow に渡す規模なら、選択肢に「起票を保留して `/think` で plan を作る」を足す
 2. 本文を一時ファイルに書き出し、ラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票する。出力から Issue URL を取得する
 3. Phase 1 で分割を承認していれば、起票した epic 番号を添えて `/slice` の実行を提案する。自動では起動しない
-4. 分割しない issue には次の手を提案する。起票済み issue の渡し先は影響範囲で決め、1〜3 ファイルに収まる修正なら `/fix <番号>`、4 ファイル以上または新機能なら build workflow に番号を渡す。Plan 節を持たない issue は `/think` で plan を作りこの skill で転記してから渡し、渡す前の検分には `/qualify` を使う。いずれも自動では起動しない
+4. 分割しない issue には次の手を提案する。起票済み issue の渡し先は影響範囲で決め、1〜3 ファイルに収まる修正なら `/fix <番号>`、4 ファイル以上または新機能なら build workflow に番号を渡す。build workflow に渡す issue が Plan 節を持たないなら、`/think` で plan を作り `/issue <番号>` で転記してから渡し、渡す前の検分には `/qualify` を使う。いずれも自動では起動しない
 
 ### ラベル
 

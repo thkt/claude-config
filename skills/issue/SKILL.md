@@ -1,10 +1,10 @@
 ---
 name: issue
-description: Generate GitHub Issue with structured title and body. Standalone; requires no upstream stage. When challenge / research artifacts exist in the conversation, they feed the body's evidence; when a /think plan draft exists, it is transferred into the `## Plan` section.
-when_to_use: Issue作って, Issue書いて, Issue作成, GitHub Issue, prepare for build
+description: Generate GitHub Issue with structured title and body. Standalone; requires no upstream stage. When challenge / research artifacts exist in the conversation, they feed the body's evidence; when a /think plan draft exists, it is transferred into the `## Plan` section. Given an issue number, it transfers a plan into a filed issue that has no Plan section.
+when_to_use: Issue作って, Issue書いて, Issue作成, GitHub Issue, prepare for build, Plan転記
 allowed-tools: Bash(gh:*) Bash(cat:*) Bash(ugrep:*) Read AskUserQuestion
 model: opus
-argument-hint: "[issue description]"
+argument-hint: "[issue description | issue number]"
 ---
 
 # /issue - GitHub Issue Generator
@@ -13,7 +13,17 @@ A standalone issue-creation skill. When `/challenge` / `/research` / `/think` ar
 
 ## Input
 
-`$ARGUMENTS` is the issue description. If empty, prompt for it via AskUserQuestion.
+`$ARGUMENTS` is the issue description. If empty, prompt for it via AskUserQuestion. When it carries only an issue number or URL, skip Phase 1 and run Plan transfer into an existing issue instead.
+
+## Plan transfer into an existing issue
+
+The route for putting a plan into a filed issue that has no `## Plan` section. This is where `/qualify`'s needs-plan and build's no-plan point.
+
+1. Fetch the body with `gh issue view <ref> --json title,body`. An issue that already has a `## Plan` falls outside this route and goes to `/qualify` for inspection
+2. Pick the plan draft by the same rule as Phase 3. Without a draft, suggest running `/think` and stop
+3. Append both the `## Plan` and `## Backlog candidates` sections to the end of the body. Do not touch the transferred content
+4. Drop what the body now repeats from the plan. What gets dropped is the body side; the plan stays untouched
+5. Present the preview, confirm via AskUserQuestion, then write it back with `gh issue edit <ref> --body-file <path>`
 
 ## Language
 
@@ -87,10 +97,10 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 
 ## Phase 4: Publishing
 
-1. Present the issue preview. Collect any inline tentative marks into a tentative block. Add no new content, mirror what the body already carries, and omit the block at zero items. Then confirm via AskUserQuestion: "Create this issue?"
+1. Present the issue preview. Collect any inline tentative marks into a tentative block. Add no new content, mirror what the body already carries, and omit the block at zero items. Then confirm via AskUserQuestion: "Create this issue?" When there is no `## Plan` section and the extent puts it on the build workflow (4 or more files, or a new feature), add "hold the filing and draft a plan via `/think`" as an option
 2. Write the body to a temp file, attach labels, and run `gh issue create --title "<title>" --body-file <path>`. Capture the issue URL from its output
 3. If split was approved in Phase 1, suggest running /slice with the published epic number. Do not launch it automatically
-4. For an issue that is not split, suggest the next step. Where a filed issue goes is decided by its extent: a fix confined to 1-3 files goes to `/fix <number>`; 4 or more files, or a new feature, goes to the build workflow with the number. An issue with no Plan section gets a plan via `/think`, transferred by this skill, before it is handed over, and `/qualify` inspects it before the hand-off. Launch none of them automatically
+4. For an issue that is not split, suggest the next step. Where a filed issue goes is decided by its extent: a fix confined to 1-3 files goes to `/fix <number>`; 4 or more files, or a new feature, goes to the build workflow with the number. When an issue bound for the build workflow has no Plan section, it gets a plan via `/think`, transferred by `/issue <number>`, before it is handed over, and `/qualify` inspects it before the hand-off. Launch none of them automatically
 
 ### Labels
 

@@ -10,8 +10,6 @@ user-invocable: false
 
 ## Commands
 
-Run `scout <subcommand> --help` for options, `--json` envelope, exit codes, stdin input, and examples. The help output is the authoritative source for the installed version.
-
 | Purpose       | Command                               |
 | ------------- | ------------------------------------- |
 | Web search    | `scout search "query"`                |
@@ -21,6 +19,16 @@ Run `scout <subcommand> --help` for options, `--json` envelope, exit codes, stdi
 | Repo read     | `scout repo-read <owner/repo> <path>` |
 | Repo overview | `scout repo-overview <owner/repo>`    |
 
+## The help output is authoritative
+
+Required environment variables, options, the `--json` envelope, exit codes, stdin input, and examples are all written in `scout --help` and `scout <subcommand> --help`. When answering about scout itself, answer from the installed version's help output rather than from this skill or from training knowledge. When the two disagree, help wins.
+
+| Situation                                      | Command to run                                       |
+| ---------------------------------------------- | ---------------------------------------------------- |
+| Environment variables, exit codes, global flags | `scout --help`                                       |
+| A subcommand's arguments and flags             | `scout <subcommand> --help`                          |
+| A run failed with exit 64 (missing API key too) | Read the Environment section of `scout --help`       |
+
 ## When to Use
 
 | use-cli-scout                      | Built-in WebFetch / WebSearch      |
@@ -29,10 +37,3 @@ Run `scout <subcommand> --help` for options, `--json` envelope, exit codes, stdi
 | GitHub repository exploration      | Never; scout repo-\* preferred     |
 | Deep research with compiled report | Unavailable; use scout research    |
 | Markdown-clean page extraction     | WebFetch lacks Markdown conversion |
-
-## Prerequisite
-
-| Env Var        | Required | Purpose                              |
-| -------------- | -------- | ------------------------------------ |
-| GEMINI_API_KEY | Yes      | `scout search` / `scout research`    |
-| GITHUB_TOKEN   | No       | Higher rate limit for `scout repo-*` |
