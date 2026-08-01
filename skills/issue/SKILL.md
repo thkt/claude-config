@@ -13,17 +13,9 @@ A standalone issue-creation skill. When `/challenge` / `/research` / `/think` ar
 
 ## Input
 
-`$ARGUMENTS` is the issue description. If empty, prompt for it via AskUserQuestion. When it carries only an issue number or URL, skip Phase 1 and run Plan transfer into an existing issue instead.
+`$ARGUMENTS` is the issue description. If empty, prompt for it via AskUserQuestion.
 
-## Plan transfer into an existing issue
-
-The route for putting a plan into a filed issue that has no `## Plan` section. This is where `/qualify`'s needs-plan and build's no-plan point.
-
-1. Fetch the body with `gh issue view <ref> --json title,body`. An issue that already has a `## Plan` falls outside this route and goes to `/qualify` for inspection
-2. Pick the plan draft by the same rule as Phase 3. Without a draft, suggest running `/think` and stop
-3. Append both the `## Plan` and `## Backlog candidates` sections to the end of the body. Do not touch the transferred content
-4. Drop what the body now repeats from the plan. What gets dropped is the body side; the plan stays untouched
-5. Present the preview, confirm via AskUserQuestion, then write it back with `gh issue edit <ref> --body-file <path>`
+When it carries only an issue number or URL, transfer a plan into that filed issue. This is where `/qualify`'s needs-plan and build's no-plan point. Take the body from `gh issue view <ref> --json title,body` as the already-drafted body, start at Phase 2, and replace Phase 4's creation with `gh issue edit <ref> --body-file <path>`. Without a plan draft, suggest running `/think` and stop; an issue that already has a `## Plan` goes to `/qualify` for inspection.
 
 ## Language
 

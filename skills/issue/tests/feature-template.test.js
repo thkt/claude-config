@@ -57,10 +57,8 @@ test("既存 issue への Plan 転記が両言語にあり、qualify の needs-p
     const doc = readFileSync(path, "utf8");
     assert.match(
       doc,
-      lang === "ja"
-        ? /^## 既存 issue への Plan 転記$/m
-        : /^## Plan transfer into an existing issue$/m,
-      `${lang}: 転記の節がある`,
+      lang === "ja" ? /issue 番号か URL だけを受け取ったとき/ : /only an issue number or URL/,
+      `${lang}: 番号だけを受け取る分岐がある`,
     );
     assert.match(doc, /gh issue edit <ref> --body-file/, `${lang}: 本文へ書き戻す手順がある`);
   }

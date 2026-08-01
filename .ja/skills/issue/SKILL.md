@@ -13,17 +13,9 @@ argument-hint: "[issue description | issue number]"
 
 ## 入力
 
-`$ARGUMENTS` は Issue 説明。空なら AskUserQuestion で説明を尋ねる。issue 番号か URL だけを受け取ったときは、Phase 1 へ進まず「既存 issue への Plan 転記」を実施する。
+`$ARGUMENTS` は Issue 説明。空なら AskUserQuestion で説明を尋ねる。
 
-## 既存 issue への Plan 転記
-
-起票済みで `## Plan` 節を持たない issue に plan を入れる経路。`/qualify` の needs-plan と build の no-plan が指す先がここになる。
-
-1. `gh issue view <ref> --json title,body` で本文を取る。既に `## Plan` を持つ issue はこの経路の対象外で、`/qualify` の検分に回す
-2. Phase 3 と同じ規則で plan 下書きを選ぶ。下書きが無ければ `/think` の実行を提案して止まる
-3. `## Plan` と `## Backlog candidates` の両節を本文の末尾へ足す。移設した内容には手を入れない
-4. 足したあとの本文から、Plan と重なった記述を落とす。落とすのは本文側で、Plan には手を入れない
-5. プレビューを提示し AskUserQuestion で確認してから、`gh issue edit <ref> --body-file <path>` で書き戻す
+issue 番号か URL だけを受け取ったときは、起票済み issue へ plan を転記する。`/qualify` の needs-plan と build の no-plan が指す先がここになる。`gh issue view <ref> --json title,body` で取った本文を起草済みとみなして Phase 2 から始め、Phase 4 の起票を `gh issue edit <ref> --body-file <path>` に置き換える。plan 下書きが無ければ `/think` の実行を提案して止まり、`## Plan` を既に持つ issue は `/qualify` の検分に回す。
 
 ## 言語
 
