@@ -15,7 +15,7 @@ argument-hint: "[issue description | issue number]"
 
 `$ARGUMENTS` は Issue 説明。空なら AskUserQuestion で説明を尋ねる。
 
-issue 番号か URL だけを受け取ったときは、起票済み issue へ plan を転記する。`/qualify` の needs-plan と build の no-plan が指す先がここになる。`gh issue view <ref> --json title,body` で取った本文を起草済みとみなして Phase 2 から始め、Phase 4 の起票を `gh issue edit <ref> --body-file <path>` に置き換える。plan 下書きが無ければ `/think` の実行を提案して止まり、`## Plan` を既に持つ issue は `/qualify` の検分に回す。
+issue 番号か URL だけを受け取ったときは、起票済み issue へ plan を転記する。`gh issue view <ref> --json title,body` で取った本文を起草済みとみなして Phase 2 から始め、Phase 4 の起票を `gh issue edit <ref> --body-file <path>` に置き換える。plan 下書きが無ければ `/think` の実行を提案して止まり、`## Plan` を既に持つ issue は `/qualify` の検分に回す。
 
 ## 言語
 
@@ -42,7 +42,7 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 
 ### 軽微 bug の導線
 
-ここで決めるのは起票するかどうかで、起票した issue の渡し先は Phase 4 が別の基準で決める。次の 3 基準をすべて満たす bug は軽微で、起票せず `/fix` で直接対応する選択肢がある。起票する場合も、本文フッターに「軽微につき `/fix` で対応してもよい」と注記する。原因未特定の間欠 bug は該当しない。
+ここで決めるのは起票するかどうか。次の 3 基準をすべて満たす bug は軽微で、起票せず `/fix` で直接対応する選択肢がある。起票する場合も、本文フッターに「軽微につき `/fix` で対応してもよい」と注記する。原因未特定の間欠 bug は該当しない。
 
 | 基準     | 内容                         |
 | -------- | ---------------------------- |
@@ -101,7 +101,7 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 
 ## Phase 4: 起票
 
-1. Issue プレビューを提示する。インライン仮マークがあれば仮ブロックに集約する。新規内容は足さず本文が持つものを写し、0 件なら省略する。最後に AskUserQuestion で `Create this issue?` と確認する。`## Plan` 節が無く、4 ファイル以上か新機能で build workflow に渡す規模なら、選択肢に「起票を保留して `/think` で plan を作る」を足す
+1. Issue プレビューを提示する。インライン仮マークがあれば仮ブロックに集約する。新規内容は足さず本文が持つものを写し、0 件なら省略する。最後に AskUserQuestion で `Create this issue?` と確認する。`## Plan` 節が無く build workflow に渡す規模なら、選択肢に「起票を保留して `/think` で plan を作る」を足す
 2. 本文を一時ファイルに書き出し、ラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票する。出力から Issue URL を取得する
 3. Phase 1 で分割を承認していれば、起票した epic 番号を添えて `/slice` の実行を提案する。自動では起動しない
 4. 分割しない issue には次の手を提案する。起票済み issue の渡し先は影響範囲で決め、1〜3 ファイルに収まる修正なら `/fix <番号>`、4 ファイル以上または新機能なら build workflow に番号を渡す。build workflow に渡す issue が Plan 節を持たないなら、`/think` で plan を作り `/issue <番号>` で転記してから渡し、渡す前の検分には `/qualify` を使う。いずれも自動では起動しない
