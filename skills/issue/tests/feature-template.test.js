@@ -65,22 +65,67 @@ test("feature テンプレートが UI に触れる issue 限定の任意 Access
   }
 });
 
-test("各言語の SKILL.md の Phase 2 が、本文の実装方針と plan 下書きを突き合わせる手順を持つ", () => {
+test("各言語の SKILL.md の Phase 2 が、照合対象を本文と Plan の重複一般とすると書く", () => {
   for (const [lang, path] of Object.entries(skills)) {
     assert.ok(existsSync(path), `${path} が存在する`);
     const phase2 = extractPhase2(readFileSync(path, "utf8"));
     if (lang === "ja") {
-      assert.match(phase2, /本文.*実装方針/, "ja: 本文の実装方針への言及");
+      assert.match(phase2, /同じ知識が重なる/, "ja: 同じ知識の重複が対象");
+      assert.match(phase2, /実装方針に限らない/, "ja: 実装方針に限らない旨");
       assert.match(phase2, /plan 下書き/, "ja: plan 下書きへの言及");
-      assert.match(phase2, /突き合わせ/, "ja: 突き合わせ手順の言及");
+    } else {
+      assert.match(phase2, /carry the same knowledge/i, "en: 同じ知識の重複が対象");
+      assert.match(phase2, /not the implementation approach alone/i, "en: 実装方針に限らない旨");
+      assert.match(phase2, /plan draft/, "en: plan draft への言及");
+    }
+  }
+});
+
+test("各言語の SKILL.md が、同じ知識の判定基準を書く", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const phase2 = extractPhase2(readFileSync(path, "utf8"));
+    if (lang === "ja") {
+      assert.match(phase2, /片方を直すともう片方も直る/, "ja: 同じ知識の判定基準");
+      assert.match(phase2, /独立に変わりうる/, "ja: 独立に変わるものは残す");
+    } else {
+      assert.match(phase2, /editing one forces the other to change/i, "en: 同じ知識の判定基準");
+      assert.match(phase2, /change independently/i, "en: 独立に変わるものは残す");
+    }
+  }
+});
+
+// 除外を書かないと、build に届かない Acceptance Criteria まで参照に置き換わって人間の受け入れ判断が消える。
+test("各言語の SKILL.md が、参照へ置き換えない 3 節を列挙する", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const phase2 = extractPhase2(readFileSync(path, "utf8"));
+    const keep = lang === "ja" ? "本文に残す" : "Keep in the body";
+    for (const section of ["What & Why", "Acceptance Criteria", "Out of scope"]) {
+      assert.match(
+        phase2,
+        new RegExp(`${section.replace(/[&]/g, "\\$&")}[^\\n]*${keep}`),
+        `${lang}: ${section} は本文に残す`,
+      );
+    }
+  }
+});
+
+test("各言語の SKILL.md が、参照の向きを本文から Plan へ固定すると書く", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const phase2 = extractPhase2(readFileSync(path, "utf8"));
+    if (lang === "ja") {
+      assert.match(phase2, /参照の向きは本文から `## Plan` へ固定/, "ja: 参照の向きの固定");
+      assert.match(phase2, /Plan 側から本文の節を指す参照/, "ja: 逆向きを取らない理由");
     } else {
       assert.match(
         phase2,
-        /implementation (approach|policy)/i,
-        "en: implementation policy への言及",
+        /reference direction is fixed from the body to `## Plan`/i,
+        "en: 参照の向きの固定",
       );
-      assert.match(phase2, /plan draft/, "en: plan draft への言及");
-      assert.match(phase2, /(compare|match|check)[\s\S]{0,40}against/i, "en: 突き合わせ手順の言及");
+      assert.match(
+        phase2,
+        /reference from the plan to a body section cannot be written/i,
+        "en: 逆向きを取らない理由",
+      );
     }
   }
 });
