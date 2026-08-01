@@ -228,3 +228,36 @@ test("各言語の SKILL.md が探索結果を kind と理由で記録する規�
     "en: kind and reason recorded together",
   );
 });
+
+test("各言語のテンプレートに実機確認見出しが Backlog candidates の直前に存在する", () => {
+  for (const [lang, path] of Object.entries(templates)) {
+    const doc = read(path);
+    const headingToken = lang === "ja" ? "### 実機確認" : "### Manual verification";
+    const headingMatch = doc.match(new RegExp(`^${headingToken}.*$`, "m"));
+    assert.ok(headingMatch, `${lang}: ${headingToken} 見出しが存在する`);
+    const afterHeading = doc.slice(headingMatch.index + headingMatch[0].length);
+    const nextHeadingMatch = afterHeading.match(/^#{2,3}[ \t].*$/m);
+    assert.ok(nextHeadingMatch, `${lang}: 実機確認見出しの後に別の見出しが続く`);
+    assert.strictEqual(
+      nextHeadingMatch[0].trim(),
+      "## Backlog candidates",
+      `${lang}: 実機確認見出しの直後の見出しが Backlog candidates`,
+    );
+  }
+});
+
+test("受け入れテストの bullet は T-NNN のみで実機確認の bullet と混ざらない旨がガイドラインに存在する", () => {
+  const ja = read(templates.ja);
+  assert.match(
+    ja,
+    /T-NNN[\s\S]{0,150}実機確認[\s\S]{0,60}混ざら|実機確認[\s\S]{0,150}T-NNN[\s\S]{0,60}混ざら/,
+    "ja: 受け入れテストの bullet が T-NNN のみで実機確認の bullet と混ざらない旨のガイドライン",
+  );
+
+  const en = read(templates.en);
+  assert.match(
+    en,
+    /T-NNN[\s\S]{0,150}Manual verification[\s\S]{0,60}mix|Manual verification[\s\S]{0,150}T-NNN[\s\S]{0,60}mix/i,
+    "en: guideline stating acceptance-test bullets are T-NNN only, not mixed with manual-verification bullets",
+  );
+});
