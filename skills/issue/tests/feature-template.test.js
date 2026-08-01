@@ -125,18 +125,22 @@ test("各言語の SKILL.md が、参照の向きを本文から Plan へ固定�
 });
 
 // 照合より後ろに本文を書き換える手順が来ると、そこで足された散文は照合を通らず重複が生え直す。
-test("各言語の SKILL.md で照合が challenge の折り込みより後ろに置かれる", () => {
+// challenge 折り込みとの前後だけを見ると、項目を末尾に足す変更が素通りするので、最後の項目
+// そのものを照合だと固定する。
+test("各言語の SKILL.md で照合が Phase 2 の最後の手順に置かれる", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const phase2 = extractPhase2(readFileSync(path, "utf8"));
     const [challenge, matching] =
       lang === "ja"
         ? [/challenge の verdict/, /plan 下書きがあれば/]
         : [/challenge verdict/, /When a plan draft exists/];
-    const challengeAt = phase2.search(challenge);
-    const matchingAt = phase2.search(matching);
-    assert.ok(challengeAt >= 0, `${lang}: challenge 折り込みの手順がある`);
-    assert.ok(matchingAt >= 0, `${lang}: 照合の手順がある`);
-    assert.ok(matchingAt > challengeAt, `${lang}: 照合が challenge 折り込みより後ろにある`);
+    const items = [...phase2.matchAll(/^\d+\. .*/gm)].map((m) => m[0]);
+    assert.ok(items.length >= 2, `${lang}: Phase 2 が番号付きの手順を持つ`);
+    assert.ok(
+      items.some((item) => challenge.test(item)),
+      `${lang}: challenge 折り込みの手順がある`,
+    );
+    assert.match(items.at(-1), matching, `${lang}: 最後の手順が照合`);
   }
 });
 
