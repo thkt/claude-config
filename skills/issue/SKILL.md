@@ -73,7 +73,8 @@ When two or more criteria are each independently implementable, ask via AskUserQ
 ## Phase 2: Refinement
 
 1. Refine the body inline against `${CLAUDE_SKILL_DIR}/references/prose-review.md` plus the empty-phrase file matching the body language: `phrases.ja.md` for Japanese, `phrases.en.md` for English. The Plan section transferred in Phase 3 is out of scope; leave it untouched
-2. If a challenge verdict / findings exist in the conversation, fold only what belongs in the body, once. The verdict and findings themselves never enter the body
+2. When a plan draft exists, match the body's implementation approach against the plan draft. Read it from the conversation when a /think plan draft is present there, otherwise from the matching file under `.claude/workspace/planning/`. This matches the body's prose against the plan draft itself, not one plan-draft copy against another. Replace the duplicated body side with a `## Plan` reference. When they conflict, treat the plan as the source of truth and correct the body, keeping the rejection reason, its file:line grounds, and the pain description in the body. Without a plan draft, skip this match
+3. If a challenge verdict / findings exist in the conversation, fold only what belongs in the body, once. The verdict and findings themselves never enter the body
 
 ## Phase 3: Plan Transfer
 
