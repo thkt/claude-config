@@ -84,29 +84,42 @@ test("各言語の SKILL.md が、照合対象を同じ知識の重複と定義�
   }
 });
 
-// 表が対象の広さを持つ。行が欠けると照合が実装方針だけに戻り、build に届かない
-// Acceptance Criteria まで参照に置き換わって人間の受け入れ判断が消える。
-const HANDLING = {
-  replace: ["Approach", "Testing Decisions", "Premises", "In scope"],
-  keep: ["What & Why", "Acceptance Criteria", "Out of scope"],
+// 表が対象の広さを持つ。行が欠けると照合が実装方針だけに戻る。Acceptance Criteria は
+// Plan の Outcome と重なるので、例外の一文を落とすと人間の受け入れ判断が参照に潰れる。
+const COUNTERPARTS = {
+  ja: [
+    ["Approach", "unit の contract"],
+    ["Testing Decisions", "T-NNN"],
+    ["Premises", "前提"],
+    ["In scope", "files"],
+  ],
+  en: [
+    ["Approach", "unit contract"],
+    ["Testing Decisions", "T-NNN"],
+    ["Premises", "Preconditions"],
+    ["In scope", "files"],
+  ],
 };
 
-test("各言語の SKILL.md の表が、参照へ置き換える 4 節と本文に残す 3 節を並べる", () => {
+test("各言語の SKILL.md が、重なる 4 組と Acceptance Criteria の例外を並べる", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const phase2 = extractPhase2(readFileSync(path, "utf8"));
-    const verb =
-      lang === "ja"
-        ? { replace: "参照へ置き換える", keep: "本文に残す" }
-        : { replace: "Replace with a reference", keep: "Keep in the body" };
-    for (const [handling, sections] of Object.entries(HANDLING)) {
-      for (const section of sections) {
-        assert.match(
-          phase2,
-          new RegExp(`${section}[^\\n]*${verb[handling]}`),
-          `${lang}: ${section} は ${verb[handling]}`,
-        );
-      }
+    for (const [section, counterpart] of COUNTERPARTS[lang]) {
+      assert.match(
+        phase2,
+        new RegExp(`${section}[^\\n]*${counterpart}`),
+        `${lang}: ${section} は ${counterpart} と重なる`,
+      );
     }
+    const [overlap, why] =
+      lang === "ja"
+        ? [/Acceptance Criteria も Outcome と重なる/, /build に届かないので本文に残す/]
+        : [
+            /Acceptance Criteria overlaps Outcome/i,
+            /drives the human merge call and never reaches build/i,
+          ];
+    assert.match(phase2, overlap, `${lang}: Acceptance Criteria も重なる`);
+    assert.match(phase2, why, `${lang}: それでも本文に残す理由`);
   }
 });
 

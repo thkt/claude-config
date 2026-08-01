@@ -78,17 +78,14 @@ When two or more criteria are each independently implementable, ask via AskUserQ
 
 ### Duplication match
 
-The target is every place the body and `## Plan` carry the same knowledge. Two places carry the same knowledge when editing one forces the other to change; what can change independently stays in both. Replace the duplicated body side with a `## Plan` reference. Even after the replacement, one line that states what change that heading covers, the rejection reason, its file:line grounds, and the pain description stay in the body. The reference runs from the body to `## Plan`. `/think` writes the plan out to a standalone file that predates the body, and the body's sections come into existence after it. When they conflict, treat the plan as the source of truth and correct the body.
+The target is every place the body and `## Plan` carry the same knowledge. Two places carry the same knowledge when editing one forces the other to change; what can change independently stays in both. Replace the duplicated body side with a `## Plan` reference. Even after the replacement, one line that states what change that heading covers, the rejection reason, its file:line grounds, and the pain description stay in the body. The reference runs from the body to `## Plan`. `/think` writes the plan out to a standalone file that predates the body, and the body's sections come into existence after it. When they conflict, treat the plan as the source of truth and correct the body. Acceptance Criteria overlaps Outcome as well, and it stays in the body because it drives the human merge call and never reaches build.
 
-| Body section        | Plan counterpart | Handling                                                                 |
-| ------------------- | ---------------- | ------------------------------------------------------------------------ |
-| Approach            | unit contract    | Replace with a reference                                                 |
-| Testing Decisions   | T-NNN            | Replace with a reference                                                 |
-| Premises            | Preconditions    | Replace with a reference                                                 |
-| Scope, In scope     | files            | Replace with a reference                                                 |
-| What & Why          | None             | Keep in the body                                                         |
-| Acceptance Criteria | Outcome          | Keep in the body. It drives the human merge call and never reaches build |
-| Scope, Out of scope | None             | Keep in the body. build does not read it                                 |
+| Body section      | Plan counterpart |
+| ----------------- | ---------------- |
+| Approach          | unit contract    |
+| Testing Decisions | T-NNN            |
+| Premises          | Preconditions    |
+| Scope, In scope   | files            |
 
 ## Phase 3: Plan Transfer
 
