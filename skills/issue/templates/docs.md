@@ -4,7 +4,7 @@ When /issue classifies the request as docs, it generates the title and body from
 
 ## Template
 
-`{...}` is replaced with content at generation.
+`{...}` is replaced with content at generation. Fixed items (what to write, where it lands) stay unmarked; tentative items (an unverified reference, an inferred structure) carry a `(tentative: <action at pickup>)` mark (criteria in SKILL.md § Confidence marking). There is no Premises section here, so issue-level premises are marked inline too.
 
 ```markdown
 ## What & Why
