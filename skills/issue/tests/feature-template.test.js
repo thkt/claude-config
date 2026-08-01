@@ -65,61 +65,60 @@ test("feature テンプレートが UI に触れる issue 限定の任意 Access
   }
 });
 
-// 対象を実装方針に絞ると、Testing Decisions や Premises が Plan と重なっても本文に残る。
 // 判定基準を書かないと、独立に変わりうる記述まで参照に潰れる。
-test("各言語の SKILL.md が、照合対象を同じ知識の重複一般と定義する", () => {
+test("各言語の SKILL.md が、照合対象を同じ知識の重複と定義する", () => {
   for (const [lang, path] of Object.entries(skills)) {
     assert.ok(existsSync(path), `${path} が存在する`);
     const phase2 = extractPhase2(readFileSync(path, "utf8"));
-    const [target, notOnly, criterion, independent] =
+    const [target, criterion, independent] =
       lang === "ja"
-        ? [
-            /同じ知識が重なる/,
-            /実装方針に限らない/,
-            /片方を直すともう片方も直る/,
-            /独立に変わりうる/,
-          ]
+        ? [/同じ知識が重なる/, /片方を直すともう片方も直る/, /独立に変わりうる/]
         : [
             /carry the same knowledge/i,
-            /not the implementation approach alone/i,
             /editing one forces the other to change/i,
             /change independently/i,
           ];
     assert.match(phase2, target, `${lang}: 同じ知識の重複が対象`);
-    assert.match(phase2, notOnly, `${lang}: 実装方針に限らない旨`);
     assert.match(phase2, criterion, `${lang}: 同じ知識の判定基準`);
     assert.match(phase2, independent, `${lang}: 独立に変わるものは両方に残す`);
   }
 });
 
-// 除外を書かないと、build に届かない Acceptance Criteria まで参照に置き換わって人間の受け入れ判断が消える。
-test("各言語の SKILL.md が、参照へ置き換えない 3 節を列挙する", () => {
+// 表が対象の広さを持つ。行が欠けると照合が実装方針だけに戻り、build に届かない
+// Acceptance Criteria まで参照に置き換わって人間の受け入れ判断が消える。
+const HANDLING = {
+  replace: ["Approach", "Testing Decisions", "Premises", "In scope"],
+  keep: ["What & Why", "Acceptance Criteria", "Out of scope"],
+};
+
+test("各言語の SKILL.md の表が、参照へ置き換える 4 節と本文に残す 3 節を並べる", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const phase2 = extractPhase2(readFileSync(path, "utf8"));
-    const keep = lang === "ja" ? "本文に残す" : "Keep in the body";
-    for (const section of ["What & Why", "Acceptance Criteria", "Out of scope"]) {
-      assert.match(phase2, new RegExp(`${section}[^\\n]*${keep}`), `${lang}: ${section} は残す`);
+    const verb =
+      lang === "ja"
+        ? { replace: "参照へ置き換える", keep: "本文に残す" }
+        : { replace: "Replace with a reference", keep: "Keep in the body" };
+    for (const [handling, sections] of Object.entries(HANDLING)) {
+      for (const section of sections) {
+        assert.match(
+          phase2,
+          new RegExp(`${section}[^\\n]*${verb[handling]}`),
+          `${lang}: ${section} は ${verb[handling]}`,
+        );
+      }
     }
   }
 });
 
-test("各言語の SKILL.md が、参照の向きを本文から Plan へ固定すると書く", () => {
+test("各言語の SKILL.md が、参照を本文から Plan へ向けると書く", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const phase2 = extractPhase2(readFileSync(path, "utf8"));
     if (lang === "ja") {
-      assert.match(phase2, /参照の向きは本文から `## Plan` へ固定/, "ja: 参照の向きの固定");
-      assert.match(phase2, /Plan 側から本文の節を指す参照/, "ja: 逆向きを取らない理由");
+      assert.match(phase2, /参照は本文から `## Plan` へ向ける/, "ja: 参照の向き");
+      assert.match(phase2, /本文の節はそのあとに生まれる/, "ja: 向きが決まる理由");
     } else {
-      assert.match(
-        phase2,
-        /reference direction is fixed from the body to `## Plan`/i,
-        "en: 参照の向きの固定",
-      );
-      assert.match(
-        phase2,
-        /reference from the plan to a body section cannot be written/i,
-        "en: 逆向きを取らない理由",
-      );
+      assert.match(phase2, /reference runs from the body to `## Plan`/i, "en: 参照の向き");
+      assert.match(phase2, /sections come into existence after it/i, "en: 向きが決まる理由");
     }
   }
 });
