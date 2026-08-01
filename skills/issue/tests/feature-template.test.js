@@ -85,15 +85,33 @@ test("各言語の SKILL.md の Phase 2 が、本文の実装方針と plan 下�
   }
 });
 
+// 照合より後ろに本文を書き換える手順が来ると、そこで足された散文は照合を通らず重複が生え直す。
+test("各言語の SKILL.md で照合が challenge の折り込みより後ろに置かれる", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const phase2 = extractPhase2(readFileSync(path, "utf8"));
+    const [challenge, matching] =
+      lang === "ja"
+        ? [/challenge の verdict/, /plan 下書きがあれば/]
+        : [/challenge verdict/, /When a plan draft exists/];
+    const challengeAt = phase2.search(challenge);
+    const matchingAt = phase2.search(matching);
+    assert.ok(challengeAt >= 0, `${lang}: challenge 折り込みの手順がある`);
+    assert.ok(matchingAt >= 0, `${lang}: 照合の手順がある`);
+    assert.ok(matchingAt > challengeAt, `${lang}: 照合が challenge 折り込みより後ろにある`);
+  }
+});
+
 test("各言語の SKILL.md が、重複した本文側を `## Plan` への参照に置き換えると書く", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const phase2 = extractPhase2(readFileSync(path, "utf8"));
     if (lang === "ja") {
       assert.match(phase2, /重複/, "ja: 重複への言及");
       assert.match(phase2, /## Plan[\s\S]{0,20}参照/, "ja: Plan への参照置き換え");
+      assert.match(phase2, /見出しが何をする変更かを述べる 1 行/, "ja: 見出しごとに 1 行残す規定");
     } else {
       assert.match(phase2, /duplicat/i, "en: duplicate への言及");
       assert.match(phase2, /## Plan[\s\S]{0,20}reference/i, "en: reference to Plan");
+      assert.match(phase2, /one line that states what change/i, "en: 見出しごとに 1 行残す規定");
     }
   }
 });

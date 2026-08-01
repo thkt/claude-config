@@ -73,8 +73,8 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 ## Phase 2: 推敲
 
 1. `${CLAUDE_SKILL_DIR}/references/prose-review.md` と、本文言語に対応する空句ファイルの基準で本文をインライン精査する。空句ファイルは日本語なら `phrases.ja.md`、英語なら `phrases.en.md`。Phase 3 で移設する Plan 節は対象外とし、手を入れない
-2. plan 下書きがあれば、本文に書かれた実装方針の散文と突き合わせる。会話に/think の plan 下書きがあればそれを使い、無ければ `.claude/workspace/planning/` の該当ファイルを読む。比べるのは本文の散文と plan 下書きであり、plan 下書きの写し同士ではない。重複した本文側は `## Plan` への参照に置き換える。食い違うときは plan を正として本文を直し、却下理由と根拠の file:line、痛みの記述は本文に残す。plan 下書きが無ければ、この照合を省く
-3. 会話に challenge の verdict と findings があれば、本文に折り込むべき指摘だけ 1 回反映する。verdict と findings 自体は本文に入れない
+2. 会話に challenge の verdict と findings があれば、本文に折り込むべき指摘だけ 1 回反映する。verdict と findings 自体は本文に入れない
+3. plan 下書きがあれば、本文に書かれた実装方針の散文と突き合わせる。前項までの編集を終えた本文を対象にし、Phase 2 の最後に置く。会話に `/think` の plan 下書きがあればそれを使い、無ければ `.claude/workspace/planning/` の該当ファイルを読む。比べるのは本文の散文と plan 下書きであり、plan 下書きの写し同士ではない。重複した本文側は、その見出しが何をする変更かを述べる 1 行を残したうえで `## Plan` への参照に置き換える。食い違うときは plan を正として本文を直し、却下理由と根拠の file:line、痛みの記述は本文に残す。plan 下書きが無ければ、この照合を省く
 
 ## Phase 3: Plan 移設
 
