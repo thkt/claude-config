@@ -228,3 +228,164 @@ test("各言語の SKILL.md が探索結果を kind と理由で記録する規�
     "en: kind and reason recorded together",
   );
 });
+
+test("各言語のテンプレートに実機確認見出しが Backlog candidates の直前に存在する", () => {
+  for (const [lang, path] of Object.entries(templates)) {
+    const doc = read(path);
+    const headingToken = lang === "ja" ? "### 実機確認" : "### Manual verification";
+    const headingMatch = doc.match(new RegExp(`^${headingToken}.*$`, "m"));
+    assert.ok(headingMatch, `${lang}: ${headingToken} 見出しが存在する`);
+    const afterHeading = doc.slice(headingMatch.index + headingMatch[0].length);
+    const nextHeadingMatch = afterHeading.match(/^#{2,3}[ \t].*$/m);
+    assert.ok(nextHeadingMatch, `${lang}: 実機確認見出しの後に別の見出しが続く`);
+    assert.strictEqual(
+      nextHeadingMatch[0].trim(),
+      "## Backlog candidates",
+      `${lang}: 実機確認見出しの直後の見出しが Backlog candidates`,
+    );
+  }
+});
+
+test("受け入れテストの bullet は T-NNN のみで実機確認の bullet と混ざらない旨がガイドラインに存在する", () => {
+  const ja = read(templates.ja);
+  assert.match(
+    ja,
+    /T-NNN[\s\S]{0,150}実機確認[\s\S]{0,60}混ざら|実機確認[\s\S]{0,150}T-NNN[\s\S]{0,60}混ざら/,
+    "ja: 受け入れテストの bullet が T-NNN のみで実機確認の bullet と混ざらない旨のガイドライン",
+  );
+
+  const en = read(templates.en);
+  assert.match(
+    en,
+    /T-NNN[\s\S]{0,150}Manual verification[\s\S]{0,60}mix|Manual verification[\s\S]{0,150}T-NNN[\s\S]{0,60}mix/i,
+    "en: guideline stating acceptance-test bullets are T-NNN only, not mixed with manual-verification bullets",
+  );
+});
+
+test("各言語の SKILL.md に test_command で実行できない基準の実機確認委譲規則が存在する", () => {
+  const ja = read(skills.ja);
+  const jaPhase3 = ja.slice(ja.indexOf("## Phase 3"), ja.indexOf("## 出力"));
+  assert.match(
+    jaPhase3,
+    /test_command[\s\S]{0,120}実行できない[\s\S]{0,150}実機確認|実機確認[\s\S]{0,150}test_command[\s\S]{0,120}実行できない/,
+    "ja: test_command で実行できない基準を実機確認へ委譲する規則",
+  );
+  assert.match(jaPhase3, /実機確認[\s\S]{0,40}(委譲|送る)/, "ja: 実機確認への委譲先の明記");
+  const jaVerification = jaPhase3.slice(jaPhase3.indexOf("### 書き出し前検証"));
+  assert.match(jaVerification, /実機確認/, "ja: 書き出し前検証に実機確認への対応項目がある");
+
+  const en = read(skills.en);
+  const enPhase3 = en.slice(en.indexOf("## Phase 3"), en.indexOf("## Output"));
+  assert.match(
+    enPhase3,
+    /test_command[\s\S]{0,120}cannot[\s\S]{0,150}[Mm]anual verification|[Mm]anual verification[\s\S]{0,150}test_command[\s\S]{0,120}cannot/,
+    "en: routes criteria test_command cannot execute to Manual verification",
+  );
+  assert.match(
+    enPhase3,
+    /[Mm]anual verification[\s\S]{0,40}(delegat|route|send)/i,
+    "en: delegation destination named",
+  );
+  const enVerification = enPhase3.slice(enPhase3.indexOf("### Pre-writeout verification"));
+  assert.match(
+    enVerification,
+    /[Mm]anual verification/i,
+    "en: pre-writeout verification covers manual verification routing",
+  );
+});
+
+test("各言語の SKILL.md にフィールド描画 unit の T-NNN フィールド列挙規則が存在する", () => {
+  const ja = read(skills.ja);
+  const jaPhase3 = ja.slice(ja.indexOf("## Phase 3"), ja.indexOf("## 出力"));
+  assert.match(
+    jaPhase3,
+    /ドメイン.{0,10}フィールド[\s\S]{0,20}描画/,
+    "ja: ドメインフィールドを描画する unit への言及",
+  );
+  assert.match(
+    jaPhase3,
+    /(表示フィールド|描画)[\s\S]{0,80}T-NNN|T-NNN[\s\S]{0,80}(表示フィールド|描画)/,
+    "ja: 表示フィールドを T-NNN に列挙する規則",
+  );
+
+  const en = read(skills.en);
+  const enPhase3 = en.slice(en.indexOf("## Phase 3"), en.indexOf("## Output"));
+  assert.match(
+    enPhase3,
+    /domain field[\s\S]{0,20}render|render[\s\S]{0,20}domain field/i,
+    "en: mention of a unit rendering domain fields",
+  );
+  assert.match(
+    enPhase3,
+    /(displayed field|rendered field)[\s\S]{0,80}T-NNN|T-NNN[\s\S]{0,80}(displayed field|rendered field)/i,
+    "en: rule enumerating displayed fields as T-NNN",
+  );
+});
+
+test("テンプレートの実機確認見出しが build.js の抽出正規表現に一致する", () => {
+  const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
+  // reconstruct でなく、build.js が実行時に使う正規表現そのものを走らせる。手元で
+  // トークンだけ再現すると (\b の非 ASCII 挙動など) 実行時の差分を見落とすため、この
+  // seam テストは production の正規表現リテラルをそのまま RegExp 化してテンプレートへ当てる。
+  const regexLineMatch = buildJs.match(/manualHeading\s*=\s*body\.match\((\/.+\/m)\)/);
+  assert.ok(regexLineMatch, "build.js から実機確認見出しの抽出正規表現行を読める");
+  const literal = regexLineMatch[1];
+  const lastSlash = literal.lastIndexOf("/");
+  const extractionRegex = new RegExp(literal.slice(1, lastSlash), literal.slice(lastSlash + 1));
+
+  assert.match(
+    read(templates.ja),
+    extractionRegex,
+    "ja: テンプレートの見出しが build.js の抽出正規表現 (実行時オブジェクト) に一致する",
+  );
+  assert.match(
+    read(templates.en),
+    extractionRegex,
+    "en: テンプレートの見出しが build.js の抽出正規表現 (実行時オブジェクト) に一致する",
+  );
+});
+
+// 委譲先を書かせないと、基準が実機確認へ移った時点で「どの機構が引き取るか」が失われ、
+// merge 前チェックリストは操作だけが並んで検証手段を持たない。
+test("各言語が委譲した基準に引き取る機構を添えると定める", () => {
+  const expected = {
+    ja: { skill: /引き取る機構/, template: /この基準を引き取る機構/ },
+    en: { skill: /names the mechanism that takes it on/, template: /mechanism that takes this criterion on/ },
+  };
+  for (const [lang, re] of Object.entries(expected)) {
+    assert.match(read(skills[lang]), re.skill, `${lang}: SKILL.md が機構を添える規則を持つ`);
+    assert.match(read(templates[lang]), re.template, `${lang}: テンプレートが機構を求める`);
+  }
+});
+
+// 抽出正規表現は英語側 build.js だけを読んでいるので、.ja 側が取り残されても上の seam
+// テストは通る。MIRROR.md は .ja を canonical とするため、両者の一致をここで固定する。
+test("両言語の build.js が同じ実機確認抽出正規表現を持つ", () => {
+  const literalOf = (path) => {
+    const m = read(path).match(/manualHeading\s*=\s*body\.match\((\/.+\/m)\)/);
+    assert.ok(m, `${path} から抽出正規表現行を読める`);
+    return m[1];
+  };
+  assert.equal(
+    literalOf(join(root, ".ja", "workflows", "build.js")),
+    literalOf(join(root, "workflows", "build.js")),
+    "ja と en の build.js が同じ正規表現リテラルを持つ",
+  );
+});
+
+test("SKILL.md とテンプレートが同じ見出し語を使う", () => {
+  const headingTokens = { ja: "実機確認", en: "Manual verification" };
+  for (const [lang, token] of Object.entries(headingTokens)) {
+    const templateDoc = read(templates[lang]);
+    assert.ok(
+      templateDoc.includes(`### ${token}`),
+      `${lang}: テンプレートに ### ${token} 見出しが存在する`,
+    );
+
+    const skillDoc = read(skills[lang]);
+    assert.ok(
+      skillDoc.includes(`\`### ${token}\``),
+      `${lang}: SKILL.md がテンプレートと同じ見出し語をバッククォート付きで参照する`,
+    );
+  }
+});

@@ -39,6 +39,12 @@ reference_module: {kind + reason を object で (kind: module/no-module/new-shap
 
 - T-001 {条件と期待結果を 1 行で言い切る言明。テスト名になる}
 
+### 実機確認
+
+{自動テストで検証しきれない手順が残るときだけ書く。無ければ小節ごと省略する}
+
+- {この基準を引き取る機構と、実機で行う操作と確認する対象。1 件 1 行}
+
 ## Backlog candidates
 
 - {スコープ外に切り出す候補。1 件 1 行}
@@ -46,7 +52,7 @@ reference_module: {kind + reason を object で (kind: module/no-module/new-shap
 
 ## ガイドライン
 
-unit は実装順に並べる。依存が実装順を決めない unit 同士は、データモデル、型 interface、UX flow など変わりやすい判断を含むものを先に、機械的な変更だけのものを後に置く。レビューの注意が変わりやすい判断へ先に向き、判断が覆ったときの手戻りが小さくなる。各フィールドの上限は骨格に示した行数で、超過は文章の追加でなく分割で解消する。unit を割るか、backlog へ切り出す。検証可能な振る舞いが無い unit (docs/設定) は「受け入れテスト。」の段落を丸ごと省略する。id の採番、seam unit、テストを省いた unit を build がどう扱うかは、SKILL.md Phase 3 が定める。
+unit は実装順に並べる。依存が実装順を決めない unit 同士は、データモデル、型 interface、UX flow など変わりやすい判断を含むものを先に、機械的な変更だけのものを後に置く。レビューの注意が変わりやすい判断へ先に向き、判断が覆ったときの手戻りが小さくなる。各フィールドの上限は骨格に示した行数で、超過は文章の追加でなく分割で解消する。unit を割るか、backlog へ切り出す。検証可能な振る舞いが無い unit (docs/設定) は「受け入れテスト。」の段落を丸ごと省略する。id の採番、seam unit、テストを省いた unit を build がどう扱うかは、SKILL.md Phase 3 が定める。受け入れテストの bullet は T-NNN のみを使い、実機確認の bullet と混ざらないようにする。build.js はそれぞれを別の見出しから抽出する。
 
 行数の上限は物理行の数を指し、1 文に収める指定ではない。抽出は見出しと id の照合だけで文境界を見ないので、Outcome と goal は節が 3 つ以上になったら行を増やさず 2 文に割る。1 文へ詰めると連体修飾が主語の前に積み上がり、述語に着くまで何の話か読めない。たとえば「fix stage が自己申告した fixed が post-fix diff 再判定で resolved/reopened に分類され、reopened が workflow 結果に現れる」は 3 節を 1 文に詰めている。これを「fix stage が fixed と自己申告した項目は、post-fix diff 再判定で resolved か reopened に分類される。reopened は workflow 結果に現れる」と割る。T-NNN はテスト名として逐語使用されるので 1 文のままにする。
 

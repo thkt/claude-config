@@ -1045,7 +1045,7 @@ if (slots.length) {
 
 // A plan without unit tests leaves acceptance to a human's manual check, which
 // never gets run before merge unless it reaches the PR.
-const manualHeading = body.match(/^###\s+(実機確認|Manual verification)\b.*$/m);
+const manualHeading = body.match(/^###\s+(実機確認|Manual verification)(?=\s|$).*$/m);
 let manualChecks = [];
 if (manualHeading) {
   const afterManual = body.slice(manualHeading.index + manualHeading[0].length);
