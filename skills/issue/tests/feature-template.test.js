@@ -23,16 +23,9 @@ const builds = {
   en: join(root, "workflows", "build.js"),
 };
 
-// Phase 2 の本文だけを対象にするための抽出。次の "## " 見出しの手前、
-// もしくは文書末尾までを Phase 2 の範囲とする。
+// Phase 2 の本文だけを対象にするための抽出。skills/qualify/tests/contract.test.js と同じ切り出し方。
 function extractPhase2(doc) {
-  const headingMatch = doc.match(/^## Phase 2:.*$/m);
-  if (!headingMatch) return "";
-  const start = headingMatch.index;
-  const afterHeading = start + headingMatch[0].length;
-  const nextHeadingMatch = doc.slice(afterHeading).match(/\n## /);
-  const end = nextHeadingMatch ? afterHeading + nextHeadingMatch.index : doc.length;
-  return doc.slice(start, end);
+  return doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
 }
 
 test("仮マークが両言語で tentative に揃い、build の extract prompt もそれを名指しする", () => {
