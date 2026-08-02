@@ -444,17 +444,59 @@ if (!findings.length) {
 // ---- Challenge ∥ Verify -> Integrate。reviewer -> aggregate は禁止 ----
 // 同じ findings に独立した 2 pass を並行で当て、Integrate が固定規則で reconcile する。
 const findingsJson = JSON.stringify(findings);
+// workflows/polish.js の VERDICTS_SCHEMA (id/verdict/severity/why) の形を踏襲する。
+// severity の enum はこのファイル自身の FINDINGS_SCHEMA (critical/high/medium/low) に
+// 合わせ、polish の P1/P2/P3 は使わない。2 つの workflow は severity の物差しが異なるため。
+const VERDICTS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["verdicts"],
+  properties: {
+    verdicts: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "verdict"],
+        properties: {
+          id: { type: "string" },
+          verdict: {
+            type: "string",
+            enum: ["confirmed", "disputed", "downgraded", "needs_context"],
+          },
+          severity: {
+            type: "string",
+            enum: ["critical", "high", "medium", "low"],
+          },
+          why: { type: "string" },
+        },
+      },
+    },
+  },
+};
+// critic への入力は rawFindings (R-N id の出どころ) から reviewer フィールドを外したもの。
+// どの reviewer が挙げた finding かで challenge の verdict が偏らないようにする。
+const challengeInput = rawFindings.map((f) => ({
+  id: f.id,
+  file: f.file,
+  line: f.line,
+  severity: f.severity,
+  summary: f.message,
+}));
 const [challenged, verified] = await parallel([
   () =>
     agent(
       anchor(
-        `critic-audit として、これらの finding を challenge し false positive を刈る。finding は事実ではなく、立証されるべき主張として扱う。各 finding は file:line で参照する。Findings は次のとおり。\n${findingsJson}`,
+        `critic-audit として、これらの finding を challenge し false positive を刈る。finding は事実ではなく、立証されるべき主張として扱う。各 finding は id で参照する。\n` +
+          `verdict の判定基準は次のとおり。confirmed = 実在し severity も妥当 / disputed = false positive / downgraded = 実在するが severity が過大 (下げた値を severity に入れる) / needs_context = コードだけでは判定できず人間の文脈が要る。\n` +
+          `Findings は次のとおり。\n${JSON.stringify(challengeInput)}`,
       ),
       {
         agentType: "critic-audit",
         phase: "Challenge",
         label: "challenge",
         model: "sonnet",
+        schema: VERDICTS_SCHEMA,
         // judge 段は難易度軸で xhigh を選ぶ (docs の "the hardest coding and agentic tasks")。
         // 所要時間は数分で long-horizon の基準には届かないが、finding を退ける判断の質が
         // false positive を左右するので token でなく精度側に振る。
@@ -476,12 +518,40 @@ const [challenged, verified] = await parallel([
     ),
 ]);
 
+// ---- Triage: survivor 判定はスクリプトが持ち、critic は verdict を返すだけ ----
+// verdict 側でなく finding 側を回すことで、challenge agent が verdict を付け忘れた
+// finding も取りこぼさない。confirmed 扱いで survivors に残し no_verdict として計上する。
+// challenge agent が丸ごと失敗した場合 (verdict 一覧が空) も全件が同じ no_verdict 経路を
+// 通るので、fail-open が呼び出し元から劣化と分かる形で残る。
+const verdictById = new Map(((challenged && challenged.verdicts) || []).map((v) => [v.id, v]));
+const survivors = [];
+const needsContext = [];
+let noVerdict = 0;
+for (const f of rawFindings) {
+  const v = verdictById.get(f.id);
+  if (!v) {
+    noVerdict++;
+    survivors.push({ ...f });
+    continue;
+  }
+  if (v.verdict === "disputed") continue;
+  if (v.verdict === "needs_context") {
+    needsContext.push({ ...f, why: v.why || "" });
+    continue;
+  }
+  const severity = v.verdict === "downgraded" && v.severity ? v.severity : f.severity;
+  survivors.push({ ...f, severity });
+}
+log(
+  `triage: ${survivors.length} survived / ${needsContext.length} needs_context / no_verdict: ${noVerdict} (of ${rawFindings.length} total)`,
+);
+
 phase("Integrate");
 const integrated = await agent(
   anchor(
     `enhancer-integration として、同じ findings に対する独立した 2 つの pass を file:line で突き合わせ、cross-domain の root cause と severity 順のリストに reconcile する。\n` +
       `Membership 規則。どの finding を残すかは challenge pass が決める。challenge pass が false positive として刈った finding は、verification pass が evidence を見つけていても刈られたままにする。verification pass の役割は survivor に実行経路の evidence と severity を与えることだけで、刈られた finding を復活させない。\n` +
-      `Challenge pass (membership / false positive の刈り込み) は次のとおり。\n${challenged}\n\n` +
+      `Challenge pass (membership / false positive の刈り込み) は次のとおり。\n${JSON.stringify(challenged)}\n\n` +
       `Verification pass (実行経路の evidence + severity) は次のとおり。\n${verified}`,
   ),
   {
@@ -501,4 +571,10 @@ await writeSnapshot({
   findings: finalFindings,
   skipped,
 });
-return { findings: finalFindings, assignments, skipped };
+return {
+  findings: finalFindings,
+  survivors,
+  needs_context: needsContext,
+  assignments,
+  skipped,
+};

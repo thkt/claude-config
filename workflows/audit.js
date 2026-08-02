@@ -447,17 +447,60 @@ if (!findings.length) {
 // Two independent passes over the same findings run concurrently; Integrate
 // reconciles them with a fixed rule.
 const findingsJson = JSON.stringify(findings);
+// Mirrors workflows/polish.js's VERDICTS_SCHEMA shape (id/verdict/severity/why); the
+// severity enum tracks this file's own FINDINGS_SCHEMA (critical/high/medium/low) rather
+// than polish's P1/P2/P3, since the two workflows score severity on different scales.
+const VERDICTS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["verdicts"],
+  properties: {
+    verdicts: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "verdict"],
+        properties: {
+          id: { type: "string" },
+          verdict: {
+            type: "string",
+            enum: ["confirmed", "disputed", "downgraded", "needs_context"],
+          },
+          severity: {
+            type: "string",
+            enum: ["critical", "high", "medium", "low"],
+          },
+          why: { type: "string" },
+        },
+      },
+    },
+  },
+};
+// The critic's input is rawFindings (the source of the R-N ids triage keys off of) with
+// the reviewer field left out, so the challenge verdict cannot be biased by which
+// reviewer raised the finding.
+const challengeInput = rawFindings.map((f) => ({
+  id: f.id,
+  file: f.file,
+  line: f.line,
+  severity: f.severity,
+  summary: f.message,
+}));
 const [challenged, verified] = await parallel([
   () =>
     agent(
       anchor(
-        `critic-audit. Challenge these findings to prune false positives. Each finding is a position to be argued, not a fact. Reference each finding by its file:line. The findings are as follows.\n${findingsJson}`,
+        `critic-audit. Challenge these findings to prune false positives. Each finding is a position to be argued, not a fact. Reference each finding by its id.\n` +
+          `The verdict criteria are as follows. confirmed = real and the severity holds / disputed = false positive / downgraded = real but severity inflated (put the lowered severity in severity) / needs_context = undecidable from code alone, needs human context.\n` +
+          `The findings are as follows.\n${JSON.stringify(challengeInput)}`,
       ),
       {
         agentType: "critic-audit",
         phase: "Challenge",
         label: "challenge",
         model: "sonnet",
+        schema: VERDICTS_SCHEMA,
         // Judge stages take xhigh on the difficulty criterion (the docs' "the hardest coding
         // and agentic tasks"). They run for minutes, short of the long-horizon threshold, but
         // the quality of rejecting a finding drives false positives, so spend on accuracy.
@@ -479,12 +522,40 @@ const [challenged, verified] = await parallel([
     ),
 ]);
 
+// ---- Triage: script owns survivor determination, the critic only returns verdicts ----
+// Loop the finding side (not the verdict side) so a finding the challenge agent dropped
+// a verdict for is not silently lost; it defaults to confirmed and is counted as
+// no_verdict, the same fail-open shape a total challenge-agent failure takes (an empty
+// verdict list leaves every finding no_verdict).
+const verdictById = new Map(((challenged && challenged.verdicts) || []).map((v) => [v.id, v]));
+const survivors = [];
+const needsContext = [];
+let noVerdict = 0;
+for (const f of rawFindings) {
+  const v = verdictById.get(f.id);
+  if (!v) {
+    noVerdict++;
+    survivors.push({ ...f });
+    continue;
+  }
+  if (v.verdict === "disputed") continue;
+  if (v.verdict === "needs_context") {
+    needsContext.push({ ...f, why: v.why || "" });
+    continue;
+  }
+  const severity = v.verdict === "downgraded" && v.severity ? v.severity : f.severity;
+  survivors.push({ ...f, severity });
+}
+log(
+  `triage: ${survivors.length} survived / ${needsContext.length} needs_context / no_verdict: ${noVerdict} (of ${rawFindings.length} total)`,
+);
+
 phase("Integrate");
 const integrated = await agent(
   anchor(
     `enhancer-integration. Reconcile two independent passes over the same findings, matched by file:line, into cross-domain root causes and a severity-ordered list.\n` +
       `Membership rule: the challenge pass decides which findings survive. A finding the challenge pass pruned as a false positive stays pruned even if the verification pass found evidence for it. The verification pass only supplies execution-path evidence and severity for the survivors; it never revives a pruned finding.\n` +
-      `The challenge pass (membership / false-positive pruning) is as follows.\n${challenged}\n\n` +
+      `The challenge pass (membership / false-positive pruning) is as follows.\n${JSON.stringify(challenged)}\n\n` +
       `The verification pass (execution-path evidence + severity) is as follows.\n${verified}`,
   ),
   {
@@ -504,4 +575,10 @@ await writeSnapshot({
   findings: finalFindings,
   skipped,
 });
-return { findings: finalFindings, assignments, skipped };
+return {
+  findings: finalFindings,
+  survivors,
+  needs_context: needsContext,
+  assignments,
+  skipped,
+};
