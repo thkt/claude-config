@@ -232,6 +232,12 @@ const FINDINGS_SCHEMA = {
             enum: ["critical", "high", "medium", "low"],
           },
           summary: { type: "string" },
+          source_ids: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "R-N ids of the raw findings this finding absorbed (Integrate output only)",
+          },
         },
       },
     },
@@ -547,12 +553,26 @@ log(
 );
 
 phase("Integrate");
+// membership は上の triage ループで既に決まっている。Integrate への入力は survivors のみで、
+// findings / challenge / verify の全体を渡さない。よって challenge pass が確定した finding を
+// Integrate が再び刈ることはできない。verification pass (実行経路の evidence) は走らせ続けるが、
+// その evidence は参考情報にとどめ、ここには転送しない。
+log(
+  `verify pass の出力: ${verified ? "あり" : "なし"}。参考情報にとどめ、Integrate には渡さない。`,
+);
+const survivorsInput = survivors.map((s) => ({
+  id: s.id,
+  file: s.file,
+  line: s.line,
+  severity: s.severity,
+  summary: s.message,
+}));
 const integrated = await agent(
   anchor(
-    `enhancer-integration として、同じ findings に対する独立した 2 つの pass を file:line で突き合わせ、cross-domain の root cause と severity 順のリストに reconcile する。\n` +
-      `Membership 規則。どの finding を残すかは challenge pass が決める。challenge pass が false positive として刈った finding は、verification pass が evidence を見つけていても刈られたままにする。verification pass の役割は survivor に実行経路の evidence と severity を与えることだけで、刈られた finding を復活させない。\n` +
-      `Challenge pass (membership / false positive の刈り込み) は次のとおり。\n${JSON.stringify(challenged)}\n\n` +
-      `Verification pass (実行経路の evidence + severity) は次のとおり。\n${verified}`,
+    `enhancer-integration として、challenge triage を生き残った survivors を file:line で突き合わせ、cross-domain の root cause と severity 順のリストに reconcile する。\n` +
+      `Membership は既に確定している。以下の survivors はすべて challenge pass を通過済みなので、再び刈ったり disputed 扱いにしたり drop したりしない。merge と並べ替えだけを行う。\n` +
+      `返す finding には、吸収した survivor の id (R-N) を source_ids に全件残す。複数の survivor を統合した root cause なら、その全 id を source_ids に持つ。\n` +
+      `Survivors は次のとおり。\n${JSON.stringify(survivorsInput)}`,
   ),
   {
     agentType: "enhancer-integration",

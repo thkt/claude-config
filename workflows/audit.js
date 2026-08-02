@@ -233,6 +233,12 @@ const FINDINGS_SCHEMA = {
             enum: ["critical", "high", "medium", "low"],
           },
           summary: { type: "string" },
+          source_ids: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "R-N ids of the raw findings this finding absorbed (Integrate output only)",
+          },
         },
       },
     },
@@ -551,12 +557,26 @@ log(
 );
 
 phase("Integrate");
+// Membership is already decided by the triage loop above: Integrate's input is survivors
+// only, never the full findings / challenge / verify payload, so it has no way to re-cull
+// a finding the challenge pass already confirmed. The verification pass still runs (for its
+// execution-path evidence), but that evidence stays informational and is not forwarded here.
+log(
+  `verify pass returned ${verified ? "output" : "no output"}; kept informational, not forwarded to Integrate.`,
+);
+const survivorsInput = survivors.map((s) => ({
+  id: s.id,
+  file: s.file,
+  line: s.line,
+  severity: s.severity,
+  summary: s.message,
+}));
 const integrated = await agent(
   anchor(
-    `enhancer-integration. Reconcile two independent passes over the same findings, matched by file:line, into cross-domain root causes and a severity-ordered list.\n` +
-      `Membership rule: the challenge pass decides which findings survive. A finding the challenge pass pruned as a false positive stays pruned even if the verification pass found evidence for it. The verification pass only supplies execution-path evidence and severity for the survivors; it never revives a pruned finding.\n` +
-      `The challenge pass (membership / false-positive pruning) is as follows.\n${JSON.stringify(challenged)}\n\n` +
-      `The verification pass (execution-path evidence + severity) is as follows.\n${verified}`,
+    `enhancer-integration. Reconcile these survivors of the challenge triage, matched by file:line, into cross-domain root causes and a severity-ordered list.\n` +
+      `Membership is already decided: every survivor below already passed the challenge pass. Do not re-cull, dispute, or drop any survivor; only merge and reorder them into root causes.\n` +
+      `Each finding you return must carry source_ids listing every survivor id (R-N) it absorbed, so a root cause merged from several survivors keeps all of their ids.\n` +
+      `The survivors are as follows.\n${JSON.stringify(survivorsInput)}`,
   ),
   {
     agentType: "enhancer-integration",
