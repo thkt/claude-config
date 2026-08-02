@@ -71,6 +71,7 @@ const writeSnapshot = async ({
   challengeRan,
   verifyRan,
   tally,
+  needsContext,
   zeroReviewerFiles,
 }) => {
   phase("Snapshot");
@@ -84,6 +85,7 @@ const writeSnapshot = async ({
     challenge_ran: challengeRan,
     verify_ran: verifyRan,
     tally,
+    needs_context: needsContext,
     zero_reviewer_files: zeroReviewerFiles,
   });
   await agent(
@@ -606,6 +608,11 @@ const needsContext = [];
 let noVerdict = 0;
 for (const f of rawFindings) {
   const v = verdictById.get(f.id);
+  // verdict は rawFindings 自身に書き戻す。survivors と needsContext へ振り分けるだけだと、
+  // disputed で落ちた id はどちらにも入らず record から消え、reviewer 別の生存率を測れない。
+  // rawFindings は snapshot payload にそのまま載るので、ここが finding ごとの verdict の
+  // 置き場になる。
+  f.verdict = v ? v.verdict : "no_verdict";
   if (!v) {
     noVerdict++;
     survivors.push({ ...f });
@@ -662,10 +669,10 @@ const integrated = await agent(
   },
 );
 
-// Integrate-absent fallback must stay the triaged survivors (each still carrying its
-// own R-N id), never the pre-triage findings array: that array predates the id
-// assignment in rawFindings, so falling back to it would silently readmit findings
-// the challenge triage already disputed.
+// Integrate が返さなかったときのフォールバック先は triage 済みの survivors (各自が R-N id を
+// 持ったまま) であって、triage 前の findings 配列ではない。その配列は rawFindings への id 付与
+// より前の状態なので、そこへ落とすと challenge triage が disputed と判定した finding を黙って
+// 呼び戻すことになる。
 const finalFindings = (integrated && integrated.findings) || survivorsInput;
 await writeSnapshot({
   preFlight,
@@ -675,6 +682,7 @@ await writeSnapshot({
   challengeRan,
   verifyRan,
   tally: challengeRan ? tally : undefined,
+  needsContext,
   zeroReviewerFiles,
 });
 return {

@@ -95,6 +95,36 @@ test("T-006 challenge が全件を confirmed と判定した run は challenge_r
   assert.equal(payload.challenge_ran, true, "snapshot payload の challenge_ran も true");
 });
 
+test("T-022 disputed で落ちた finding も snapshot payload の raw_findings に verdict つきで残る", async () => {
+  const { calls } = await run({
+    challenge: {
+      verdicts: [
+        { id: "R-1", verdict: "disputed" },
+        { id: "R-2", verdict: "needs_context", why: "呼び出し元が不明" },
+      ],
+    },
+    integrate: INTEGRATED,
+  });
+  const payload = snapshotPayload(calls);
+  const byId = Object.fromEntries(payload.raw_findings.map((f) => [f.id, f]));
+  assert.equal(
+    byId["R-1"].verdict,
+    "disputed",
+    "survivors から外れた finding も id と verdict を record に残す",
+  );
+  assert.equal(byId["R-2"].verdict, "needs_context", "needs_context の finding も verdict を残す");
+  assert.equal(
+    byId["R-1"].reviewer,
+    "security",
+    "reviewer と verdict を突き合わせて生存率を測れる",
+  );
+  assert.deepEqual(
+    payload.needs_context.map((f) => f.id),
+    ["R-2"],
+    "needs_context の id が payload にも載る",
+  );
+});
+
 test("T-020 verify が結果を返さない run は返り値と snapshot payload の両方に verify_ran=false を持つ", async () => {
   const { result, calls } = await run({
     challenge: { verdicts: [{ id: "R-1", verdict: "confirmed" }] },
