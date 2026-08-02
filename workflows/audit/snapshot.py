@@ -3,8 +3,12 @@
 Record one audit run to $HOME/.claude/history/ and compute the
 resolved/new/carried delta against the most recent prior snapshot.
 
-stdin:  JSON {scope, focus, pre_flight, raw_findings[], findings[], skipped[]}
-        each raw_findings entry carries at least {file, message}.
+stdin:  JSON {scope, focus, pre_flight, raw_findings[], findings[], skipped[],
+        challenge_ran, verify_ran, tally, needs_context[], zero_reviewer_files[]}
+        each raw_findings entry carries at least {file, message}, plus {id, reviewer,
+        verdict} once the triage pass has run.
+        Every key is copied to the record verbatim; absent keys stay absent. An absent
+        tally means the run failed open, which challenge_ran / verify_ran state directly.
 stdout: the path of the JSON record written.
 exit 0 on success. exit 1 on an unparseable payload (nothing written).
 

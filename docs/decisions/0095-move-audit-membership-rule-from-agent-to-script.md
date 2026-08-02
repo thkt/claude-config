@@ -10,7 +10,7 @@ decision-makers: thkt
 
 `agents/enhancers/enhancer-integration.md` は Phase 2 (Reconciliation、`agents/enhancers/enhancer-integration.md:68-79`) で challenger (critic-audit) と verifier (critic-evidence) の出力を finding_id で突き合わせ、6 段の優先順位表で confirmed/disputed/needs_review/needs_context を判定する設計だった。Input セクション (`agents/enhancers/enhancer-integration.md:20-62`) はこの判定に使う `challenges` 配列 (finding_id/verdict/reasoning/evidence) と `verifications` 配列 (finding_id/verdict/budget_exhausted/evidence) を受け取る形を文書化している。
 
-Issue #298 の実測では、raw findings 79 件が final 13 件、34 件が 8 件、12 件が 3 件に減り 75-85% が消えていた (#298 記載の当時の行番号基準)。finding に id が無いため、この刈りの主因が Challenge か Integrate かを追跡できなかった。#298 の U-001 で `workflows/audit.js` に R-N id 付きの script 側 triage ループを実装し (`workflows/audit.js:566-602`)、challenger の verdict のみで survivors/needs_context/no_verdict を決定するようにした。U-003 でさらに Integrate への入力を `survivorsInput` (`workflows/audit.js:612-618`、id/file/line/severity/summary のみ) に絞り、prompt に「Membership is already decided ... Do not re-cull, dispute, or drop any survivor; only merge and reorder them into root causes」(`workflows/audit.js:622`) を明記した。verifier (critic-evidence) の出力は `verified` として実行されるが Integrate には渡らず、`log()` で informational とだけ記録される (`workflows/audit.js:604-611`)。
+Issue #298 の実測では、raw findings 79 件が final 13 件、34 件が 8 件、12 件が 3 件に減り 75-85% が消えていた (#298 記載の当時の行番号基準)。finding に id が無いため、この刈りの主因が Challenge か Integrate かを追跡できなかった。#298 の U-001 で `workflows/audit.js` に R-N id 付きの script 側 triage ループ (`rawFindings` を回して `verdictById` を引く箇所) を実装し、challenger の verdict のみで survivors/needs_context/no_verdict を決定するようにした。U-003 でさらに Integrate への入力を `survivorsInput` (`toCriticRef` による id/file/line/severity/summary のみの射影) に絞り、prompt に「Membership is already decided ... Do not re-cull, dispute, or drop any survivor; only merge and reorder them into root causes」を明記した。verifier (critic-evidence) の出力は `verified` として実行されるが Integrate には渡らず、`log()` で informational とだけ記録される。
 
 この結果、enhancer-integration.md が文書化する Phase 1 (Receive) と Phase 2 (Reconciliation) は、`/audit` 経由の呼び出しでは実行されなくなった。Integrate に渡る `survivorsInput` は verdict/reasoning/evidence/budget_exhausted のいずれのフィールドも持たず、`challenges`/`verifications` という配列名も付かないため、Phase 2 が要求する突き合わせの対象そのものが入力に存在しない。enhancer-integration.md 自体は #298 のスコープ外 (Issue の Scope 節が挙げる「reviewer roster の retire と統合」は Backlog candidates 行き) として無改修のまま残り、この乖離はコードを読まないと分からない。
 
@@ -41,7 +41,7 @@ Option A を採用する。#298 の Scope は `workflows/audit.js` と `workflow
 
 ### Confirmation
 
-`workflows/audit.js` の Integrate 呼び出し prompt (`workflows/audit.js:619-625`) が「Membership is already decided」を含み、渡す入力 `survivorsInput` (`workflows/audit.js:612-618`) が id/file/line/severity/summary のみで verdict/reasoning/evidence を持たないことをコードレビューで確認する。`agents/enhancers/enhancer-integration.md` が無改修であることは `git diff main...HEAD -- agents/enhancers/enhancer-integration.md` が空であることで確認できる。
+`workflows/audit.js` の Integrate 呼び出し prompt が「Membership is already decided」を含み、渡す入力 `survivorsInput` が id/file/line/severity/summary のみで verdict/reasoning/evidence を持たないことをコードレビューで確認する。`agents/enhancers/enhancer-integration.md` が無改修であることは `git diff main...HEAD -- agents/enhancers/enhancer-integration.md` が空であることで確認できる。
 
 ## More Information
 

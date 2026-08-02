@@ -58,11 +58,8 @@ const bundled = (rel) =>
 // timestamp・branch・prior snapshot との delta 計算は audit/snapshot.py が行う。agent は
 // payload を一時ファイルに書いてそのスクリプトを 1 回叩くだけで、disk への副作用が目的、
 // 戻り値は使わない。
-// snapshot.py の build_record は payload を dict() でそのまま通すので、ここで払い出した
-// キーがそのまま record の項目になる。返り値にしか無い項目は record から読めないため、
-// 刈り率と 0 reviewer のファイルは payload 側にも渡す。tally は challengeRan が false の
-// とき undefined を渡し、JSON.stringify にキーごと落とさせる。fail-open した run が件数を
-// 持つと、全件 confirmed だった run と record 上で見分けがつかなくなる。
+// payload のキーは snapshot.py の build_record がそのまま record の項目にする。返り値に
+// しか無い項目は record から読めないので、record で読ませたいものはここへ渡す。
 const writeSnapshot = async ({
   preFlight,
   rawFindings,
@@ -85,7 +82,9 @@ const writeSnapshot = async ({
     challenge_ran: challengeRan,
     verify_ran: verifyRan,
     tally,
-    needs_context: needsContext,
+    // 同じ finding は raw_findings 側に verdict つきで載る。ここは raw_findings から
+    // 導けない why だけの側表にする。
+    needs_context: needsContext && needsContext.map(({ id, why }) => ({ id, why })),
     zero_reviewer_files: zeroReviewerFiles,
   });
   await agent(
@@ -214,9 +213,8 @@ const FOCUS = {
 
 // agents/reviewers/に定義はあるが ROUTING に行を持たない reviewer。/audit の
 // fan-out ではなく skill から直接呼ばれるときだけ走るので、glob 表の行を持たず
-// FOCUS の外に置く。audit.routing.test.js の T-014 が agents/reviewers/の
-// 定義すべてが ROUTING かここのどちらかに載ることを検証するため、この配列は
-// 定義が到達不能になることへの防御柵になる。
+// FOCUS の外に置く。ここに名前が無い定義は誰からも呼ばれないまま残るため、この配列が
+// 到達不能な定義への防御柵になる。
 const SKILL_ONLY_REVIEWERS = ["causation", "readability", "conformance"];
 
 const ext = (p) => {
@@ -517,7 +515,8 @@ if (!findings.length) {
 }
 
 // ---- Challenge ∥ Verify -> Integrate。reviewer -> aggregate は禁止 ----
-// 同じ findings に独立した 2 pass を並行で当て、Integrate が固定規則で reconcile する。
+// 同じ findings に独立した 2 pass を並行で当てる。membership を決めるのは Challenge の
+// verdict だけで、Verify の evidence は Integrate に届かない。
 const findingsJson = JSON.stringify(findings);
 // workflows/polish.js の VERDICTS_SCHEMA (id/verdict/severity/why) の形を踏襲する。
 // severity の enum はこのファイル自身の FINDINGS_SCHEMA (critical/high/medium/low) に
@@ -608,10 +607,8 @@ const needsContext = [];
 let noVerdict = 0;
 for (const f of rawFindings) {
   const v = verdictById.get(f.id);
-  // verdict は rawFindings 自身に書き戻す。survivors と needsContext へ振り分けるだけだと、
-  // disputed で落ちた id はどちらにも入らず record から消え、reviewer 別の生存率を測れない。
-  // rawFindings は snapshot payload にそのまま載るので、ここが finding ごとの verdict の
-  // 置き場になる。
+  // disputed の id は survivors にも needsContext にも入らない。書き戻さなければ record から
+  // 消え、reviewer 別の生存率を測れなくなる。
   f.verdict = v ? v.verdict : "no_verdict";
   if (!v) {
     noVerdict++;
@@ -629,12 +626,9 @@ for (const f of rawFindings) {
 log(
   `triage: ${survivors.length} survived / ${needsContext.length} needs_context / no_verdict: ${noVerdict} (of ${rawFindings.length} total)`,
 );
-// challenge_ran は「challenge が実際に verdicts を返した run」と fail-open した run
-// (challenged が null / undefined → verdictById が空 → 全 finding が no_verdict 経由で
-// confirmed に落ちる) を区別する。tally は triage の件数を運び、呼び出し元が survivors /
-// needsContext / noVerdict から再計算せずに読めるようにする。
-// verify pass は自由記述のテキストを返すので、schema の形ではなく中身の有無で判定する。
-// 出力を Integrate に転送しない以上、走ったかどうかは record からしか読めない。
+// challenge_ran は「verdicts を返した run」と fail-open した run (verdictById が空になり、
+// 全 finding が no_verdict 経由で confirmed に落ちる) を区別する。verify は自由記述の
+// テキストを返すため、schema の形ではなく中身の有無で判定する。
 const challengeRan = !!(challenged && Array.isArray(challenged.verdicts));
 const verifyRan = !!String(verified || "").trim();
 const tally = {
@@ -644,12 +638,10 @@ const tally = {
 };
 
 phase("Integrate");
-// membership は上の triage ループで既に決まっている。Integrate への入力は survivors のみで、
-// findings / challenge / verify の全体を渡さない。よって challenge pass が確定した finding を
-// Integrate が再び刈ることはできない。verification pass (実行経路の evidence) は走らせ続けるが、
-// その evidence は参考情報にとどめ、ここには転送しない。
+// 入力を survivors だけに絞ることで、challenge pass が確定した finding を Integrate が
+// 再び刈る経路自体をなくす。
 log(
-  `verify pass の出力: ${verified ? "あり" : "なし"}。参考情報にとどめ、Integrate には渡さない。`,
+  `verify pass の出力: ${verifyRan ? "あり" : "なし"}。参考情報にとどめ、Integrate には渡さない。`,
 );
 const survivorsInput = survivors.map(toCriticRef);
 const integrated = await agent(
@@ -681,6 +673,8 @@ await writeSnapshot({
   skipped,
   challengeRan,
   verifyRan,
+  // fail-open した run は degraded 印だけを残し件数を書かない、が plan の contract。
+  // undefined を渡すと JSON.stringify がキーごと落とす。
   tally: challengeRan ? tally : undefined,
   needsContext,
   zeroReviewerFiles,

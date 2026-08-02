@@ -1,7 +1,6 @@
 // Integrate 段が吸収した R-N id を root cause の source_ids に残す挙動と、その入力を
 // survivors のみに絞る挙動 (disputed を再び integrate に渡さない) を固定する。
-// polish.js には無い audit.js 固有の段 (Integrate) なので、rawFindings の id (R-N) を
-// 起点にした組み方は audit.triage.test.js / audit.degradation.test.js と同じにする。
+// Integrate は polish.js に対応する段が無く、id の追跡は audit.js 固有の要件になる。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -13,7 +12,7 @@ const auditJs = join(here, "..", "..", "audit.js");
 
 // Route -> Review (security / silence の 2 reviewer) -> Challenge/Verify -> Integrate まで
 // 通す最小 stub。focus: "security" で rawFindings の id を R-1 (security) / R-2 (silence) に
-// 固定するのは他の audit.*.test.js と同じ組み方。
+// 固定する。
 const agentStub =
   ({ challenge, verify, integrate } = {}) =>
   (prompt, opts) => {

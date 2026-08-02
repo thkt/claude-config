@@ -1,13 +1,12 @@
 // audit.js が組んだ snapshot payload を実 workflows/audit/snapshot.py まで通し、書き出された
 // record から R-N id / verdict tally / zero-reviewer file を追える挙動を固定する。
-// audit.degradation.test.js は "snapshot" ラベルを常に undefined へフォールバックさせて payload
-// の中身だけ検証するが、ここでは snapshot ラベルを実 subprocess 実行に差し替え、ディスクに
-// 書かれた record 自体を検証する (U-001〜U-006 が組んだ各段が実際につながっているかの seam)。
+// snapshot ラベルだけ実 subprocess 実行に差し替え、payload でなくディスクに書かれた record
+// 自体を検証する。各段が実際につながっているかは、この経路を通さないと分からない。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { runWorkflow } from "../../_lib/run-workflow.js";
@@ -21,14 +20,17 @@ const snapshotPy = join(here, "..", "snapshot.py");
 // 混ざらないようにする。
 const runSnapshot = (payload) => {
   const home = mkdtempSync(join(tmpdir(), "audit-seam-"));
-  const res = spawnSync("python3", [snapshotPy], {
-    input: payload,
-    encoding: "utf8",
-    env: { ...process.env, HOME: home },
-  });
-  assert.equal(res.status, 0, `snapshot.py が exit 0 で終わる (stderr: ${res.stderr})`);
-  const outPath = res.stdout.trim();
-  return JSON.parse(readFileSync(outPath, "utf8"));
+  try {
+    const res = spawnSync("python3", [snapshotPy], {
+      input: payload,
+      encoding: "utf8",
+      env: { ...process.env, HOME: home },
+    });
+    assert.equal(res.status, 0, `snapshot.py が exit 0 で終わる (stderr: ${res.stderr})`);
+    return JSON.parse(readFileSync(res.stdout.trim(), "utf8"));
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 };
 
 const INTEGRATED = {

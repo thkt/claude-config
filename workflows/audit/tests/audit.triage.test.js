@@ -12,7 +12,7 @@ const auditJs = join(here, "..", "..", "audit.js");
 
 // Route -> Review (security / silence の 2 reviewer) -> Challenge まで通す最小 stub。
 // focus: "security" は ROUTING["*.js"] を security / silence だけに絞り、rawFindings の
-// id を R-1 (security) / R-2 (silence) に固定する (audit.effort.test.js と同じ組み方)。
+// id を R-1 (security) / R-2 (silence) に固定する。
 const agentStub =
   ({ challenge } = {}) =>
   (prompt, opts) => {

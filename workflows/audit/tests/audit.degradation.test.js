@@ -13,7 +13,7 @@ const auditJs = join(here, "..", "..", "audit.js");
 
 // Route -> Review (security / silence の 2 reviewer) -> Challenge/Verify -> Integrate まで
 // 通す最小 stub。focus: "security" で rawFindings の id を R-1 (security) / R-2 (silence) に
-// 固定するのは audit.triage.test.js / audit.effort.test.js と同じ組み方。
+// 固定する。
 // verify は既定で出力を返す。verify_ran の fail-open を突く test だけが verify: undefined を
 // 明示的に渡す。デフォルト引数は値が undefined のとき発動してしまい「返さなかった」を表現
 // できないので、キーが渡されたかどうかで既定値を分ける。

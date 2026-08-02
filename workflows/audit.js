@@ -59,12 +59,9 @@ const bundled = (rel) =>
 // audit/snapshot.py resolves the timestamp, branch, and the delta against the
 // prior snapshot. The agent only writes the payload to a temp file and runs the
 // script once; the disk side-effect is the goal, its result is not consumed.
-// snapshot.py's build_record passes the payload straight through via dict(), so the keys
-// emitted here become the record's own fields. Anything that lives only on the return value
-// cannot be read back from the record, so the cull counts and the zero-reviewer files go into
-// the payload too. tally is passed as undefined when challengeRan is false, letting
-// JSON.stringify drop the key entirely: a fail-open run carrying counts would be
-// indistinguishable in the record from a run that confirmed every finding.
+// snapshot.py's build_record turns the payload keys into the record's fields verbatim.
+// Anything that lives only on the return value cannot be read back from the record, so
+// whatever a reader must find there has to be passed here.
 const writeSnapshot = async ({
   preFlight,
   rawFindings,
@@ -87,7 +84,9 @@ const writeSnapshot = async ({
     challenge_ran: challengeRan,
     verify_ran: verifyRan,
     tally,
-    needs_context: needsContext,
+    // The same findings already appear in raw_findings carrying their verdict. This side
+    // table holds only why, which raw_findings cannot supply.
+    needs_context: needsContext && needsContext.map(({ id, why }) => ({ id, why })),
     zero_reviewer_files: zeroReviewerFiles,
   });
   await agent(
@@ -216,9 +215,8 @@ const FOCUS = {
 
 // Reviewers with an agents/reviewers/ definition but no ROUTING row: they run
 // only when a skill invokes them directly, not through /audit's fan-out, so
-// they carry no glob-table row and sit outside FOCUS. audit.routing.test.js's
-// T-014 enforces that every agents/reviewers/ definition lands in ROUTING or
-// here, so this list is the fence against a definition going unreachable.
+// they carry no glob-table row and sit outside FOCUS. A definition named in neither
+// place is left with no caller, so this list is the fence against that.
 const SKILL_ONLY_REVIEWERS = ["causation", "readability", "conformance"];
 
 const ext = (p) => {
@@ -521,8 +519,8 @@ if (!findings.length) {
 }
 
 // ---- Challenge ∥ Verify -> Integrate (reviewer -> aggregate is forbidden) ----
-// Two independent passes over the same findings run concurrently; Integrate
-// reconciles them with a fixed rule.
+// Two independent passes over the same findings run concurrently. Only Challenge's
+// verdicts decide membership; Verify's evidence never reaches Integrate.
 const findingsJson = JSON.stringify(findings);
 // Mirrors workflows/polish.js's VERDICTS_SCHEMA shape (id/verdict/severity/why); the
 // severity enum tracks this file's own FINDINGS_SCHEMA (critical/high/medium/low) rather
@@ -614,10 +612,8 @@ const needsContext = [];
 let noVerdict = 0;
 for (const f of rawFindings) {
   const v = verdictById.get(f.id);
-  // The verdict is written back onto rawFindings itself. Sorting findings into survivors
-  // and needsContext alone leaves a disputed id in neither, so it vanishes from the record
-  // and per-reviewer survival rates cannot be measured. rawFindings goes into the snapshot
-  // payload as is, which makes this the place a per-finding verdict lives.
+  // A disputed id enters neither survivors nor needsContext. Without the write-back it
+  // vanishes from the record and per-reviewer survival rates cannot be measured.
   f.verdict = v ? v.verdict : "no_verdict";
   if (!v) {
     noVerdict++;
@@ -635,13 +631,9 @@ for (const f of rawFindings) {
 log(
   `triage: ${survivors.length} survived / ${needsContext.length} needs_context / no_verdict: ${noVerdict} (of ${rawFindings.length} total)`,
 );
-// challenge_ran distinguishes "challenge actually returned verdicts" from the fail-open
-// path (challenged is null/undefined -> verdictById is empty -> every finding defaults to
-// confirmed via no_verdict); tally carries the triage counts for callers who want them
-// without re-deriving from survivors / needsContext / noVerdict.
-// The verify pass returns free-form text, so it is judged by whether content came back
-// rather than by a schema shape. Its output is never forwarded to Integrate, which leaves
-// the record as the only place a reader can tell whether the pass ran at all.
+// challenge_ran separates a run that returned verdicts from the fail-open path (an empty
+// verdictById drops every finding to confirmed via no_verdict). verify returns free-form
+// text, so it is judged by whether content came back rather than by a schema shape.
 const challengeRan = !!(challenged && Array.isArray(challenged.verdicts));
 const verifyRan = !!String(verified || "").trim();
 const tally = {
@@ -651,12 +643,10 @@ const tally = {
 };
 
 phase("Integrate");
-// Membership is already decided by the triage loop above: Integrate's input is survivors
-// only, never the full findings / challenge / verify payload, so it has no way to re-cull
-// a finding the challenge pass already confirmed. The verification pass still runs (for its
-// execution-path evidence), but that evidence stays informational and is not forwarded here.
+// Narrowing the input to survivors removes the path by which Integrate could re-cull a
+// finding the challenge pass already confirmed.
 log(
-  `verify pass returned ${verified ? "output" : "no output"}; kept informational, not forwarded to Integrate.`,
+  `verify pass returned ${verifyRan ? "output" : "no output"}; kept informational, not forwarded to Integrate.`,
 );
 const survivorsInput = survivors.map(toCriticRef);
 const integrated = await agent(
@@ -688,6 +678,8 @@ await writeSnapshot({
   skipped,
   challengeRan,
   verifyRan,
+  // The plan's contract: a fail-open run keeps the degraded mark and writes no counts.
+  // Passing undefined makes JSON.stringify drop the key.
   tally: challengeRan ? tally : undefined,
   needsContext,
   zeroReviewerFiles,
