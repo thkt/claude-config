@@ -782,7 +782,11 @@ const STRUCTURE_SCHEMA = obj(["reference_checked", "findings"], {
         type: "string",
         description: "the reference module's counterpart path + symbol this deviates from",
       },
-      detail: { type: "string" },
+      detail: {
+        type: "string",
+        description:
+          "the deviation itself in at most 2 sentences. location / reference already carry the evidence, so restate neither them nor the reasoning that led to the conclusion",
+      },
     }),
   },
 });
@@ -814,7 +818,11 @@ const CONFORMANCE_SCHEMA = obj(["spec_found", "findings"], {
         type: "string",
         description: "file:line in the diff, or the scope-creep location",
       },
-      detail: { type: "string" },
+      detail: {
+        type: "string",
+        description:
+          "the deviation itself in at most 2 sentences. location / spec_line already carry the evidence, so restate neither them nor the reasoning that led to the conclusion",
+      },
     }),
   },
 });
@@ -987,19 +995,25 @@ const shipAssumptions = [...(plan.assumptions || [])];
 const shipAnomalies = (code.anomalies || []).map((a) => ({ ...a }));
 const shipConformance = conf.spec_found ? conf.findings.map((f) => ({ ...f })) : [];
 
-// Writing back goes through set(), never touching structured fields.
+// Writing back goes through set(), never touching structured fields. kind splits how
+// hard the text is compressed: a finding's detail can lose prose because location /
+// spec_line carry its evidence separately, while an assumption is what a human vetoes
+// against, so a coarser assumption leaves nothing to judge.
 const slots = [];
 shipAssumptions.forEach((t, i) => {
   if (typeof t === "string" && t.trim())
-    slots.push({ text: t, set: (v) => (shipAssumptions[i] = v) });
+    slots.push({ text: t, kind: "assumption", set: (v) => (shipAssumptions[i] = v) });
 });
 for (const f of shipConformance)
-  if (f.detail && f.detail.trim()) slots.push({ text: f.detail, set: (v) => (f.detail = v) });
+  if (f.detail && f.detail.trim())
+    slots.push({ text: f.detail, kind: "finding", set: (v) => (f.detail = v) });
 const shipStructure = struct.reference_checked ? struct.findings.map((f) => ({ ...f })) : [];
 for (const f of shipStructure)
-  if (f.detail && f.detail.trim()) slots.push({ text: f.detail, set: (v) => (f.detail = v) });
+  if (f.detail && f.detail.trim())
+    slots.push({ text: f.detail, kind: "finding", set: (v) => (f.detail = v) });
 for (const a of shipAnomalies)
-  if (a.notes && a.notes.trim()) slots.push({ text: a.notes, set: (v) => (a.notes = v) });
+  if (a.notes && a.notes.trim())
+    slots.push({ text: a.notes, kind: "anomaly", set: (v) => (a.notes = v) });
 
 if (slots.length) {
   // Force each element to carry back the input id and write back by id: a reordered
@@ -1017,9 +1031,14 @@ if (slots.length) {
   const translated = await agent(
     anchor(
       `Read \`language\` from \`$HOME/.claude/settings.json\` (english if unset). ` +
-        `The following JSON array is the free-text of the PR body's informational sections (assumptions / conformance / anomaly). Translate each element's \`text\` into \`language\` and tighten verbose prose. Run this step even for english.\n` +
-        `Strict: (a) keep file:line, paths, numbers, counts, severity labels, identifiers, and code fragments verbatim. (b) Add no facts and drop none. Translate and compress only; invent no new claim or count. (c) Return \`translations\` with every element carrying the input \`id\`; order is free but each id must match the input.\n` +
-        `Input:\n${JSON.stringify(slots.map((s, i) => ({ id: i, text: s.text })))}`,
+        `The following JSON array is the free-text of the PR body's informational sections (assumptions / conformance / anomaly). Translate each element's \`text\` into \`language\`. Run this step even for english.\n` +
+        `Strict:\n` +
+        `- Keep file:line, paths, numbers, counts, severity labels, identifiers, and code fragments verbatim.\n` +
+        `- Add no claim and drop none.\n` +
+        `- Compress an element whose \`kind\` is \`finding\` to at most 2 sentences, by cutting preamble, restatement, and the reasoning that led to the conclusion; never by cutting a claim itself.\n` +
+        `- Translate an element whose \`kind\` is \`assumption\` or \`anomaly\` only, keeping its original grain.\n` +
+        `- Return \`translations\` with every element carrying the input \`id\`; order is free but each id must match the input.\n` +
+        `Input:\n${JSON.stringify(slots.map((s, i) => ({ id: i, kind: s.kind, text: s.text })))}`,
     ),
     {
       label: "translate-tail",

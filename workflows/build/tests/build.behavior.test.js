@@ -1357,6 +1357,48 @@ test("translate-tail の訳文が shipPayload に反映され ship prompt に載
   );
 });
 
+// 圧縮の強さは kind で分かれる。finding の detail は location / spec_line が根拠を別に
+// 持つので削れるが、assumption は人間が veto を判断する材料で、粒度を落とすと判断できな
+// くなる。kind が入力に載らないと prompt の圧縮指示がどの要素にも当たらない。
+test("translate-tail の入力が slot ごとに kind を運ぶ", async () => {
+  const plan = makePlan({ assumptions: ["assume A"] });
+  const { calls } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      plan,
+      conformance: {
+        spec_found: true,
+        findings: [{ category: "missing", spec_line: "L1", location: "a.js:1", detail: "conf B" }],
+      },
+      code: {
+        completed: ["U-001"],
+        anomalies: [{ unit: "U-001", kind: "no-red", notes: "anomaly C" }],
+        commits: [{ unit: "U-001", subject: "feat: sample subject" }],
+        tests_pass: true,
+        gates_pass: true,
+      },
+    }),
+  });
+
+  const translateCalls = agentCallsOf(calls, "translate");
+  assert.equal(translateCalls.length, 1, "translate-tail agent が 1 回呼ばれる");
+  const input = JSON.parse(translateCalls[0].prompt.trim().split("\n").pop());
+  assert.deepEqual(
+    input.map((o) => ({ kind: o.kind, text: o.text })),
+    [
+      { kind: "assumption", text: "assume A" },
+      { kind: "finding", text: "conf B" },
+      { kind: "anomaly", text: "anomaly C" },
+    ],
+    "assumption / finding / anomaly が kind 付きで渡る",
+  );
+  assert.ok(
+    translateCalls[0].prompt.includes("`finding`") &&
+      translateCalls[0].prompt.includes("`assumption`"),
+    "prompt が kind ごとの圧縮指示を持つ",
+  );
+});
+
 // 訳が id 順を入れ替えて返っても、消費側は id で突合して正しい slot へ書き戻す。
 test("translate-tail の訳が順序入れ替えでも id で正しい slot に反映される", async () => {
   const plan = makePlan({

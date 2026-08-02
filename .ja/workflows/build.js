@@ -753,7 +753,11 @@ const STRUCTURE_SCHEMA = obj(["reference_checked", "findings"], {
         type: "string",
         description: "逸脱元となる参照モジュール側の対応 path + シンボル",
       },
-      detail: { type: "string" },
+      detail: {
+        type: "string",
+        description:
+          "逸脱そのものを 2 文以内で書く。根拠は location / reference が持つので、そこに書いた内容や結論に至る推論は再説明しない",
+      },
     }),
   },
 });
@@ -785,7 +789,11 @@ const CONFORMANCE_SCHEMA = obj(["spec_found", "findings"], {
         type: "string",
         description: "diff 中の file:line、または scope creep の位置",
       },
-      detail: { type: "string" },
+      detail: {
+        type: "string",
+        description:
+          "逸脱そのものを 2 文以内で書く。根拠は location / spec_line が持つので、そこに書いた内容や結論に至る推論は再説明しない",
+      },
     }),
   },
 });
@@ -952,19 +960,24 @@ const shipAssumptions = [...(plan.assumptions || [])];
 const shipAnomalies = (code.anomalies || []).map((a) => ({ ...a }));
 const shipConformance = conf.spec_found ? conf.findings.map((f) => ({ ...f })) : [];
 
-// 書き戻しは set() 経由に限り、構造化フィールドへ触れない。
+// 書き戻しは set() 経由に限り、構造化フィールドへ触れない。kind は圧縮の強さを
+// 分ける。finding の detail は根拠を location / spec_line が別に持つので削れるが、
+// assumption は人間が veto を判断する材料なので粒度を落とすと判断できなくなる。
 const slots = [];
 shipAssumptions.forEach((t, i) => {
   if (typeof t === "string" && t.trim())
-    slots.push({ text: t, set: (v) => (shipAssumptions[i] = v) });
+    slots.push({ text: t, kind: "assumption", set: (v) => (shipAssumptions[i] = v) });
 });
 for (const f of shipConformance)
-  if (f.detail && f.detail.trim()) slots.push({ text: f.detail, set: (v) => (f.detail = v) });
+  if (f.detail && f.detail.trim())
+    slots.push({ text: f.detail, kind: "finding", set: (v) => (f.detail = v) });
 const shipStructure = struct.reference_checked ? struct.findings.map((f) => ({ ...f })) : [];
 for (const f of shipStructure)
-  if (f.detail && f.detail.trim()) slots.push({ text: f.detail, set: (v) => (f.detail = v) });
+  if (f.detail && f.detail.trim())
+    slots.push({ text: f.detail, kind: "finding", set: (v) => (f.detail = v) });
 for (const a of shipAnomalies)
-  if (a.notes && a.notes.trim()) slots.push({ text: a.notes, set: (v) => (a.notes = v) });
+  if (a.notes && a.notes.trim())
+    slots.push({ text: a.notes, kind: "anomaly", set: (v) => (a.notes = v) });
 
 if (slots.length) {
   // 各要素に入力の id を必ず持ち帰らせ、id で書き戻す。順序が入れ替わっても取り違えず、
@@ -981,9 +994,14 @@ if (slots.length) {
   const translated = await agent(
     anchor(
       `\`$HOME/.claude/settings.json\` から \`language\` を読む (未設定なら english)。` +
-        `以下の JSON 配列は PR body の情報系セクション (assumptions / conformance / anomaly) の自由記述。各要素の \`text\` を \`language\` へ翻訳し、冗長な文を引き締める。english でもこの step を実行する。\n` +
-        `厳守: (a) file:line、パス、数値、件数、severity ラベル、識別子、コード片は逐語で保持する。(b) 事実を足さず落とさない。翻訳と圧縮のみ行い、新しい主張や件数を作らない。(c) すべての要素に入力の \`id\` を付けて \`translations\` を返す。順序は自由だが id は入力と一致させる。\n` +
-        `入力:\n${JSON.stringify(slots.map((s, i) => ({ id: i, text: s.text })))}`,
+        `以下の JSON 配列は PR body の情報系セクション (assumptions / conformance / anomaly) の自由記述。各要素の \`text\` を \`language\` へ翻訳する。english でもこの step を実行する。\n` +
+        `厳守:\n` +
+        `- file:line、パス、数値、件数、severity ラベル、識別子、コード片は逐語で保持する。\n` +
+        `- 主張を足さず落とさない。\n` +
+        `- \`kind\` が \`finding\` の要素は 2 文以内に圧縮する。前置きと再説明と結論に至る推論を削って行い、主張そのものは削らない。\n` +
+        `- \`kind\` が \`assumption\` または \`anomaly\` の要素は翻訳のみ行い、元の粒度を保つ。\n` +
+        `- すべての要素に入力の \`id\` を付けて \`translations\` を返す。順序は自由だが id は入力と一致させる。\n` +
+        `入力:\n${JSON.stringify(slots.map((s, i) => ({ id: i, kind: s.kind, text: s.text })))}`,
     ),
     {
       label: "translate-tail",
