@@ -58,7 +58,20 @@ const bundled = (rel) =>
 // timestamp・branch・prior snapshot との delta 計算は audit/snapshot.py が行う。agent は
 // payload を一時ファイルに書いてそのスクリプトを 1 回叩くだけで、disk への副作用が目的、
 // 戻り値は使わない。
-const writeSnapshot = async ({ preFlight, rawFindings, findings, skipped, challengeRan }) => {
+// snapshot.py の build_record は payload を dict() でそのまま通すので、ここで払い出した
+// キーがそのまま record の項目になる。返り値にしか無い項目は record から読めないため、
+// 刈り率と 0 reviewer のファイルは payload 側にも渡す。tally は challengeRan が false の
+// とき undefined を渡し、JSON.stringify にキーごと落とさせる。fail-open した run が件数を
+// 持つと、全件 confirmed だった run と record 上で見分けがつかなくなる。
+const writeSnapshot = async ({
+  preFlight,
+  rawFindings,
+  findings,
+  skipped,
+  challengeRan,
+  tally,
+  zeroReviewerFiles,
+}) => {
   phase("Snapshot");
   const payload = JSON.stringify({
     scope: scope || "HEAD",
@@ -68,6 +81,8 @@ const writeSnapshot = async ({ preFlight, rawFindings, findings, skipped, challe
     findings,
     skipped,
     challenge_ran: challengeRan,
+    tally,
+    zero_reviewer_files: zeroReviewerFiles,
   });
   await agent(
     anchor(
@@ -478,7 +493,14 @@ const skipped = units
   }));
 
 if (!findings.length) {
-  await writeSnapshot({ preFlight, rawFindings, findings: [], skipped, challengeRan: false });
+  await writeSnapshot({
+    preFlight,
+    rawFindings,
+    findings: [],
+    skipped,
+    challengeRan: false,
+    zeroReviewerFiles,
+  });
   return {
     findings: [],
     assignments,
@@ -592,6 +614,16 @@ for (const f of rawFindings) {
 log(
   `triage: ${survivors.length} survived / ${needsContext.length} needs_context / no_verdict: ${noVerdict} (of ${rawFindings.length} total)`,
 );
+// challenge_ran は「challenge が実際に verdicts を返した run」と fail-open した run
+// (challenged が null / undefined → verdictById が空 → 全 finding が no_verdict 経由で
+// confirmed に落ちる) を区別する。tally は triage の件数を運び、呼び出し元が survivors /
+// needsContext / noVerdict から再計算せずに読めるようにする。
+const challengeRan = !!(challenged && Array.isArray(challenged.verdicts));
+const tally = {
+  survived: survivors.length,
+  needs_context: needsContext.length,
+  no_verdict: noVerdict,
+};
 
 phase("Integrate");
 // membership は上の triage ループで既に決まっている。Integrate への入力は survivors のみで、
@@ -636,11 +668,15 @@ await writeSnapshot({
   findings: finalFindings,
   skipped,
   challengeRan,
+  tally: challengeRan ? tally : undefined,
+  zeroReviewerFiles,
 });
 return {
   findings: finalFindings,
   survivors,
   needs_context: needsContext,
+  challenge_ran: challengeRan,
+  tally,
   assignments,
   skipped,
   zero_reviewer_files: zeroReviewerFiles,

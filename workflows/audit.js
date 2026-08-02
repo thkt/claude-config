@@ -59,7 +59,21 @@ const bundled = (rel) =>
 // audit/snapshot.py resolves the timestamp, branch, and the delta against the
 // prior snapshot. The agent only writes the payload to a temp file and runs the
 // script once; the disk side-effect is the goal, its result is not consumed.
-const writeSnapshot = async ({ preFlight, rawFindings, findings, skipped, challengeRan }) => {
+// snapshot.py's build_record passes the payload straight through via dict(), so the keys
+// emitted here become the record's own fields. Anything that lives only on the return value
+// cannot be read back from the record, so the cull counts and the zero-reviewer files go into
+// the payload too. tally is passed as undefined when challengeRan is false, letting
+// JSON.stringify drop the key entirely: a fail-open run carrying counts would be
+// indistinguishable in the record from a run that confirmed every finding.
+const writeSnapshot = async ({
+  preFlight,
+  rawFindings,
+  findings,
+  skipped,
+  challengeRan,
+  tally,
+  zeroReviewerFiles,
+}) => {
   phase("Snapshot");
   const payload = JSON.stringify({
     scope: scope || "HEAD",
@@ -69,6 +83,8 @@ const writeSnapshot = async ({ preFlight, rawFindings, findings, skipped, challe
     findings,
     skipped,
     challenge_ran: challengeRan,
+    tally,
+    zero_reviewer_files: zeroReviewerFiles,
   });
   await agent(
     anchor(
@@ -481,7 +497,14 @@ const skipped = units
   }));
 
 if (!findings.length) {
-  await writeSnapshot({ preFlight, rawFindings, findings: [], skipped, challengeRan: false });
+  await writeSnapshot({
+    preFlight,
+    rawFindings,
+    findings: [],
+    skipped,
+    challengeRan: false,
+    zeroReviewerFiles,
+  });
   return {
     findings: [],
     assignments,
@@ -651,6 +674,8 @@ await writeSnapshot({
   findings: finalFindings,
   skipped,
   challengeRan,
+  tally: challengeRan ? tally : undefined,
+  zeroReviewerFiles,
 });
 return {
   findings: finalFindings,
