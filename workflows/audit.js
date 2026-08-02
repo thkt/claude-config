@@ -177,11 +177,9 @@ const FOCUS = {
   security: ["security", "silence"],
   performance: ["react-pattern", "efficiency", "progressive"],
   quality: [
-    "readability",
     "design",
     "react-pattern",
     "rust",
-    "causation",
     "resilience",
     "duplication",
     "reuse",
@@ -189,10 +187,18 @@ const FOCUS = {
     "operations",
     "prompt",
     "silence",
+    "coverage",
   ],
   a11y: ["accessibility", "progressive"],
   all: null,
 };
+
+// Reviewers with an agents/reviewers/ definition but no ROUTING row: they run
+// only when a skill invokes them directly, not through /audit's fan-out, so
+// they carry no glob-table row and sit outside FOCUS. audit.routing.test.js's
+// T-014 enforces that every agents/reviewers/ definition lands in ROUTING or
+// here, so this list is the fence against a definition going unreachable.
+const SKILL_ONLY_REVIEWERS = ["causation", "readability", "conformance"];
 
 const ext = (p) => {
   const base = p.slice(p.lastIndexOf("/") + 1);
@@ -213,6 +219,17 @@ const classify = (p) => {
   if (e === ".css" || e === ".html") return ROUTING["*.css,*.html"];
   return ROUTING.default;
 };
+// Runtime mirror of T-014 in audit.routing.test.js: a reviewer name should
+// never sit in both ROUTING and SKILL_ONLY_REVIEWERS. The test only catches
+// this at test time; this check catches the same drift on every actual run.
+const routingSkillOnlyOverlap = [...new Set(Object.values(ROUTING).flat())].filter((r) =>
+  SKILL_ONLY_REVIEWERS.includes(r),
+);
+if (routingSkillOnlyOverlap.length) {
+  log(
+    `Config drift: ROUTING and SKILL_ONLY_REVIEWERS both list ${routingSkillOnlyOverlap.join(", ")}.`,
+  );
+}
 
 const FINDINGS_SCHEMA = {
   type: "object",
@@ -338,15 +355,25 @@ if (!files.length) {
   return {
     findings: [],
     skipped: [],
+    zero_reviewer_files: [],
     why: "No files to audit for the given scope.",
   };
 }
 
 const focusSet = FOCUS[focus] === undefined ? null : FOCUS[focus];
 const assign = {};
+// A file whose classify() reviewers all fall outside the focus intersection
+// gets none: it is a degradation (the file is silently skipped, not audited),
+// so it is recorded here at file-path granularity per WORKFLOWS.md rather
+// than dropped.
+const zeroReviewerFiles = [];
 for (const f of files) {
-  for (const r of classify(f.path)) {
-    if (focusSet && !focusSet.includes(r)) continue;
+  const reviewers = classify(f.path).filter((r) => !focusSet || focusSet.includes(r));
+  if (!reviewers.length) {
+    zeroReviewerFiles.push({ path: f.path });
+    continue;
+  }
+  for (const r of reviewers) {
     (assign[r] = assign[r] || []).push(f.path);
   }
 }
@@ -354,6 +381,14 @@ const assignments = Object.entries(assign).map(([reviewer, fs]) => ({
   reviewer,
   files: fs,
 }));
+
+if (zeroReviewerFiles.length) {
+  log(
+    `Zero-reviewer files [focus=${focus}]: ${zeroReviewerFiles.length} - ${zeroReviewerFiles
+      .map((f) => f.path)
+      .join(", ")}`,
+  );
+}
 
 // The interactive /audit prompts to narrow scope past 30 files; headless has
 // no prompt, so warn and continue.
@@ -446,7 +481,7 @@ const skipped = units
 
 if (!findings.length) {
   await writeSnapshot({ preFlight, rawFindings, findings: [], skipped });
-  return { findings: [], assignments, skipped };
+  return { findings: [], assignments, skipped, zero_reviewer_files: zeroReviewerFiles };
 }
 
 // ---- Challenge ∥ Verify -> Integrate (reviewer -> aggregate is forbidden) ----
@@ -601,4 +636,5 @@ return {
   needs_context: needsContext,
   assignments,
   skipped,
+  zero_reviewer_files: zeroReviewerFiles,
 };

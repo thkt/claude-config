@@ -176,11 +176,9 @@ const FOCUS = {
   security: ["security", "silence"],
   performance: ["react-pattern", "efficiency", "progressive"],
   quality: [
-    "readability",
     "design",
     "react-pattern",
     "rust",
-    "causation",
     "resilience",
     "duplication",
     "reuse",
@@ -188,10 +186,18 @@ const FOCUS = {
     "operations",
     "prompt",
     "silence",
+    "coverage",
   ],
   a11y: ["accessibility", "progressive"],
   all: null,
 };
+
+// agents/reviewers/に定義はあるが ROUTING に行を持たない reviewer。/audit の
+// fan-out ではなく skill から直接呼ばれるときだけ走るので、glob 表の行を持たず
+// FOCUS の外に置く。audit.routing.test.js の T-014 が agents/reviewers/の
+// 定義すべてが ROUTING かここのどちらかに載ることを検証するため、この配列は
+// 定義が到達不能になることへの防御柵になる。
+const SKILL_ONLY_REVIEWERS = ["causation", "readability", "conformance"];
 
 const ext = (p) => {
   const base = p.slice(p.lastIndexOf("/") + 1);
@@ -212,6 +218,17 @@ const classify = (p) => {
   if (e === ".css" || e === ".html") return ROUTING["*.css,*.html"];
   return ROUTING.default;
 };
+// T-014 (audit.routing.test.js) のランタイム側の鏡。reviewer 名が ROUTING と
+// SKILL_ONLY_REVIEWERS の両方に載ることは無いはず。テストは test 実行時にしか
+// 検知しないが、この check は実際の run のたびに同じ drift を検知する。
+const routingSkillOnlyOverlap = [...new Set(Object.values(ROUTING).flat())].filter((r) =>
+  SKILL_ONLY_REVIEWERS.includes(r),
+);
+if (routingSkillOnlyOverlap.length) {
+  log(
+    `Config drift: ROUTING と SKILL_ONLY_REVIEWERS の両方に載っている: ${routingSkillOnlyOverlap.join(", ")}。`,
+  );
+}
 
 const FINDINGS_SCHEMA = {
   type: "object",
@@ -336,15 +353,24 @@ if (!files.length) {
   return {
     findings: [],
     skipped: [],
+    zero_reviewer_files: [],
     why: "指定 scope に audit 対象のファイルが無い。",
   };
 }
 
 const focusSet = FOCUS[focus] === undefined ? null : FOCUS[focus];
 const assign = {};
+// classify() が返す reviewer が focus との積集合で全て落ちたファイルは 0 件になる。
+// これはファイルが無言で audit から外れる劣化なので、WORKFLOWS.md の粒度に沿って
+// 捨てず file path 単位で記録する。
+const zeroReviewerFiles = [];
 for (const f of files) {
-  for (const r of classify(f.path)) {
-    if (focusSet && !focusSet.includes(r)) continue;
+  const reviewers = classify(f.path).filter((r) => !focusSet || focusSet.includes(r));
+  if (!reviewers.length) {
+    zeroReviewerFiles.push({ path: f.path });
+    continue;
+  }
+  for (const r of reviewers) {
     (assign[r] = assign[r] || []).push(f.path);
   }
 }
@@ -352,6 +378,14 @@ const assignments = Object.entries(assign).map(([reviewer, fs]) => ({
   reviewer,
   files: fs,
 }));
+
+if (zeroReviewerFiles.length) {
+  log(
+    `0 reviewer になったファイル [focus=${focus}]: ${zeroReviewerFiles.length} - ${zeroReviewerFiles
+      .map((f) => f.path)
+      .join(", ")}`,
+  );
+}
 
 // 対話版の /audit は 30 ファイルを超えると scope を絞るよう prompt を出す。headless では
 // prompt を出せないため、warn だけして続行する。
@@ -444,7 +478,7 @@ const skipped = units
 
 if (!findings.length) {
   await writeSnapshot({ preFlight, rawFindings, findings: [], skipped });
-  return { findings: [], assignments, skipped };
+  return { findings: [], assignments, skipped, zero_reviewer_files: zeroReviewerFiles };
 }
 
 // ---- Challenge ∥ Verify -> Integrate。reviewer -> aggregate は禁止 ----
@@ -597,4 +631,5 @@ return {
   needs_context: needsContext,
   assignments,
   skipped,
+  zero_reviewer_files: zeroReviewerFiles,
 };
