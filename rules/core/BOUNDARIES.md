@@ -66,12 +66,12 @@ Premature interfaces add indirection without value, so consider adding an interf
 
 ## Overeagerness
 
-Concretizes AI-Assisted Development. Keep to what the task requires, without overimplementing extra files, unrequested abstractions, or defensive code. See YAGNI and Occam's Razor.
+Concretizes AI-Assisted Development. Build only the deliverables the task requires, and return decisions that split opinion to the user. See YAGNI and Occam's Razor.
 
-| Trap                    | Rule                                                                                     |
-| ----------------------- | ---------------------------------------------------------------------------------------- |
-| Unrequested scope       | A bug fix does not clean surrounding code. A small feature does not add config           |
-| Docs on untouched code  | Add comments/types only to code you changed, only where logic is non-obvious             |
-| Defensive code          | Validate at system boundaries (user input, external APIs). Do not guard impossible cases |
-| Speculative abstraction | No helpers or abstractions for one-time use or hypothetical future requirements          |
-| Structure invention     | Split decisions are the user's; directory structure follows existing                     |
+- A bug fix changes the cause site alone, and a small feature runs on the config that already exists
+- Add comments and types to the code you changed, where the logic is non-obvious
+- Put validation at system boundaries (user input, external APIs)
+- Create a helper or abstraction once call sites reach 2
+- Return split decisions to the user, and follow the existing directory structure
+- Before proposing to remove or merge existing structure, read the related DR's Reassessment Triggers and judge whether they are unmet
+- Before importing an external design, read your own deliverables (output templates, implementation) and confirm the failure that design addresses actually occurs
