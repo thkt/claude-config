@@ -552,16 +552,20 @@ const VERDICTS_SCHEMA = {
     },
   },
 };
-// The critic's input is rawFindings (the source of the R-N ids triage keys off of) with
-// the reviewer field left out, so the challenge verdict cannot be biased by which
-// reviewer raised the finding.
-const challengeInput = rawFindings.map((f) => ({
+// Both critic-audit's challenge input and Integrate's survivors input need the same
+// projection (rawFindings' message field renamed to summary); one helper keeps the shape
+// from drifting between the two call sites.
+const toCriticRef = (f) => ({
   id: f.id,
   file: f.file,
   line: f.line,
   severity: f.severity,
   summary: f.message,
-}));
+});
+// The critic's input is rawFindings (the source of the R-N ids triage keys off of) with
+// the reviewer field left out, so the challenge verdict cannot be biased by which
+// reviewer raised the finding.
+const challengeInput = rawFindings.map(toCriticRef);
 const [challenged, verified] = await parallel([
   () =>
     agent(
@@ -647,13 +651,7 @@ phase("Integrate");
 log(
   `verify pass returned ${verified ? "output" : "no output"}; kept informational, not forwarded to Integrate.`,
 );
-const survivorsInput = survivors.map((s) => ({
-  id: s.id,
-  file: s.file,
-  line: s.line,
-  severity: s.severity,
-  summary: s.message,
-}));
+const survivorsInput = survivors.map(toCriticRef);
 const integrated = await agent(
   anchor(
     `enhancer-integration. Reconcile these survivors of the challenge triage, matched by file:line, into cross-domain root causes and a severity-ordered list.\n` +

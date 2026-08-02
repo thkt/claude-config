@@ -547,15 +547,19 @@ const VERDICTS_SCHEMA = {
     },
   },
 };
-// critic への入力は rawFindings (R-N id の出どころ) から reviewer フィールドを外したもの。
-// どの reviewer が挙げた finding かで challenge の verdict が偏らないようにする。
-const challengeInput = rawFindings.map((f) => ({
+// critic-audit への challenge input と Integrate への survivors input は同じ射影
+// (rawFindings の message フィールドを summary に改名) を必要とする。ヘルパーを 1 つに
+// して、呼び出し 2 箇所で形が乖離しないようにする。
+const toCriticRef = (f) => ({
   id: f.id,
   file: f.file,
   line: f.line,
   severity: f.severity,
   summary: f.message,
-}));
+});
+// critic への入力は rawFindings (R-N id の出どころ) から reviewer フィールドを外したもの。
+// どの reviewer が挙げた finding かで challenge の verdict が偏らないようにする。
+const challengeInput = rawFindings.map(toCriticRef);
 const [challenged, verified] = await parallel([
   () =>
     agent(
@@ -640,13 +644,7 @@ phase("Integrate");
 log(
   `verify pass の出力: ${verified ? "あり" : "なし"}。参考情報にとどめ、Integrate には渡さない。`,
 );
-const survivorsInput = survivors.map((s) => ({
-  id: s.id,
-  file: s.file,
-  line: s.line,
-  severity: s.severity,
-  summary: s.message,
-}));
+const survivorsInput = survivors.map(toCriticRef);
 const integrated = await agent(
   anchor(
     `enhancer-integration として、challenge triage を生き残った survivors を file:line で突き合わせ、cross-domain の root cause と severity 順のリストに reconcile する。\n` +
