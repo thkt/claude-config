@@ -4,7 +4,7 @@
 Deterministically render the build workflow's draft-PR fact tail from structured
 data build.js already holds. The PR body is a fail-closed surface -- it must
 always carry the verify result. Heavier assurance (/audit, /polish review) stays
-human-invoked (DR-0085). What the tail carries is the boundary of that assurance:
+human-invoked. What the tail carries is the boundary of that assurance:
 tail_header states that the build holds no deep review. The person reading it is
 the one who launched the build, so what they need is the boundary, not the
 command to run. The agent writes only the lead "## Summary" (the human
@@ -157,9 +157,9 @@ def render(payload):
     )
     # The summary is all that shows while the tail is folded, so every non-zero count
     # the open-or-not decision rests on surfaces here; a count absent from the summary
-    # goes unnoticed inside the fold (untouched plan files: kizalas #596 U-003). The
-    # high breakdown is there because a bare count makes a wording nit and a gap that
-    # defeats an acceptance criterion look like the same single finding.
+    # goes unnoticed inside the fold. The high breakdown is there because a bare count
+    # makes a wording nit and a gap that defeats an acceptance criterion look like the
+    # same single finding.
     if untouched:
         summary += f" · <code>untouched-plan-files {len(untouched)}</code>"
     if conformance:
@@ -207,7 +207,7 @@ def render(payload):
     section(L["assumptions"], payload.get("assumptions"), str)
     section(L["scope_deviations"], scope, lambda f: f"`{f}`")
     # The inverse of scope_deviations: a file the plan named but nothing touched can be
-    # the trace of a unit that went unimplemented and still passed (kizalas #596 U-003).
+    # the trace of a unit that went unimplemented and still passed.
     section(L["untouched_plan_files"], untouched, lambda f: f"`{f}`")
     section(L["missing_tests"], missing, str)
     section(

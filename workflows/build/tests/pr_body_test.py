@@ -71,7 +71,7 @@ class RenderTest(unittest.TestCase):
         self.assertLess(body.index("auto-generated"), body.index("Closes"))
 
     def test_no_command_invitation_is_printed(self):
-        # Heavy assurance stays human-invoked (DR-0085), but the person reading this
+        # Heavy assurance stays human-invoked, but the person reading this
         # tail is the one who launched the build, so the command hint is not repeated
         # on every PR. What the tail must still say is that no deep review happened.
         for payload in (FULL, CLEAN):
@@ -122,7 +122,7 @@ class RenderTest(unittest.TestCase):
         self.assertIn("- rejects negative amounts", body)
         self.assertIn("**Anomalies (Red unconfirmed)**", body)
         self.assertIn("- U-001 (no-red): flaky", body)
-        # The audit fan-out is retired from build (DR-0085): no residual section.
+        # The audit fan-out is retired from build: no residual section.
         self.assertNotIn("Unresolved", body)
         self.assertNotIn("re-audit", body)
 

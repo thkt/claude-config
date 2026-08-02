@@ -3,7 +3,7 @@
 
 build.js が既に保持している構造化データから、build workflow の draft-PR fact tail を
 決定的に描画する。PR body は fail-closed な面であり、verify 結果を常に載せる。重い担保
-(/audit、/polish review) は人間が起動する (DR-0085)。tail が載せるのはその担保の
+(/audit、/polish review) は人間が起動する。tail が載せるのはその担保の
 範囲までで、build が深いレビューを含まないことを tail_header が言う。読むのは build を
 起動した本人なので、要るのは起動方法でなく範囲。agent は先頭の "## Summary"
 (人間レビュアーの入口) だけを書き、この tail をその下に append する。
@@ -147,9 +147,9 @@ def render(payload):
         f"<code>missing-tests {len(missing)}</code>"
     )
     # 畳んだ状態で見えるのは summary だけなので、開くかどうかの判断に要る件数は
-    # 0 件でなければここに出す。summary に無い件数は畳まれたまま気づかれない
-    # (未変更の plan files は kizalas #596 U-003)。high の内訳は、件数だけでは表記の
-    # 差と受け入れ条件を満たさない欠落が同じ 1 件に見えてしまうため。
+    # 0 件でなければここに出す。summary に無い件数は畳まれたまま気づかれない。
+    # high の内訳を出すのは、件数だけでは表記の差と受け入れ条件を満たさない欠落が
+    # 同じ 1 件に見えてしまうため。
     if untouched:
         summary += f" · <code>untouched-plan-files {len(untouched)}</code>"
     if conformance:
@@ -197,7 +197,7 @@ def render(payload):
     section(L["assumptions"], payload.get("assumptions"), str)
     section(L["scope_deviations"], scope, lambda f: f"`{f}`")
     # scope_deviations の逆向き。plan が挙げたのに触られていないファイルは、unit が
-    # 丸ごと実装されないまま通った跡であることがある (kizalas #596 U-003)。
+    # 丸ごと実装されないまま通った跡であることがある。
     section(L["untouched_plan_files"], untouched, lambda f: f"`{f}`")
     section(L["missing_tests"], missing, str)
     section(
