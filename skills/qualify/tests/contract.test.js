@@ -11,6 +11,26 @@ const skills = {
 };
 const buildJs = join(root, "workflows", "build.js");
 
+// Phase 3 の軸表を [軸, 通る条件, 重大度] のセル配列へ分解する。ヘッダ行と
+// 区切り線 (---) の 2 行は判定対象に含めない。
+function getPhase3DataRows(doc) {
+  const phase3 = doc.slice(doc.indexOf("## Phase 3"), doc.indexOf("## Phase 4"));
+  const lines = phase3.split("\n").filter((line) => line.trim().startsWith("|"));
+  return lines.slice(2).map((line) =>
+    line
+      .split("|")
+      .slice(1, -1)
+      .map((cell) => cell.trim()),
+  );
+}
+
+// 表示するドメインフィールドの追加・変更を検分する行が、通る条件に列挙先
+// (AC と plan の T-NNN) を書いているかを言語別キーワードで判定する。
+const FIELD_ROW_KEYWORDS = {
+  ja: [/ドメインフィールド/, /列挙/, /(出典|agent)/i, /\bAC\b/, /T-NNN/],
+  en: [/domain field/i, /enumerat/i, /(source|cite)/i, /\bAC\b/, /T-NNN/],
+};
+
 // build が Load 段で止まる条件は build.js の validate / oversizedUnits にしかない。
 // qualify が条件を書き写すと、build 側だけ変わったとき verdict が嘘になる。写した
 // 事実は実行時には何も落ちないので、この静的照合が単一情報源を強制する。閾値の写しは
@@ -96,4 +116,36 @@ test("Phase 2 節に数字が残らない既存の検査を通る", () => {
       `${lang}: Phase 2 に数字が残っていない`,
     );
   }
+});
+
+// 表示するフィールドを追加・変更する issue は、そのフィールドを列挙している
+// (または agent が読める出典を引いている) かを検分する blocker 行が要る。
+// フィールド不変の UI issue はこの行に該当せず空振りで通る。
+test("各言語の SKILL.md の軸表に重大度 blocker の表示フィールド行が存在する", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    const fieldRow = getPhase3DataRows(doc).find(
+      (cells) =>
+        cells[2] === "blocker" && FIELD_ROW_KEYWORDS[lang].every((re) => re.test(cells[1])),
+    );
+    assert.ok(
+      fieldRow,
+      `${lang}: Phase 3 の軸表に表示フィールドの追加・変更を検分する blocker 行があり、通る条件が AC と T-NNN への列挙を指す`,
+    );
+  }
+});
+
+// 軸表への行追加は両言語同時が契約 (MIRROR.md)。一方だけ増えると mirror が崩れる。
+test("軸表の行数が両言語で一致する", () => {
+  const BASELINE_ROWS = 7; // 表示フィールド行を追加する前の Phase 3 軸表の行数
+  const counts = {};
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    counts[lang] = getPhase3DataRows(doc).length;
+    assert.ok(
+      counts[lang] > BASELINE_ROWS,
+      `${lang}: Phase 3 の軸表に表示フィールド行が追加されている`,
+    );
+  }
+  assert.equal(counts.ja, counts.en, "軸表の行数が両言語で一致する");
 });
