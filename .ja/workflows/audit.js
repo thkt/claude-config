@@ -58,7 +58,7 @@ const bundled = (rel) =>
 // timestamp・branch・prior snapshot との delta 計算は audit/snapshot.py が行う。agent は
 // payload を一時ファイルに書いてそのスクリプトを 1 回叩くだけで、disk への副作用が目的、
 // 戻り値は使わない。
-const writeSnapshot = async ({ preFlight, rawFindings, findings, skipped }) => {
+const writeSnapshot = async ({ preFlight, rawFindings, findings, skipped, challengeRan }) => {
   phase("Snapshot");
   const payload = JSON.stringify({
     scope: scope || "HEAD",
@@ -67,6 +67,7 @@ const writeSnapshot = async ({ preFlight, rawFindings, findings, skipped }) => {
     raw_findings: rawFindings,
     findings,
     skipped,
+    challenge_ran: challengeRan,
   });
   await agent(
     anchor(
@@ -477,8 +478,14 @@ const skipped = units
   }));
 
 if (!findings.length) {
-  await writeSnapshot({ preFlight, rawFindings, findings: [], skipped });
-  return { findings: [], assignments, skipped, zero_reviewer_files: zeroReviewerFiles };
+  await writeSnapshot({ preFlight, rawFindings, findings: [], skipped, challengeRan: false });
+  return {
+    findings: [],
+    assignments,
+    skipped,
+    zero_reviewer_files: zeroReviewerFiles,
+    challenge_ran: false,
+  };
 }
 
 // ---- Challenge ∥ Verify -> Integrate。reviewer -> aggregate は禁止 ----
@@ -618,12 +625,17 @@ const integrated = await agent(
   },
 );
 
-const finalFindings = (integrated && integrated.findings) || findings;
+// Integrate-absent fallback must stay the triaged survivors (each still carrying its
+// own R-N id), never the pre-triage findings array: that array predates the id
+// assignment in rawFindings, so falling back to it would silently readmit findings
+// the challenge triage already disputed.
+const finalFindings = (integrated && integrated.findings) || survivorsInput;
 await writeSnapshot({
   preFlight,
   rawFindings,
   findings: finalFindings,
   skipped,
+  challengeRan,
 });
 return {
   findings: finalFindings,
