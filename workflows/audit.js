@@ -71,6 +71,7 @@ const writeSnapshot = async ({
   findings,
   skipped,
   challengeRan,
+  verifyRan,
   tally,
   zeroReviewerFiles,
 }) => {
@@ -83,6 +84,7 @@ const writeSnapshot = async ({
     findings,
     skipped,
     challenge_ran: challengeRan,
+    verify_ran: verifyRan,
     tally,
     zero_reviewer_files: zeroReviewerFiles,
   });
@@ -503,6 +505,7 @@ if (!findings.length) {
     findings: [],
     skipped,
     challengeRan: false,
+    verifyRan: false,
     zeroReviewerFiles,
   });
   return {
@@ -511,6 +514,7 @@ if (!findings.length) {
     skipped,
     zero_reviewer_files: zeroReviewerFiles,
     challenge_ran: false,
+    verify_ran: false,
   };
 }
 
@@ -624,7 +628,11 @@ log(
 // path (challenged is null/undefined -> verdictById is empty -> every finding defaults to
 // confirmed via no_verdict); tally carries the triage counts for callers who want them
 // without re-deriving from survivors / needsContext / noVerdict.
+// The verify pass returns free-form text, so it is judged by whether content came back
+// rather than by a schema shape. Its output is never forwarded to Integrate, which leaves
+// the record as the only place a reader can tell whether the pass ran at all.
 const challengeRan = !!(challenged && Array.isArray(challenged.verdicts));
+const verifyRan = !!String(verified || "").trim();
 const tally = {
   survived: survivors.length,
   needs_context: needsContext.length,
@@ -674,6 +682,7 @@ await writeSnapshot({
   findings: finalFindings,
   skipped,
   challengeRan,
+  verifyRan,
   tally: challengeRan ? tally : undefined,
   zeroReviewerFiles,
 });
@@ -682,6 +691,7 @@ return {
   survivors,
   needs_context: needsContext,
   challenge_ran: challengeRan,
+  verify_ran: verifyRan,
   tally,
   assignments,
   skipped,

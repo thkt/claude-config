@@ -69,6 +69,7 @@ const writeSnapshot = async ({
   findings,
   skipped,
   challengeRan,
+  verifyRan,
   tally,
   zeroReviewerFiles,
 }) => {
@@ -81,6 +82,7 @@ const writeSnapshot = async ({
     findings,
     skipped,
     challenge_ran: challengeRan,
+    verify_ran: verifyRan,
     tally,
     zero_reviewer_files: zeroReviewerFiles,
   });
@@ -499,6 +501,7 @@ if (!findings.length) {
     findings: [],
     skipped,
     challengeRan: false,
+    verifyRan: false,
     zeroReviewerFiles,
   });
   return {
@@ -507,6 +510,7 @@ if (!findings.length) {
     skipped,
     zero_reviewer_files: zeroReviewerFiles,
     challenge_ran: false,
+    verify_ran: false,
   };
 }
 
@@ -618,7 +622,10 @@ log(
 // (challenged が null / undefined → verdictById が空 → 全 finding が no_verdict 経由で
 // confirmed に落ちる) を区別する。tally は triage の件数を運び、呼び出し元が survivors /
 // needsContext / noVerdict から再計算せずに読めるようにする。
+// verify pass は自由記述のテキストを返すので、schema の形ではなく中身の有無で判定する。
+// 出力を Integrate に転送しない以上、走ったかどうかは record からしか読めない。
 const challengeRan = !!(challenged && Array.isArray(challenged.verdicts));
+const verifyRan = !!String(verified || "").trim();
 const tally = {
   survived: survivors.length,
   needs_context: needsContext.length,
@@ -668,6 +675,7 @@ await writeSnapshot({
   findings: finalFindings,
   skipped,
   challengeRan,
+  verifyRan,
   tally: challengeRan ? tally : undefined,
   zeroReviewerFiles,
 });
@@ -676,6 +684,7 @@ return {
   survivors,
   needs_context: needsContext,
   challenge_ran: challengeRan,
+  verify_ran: verifyRan,
   tally,
   assignments,
   skipped,

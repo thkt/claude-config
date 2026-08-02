@@ -14,9 +14,14 @@ const auditJs = join(here, "..", "..", "audit.js");
 // Route -> Review (security / silence の 2 reviewer) -> Challenge/Verify -> Integrate まで
 // 通す最小 stub。focus: "security" で rawFindings の id を R-1 (security) / R-2 (silence) に
 // 固定するのは audit.triage.test.js / audit.effort.test.js と同じ組み方。
+// verify は既定で出力を返す。verify_ran の fail-open を突く test だけが verify: undefined を
+// 明示的に渡す。デフォルト引数は値が undefined のとき発動してしまい「返さなかった」を表現
+// できないので、キーが渡されたかどうかで既定値を分ける。
 const agentStub =
-  ({ challenge, integrate } = {}) =>
+  (opt = {}) =>
   (prompt, opts) => {
+    const { challenge, integrate } = opt;
+    const verify = "verify" in opt ? opt.verify : "verify pass output";
     const label = opts && opts.label;
     if (label === "route") {
       return { files: [{ path: "sample.js", churn: 0 }] };
@@ -32,7 +37,7 @@ const agentStub =
       };
     }
     if (label === "challenge") return challenge;
-    if (label === "verify") return "verify pass output";
+    if (label === "verify") return verify;
     if (label === "integrate") return integrate;
     // snapshot は戻り値を消費しない経路にフォールバックさせるため undefined のまま。
     return undefined;
@@ -88,6 +93,27 @@ test("T-006 challenge が全件を confirmed と判定した run は challenge_r
   );
   const payload = snapshotPayload(calls);
   assert.equal(payload.challenge_ran, true, "snapshot payload の challenge_ran も true");
+});
+
+test("T-020 verify が結果を返さない run は返り値と snapshot payload の両方に verify_ran=false を持つ", async () => {
+  const { result, calls } = await run({
+    challenge: { verdicts: [{ id: "R-1", verdict: "confirmed" }] },
+    integrate: INTEGRATED,
+    verify: undefined,
+  });
+  assert.equal(result.verify_ran, false, "verify が結果を返さないとき返り値の verify_ran は false");
+  const payload = snapshotPayload(calls);
+  assert.equal(payload.verify_ran, false, "snapshot payload の verify_ran も false");
+});
+
+test("T-021 verify が出力を返した run は verify_ran=true を持ち fail-open した run と区別できる", async () => {
+  const { result, calls } = await run({
+    challenge: { verdicts: [{ id: "R-1", verdict: "confirmed" }] },
+    integrate: INTEGRATED,
+  });
+  assert.equal(result.verify_ran, true, "verify が出力を返したとき verify_ran は true");
+  const payload = snapshotPayload(calls);
+  assert.equal(payload.verify_ran, true, "snapshot payload の verify_ran も true");
 });
 
 test("T-007 Integrate が結果を返さないとき最終 findings は survivors であって triage 前の findings ではない", async () => {
