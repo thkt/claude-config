@@ -68,10 +68,12 @@ Premature interfaces add indirection without value, so consider adding an interf
 
 Concretizes AI-Assisted Development. Keep to what the task requires, without overimplementing extra files, unrequested abstractions, or defensive code. See YAGNI and Occam's Razor.
 
-| Trap                    | Rule                                                                                     |
-| ----------------------- | ---------------------------------------------------------------------------------------- |
-| Unrequested scope       | A bug fix does not clean surrounding code. A small feature does not add config           |
-| Docs on untouched code  | Add comments/types only to code you changed, only where logic is non-obvious             |
-| Defensive code          | Validate at system boundaries (user input, external APIs). Do not guard impossible cases |
-| Speculative abstraction | No helpers or abstractions for one-time use or hypothetical future requirements          |
-| Structure invention     | Split decisions are the user's; directory structure follows existing                     |
+| Trap                                   | Rule                                                                                                                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unrequested scope                      | A bug fix does not clean surrounding code. A small feature does not add config                                                                                      |
+| Docs on untouched code                 | Add comments/types only to code you changed, only where logic is non-obvious                                                                                        |
+| Defensive code                         | Validate at system boundaries (user input, external APIs). Do not guard impossible cases                                                                            |
+| Speculative abstraction                | No helpers or abstractions for one-time use or hypothetical future requirements                                                                                     |
+| Structure invention                    | Split decisions are the user's; directory structure follows existing                                                                                                |
+| Removing or merging existing structure | Read the related DR's Reassessment Triggers and judge whether they are unmet before proposing                                                                       |
+| Importing an external design           | Read your own deliverables (output templates, implementation) first and confirm the failure that design addresses actually occurs. Do not adopt it when it does not |
