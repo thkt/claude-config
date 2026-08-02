@@ -209,7 +209,6 @@ const classify = (p) => {
   if (e === ".rs") return ROUTING["*.rs"];
   if (e === ".py") return ROUTING["*.py"];
   if (e === ".md") return ROUTING["*.md"];
-  if (e === ".yaml" || e === ".yml" || e === ".json") return ROUTING["*.yaml,*.json"];
   if (e === ".css" || e === ".html") return ROUTING["*.css,*.html"];
   return ROUTING.default;
 };
