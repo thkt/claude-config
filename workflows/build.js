@@ -1,7 +1,7 @@
 export const meta = {
   name: "build",
   description:
-    "Autonomous end-to-end build. Taking an issue with a Plan section refined via /think + /issue as input, Load (verbatim fetch -> deterministic id collection -> extract -> validate + id cross-check) / Revalidate / Branch / Code / Cleanup / Verify / Ship run headlessly as deterministic script stages. Code commits each unit separately with the plan's instruction in trailers, and Verify / Ship work from the branch point captured at Branch rather than from HEAD (DR-0088). A plan-less issue stops as no-plan and is handed back for refinement (DR-0089). Correctness checking is a comparison against the plan's own anchors (preconditions, files scope, T-NNN statements, conformance), not an open-ended defect hunt; heavy assurance (/audit, /polish review) is human-invoked on the draft PR (DR-0085).",
+    "Autonomous end-to-end build. Taking an issue with a Plan section refined via /think + /issue as input, Load (verbatim fetch -> deterministic id collection -> extract -> validate + id cross-check) / Revalidate / Branch / Code / Cleanup / Verify / Ship run headlessly as deterministic script stages. Code commits each unit separately with the plan's instruction in trailers, and Verify / Ship work from the branch point captured at Branch rather than from HEAD. A plan-less issue stops as no-plan and is handed back for refinement. Correctness checking is a comparison against the plan's own anchors (preconditions, files scope, T-NNN statements, conformance), not an open-ended defect hunt; heavy assurance (/audit, /polish review) is human-invoked on the draft PR.",
   whenToUse:
     'Implementation of a plan-backed issue. Pass {issue, repo, base?} as args, where issue is a number ("123" / "#123") or URL, repo is the absolute path of the target repository, and base (optional) is both the PR base branch and the starting point of a fresh checkout (for the epic-branch aggregation flow); args without repo stop early as no-repo. An issue without a ## Plan section stops early as no-plan, so write its ## Plan via /think + /issue and relaunch. Step away and come back to a draft PR with recorded assumptions, conformance findings, and deterministic verify results; out-of-scope backlog candidates are returned in the workflow result for you to file via /issue. If in-flight steering is needed, drive the phases interactively.',
   phases: [
@@ -15,8 +15,8 @@ export const meta = {
   ],
 };
 
-// build does not re-plan a human ## Plan section (DR-0084). A plan-less issue stops
-// and is handed back for refinement (DR-0089). Extraction is left to the
+// build does not re-plan a human ## Plan section. A plan-less issue stops
+// and is handed back for refinement. Extraction is left to the
 // LLM; verification belongs to the script. Fan-out stages are delegated to a nested
 // workflow (code).
 
@@ -148,7 +148,7 @@ const validate = (plan, isBug) => {
   // not replicating one. Neither a bare null nor an absent field can carry that reason,
   // so both are blockers;
   // extract is expected to turn the existing `null (理由)` prose format into a kind-tagged
-  // object instead of leaving it null (DR-0093). The field stays out of the schema's
+  // object instead of leaving it null. The field stays out of the schema's
   // required list: when extract drops the key, that would stop as extraction-failed,
   // which carries no blockers text to rewrite the plan from.
   const refModule = plan.reference_module;
@@ -163,7 +163,7 @@ const validate = (plan, isBug) => {
         "{ kind, reason } (kind: module/no-module/new-shape) instead of a bare null",
     );
   } else if (refModule && typeof refModule === "object" && "kind" in refModule) {
-    // A pre-DR-0093 object with no kind field (bare path/files) goes unchecked for
+    // A legacy object with no kind field (bare path/files) goes unchecked for
     // backward compatibility.
     if (refModule.kind === "module") {
       if (!String(refModule.path || "").trim())
@@ -341,7 +341,7 @@ const oversizedUnits = (p) =>
 
 // Implement only verified selections. A plan-less issue has nothing to implement
 // against, so build hands it back for refinement instead of drafting a plan in its
-// place (DR-0089).
+// place.
 const planHeading = body.match(/^##\s+Plan\b.*$/m);
 if (!planHeading) {
   return {
@@ -476,7 +476,7 @@ const refModuleEntries =
 const revalidationTargets = [...preconditions, ...refModuleEntries];
 // Code commits per unit, so HEAD stops being the branch point mid-run and every
 // downstream `git diff HEAD` comes back empty - a silent pass, not a visible failure.
-// Hold the base as the branch point's sha (DR-0088).
+// Hold the base as the branch point's sha.
 const BRANCH_SCHEMA = obj(["branch", "head", "ahead_of_base"], {
   branch: { type: "string", description: "the checked-out branch name, nothing else" },
   head: {
@@ -705,7 +705,7 @@ log(
 );
 
 // ---- Cleanup: simplify skill + test validation ----
-// The review lens does not belong to build (DR-0085); /polish is human-invoked on
+// The review lens does not belong to build; /polish is human-invoked on
 // the PR. Cleanup runs before Verify so the verified tree is the shipped tree.
 const CLEANUP_SCHEMA = obj(["edits", "tests_pass", "stashed"], {
   edits: {
@@ -738,7 +738,7 @@ log(`Cleanup: ${cleanup.edits.length} edit(s), tests_pass=${cleanup.tests_pass}.
 
 // ---- Verify: deterministic selection checks (diff scope + T-NNN presence) ∥ conformance ----
 // Correctness checking compares against the plan's anchors, not a defect hunt
-// (DR-0085). Static analysis belongs to the edit-time gates hooks; heavy assurance
+//. Static analysis belongs to the edit-time gates hooks; heavy assurance
 // is human-invoked /audit on the PR. Both checks fail open and surface on the PR.
 // conformance is the only LLM review; its findings go to a dedicated PR section.
 
@@ -782,7 +782,11 @@ const STRUCTURE_SCHEMA = obj(["reference_checked", "findings"], {
         type: "string",
         description: "the reference module's counterpart path + symbol this deviates from",
       },
-      detail: { type: "string" },
+      detail: {
+        type: "string",
+        description:
+          "what differs from the reference module, in at most 2 sentences, so a reviewer can judge the deviation. location / reference carry where the evidence lives",
+      },
     }),
   },
 });
@@ -814,7 +818,11 @@ const CONFORMANCE_SCHEMA = obj(["spec_found", "findings"], {
         type: "string",
         description: "file:line in the diff, or the scope-creep location",
       },
-      detail: { type: "string" },
+      detail: {
+        type: "string",
+        description:
+          "what diverges from the spec, in at most 2 sentences, so a reviewer can judge the deviation. location / spec_line carry where the evidence lives",
+      },
     }),
   },
 });
@@ -987,19 +995,25 @@ const shipAssumptions = [...(plan.assumptions || [])];
 const shipAnomalies = (code.anomalies || []).map((a) => ({ ...a }));
 const shipConformance = conf.spec_found ? conf.findings.map((f) => ({ ...f })) : [];
 
-// Writing back goes through set(), never touching structured fields.
+// Writing back goes through set(), never touching structured fields. kind splits how
+// hard the text is compressed: a finding's detail can lose prose because location /
+// spec_line carry its evidence separately, while an assumption is what a human vetoes
+// against, so a coarser assumption leaves nothing to judge.
 const slots = [];
 shipAssumptions.forEach((t, i) => {
   if (typeof t === "string" && t.trim())
-    slots.push({ text: t, set: (v) => (shipAssumptions[i] = v) });
+    slots.push({ text: t, kind: "assumption", set: (v) => (shipAssumptions[i] = v) });
 });
 for (const f of shipConformance)
-  if (f.detail && f.detail.trim()) slots.push({ text: f.detail, set: (v) => (f.detail = v) });
+  if (f.detail && f.detail.trim())
+    slots.push({ text: f.detail, kind: "finding", set: (v) => (f.detail = v) });
 const shipStructure = struct.reference_checked ? struct.findings.map((f) => ({ ...f })) : [];
 for (const f of shipStructure)
-  if (f.detail && f.detail.trim()) slots.push({ text: f.detail, set: (v) => (f.detail = v) });
+  if (f.detail && f.detail.trim())
+    slots.push({ text: f.detail, kind: "finding", set: (v) => (f.detail = v) });
 for (const a of shipAnomalies)
-  if (a.notes && a.notes.trim()) slots.push({ text: a.notes, set: (v) => (a.notes = v) });
+  if (a.notes && a.notes.trim())
+    slots.push({ text: a.notes, kind: "anomaly", set: (v) => (a.notes = v) });
 
 if (slots.length) {
   // Force each element to carry back the input id and write back by id: a reordered
@@ -1017,9 +1031,14 @@ if (slots.length) {
   const translated = await agent(
     anchor(
       `Read \`language\` from \`$HOME/.claude/settings.json\` (english if unset). ` +
-        `The following JSON array is the free-text of the PR body's informational sections (assumptions / conformance / anomaly). Translate each element's \`text\` into \`language\` and tighten verbose prose. Run this step even for english.\n` +
-        `Strict: (a) keep file:line, paths, numbers, counts, severity labels, identifiers, and code fragments verbatim. (b) Add no facts and drop none. Translate and compress only; invent no new claim or count. (c) Return \`translations\` with every element carrying the input \`id\`; order is free but each id must match the input.\n` +
-        `Input:\n${JSON.stringify(slots.map((s, i) => ({ id: i, text: s.text })))}`,
+        `The following JSON array is the free-text of the PR body's informational sections (assumptions / conformance / anomaly). Translate each element's \`text\` into \`language\`. Run this step even for english.\n` +
+        `Strict:\n` +
+        `- Keep file:line, paths, numbers, counts, severity labels, identifiers, and code fragments verbatim.\n` +
+        `- Carry every claim in the input across, no more and no fewer.\n` +
+        `- For an element whose \`kind\` is \`finding\`, keep the claim and the pointer to its evidence, within 2 sentences.\n` +
+        `- For an element whose \`kind\` is \`assumption\` or \`anomaly\`, translate at the original grain. A human vetoes against it.\n` +
+        `- Return \`translations\` with every element carrying the input \`id\`; order is free but each id must match the input.\n` +
+        `Input:\n${JSON.stringify(slots.map((s, i) => ({ id: i, kind: s.kind, text: s.text })))}`,
     ),
     {
       label: "translate-tail",
