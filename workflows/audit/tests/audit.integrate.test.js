@@ -52,6 +52,29 @@ const BOTH_CONFIRMED = {
   ],
 };
 
+test("T-023 Integrate に渡す schema だけが source_ids を必須にし、reviewer 用は property ごと持たない", async () => {
+  const { calls } = await run({ challenge: BOTH_CONFIRMED, integrate: { findings: [] } });
+  const item = (label) => callOf(calls, label).opts.schema.properties.findings.items;
+
+  const integrate = item("integrate");
+  assert.ok(
+    integrate.required.includes("source_ids"),
+    "source_ids を required にしないと Integrate が省いても validation を通り、R-N の追跡が run ごとに切れる",
+  );
+
+  const reviewer = item("security");
+  assert.equal(
+    reviewer.properties.source_ids,
+    undefined,
+    "reviewer 用 schema は source_ids を持たず、捏造した id は additionalProperties: false が弾く",
+  );
+  assert.equal(
+    reviewer.required.includes("source_ids"),
+    false,
+    "reviewer に source_ids は求めない",
+  );
+});
+
 test("T-009 Integrate が返す finding の source_ids が返り値の findings に保持される", async () => {
   const { result, calls } = await run({
     challenge: BOTH_CONFIRMED,

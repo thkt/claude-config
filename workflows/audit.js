@@ -250,7 +250,11 @@ if (routingSkillOnlyOverlap.length) {
   );
 }
 
-const FINDINGS_SCHEMA = {
+// Only Integrate returns source_ids. Kept optional on the shared schema, an Integrate run
+// that omits it still passes validation and R-N tracking breaks per run (measured: one run
+// dropped it and put the ids in the summary prose instead). The reviewer variant lacks the
+// property entirely, so additionalProperties: false rejects a reviewer that invents ids.
+const findingsSchema = ({ withSourceIds = false } = {}) => ({
   type: "object",
   additionalProperties: false,
   required: ["findings"],
@@ -260,7 +264,9 @@ const FINDINGS_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["file", "line", "severity", "summary"],
+        required: withSourceIds
+          ? ["file", "line", "severity", "summary", "source_ids"]
+          : ["file", "line", "severity", "summary"],
         properties: {
           file: { type: "string" },
           line: { type: "string" },
@@ -269,17 +275,23 @@ const FINDINGS_SCHEMA = {
             enum: ["critical", "high", "medium", "low"],
           },
           summary: { type: "string" },
-          source_ids: {
-            type: "array",
-            items: { type: "string" },
-            description:
-              "R-N ids of the raw findings this finding absorbed (Integrate output only)",
-          },
+          ...(withSourceIds
+            ? {
+                source_ids: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "every R-N id of the raw findings this finding absorbed",
+                },
+              }
+            : {}),
         },
       },
     },
   },
-};
+});
+
+const FINDINGS_SCHEMA = findingsSchema();
+const INTEGRATED_SCHEMA = findingsSchema({ withSourceIds: true });
 
 const ROUTE_SCHEMA = {
   type: "object",
@@ -662,7 +674,7 @@ const integrated = await agent(
     label: "integrate",
     model: "opus",
     effort: "high",
-    schema: FINDINGS_SCHEMA,
+    schema: INTEGRATED_SCHEMA,
   },
 );
 

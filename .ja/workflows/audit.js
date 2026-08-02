@@ -248,7 +248,11 @@ if (routingSkillOnlyOverlap.length) {
   );
 }
 
-const FINDINGS_SCHEMA = {
+// source_ids を返すのは Integrate だけ。共有 schema に optional で置くと Integrate が省いても
+// validation を通り、R-N の追跡が run ごとに切れる (実測で 1 run 落ち、id は summary の散文へ
+// 流れた)。reviewer 用は property ごと持たないので、reviewer が id を捏造して返せば
+// additionalProperties: false が弾く。
+const findingsSchema = ({ withSourceIds = false } = {}) => ({
   type: "object",
   additionalProperties: false,
   required: ["findings"],
@@ -258,7 +262,9 @@ const FINDINGS_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["file", "line", "severity", "summary"],
+        required: withSourceIds
+          ? ["file", "line", "severity", "summary", "source_ids"]
+          : ["file", "line", "severity", "summary"],
         properties: {
           file: { type: "string" },
           line: { type: "string" },
@@ -267,17 +273,23 @@ const FINDINGS_SCHEMA = {
             enum: ["critical", "high", "medium", "low"],
           },
           summary: { type: "string" },
-          source_ids: {
-            type: "array",
-            items: { type: "string" },
-            description:
-              "R-N ids of the raw findings this finding absorbed (Integrate output only)",
-          },
+          ...(withSourceIds
+            ? {
+                source_ids: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "この finding が吸収した raw finding の R-N id を全件",
+                },
+              }
+            : {}),
         },
       },
     },
   },
-};
+});
+
+const FINDINGS_SCHEMA = findingsSchema();
+const INTEGRATED_SCHEMA = findingsSchema({ withSourceIds: true });
 
 const ROUTE_SCHEMA = {
   type: "object",
@@ -657,7 +669,7 @@ const integrated = await agent(
     label: "integrate",
     model: "opus",
     effort: "high",
-    schema: FINDINGS_SCHEMA,
+    schema: INTEGRATED_SCHEMA,
   },
 );
 
