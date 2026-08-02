@@ -737,8 +737,8 @@ const cleanup = (await agent(
 log(`Cleanup: ${cleanup.edits.length} edit(s), tests_pass=${cleanup.tests_pass}.`);
 
 // ---- Verify: deterministic selection checks (diff scope + T-NNN presence) ∥ conformance ----
-// Correctness checking compares against the plan's anchors, not a defect hunt
-//. Static analysis belongs to the edit-time gates hooks; heavy assurance
+// Correctness checking compares against the plan's anchors, not a defect hunt.
+// Static analysis belongs to the edit-time gates hooks; heavy assurance
 // is human-invoked /audit on the PR. Both checks fail open and surface on the PR.
 // conformance is the only LLM review; its findings go to a dedicated PR section.
 
