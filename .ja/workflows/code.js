@@ -1,7 +1,7 @@
 export const meta = {
   name: "code",
   description:
-    '構造化 plan (units / test_command) を受け取り、unit ごとに script 制御で実装する TDD workflow。test scenario を持つ unit は Red → Green で実装し、tests が空の unit (docs / 設定など検証可能な振る舞いが無いもの) は直接実装 1 段で扱う。TDD の要否は runtime でなく plan が選択する。未確認の Red は anomaly として記録し、最後に実装へ関与していない独立 agent が全 suite + lint + type-check を検証する。commit: true のとき、各 unit は plan の指示を trailer に載せた独立コミットとして着地する (DR-0088)。単独でも build からの workflow("code") でも呼べる。',
+    '構造化 plan (units / test_command) を受け取り、unit ごとに script 制御で実装する TDD workflow。test scenario を持つ unit は Red → Green で実装し、tests が空の unit (docs / 設定など検証可能な振る舞いが無いもの) は直接実装 1 段で扱う。TDD の要否は runtime でなく plan が選択する。未確認の Red は anomaly として記録し、最後に実装へ関与していない独立 agent が全 suite + lint + type-check を検証する。commit: true のとき、各 unit は plan の指示を trailer に載せた独立コミットとして着地する。単独でも build からの workflow("code") でも呼べる。',
   whenToUse:
     "headless の plan 実装。args は {plan, repo, model, commit, issue, untracked_baseline}。plan は units / test_command を持つ構造化 plan (think skill が生成する形)。model (任意) は実装 agent にのみ伝播する (default は sonnet)。commit: true は unit の完了ごとにコミットし、issue / untracked_baseline は commit trailer と never-stage 集合になる。実装 agent は effort high で走る。",
   phases: [{ title: "Implement" }, { title: "Verify" }],
@@ -41,7 +41,7 @@ const anchor = (p) =>
     : p;
 
 // コミットを opt-in にするのは、単独起動の呼び出し元が diff 基準を HEAD から外していない
-// ため。HEAD が動くと呼び出し元の検証が無言で空を見る (DR-0088)。
+// ため。HEAD が動くと呼び出し元の検証が無言で空を見る。
 const commitPerUnit = input.commit === true;
 const issueRef = String(input.issue || "")
   .replace(/^#/, "")
@@ -139,7 +139,7 @@ const commitBody = (unit, tests) =>
   ].join("\n");
 
 // working tree がその unit の作業だけを持っている間に取る。混ざった後の分割は hunk の帰属
-// を LLM に推測させることになる。コミット失敗 (pre-commit gate のブロック、DR-0064) で
+// を LLM に推測させることになる。コミット失敗 (pre-commit gate のブロック) で
 // stop しないのは、作業がツリーに残り呼び出し元の最終コミットが拾うため。
 const commitUnit = async (unit, tests, testFiles) => {
   if (!commitPerUnit) return;
@@ -204,7 +204,7 @@ const referenceModuleCtx = ref?.path
     `参照モジュールからの逸脱は plan が明記したときのみ許され、逸脱は結果に記す。\n`
   : "";
 
-// 規約インデックス (docs/REFERENCE_INDEX.md) を unit ループ前に 1 回だけ読む (DR-0091)。
+// 規約インデックス (docs/REFERENCE_INDEX.md) を unit ループ前に 1 回だけ読む。
 // リファレンスの発見を LLM の自発探索に任せると探索スキップという脱落点が増え、読了の検証も
 // できないため、読む行為を明示の agent 呼び出しにし、units[].files との glob 照合は script が
 // 握って決定的にする。
@@ -362,7 +362,7 @@ for (const unit of units) {
     `結果を報告する前に、各 claim をこのセッションの tool result と突き合わせる。evidence を指せる作業のみ報告し、未検証のものは notes にその旨を書く。\n` +
     `単体テストの都合を理由に機能の一部を落とすことは禁止。Router / Suspense / 権限 context が要るという理由で、共有コンポーネント・データ取得・遷移導線を省いてはならない。テスト側でその境界を差し替える。plan に無い先送りは禁止で、コード内コメントで「別ユニット」「後続に委ねる」と宣言して実装を狭めることも禁止。contract / files が求める実装の一部をやむを得ず実装しない場合は deferred に列挙する (anomaly として記録され PR に surface される)。\n` +
     // 実装中の advisor 相談は build の設計と噛み合わない。blocker は anomaly として記録して
-    // 進み、重い assurance は draft PR 上で人間が起動する (DR-0085, #221)。
+    // 進み、重い assurance は draft PR 上で人間が起動する。
     `設計の曖昧さや環境起因の blocker に当たっても advisor tool は呼ばない。自分の解析だけで最後まで進み、下した判断を notes に、実装を狭めた分を deferred に書いて anomaly 記録に委ねる。\n` +
     (unit.seam === true
       ? `この unit は plan の seam unit で、各 unit が単体では緑のまま結線されていない状態を捕まえるのがそのテストの役割。unit 間の境界を跨いで実モジュールを動かし、偽装はシステム外部との I/O に限る。ここで内部の層を stub すると unit の意味が消える。先行 unit が作った部品どうしの接続 (呼び出し、遷移、データの受け渡し) が存在し、実際に到達可能であることを assert する。末端の部品が単体で動くことの確認では足りない。\n`
