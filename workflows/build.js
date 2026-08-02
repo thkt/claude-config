@@ -785,7 +785,7 @@ const STRUCTURE_SCHEMA = obj(["reference_checked", "findings"], {
       detail: {
         type: "string",
         description:
-          "the deviation itself in at most 2 sentences. location / reference already carry the evidence, so restate neither them nor the reasoning that led to the conclusion",
+          "what differs from the reference module, in at most 2 sentences, so a reviewer can judge the deviation. location / reference carry where the evidence lives",
       },
     }),
   },
@@ -821,7 +821,7 @@ const CONFORMANCE_SCHEMA = obj(["spec_found", "findings"], {
       detail: {
         type: "string",
         description:
-          "the deviation itself in at most 2 sentences. location / spec_line already carry the evidence, so restate neither them nor the reasoning that led to the conclusion",
+          "what diverges from the spec, in at most 2 sentences, so a reviewer can judge the deviation. location / spec_line carry where the evidence lives",
       },
     }),
   },
@@ -1034,9 +1034,9 @@ if (slots.length) {
         `The following JSON array is the free-text of the PR body's informational sections (assumptions / conformance / anomaly). Translate each element's \`text\` into \`language\`. Run this step even for english.\n` +
         `Strict:\n` +
         `- Keep file:line, paths, numbers, counts, severity labels, identifiers, and code fragments verbatim.\n` +
-        `- Add no claim and drop none.\n` +
-        `- Compress an element whose \`kind\` is \`finding\` to at most 2 sentences, by cutting preamble, restatement, and the reasoning that led to the conclusion; never by cutting a claim itself.\n` +
-        `- Translate an element whose \`kind\` is \`assumption\` or \`anomaly\` only, keeping its original grain.\n` +
+        `- Carry every claim in the input across, no more and no fewer.\n` +
+        `- For an element whose \`kind\` is \`finding\`, keep the claim and the pointer to its evidence, within 2 sentences.\n` +
+        `- For an element whose \`kind\` is \`assumption\` or \`anomaly\`, translate at the original grain. A human vetoes against it.\n` +
         `- Return \`translations\` with every element carrying the input \`id\`; order is free but each id must match the input.\n` +
         `Input:\n${JSON.stringify(slots.map((s, i) => ({ id: i, kind: s.kind, text: s.text })))}`,
     ),

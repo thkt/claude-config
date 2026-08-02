@@ -4,10 +4,10 @@
 Deterministically render the build workflow's draft-PR fact tail from structured
 data build.js already holds. The PR body is a fail-closed surface -- it must
 always carry the verify result. Heavier assurance (/audit, /polish review) stays
-human-invoked (DR-0085), but its invitation is not printed on the PR: the person
-reading it is the one who launched the build, and re-reading the same command
-hint every time buys nothing. That the build carries no deep review is what
-tail_header says. The agent writes only the lead "## Summary" (the human
+human-invoked (DR-0085). What the tail carries is the boundary of that assurance:
+tail_header states that the build holds no deep review. The person reading it is
+the one who launched the build, so what they need is the boundary, not the
+command to run. The agent writes only the lead "## Summary" (the human
 reviewer's entry point) and appends this tail below it.
 
 Format is deliberately terse and markdown-structured: a one-line label naming the
@@ -23,9 +23,9 @@ non-zero deviation count live in the status line.
 
 The failure log (a nested <details>) and the informational lists (assumptions,
 scope deviations, missing test statements, anomalies) are shown only when
-non-empty, so a clean run stays short instead of repeating "None" per section. A
-run with nothing to show has nothing to fold, so it drops the <details> and keeps
-the status line alone. A conformance / structure
+non-empty, so a clean run stays short instead of repeating "None" per section.
+Only a run with something to fold gets a <details>; one with nothing to show
+keeps the status line alone. A conformance / structure
 finding puts its severity + category in an inline-code lead and sends the location
 and the quoted source to a continuation line; packed onto one line the severity
 buries and the reader cannot tell where the finding ends and its evidence begins.
@@ -235,8 +235,8 @@ def render(payload):
     )
 
     # Blank lines around the folded content keep GitHub rendering the markdown
-    # inside the HTML <details> block. A run with nothing to show has nothing to
-    # fold, so it keeps the status line alone rather than an empty <details>.
+    # inside the HTML <details> block. Only a run with something to fold gets a
+    # <details>; an empty one asks the reviewer to open something with nothing in it.
     out.append(
         f"<details>\n<summary>{summary}</summary>\n\n" + "\n\n".join(folded) + "\n\n</details>"
         if folded

@@ -756,7 +756,7 @@ const STRUCTURE_SCHEMA = obj(["reference_checked", "findings"], {
       detail: {
         type: "string",
         description:
-          "逸脱そのものを 2 文以内で書く。根拠は location / reference が持つので、そこに書いた内容や結論に至る推論は再説明しない",
+          "レビュアーが逸脱を判断できるよう、参照モジュールと何が違うかを 2 文以内で書く。根拠の所在は location と reference が持つ",
       },
     }),
   },
@@ -792,7 +792,7 @@ const CONFORMANCE_SCHEMA = obj(["spec_found", "findings"], {
       detail: {
         type: "string",
         description:
-          "逸脱そのものを 2 文以内で書く。根拠は location / spec_line が持つので、そこに書いた内容や結論に至る推論は再説明しない",
+          "レビュアーが逸脱を判断できるよう、何が spec と食い違うかを 2 文以内で書く。根拠の所在は location と spec_line が持つ",
       },
     }),
   },
@@ -997,9 +997,9 @@ if (slots.length) {
         `以下の JSON 配列は PR body の情報系セクション (assumptions / conformance / anomaly) の自由記述。各要素の \`text\` を \`language\` へ翻訳する。english でもこの step を実行する。\n` +
         `厳守:\n` +
         `- file:line、パス、数値、件数、severity ラベル、識別子、コード片は逐語で保持する。\n` +
-        `- 主張を足さず落とさない。\n` +
-        `- \`kind\` が \`finding\` の要素は 2 文以内に圧縮する。前置きと再説明と結論に至る推論を削って行い、主張そのものは削らない。\n` +
-        `- \`kind\` が \`assumption\` または \`anomaly\` の要素は翻訳のみ行い、元の粒度を保つ。\n` +
+        `- 入力にある主張を過不足なく訳す。\n` +
+        `- \`kind\` が \`finding\` の要素は、主張と根拠の指し先だけを残して 2 文以内にする。\n` +
+        `- \`kind\` が \`assumption\` または \`anomaly\` の要素は、元の粒度のまま訳す。人間が veto を判断する材料になる。\n` +
         `- すべての要素に入力の \`id\` を付けて \`translations\` を返す。順序は自由だが id は入力と一致させる。\n` +
         `入力:\n${JSON.stringify(slots.map((s, i) => ({ id: i, kind: s.kind, text: s.text })))}`,
     ),

@@ -3,9 +3,9 @@
 
 build.js が既に保持している構造化データから、build workflow の draft-PR fact tail を
 決定的に描画する。PR body は fail-closed な面であり、verify 結果を常に載せる。重い担保
-(/audit、/polish review) は人間が起動する (DR-0085) が、その案内は PR に載せない。
-読むのは build を起動した本人であり、毎回同じ操作案内を読む価値がない。build が深い
-レビューを含まないことは tail_header が言う。agent は先頭の "## Summary"
+(/audit、/polish review) は人間が起動する (DR-0085)。tail が載せるのはその担保の
+範囲までで、build が深いレビューを含まないことを tail_header が言う。読むのは build を
+起動した本人なので、要るのは起動方法でなく範囲。agent は先頭の "## Summary"
 (人間レビュアーの入口) だけを書き、この tail をその下に append する。
 
 フォーマットは意図的に簡潔で markdown 構造。自動生成ブロックを示す 1 行ラベル、
@@ -19,8 +19,8 @@ Closes 行、そして status 行を <summary> に持つ折りたたみ <details
 
 失敗ログ (入れ子の <details>) と情報的なリスト (assumptions、scope deviations、
 missing test statements、anomalies) は非空のときだけ出すので、clean run では
-セクションごとに「None」を繰り返さず短いままになる。出すものが 1 つも無い run は畳む
-対象が無いため <details> を作らず、status 行だけを置く。conformance / structure の finding は severity + category を
+セクションごとに「None」を繰り返さず短いままになる。<details> を作るのは畳む対象がある
+run だけで、出すものが 1 つも無い run は status 行だけを置く。conformance / structure の finding は severity + category を
 inline code の見出しに置き、location と出典行を継続行へ送る。1 行に詰めると severity が
 埋もれ、どこまでが指摘でどこからが根拠か読み取れなくなる。太字はセクションラベル専用に
 残すことで、セクションと finding の階層が視覚的に 1 段付く。
@@ -225,8 +225,8 @@ def render(payload):
     )
 
     # 折りたたみ内容の前後に空行を置くことで、GitHub は HTML <details> ブロック内の
-    # markdown を描画し続ける。出すものが無い run は畳む対象が無いので、開いても空の
-    # <details> を作らず status 行だけを置く。
+    # markdown を描画し続ける。<details> を作るのは畳む対象がある run だけ。開いても
+    # 空の <details> は、レビュアーに中身の無いものを開かせる。
     out.append(
         f"<details>\n<summary>{summary}</summary>\n\n" + "\n\n".join(folded) + "\n\n</details>"
         if folded
