@@ -1,4 +1,4 @@
-// DR-0085: build.js が Load (fetch -> Plan 節必須 -> 決定論 id 収集 -> extract -> validate +
+// build.js が Load (fetch -> Plan 節必須 -> 決定論 id 収集 -> extract -> validate +
 // id cross-check) / Revalidate / Branch / Code (sonnet) / Verify (決定論スコープ + T-NNN 照合 ∥
 // conformance) / Polish (cleanup のみ) / Ship の実行ループになることの行動検証。
 // audit fan-out / fix loop の不在・fail-close 分岐・phase 順・stopped 値 snapshot を自動検証する。
@@ -135,7 +135,7 @@ const makeStubs = ({
       }
       case "branch":
         // head は分岐点 sha。既定で返すことで happy path は本番と同じ per-unit commit
-        // 経路 (DR-0088) を通る。sha 以外を返す override で fallback 経路を踏める。
+        // 経路 を通る。sha 以外を返す override で fallback 経路を踏める。
         return branch ?? { branch: "feat/sample-branch", head: "a1b2c3d4e5f6a7b8" };
       case "untracked":
         return untracked ?? { untracked: [] };
@@ -161,7 +161,7 @@ const makeStubs = ({
         }
       );
     // 実 runtime の意味論: 未知の workflow 名は throw する。sibling() は code を先に試して
-    // ここで解決するので build:code へ fallback しない。audit は DR-0085 で build から
+    // ここで解決するので build:code へ fallback しない。audit は build から
     // 外れたので、呼ばれたらこの throw が (fallback ではなく) テストを落とす。
     throw new Error(`unknown workflow: ${name}`);
   },
@@ -231,7 +231,7 @@ test("数字単体 / #数字 / issue URL を repo 付き args で渡すと同じ
 });
 
 // Plan 節なし issue は plan を代わりに生成せず stopped: no-plan で止まり、issue の
-// 精緻化に差し戻す (DR-0089)。why には /think と /issue の再実行経路が載る。
+// 精緻化に差し戻す。why には /think と /issue の再実行経路が載る。
 test("Plan 節なし本文は stopped: no-plan で止まり plan を生成しない", async () => {
   const noPlan = await runWorkflow(buildJs, {
     args,
@@ -975,7 +975,7 @@ test("happy path の phase 順が Load → Revalidate → Branch → Code → Cl
   assert.equal(cleanupCalls[0].opts.model, "sonnet", "cleanup agent は sonnet 固定");
 
   // sibling() は素の dev tree 形 (code) を先に試し、解決すれば build:code に fallback しない。
-  // dev tree では code が返るので capture には code のみが現れる。audit は集合に現れない (DR-0085)。
+  // dev tree では code が返るので capture には code のみが現れる。audit は集合に現れない。
   const names = new Set(calls.workflow.map((c) => c.name));
   assert.deepEqual(
     [...names].sort(),
@@ -987,7 +987,7 @@ test("happy path の phase 順が Load → Revalidate → Branch → Code → Cl
   }
 });
 
-// ---- Verify: 決定論スコープ検査 + T-NNN 言明照合 (DR-0085 の選択ベース担保) ----
+// ---- Verify: 決定論スコープ検査 + T-NNN 言明照合 (選択ベースの担保) ----
 
 test("Verify のスコープ検査が plan 外の diff file を surface し、.claude/workspace/ 配下は除外する", async () => {
   const { calls, result } = await runWorkflow(buildJs, {
@@ -1113,7 +1113,7 @@ test("tests 空の unit は invalid-plan にならず、言明 0 件なら prese
   assert.ok(calls.phase.includes("Ship"), "直接実装 unit だけの plan でも Ship まで完走する");
 });
 
-// ---- DR-0088: unit ごとの commit と分岐点基準の diff ----
+// ---- unit ごとの commit と分岐点基準の diff ----
 // Code が unit ごとに commit すると HEAD は分岐点でなくなる。Verify の 3 つの review が
 // `git diff HEAD` のままだと差分が空になり、scope 逸脱も conformance も無言で 0 件に
 // なる (可視の失敗ではなく silent pass)。基準を Branch が返す分岐点 sha に固定する。
@@ -1228,11 +1228,11 @@ test("stopped 値集合の snapshot が 13 値と exact match し、audit 経路
       "revalidate-failed",
       "revalidate-incomplete",
     ],
-    "stopped リテラル集合が 13 値と exact match する (Plan 節なしの差し戻しで no-plan、plan 自律生成の停止値 2 つは DR-0089 で消える)",
+    "stopped リテラル集合が 13 値と exact match する (Plan 節なしの差し戻しで no-plan、plan 自律生成の停止値 2 つは消えている)",
   );
   const explore = source.match(/agentType:\s*"Explore"/g) || [];
   assert.equal(explore.length, 0, 'agentType: "Explore" が 0 件');
-  // DR-0085 の regression guard: audit fan-out / fix loop の残骸が無い。
+  // regression guard: audit fan-out / fix loop の残骸が無い。
   assert.ok(!source.includes('sibling("audit"'), "audit workflow の呼び出しが残っていない");
   assert.ok(!source.includes("MAX_FIX_ROUNDS"), "fix → 再監査 loop が残っていない");
   assert.ok(!source.includes("reaudited"), "reaudited flag が残っていない");

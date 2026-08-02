@@ -1,7 +1,7 @@
 export const meta = {
   name: "build",
   description:
-    "自律的な end-to-end build。/think + /issue で精緻化した Plan 節付き issue を入力に、Load (逐語 fetch → 決定論 id 収集 → 抽出 → validate + id クロスチェック) / Revalidate / Branch / Code / Cleanup / Verify / Ship を headless の決定論 script stage として実行する。Code は unit ごとに plan の指示を trailer に載せてコミットし、Verify / Ship は HEAD でなく Branch で捕まえた分岐点を基準にする (DR-0088)。Plan 節なし issue は no-plan で停止し、issue の精緻化に差し戻す (DR-0089)。正しさの確認は plan 自身のアンカー (前提、files スコープ、T-NNN 言明、conformance) との比較であり、開放的な欠陥探索ではない。重い担保 (/audit、/polish review) は draft PR に対して人間が起動する (DR-0085)。",
+    "自律的な end-to-end build。/think + /issue で精緻化した Plan 節付き issue を入力に、Load (逐語 fetch → 決定論 id 収集 → 抽出 → validate + id クロスチェック) / Revalidate / Branch / Code / Cleanup / Verify / Ship を headless の決定論 script stage として実行する。Code は unit ごとに plan の指示を trailer に載せてコミットし、Verify / Ship は HEAD でなく Branch で捕まえた分岐点を基準にする。Plan 節なし issue は no-plan で停止し、issue の精緻化に差し戻す。正しさの確認は plan 自身のアンカー (前提、files スコープ、T-NNN 言明、conformance) との比較であり、開放的な欠陥探索ではない。重い担保 (/audit、/polish review) は draft PR に対して人間が起動する。",
   whenToUse:
     'plan 付き issue の実装。args には {issue, repo, base?} を渡す (issue は番号 "123" / "#123" か URL、repo は対象リポジトリの絶対パス、base は任意で PR の base ブランチと新規 checkout の起点。epic ブランチ集約フローで使う)。repo の無い args は no-repo で早期 stop する。## Plan 節の無い issue は no-plan で早期 stop するので、/think + /issue で ## Plan 節を書いてから再実行する。離席して戻れば、前提 / conformance findings / 決定論 verify 結果を記録した draft PR ができている。スコープ外の backlog 候補は workflow の戻り値で返り、/issue で起票する。途中で舵を取る場合は phase を対話的に進める。',
   phases: [
@@ -15,8 +15,8 @@ export const meta = {
   ],
 };
 
-// build は人間の ## Plan 節を再計画しない (DR-0084)。Plan 節なし issue は no-plan で
-// 停止し、issue の精緻化に差し戻す (DR-0089)。抽出は LLM に委ね、検証は script が持つ。
+// build は人間の ## Plan 節を再計画しない。Plan 節なし issue は no-plan で
+// 停止し、issue の精緻化に差し戻す。抽出は LLM に委ね、検証は script が持つ。
 // fan-out を持つ stage は入れ子 workflow (code) に委譲する。
 
 phase("Load");
@@ -143,7 +143,7 @@ const validate = (plan, isBug) => {
   // null もフィールドごとの欠落もその理由を運べないので blocker にする。schema の
   // required には入れない。extract が key を落としたとき blockers 文言を持たない
   // extraction-failed で止まり、書き直す手がかりが残らないため。extract は既存の
-  // `null (理由)` 書式を null のまま残さず kind 付き object へ変換する想定 (DR-0093)。
+  // `null (理由)` 書式を null のまま残さず kind 付き object へ変換する想定。
   const refModule = plan.reference_module;
   if (refModule === undefined) {
     errors.push(
@@ -156,7 +156,7 @@ const validate = (plan, isBug) => {
         "{ kind, reason } (kind: module/no-module/new-shape) の object として記録する",
     );
   } else if (refModule && typeof refModule === "object" && "kind" in refModule) {
-    // kind フィールドの無い DR-0093 以前の object (path/files だけ) は後方互換のため
+    // kind フィールドの無い旧形式の object (path/files だけ) は後方互換のため
     // 検査しない。
     if (refModule.kind === "module") {
       if (!String(refModule.path || "").trim())
@@ -325,7 +325,7 @@ const oversizedUnits = (p) =>
   });
 
 // 検証済みの選択だけを実装する。Plan 節が無い issue には実装対象が無いので、plan を
-// 代わりに生成せず issue の精緻化に差し戻す (DR-0089)。
+// 代わりに生成せず issue の精緻化に差し戻す。
 const planHeading = body.match(/^##\s+Plan\b.*$/m);
 if (!planHeading) {
   return {
@@ -453,7 +453,7 @@ const refModuleEntries =
 const revalidationTargets = [...preconditions, ...refModuleEntries];
 // Code が unit ごとに commit するため run の途中で HEAD は分岐点でなくなり、下流の
 // `git diff HEAD` はすべて空を返す。可視の失敗でなく無言の pass になるので、基準を
-// 分岐点の sha で持つ (DR-0088)。
+// 分岐点の sha で持つ。
 const BRANCH_SCHEMA = obj(["branch", "head", "ahead_of_base"], {
   branch: { type: "string", description: "checkout 済みブランチ名のみ" },
   head: {
@@ -676,7 +676,7 @@ log(
 );
 
 // ---- Cleanup: simplify skill + test 検証 ----
-// review lens は build に置かない (DR-0085)。/polish は人間が PR に起動する。cleanup
+// review lens は build に置かない。/polish は人間が PR に起動する。cleanup
 // を Verify の前に走らせ、検証の対象を出荷する tree にする。
 const CLEANUP_SCHEMA = obj(["edits", "tests_pass", "stashed"], {
   edits: {
@@ -708,7 +708,7 @@ const cleanup = (await agent(
 log(`Cleanup: 編集 ${cleanup.edits.length} 件、tests_pass=${cleanup.tests_pass}。`);
 
 // ---- Verify: 決定論の選択チェック (diff スコープ + T-NNN 照合) ∥ conformance ----
-// 正しさの確認は欠陥探索でなく plan のアンカーとの比較で行う (DR-0085)。静的解析は
+// 正しさの確認は欠陥探索でなく plan のアンカーとの比較で行う。静的解析は
 // edit 時の gates hooks、重い担保は人間の /audit が受け持つ。2 チェックは fail-open で
 // PR に surface する。conformance は唯一の LLM レビューで、findings は専用の PR 節に
 // 出して他へ混ぜない。
