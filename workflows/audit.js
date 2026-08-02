@@ -590,6 +590,16 @@ for (const f of rawFindings) {
 log(
   `triage: ${survivors.length} survived / ${needsContext.length} needs_context / no_verdict: ${noVerdict} (of ${rawFindings.length} total)`,
 );
+// challenge_ran distinguishes "challenge actually returned verdicts" from the fail-open
+// path (challenged is null/undefined -> verdictById is empty -> every finding defaults to
+// confirmed via no_verdict); tally carries the triage counts for callers who want them
+// without re-deriving from survivors / needsContext / noVerdict.
+const challengeRan = !!(challenged && Array.isArray(challenged.verdicts));
+const tally = {
+  survived: survivors.length,
+  needs_context: needsContext.length,
+  no_verdict: noVerdict,
+};
 
 phase("Integrate");
 // Membership is already decided by the triage loop above: Integrate's input is survivors
@@ -634,6 +644,8 @@ return {
   findings: finalFindings,
   survivors,
   needs_context: needsContext,
+  challenge_ran: challengeRan,
+  tally,
   assignments,
   skipped,
   zero_reviewer_files: zeroReviewerFiles,

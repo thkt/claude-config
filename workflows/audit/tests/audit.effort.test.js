@@ -56,3 +56,49 @@ test("challenge / verify agent の effort が xhigh である", async () => {
   assert.equal(challengeCalls[0].opts.effort, "xhigh", "challenge agent の effort が xhigh");
   assert.equal(verifyCalls[0].opts.effort, "xhigh", "verify agent の effort が xhigh");
 });
+
+// challenge の stub が verdicts を返す経路が fail-open (challenge 未応答で全件 confirmed 扱い) と
+// 区別できる形で返り値に残ることを確認する。stub の challenge 分岐は polish.js /
+// audit.js 双方の VERDICTS_SCHEMA と同じ { verdicts: [{ id, verdict, severity, why }] } 形
+// (rawFindings の id は R-1 = security / R-2 = silence の順、audit.triage.test.js と同じ組み方)。
+const tallyAgentStub = (prompt, opts) => {
+  const label = opts && opts.label;
+  if (label === "route") {
+    return { files: [{ path: "sample.js", churn: 0 }] };
+  }
+  if (label === "security" || label === "silence") {
+    return {
+      findings: [{ file: "sample.js", line: "1", severity: "high", summary: `${label} finding` }],
+    };
+  }
+  if (label === "challenge") {
+    return {
+      verdicts: [
+        { id: "R-1", verdict: "confirmed" },
+        { id: "R-2", verdict: "confirmed" },
+      ],
+    };
+  }
+  if (label === "verify") return "verify pass output";
+  if (label === "integrate") {
+    return {
+      findings: [{ file: "sample.js", line: "1", severity: "high", summary: "integrated finding" }],
+    };
+  }
+  return undefined;
+};
+
+test("challenge stub が verdicts を返す run は返り値に challenge_ran=true と件数の入った tally を持つ", async () => {
+  const { result } = await runWorkflow(auditJs, {
+    args: { focus: "security", skipPreflight: true },
+    stubs: { agent: tallyAgentStub },
+  });
+  assert.equal(
+    result.challenge_ran,
+    true,
+    "challenge stub が verdicts を返したら challenge_ran が true (fail-open との区別)",
+  );
+  assert.equal(result.tally.survived, 2, "confirmed 2 件が tally.survived に計上される");
+  assert.equal(result.tally.needs_context, 0, "needs_context は 0 件");
+  assert.equal(result.tally.no_verdict, 0, "verdict 欠落は 0 件");
+});
