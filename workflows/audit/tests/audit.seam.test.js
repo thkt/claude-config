@@ -87,6 +87,13 @@ test("T-017 reviewer の findings を実 snapshot.py まで流すと、書き出
   );
   assert.ok(record.tally, "record に verdict tally が載る");
   assert.equal(record.tally.survived, 2, "tally.survived に confirmed 2 件が計上される");
+  // AC は集約値でなく「finding ごとの verdict が載る」を求める。payload ではなく実際に
+  // 書き出された record 側で、id と verdict が対応していることを確かめる。
+  assert.equal(
+    record.raw_findings.find((f) => f.id === "R-1").verdict,
+    "confirmed",
+    "書き出された record の finding ごとに verdict が載る",
+  );
 });
 
 test("T-018 fail-open した run を実 snapshot.py まで流すと、書き出された record に degraded 印が載り件数の入った tally は載らない", async () => {
