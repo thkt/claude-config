@@ -10,6 +10,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { runWorkflow } from "../../_lib/run-workflow.js";
+import { snapshotPayload } from "./_fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const auditJs = join(here, "..", "..", "audit.js");
@@ -42,11 +43,9 @@ const INTEGRATED = {
 };
 
 // audit.js の writeSnapshot は payload を BEGIN/END marker で囲んで prompt に埋め込む
-// (audit.js の fenced 参照)。marker は run ごとの nonce を持つので、後方参照で BEGIN と
-// END の nonce 一致を要求する。snapshot ラベルの呼び出しだけ実 snapshot.py に流す。
+// (audit.js の fenced 参照)。marker からの抽出は _fixtures.js の snapshotPayload に委ね、
+// ここでは抽出済み payload を実 snapshot.py の stdin へ渡す経路だけを担う。
 const run = async (routeFiles, { security, silence, challenge, integrate } = {}) => {
-  let record;
-  let counts;
   const agentStub = (prompt, opts) => {
     const label = opts && opts.label;
     if (label === "route") return { files: routeFiles };
@@ -55,20 +54,14 @@ const run = async (routeFiles, { security, silence, challenge, integrate } = {})
     if (label === "challenge") return challenge;
     if (label === "verify") return "verify pass output";
     if (label === "integrate") return integrate;
-    if (label === "snapshot") {
-      const match = prompt.match(
-        /----- BEGIN [A-Z0-9_ ]+ ([A-Za-z0-9]+) -----\n([\s\S]*?)\n----- END [A-Z0-9_ ]+ \1 -----/,
-      );
-      assert.ok(match, "snapshot prompt に payload が marker で囲まれて乗る");
-      ({ record, counts } = runSnapshot(match[2]));
-      return undefined;
-    }
     return undefined;
   };
   const { result, calls } = await runWorkflow(auditJs, {
     args: { focus: "security", skipPreflight: true },
     stubs: { agent: agentStub },
   });
+  const payload = snapshotPayload(calls);
+  const { record, counts } = payload ? runSnapshot(JSON.stringify(payload)) : {};
   return { result, calls, record, counts };
 };
 
@@ -172,6 +165,33 @@ test("T-007 summary に END marker を仕込んだ finding を実 snapshot.py �
     2,
     "偽装 marker を含む finding があっても、書き出された record の raw_findings は security 1 件 + silence 1 件の 2 件のまま",
   );
+});
+
+// U-003 T-006: degradation と seam がそれぞれ自前で持っていた fence 抽出 regex を
+// _fixtures.js の snapshotPayload に一本化したことをソースの文字列で固定する。振る舞い
+// 経由の assert では「2 ファイルとも動く」までしか見えず、抽出定義が実際に 1 箇所へ
+// 集約されたかは分からないため、ソースを直接読む。
+test("T-006 degradation と seam の payload 抽出が `workflows/audit/tests/_fixtures.js` の同一 export を参照し、prompt の文言に依存する regex がこの 2 ファイルに残らない", () => {
+  const sources = {
+    "audit.degradation.test.js": readFileSync(join(here, "audit.degradation.test.js"), "utf8"),
+    "audit.seam.test.js": readFileSync(join(here, "audit.seam.test.js"), "utf8"),
+  };
+  // 文字クラスをここに正規表現リテラルとして直接書くと、この行自身のソース文字列に
+  // 連続した同じ並びが現れ、audit.seam.test.js を走査したときに自己マッチしてしまう。
+  // 2 つの文字列に分けて結合し、静的ソース上には連続した並びを残さない。
+  const FENCE_CHAR_CLASS_RE = new RegExp("\\[" + "A-Z0-9_ " + "\\]");
+  for (const [name, src] of Object.entries(sources)) {
+    assert.match(
+      src,
+      /import\s*\{[^}]*\bsnapshotPayload\b[^}]*\}\s*from\s*["']\.\/_fixtures\.js["']/,
+      `${name} が _fixtures.js の snapshotPayload を import する`,
+    );
+    assert.doesNotMatch(
+      src,
+      FENCE_CHAR_CLASS_RE,
+      `${name} に prompt の文言に依存する fence 抽出 regex (BEGIN/END marker の文字クラス) が残っていない`,
+    );
+  }
 });
 
 test("T-008 偽装 marker を含む run でも snapshot.py が返す counts と payload の件数が一致し、truncated が立たない", async () => {

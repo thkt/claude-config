@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflow } from "../../_lib/run-workflow.js";
+import { callOf, extractFenced, snapshotPayload } from "./_fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const auditJs = join(here, "..", "..", "audit.js");
@@ -53,34 +54,6 @@ const agentStub =
     if (label === "snapshot") return snapshot;
     return undefined;
   };
-
-const callOf = (calls, label) => calls.agent.find((c) => c.opts && c.opts.label === label);
-
-const FENCE_BEGIN_RE = /^----- BEGIN ([A-Z0-9_ ]+) ([A-Za-z0-9]+) -----$/m;
-
-// 対応する nonce の END が無ければ null を返す。fence が閉じられなかったことと、
-// fence がそもそも無いことを、呼び出し側は同じ null として扱う。
-const extractFenced = (prompt) => {
-  const begin = prompt.match(FENCE_BEGIN_RE);
-  if (!begin) return null;
-  const [, label, nonce] = begin;
-  const endRe = new RegExp(
-    `^----- BEGIN ${label} ${nonce} -----\\n([\\s\\S]*?)\\n----- END ${label} ${nonce} -----$`,
-    "m",
-  );
-  const body = prompt.match(endRe);
-  return body ? { label, nonce, content: body[1] } : null;
-};
-
-// snapshot agent への prompt 末尾に payload が BEGIN/END marker で囲まれて埋め込まれる
-// (audit.js の writeSnapshot / fenced 参照)。marker の内側だけを取り出して parse する。
-const snapshotPayload = (calls) => {
-  const call = callOf(calls, "snapshot");
-  assert.ok(call, "snapshot agent が起動する");
-  const fenced = extractFenced(call.prompt);
-  assert.ok(fenced, "snapshot prompt の payload は BEGIN/END marker で囲まれている");
-  return JSON.parse(fenced.content);
-};
 
 const run = (opts) =>
   runWorkflow(auditJs, {

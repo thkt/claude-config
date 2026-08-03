@@ -36,8 +36,10 @@ export const callOf = (calls, label) => calls.agent.find((c) => c.opts && c.opts
 const FENCE_BEGIN_RE = /^----- BEGIN ([A-Z0-9_ ]+) ([A-Za-z0-9]+) -----$/m;
 
 // 対応する nonce の END が無ければ null を返す。fence が閉じられなかったことと、
-// fence がそもそも無いことを、呼び出し側は同じ null として扱う。
-const extractFenced = (prompt) => {
+// fence がそもそも無いことを、呼び出し側は同じ null として扱う。snapshotPayload 以外に
+// も、fence 構造自体 (label / nonce の一致) を確かめるテストが直接この関数を呼ぶため
+// export する。
+export const extractFenced = (prompt) => {
   const begin = prompt.match(FENCE_BEGIN_RE);
   if (!begin) return null;
   const [, label, nonce] = begin;
