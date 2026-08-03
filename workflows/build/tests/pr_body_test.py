@@ -159,6 +159,42 @@ class RenderTest(unittest.TestCase):
             body,
         )
 
+    def test_anomaly_leads_with_the_conclusion_and_sends_evidence_to_its_own_line(self):
+        # code.js splits the no-red report into a one-sentence conclusion and an evidence
+        # list. Packed onto one line the reader cannot tell where the conclusion ends, so
+        # each supporting fact takes its own indented line.
+        body = pr_body.render(
+            {
+                **CLEAN,
+                "code_anomalies": [
+                    {
+                        "unit": "U-001",
+                        "kind": "no-red",
+                        "notes": "the behavior is already implemented",
+                        "evidence": [
+                            "`src/slack.rs:120` classify delegates to from_reqwest",
+                            "`cargo test --lib slack` -> 94 passed",
+                        ],
+                    }
+                ],
+            }
+        )
+        self.assertIn(
+            "- U-001 (no-red): the behavior is already implemented\n"
+            "  `src/slack.rs:120` classify delegates to from_reqwest\n"
+            "  `cargo test --lib slack` -> 94 passed",
+            body,
+        )
+
+    def test_anomaly_without_evidence_keeps_the_single_line_form(self):
+        # scope-cut / uncommitted / reader-failed anomalies carry no evidence list. A
+        # missing key must not add a blank continuation line under the conclusion.
+        body = pr_body.render(
+            {**CLEAN, "code_anomalies": [{"unit": "U-002", "kind": "scope-cut", "notes": "x / y"}]}
+        )
+        self.assertIn("- U-002 (scope-cut): x / y\n", body)
+        self.assertNotIn("x / y\n  \n", body)
+
     def test_finding_without_severity_leads_with_the_category_alone(self):
         # structure findings carry no severity; the lead must not render "[None]".
         body = pr_body.render(

@@ -72,7 +72,7 @@ const implementOpts = { model: input.model || "sonnet", effort: "high" };
 const RED_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["red_confirmed", "test_files", "notes"],
+  required: ["red_confirmed", "test_files", "notes", "evidence"],
   properties: {
     red_confirmed: {
       type: "boolean",
@@ -81,7 +81,16 @@ const RED_SCHEMA = {
     test_files: { type: "array", items: { type: "string" } },
     notes: {
       type: "string",
-      description: "when red_confirmed is false, the reason (e.g. the behavior already exists)",
+      description:
+        "when red_confirmed is false, the conclusion in one sentence (e.g. the target behavior is already implemented and an existing test drives the same fixture). Keep the supporting facts out of notes and put them in evidence",
+    },
+    // Returned as one prose blob the PR body collapses it onto a single line, and the reader
+    // cannot find where the conclusion ends.
+    evidence: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "the facts backing the conclusion in notes. One per element, each a file:line, a command and its result, or the name of an existing test. No newline inside an element. Empty array when there is nothing to point at",
     },
   },
 };
@@ -434,8 +443,8 @@ for (const unit of units) {
       `TDD Red step. ${ctx}` +
         `Write each test scenario (T-NNN) as a failing test. Use the scenario's name verbatim as the test name. ` +
         `Write no implementation code whatsoever. Run the tests and confirm each fails for the intended reason, then report. ` +
-        `Deleting, moving, renaming, or emptying an existing file to manufacture a Red is forbidden. When the target behavior is already implemented, that is the correct state: keep red_confirmed=false and write the reason in notes. ` +
-        `If the tests do not fail, do not implement; write the reason in notes.`,
+        `Deleting, moving, renaming, or emptying an existing file to manufacture a Red is forbidden. When the target behavior is already implemented, that is the correct state: keep red_confirmed=false, put the conclusion in notes as one sentence and the supporting facts in evidence, one per element, with no account of what you checked in notes. ` +
+        `If the tests do not fail, do not implement.`,
     ),
     {
       label: `red:${unit.id}`,
@@ -453,7 +462,7 @@ for (const unit of units) {
         `TDD Red step retry. ${ctx}` +
           `Last time the tests did not fail. The reason was ${red.notes}.\n` +
           `Scrutinize whether the tests really verify the target behavior (assertions are not empty, the target code is invoked). ` +
-          `If after scrutiny the tests still pass, judge the behavior as already implemented and keep red_confirmed=false with the reason in notes.`,
+          `If after scrutiny the tests still pass, judge the behavior as already implemented and keep red_confirmed=false. notes carries the conclusion alone, one sentence; what the scrutiny looked at goes in evidence, one fact per element.`,
       ),
       {
         label: `red2:${unit.id}`,
@@ -466,7 +475,12 @@ for (const unit of units) {
   }
   if (!red) return stopUnit("red-failed", unit, "the red agent returned no result");
   if (!red.red_confirmed) {
-    anomalies.push({ unit: unit.id, kind: "no-red", notes: red.notes });
+    anomalies.push({
+      unit: unit.id,
+      kind: "no-red",
+      notes: red.notes,
+      evidence: Array.isArray(red.evidence) ? red.evidence : [],
+    });
     log(`${unit.id}: Red unconfirmed (${red.notes}). Skipping the implement step.`);
     completed.push(unit.id);
     // The implement step is skipped, but the tests the Red step wrote stay in the tree.

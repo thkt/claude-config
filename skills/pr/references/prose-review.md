@@ -14,7 +14,7 @@ Write for a teammate who shares the context and can open the links. A PR carries
 
 ## Redundancy patterns
 
-| Pattern                | Fix                                                                                                                                 |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Diff transcription     | Drop enumerations of changed files or functions; the diff carries them. Keep the intent of the change                               |
-| One claim per sentence | Cut a sentence exceeding ~25 words (Japanese: 60 characters), or a paragraph packing change + rationale + references, at each claim |
+| Pattern                | Fix                                                                                                   |
+| ---------------------- | ----------------------------------------------------------------------------------------------------- |
+| Diff transcription     | Drop enumerations of changed files or functions; the diff carries them. Keep the intent of the change |
+| One claim per sentence | Do not pack change + rationale + references into one sentence or one paragraph; split at each claim   |
