@@ -274,8 +274,8 @@ if (boot.mode === "none") {
 }
 
 // env fail (worktree 不可 / install fail) と build smoke fail (対象がビルドできない) を区別する。
-// caveat 落としは env fail のみに許す。build smoke fail を caveat に落とすと壊れたビルドが
-// merge に届く false-Ready を生む。
+// 動的 evidence の欠落のうち caveat 落としを許すのは env fail のみ。build smoke fail を caveat に
+// 落とすと壊れたビルドが merge に届く false-Ready を生む。
 const envFail = !boot.worktree_ok || boot.install === "fail";
 const buildCol = envFail ? "skipped" : boot.build;
 const dynamicOk = !envFail && buildCol !== "fail";

@@ -274,8 +274,9 @@ if (boot.mode === "none") {
 }
 
 // Distinguish env fail (worktree impossible / install fail) from build smoke fail (the
-// target itself does not build). Only env fail may demote to caveat. Demoting a build
-// smoke fail would produce a false Ready that lets a broken build reach merge.
+// target itself does not build). Among dynamic-evidence gaps, only env fail may demote to
+// caveat. Demoting a build smoke fail would produce a false Ready that lets a broken build
+// reach merge.
 const envFail = !boot.worktree_ok || boot.install === "fail";
 const buildCol = envFail ? "skipped" : boot.build;
 const dynamicOk = !envFail && buildCol !== "fail";
