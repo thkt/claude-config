@@ -147,14 +147,14 @@ test("triage block 内で throw が起きた時、result.adversarial が stall �
 // audit findings を非空にして challenge_ran だけを差し替える。findings が空だと audit.js 側の
 // 早期 return (challenge_ran=false だが degradation ではない) と区別できなくなるため、
 // 両ケースとも findings を1件持たせる。
-const auditWithChallengeRan = (challengeRan) => ({
-  findings: [{ file: "a.js", line: 5, severity: "high", summary: "audit finding" }],
-  challenge_ran: challengeRan,
-  verify_ran: challengeRan,
-});
-
 const makeAuditWorkflowStub = (challengeRan) => (name) =>
-  name === "audit" ? auditWithChallengeRan(challengeRan) : undefined;
+  name === "audit"
+    ? {
+        findings: [{ file: "a.js", line: 5, severity: "high", summary: "audit finding" }],
+        challenge_ran: challengeRan,
+        verify_ran: challengeRan,
+      }
+    : undefined;
 
 // synthesize agent への呼び出しは opts.label === "synthesize" の 1 件のみなので、その prompt
 // 文字列を取り出して audit findings の紹介文言を検査する。
