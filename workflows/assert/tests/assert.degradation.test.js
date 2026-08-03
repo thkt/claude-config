@@ -224,3 +224,60 @@ test("T-007 audit が challenge_ran=true で issues が0件かつ tests が pass
     "audit の challenge が正常に走った run は issues 0件かつ tests pass のとき Ready のままになる",
   );
 });
+
+// U-003: audit workflow の返り値を実際に受け取った assert が、劣化を gate に反映する。
+// T-008 は T-004〜T-007 と異なり、workflow("audit") を手書きオブジェクトへ置き換えない。
+// assert.js の workflow stub から workflows/audit.js を runWorkflow でネストして本当に走らせ、
+// audit.js 自身の challenge 段 (label "challenge") にだけ無出力を返して agent stall を再現する。
+// challenge_ran は audit.js 側の fail-open ロジック
+// (`!!(challenged && Array.isArray(challenged.verdicts))`) が自力で false に落とすので、
+// このテストは challenge_ran を直接書かない。audit の返り値から assert の gate 計算までが
+// 実際に繋がっていることが検証対象で、内部レイヤーのスタブ化はしない (seam unit の契約)。
+const auditJs = join(here, "..", "..", "audit.js");
+
+// audit.js の各 stage label に対応する最小応答。found した finding が1件、
+// challenge/snapshot と他の reviewer は無出力 (undefined) のまま返し、
+// challenge_ran=false と findings 非空を audit.js 自身の計算で導く。
+const auditAgentStub = (prompt, opts) => {
+  const label = opts && opts.label;
+  if (label === "route") return { files: [{ path: "a.js", churn: 0 }] };
+  if (label === "security")
+    return { findings: [{ file: "a.js", line: 5, severity: "high", summary: "issue" }] };
+  if (label === "verify") return "verified: execution path confirmed";
+  if (label === "integrate")
+    return {
+      findings: [
+        { file: "a.js", line: 5, severity: "high", summary: "issue", source_ids: ["R-1"] },
+      ],
+    };
+  // "challenge" (audit.js 自身の challenge 段) / "snapshot" / 他の reviewer label は
+  // 意図的に無出力のまま返す。audit.js の challengeRan は
+  // `!!(challenged && Array.isArray(challenged.verdicts))` で自己計算されるため、
+  // ここで challenge_ran を直接指定する必要はない。
+  return undefined;
+};
+
+// assert.js の workflow("audit", wfArgs) を、audit.js を本当にネストで走らせる形に差し替える。
+const runRealAudit = async (name, wfArgs) => {
+  if (name !== "audit") return undefined;
+  const { result } = await runWorkflow(auditJs, {
+    args: wfArgs,
+    stubs: { agent: auditAgentStub },
+  });
+  return result;
+};
+
+test("T-008 challenge を stub しない audit を入れ子で走らせた assert は、audit の challenge_ran=false を受け取って gate を Ready にしない", async () => {
+  const { result } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: {
+      agent: makeAgent({ ran: true, tests: [] }),
+      workflow: runRealAudit,
+    },
+  });
+  assert.notEqual(
+    result.gate,
+    "Ready",
+    "audit を実際に入れ子で走らせ challenge が fail-open (challenge_ran=false) になった run は gate が Ready にならない",
+  );
+});
