@@ -698,6 +698,11 @@ log(
 // verdictById drops every finding to confirmed via no_verdict). verify returns free-form
 // text, so it is judged by whether content came back rather than by a schema shape.
 const challengeRan = !!(challenged && Array.isArray(challenged.verdicts));
+// Mirrors assert.js's challengeStalled prompt branch: whether Integrate can be told
+// membership is already settled. challengeRan alone would count an empty verdicts array as
+// decided (its own definition stays out of scope here), but no verdict was actually
+// rendered for that run, so this adds a length check challengeRan does not have.
+const membershipDecided = challengeRan && challenged.verdicts.length > 0;
 const verifyRan = !!String(verified || "").trim();
 const tally = {
   survived: survivors.length,
@@ -715,7 +720,7 @@ const survivorsInput = survivors.map(toCriticRef);
 const integrated = await agent(
   anchor(
     `enhancer-integration. Reconcile these survivors of the challenge triage, matched by file:line, into cross-domain root causes and a severity-ordered list.\n` +
-      `Membership is already decided: every survivor below already passed the challenge pass. Do not re-cull, dispute, or drop any survivor; only merge and reorder them into root causes.\n` +
+      `${membershipDecided ? "Membership is already decided: every survivor below already passed the challenge pass. Do not re-cull, dispute, or drop any survivor; only merge and reorder them into root causes.\n" : ""}` +
       `Each finding you return must carry source_ids listing every survivor id (R-N) it absorbed, so a root cause merged from several survivors keeps all of their ids.\n` +
       `The survivors are as follows.\n${fenced(JSON.stringify(survivorsInput))}`,
   ),
