@@ -87,6 +87,16 @@ Evidence, Trigger, Reasoning は具体的な言語を使う。
 
 各 reviewer の Calibration セクションにドメイン別 REPORT/SKIP 例がある。迷ったら SKIP を優先。challenger は false negative を捕まえる存在だが、false positive は pipeline capacity を浪費する。
 
+## Memory の用途
+
+frontmatter に `memory` を持つ reviewer は、agent-memory を下表の線引きで使う。false positive の判定は critic-audit が担い、disputed として record に残る。そのため reviewer は見つけた finding をすべて報告し、過去に報告済みで受理済みのパターンも報告対象に含める。既知であるという事実は severity の判断材料として使う。
+
+| 用途                                           | 可否     |
+| ---------------------------------------------- | -------- |
+| severity の判断材料 (actor、threat model など) | 使う     |
+| 報告前の再チェック手順 (grep、確認コマンド)    | 使う     |
+| finding を報告するかどうかの判断               | 使わない |
+
 ## 概要表
 
 複数 finding がある場合、この summary 表を先頭に置く。
