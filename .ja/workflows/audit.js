@@ -138,7 +138,7 @@ const writeSnapshot = async ({
         `Payload は次のとおり。\n${fenced(payload)}`,
     ),
     {
-      agentType: "general-purpose",
+      agentType: "generator-snapshot",
       phase: "Snapshot",
       label: "snapshot",
       // haiku では長い payload の書き写しが途中で要約に変わる。判断を求める段ではないが、

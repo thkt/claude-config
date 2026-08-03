@@ -141,7 +141,7 @@ const writeSnapshot = async ({
         `The payload is as follows.\n${fenced(payload)}`,
     ),
     {
-      agentType: "general-purpose",
+      agentType: "generator-snapshot",
       phase: "Snapshot",
       label: "snapshot",
       // On haiku, transcribing a long payload turns into summarizing partway through.
