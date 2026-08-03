@@ -61,10 +61,9 @@ const bundled = (rel) =>
 // payload のキーは snapshot.py の build_record がそのまま record の項目にする。返り値に
 // しか無い項目は record から読めないので、record で読ませたいものはここへ渡す。
 //
-// payload は prompt に埋め込む形でしか agent に渡せず、agent が書き写す途中で要約すると
-// record だけが痩せる。実測では findings の summary が長い run で raw_findings 44 件が 2 件に
-// なった。件数を agent に自己申告させると切り詰めた当人が報告することになるので、stdin を
-// 受けた snapshot.py が数えた値 (stdout の counts) を持ち帰らせ、script 側で照合する。
+// payload は prompt に埋め込む形でしか agent に渡せず、書き写す途中で要約されると record
+// だけが痩せる。件数を agent に自己申告させると切り詰めた当人が報告することになるので、
+// stdin を受けた snapshot.py が数えた値を持ち帰らせる。
 const SNAPSHOT_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -131,8 +130,8 @@ const writeSnapshot = async ({
       agentType: "general-purpose",
       phase: "Snapshot",
       label: "snapshot",
-      // haiku では長い payload の書き写しが途中で要約に変わる。実測で raw_findings 44 件が
-      // 2 件になった。判断を求める段ではないが、書き写す長さが model 選択を決める。
+      // haiku では長い payload の書き写しが途中で要約に変わる。判断を求める段ではないが、
+      // 書き写す長さが model 選択を決める。
       model: "sonnet",
       schema: SNAPSHOT_SCHEMA,
     },
@@ -268,12 +267,6 @@ const FOCUS = {
   all: null,
 };
 
-// agents/reviewers/に定義はあるが ROUTING に行を持たない reviewer。/audit の
-// fan-out ではなく skill から直接呼ばれるときだけ走るので、glob 表の行を持たず
-// FOCUS の外に置く。ここに名前が無い定義は誰からも呼ばれないまま残るため、この配列が
-// 到達不能な定義への防御柵になる。
-const SKILL_ONLY_REVIEWERS = ["causation", "readability", "conformance"];
-
 const ext = (p) => {
   const base = p.slice(p.lastIndexOf("/") + 1);
   const dot = base.lastIndexOf(".");
@@ -293,22 +286,9 @@ const classify = (p) => {
   if (e === ".css" || e === ".html") return ROUTING["*.css,*.html"];
   return ROUTING.default;
 };
-// T-014 (audit.routing.test.js) のランタイム側の鏡。reviewer 名が ROUTING と
-// SKILL_ONLY_REVIEWERS の両方に載ることは無いはず。テストは test 実行時にしか
-// 検知しないが、この check は実際の run のたびに同じ drift を検知する。
-const routingSkillOnlyOverlap = [...new Set(Object.values(ROUTING).flat())].filter((r) =>
-  SKILL_ONLY_REVIEWERS.includes(r),
-);
-if (routingSkillOnlyOverlap.length) {
-  log(
-    `Config drift: ROUTING と SKILL_ONLY_REVIEWERS の両方に載っている: ${routingSkillOnlyOverlap.join(", ")}。`,
-  );
-}
-
 // source_ids を返すのは Integrate だけ。共有 schema に optional で置くと Integrate が省いても
-// validation を通り、R-N の追跡が run ごとに切れる (実測で 1 run 落ち、id は summary の散文へ
-// 流れた)。reviewer 用は property ごと持たないので、reviewer が id を捏造して返せば
-// additionalProperties: false が弾く。
+// validation を通り、R-N の追跡が run ごとに切れる。reviewer 用は property ごと持たないので、
+// reviewer が id を捏造して返せば additionalProperties: false が弾く。
 const findingsSchema = ({ withSourceIds = false } = {}) => ({
   type: "object",
   additionalProperties: false,
@@ -447,9 +427,8 @@ if (!files.length) {
 
 const focusSet = FOCUS[focus] === undefined ? null : FOCUS[focus];
 const assign = {};
-// classify() が返す reviewer が focus との積集合で全て落ちたファイルは 0 件になる。
-// これはファイルが無言で audit から外れる劣化なので、WORKFLOWS.md の粒度に沿って
-// 捨てず file path 単位で記録する。
+// classify() が返す reviewer が focus との積集合で全て落ちたファイルは、無言で audit の
+// 対象から外れる。どのファイルが外れたかを後から読めるよう path 単位で残す。
 const zeroReviewerFiles = [];
 for (const f of files) {
   const reviewers = classify(f.path).filter((r) => !focusSet || focusSet.includes(r));
@@ -618,9 +597,7 @@ const VERDICTS_SCHEMA = {
     },
   },
 };
-// critic-audit への challenge input と Integrate への survivors input は同じ射影
-// (rawFindings の message フィールドを summary に改名) を必要とする。ヘルパーを 1 つに
-// して、呼び出し 2 箇所で形が乖離しないようにする。
+// 呼び出し 2 箇所で形が乖離しないよう、射影を 1 箇所に置く。
 const toCriticRef = (f) => ({
   id: f.id,
   file: f.file,
@@ -667,10 +644,9 @@ const [challenged, verified] = await parallel([
 ]);
 
 // ---- Triage: survivor 判定はスクリプトが持ち、critic は verdict を返すだけ ----
-// verdict 側でなく finding 側を回すことで、challenge agent が verdict を付け忘れた
-// finding も取りこぼさない。confirmed 扱いで survivors に残し no_verdict として計上する。
-// challenge agent が丸ごと失敗した場合 (verdict 一覧が空) も全件が同じ no_verdict 経路を
-// 通るので、fail-open が呼び出し元から劣化と分かる形で残る。
+// verdict 側でなく finding 側を回す。verdict を付け忘れた finding が黙って消えず、
+// confirmed 扱いで no_verdict に計上される。challenge が丸ごと失敗した run も全件が
+// 同じ経路を通るので、劣化が件数として残る。
 const verdictById = new Map(((challenged && challenged.verdicts) || []).map((v) => [v.id, v]));
 const survivors = [];
 const needsContext = [];
@@ -731,10 +707,8 @@ const integrated = await agent(
   },
 );
 
-// Integrate が返さなかったときのフォールバック先は triage 済みの survivors (各自が R-N id を
-// 持ったまま) であって、triage 前の findings 配列ではない。その配列は rawFindings への id 付与
-// より前の状態なので、そこへ落とすと challenge triage が disputed と判定した finding を黙って
-// 呼び戻すことになる。
+// フォールバック先を triage 前の findings にすると、id が付く前の配列に落ちるので、
+// challenge が disputed と判定した finding を黙って呼び戻すことになる。
 const finalFindings = (integrated && integrated.findings) || survivorsInput;
 const snapshot = await writeSnapshot({
   preFlight,

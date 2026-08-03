@@ -69,17 +69,11 @@ const parseRoutingLikeConst = (source, name) => {
   }
   return result;
 };
-// causation / readability / conformance の移設先。契約には具体名が無いため、audit.js
-// 側にこの名前の配列定数が導入される想定でテストを固定する (Green 側の実装契約。
-// 未実装の間は空配列扱いになり T-014 は Red のまま)。
-const parseSkillOnlyAllowlist = (source) => {
-  const marker = "const SKILL_ONLY_REVIEWERS = [";
-  const idx = source.indexOf(marker);
-  if (idx === -1) return [];
-  const bracketStart = source.indexOf("[", idx);
-  const bracketEnd = source.indexOf("]", bracketStart);
-  return [...source.slice(bracketStart, bracketEnd).matchAll(/"([^"]+)"/g)].map((x) => x[1]);
-};
+// agents/reviewers/に定義はあるが ROUTING に行を持たない reviewer。skill から直接呼ばれる
+// ときだけ走るので glob 表の行を持たず、audit.js の実行時にはこの区別が要らない (ROUTING に
+// 無い名前は routing されないだけ)。よって期待値はここに置く。ここにも ROUTING にも名前の
+// 無い定義は誰からも呼ばれないまま残るので、T-014 がそれを検知する。
+const SKILL_ONLY_REVIEWERS = ["causation", "readability", "conformance"];
 
 test("yaml と yml と json を含む diff で audit が Route 段を通過し 3 ファイルとも assignments に載る", async () => {
   const files = ["config.yaml", "ci.yml", "package.json"];
@@ -145,7 +139,7 @@ test("T-014 agents/reviewers/の定義は ROUTING か skill-only allowlist の�
   assert.ok(routing, "audit.js から ROUTING を抽出できる");
 
   const routedReviewers = new Set(Object.values(routing).flat());
-  const skillOnly = new Set(parseSkillOnlyAllowlist(source));
+  const skillOnly = new Set(SKILL_ONLY_REVIEWERS);
   const definedNames = readdirSync(reviewersDir)
     .filter((f) => f.startsWith("reviewer-") && f.endsWith(".md"))
     .map((f) => f.slice("reviewer-".length, -".md".length));
@@ -154,7 +148,15 @@ test("T-014 agents/reviewers/の定義は ROUTING か skill-only allowlist の�
   assert.deepEqual(
     orphaned,
     [],
-    `ROUTING にも SKILL_ONLY_REVIEWERS にも載らない agents/reviewers/定義: ${orphaned.join(", ")}`,
+    `ROUTING にも skill-only allowlist にも載らない agents/reviewers/定義: ${orphaned.join(", ")}`,
+  );
+
+  // 両方に載る名前は ROUTING 側で発火するので、skill-only に置いた意図が消える。
+  const both = [...routedReviewers].filter((n) => skillOnly.has(n));
+  assert.deepEqual(
+    both,
+    [],
+    `ROUTING と skill-only allowlist の両方に載る reviewer: ${both.join(", ")}`,
   );
 });
 

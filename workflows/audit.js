@@ -63,11 +63,10 @@ const bundled = (rel) =>
 // Anything that lives only on the return value cannot be read back from the record, so
 // whatever a reader must find there has to be passed here.
 //
-// The payload only reaches the agent embedded in a prompt, and an agent that summarizes
-// while transcribing leaves the record alone thinned out. Measured: a run whose findings
-// carried long summaries wrote 2 raw_findings where the payload held 44. Having the agent
-// report the counts would make the party that cut them the one reporting on it, so the
-// counts come from snapshot.py, which counted the stdin it received.
+// The payload only reaches the agent embedded in a prompt, and summarizing while
+// transcribing leaves the record alone thinned out. Having the agent report the counts
+// would make the party that cut them the one reporting on it, so they come from
+// snapshot.py, which counted the stdin it received.
 const SNAPSHOT_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -134,9 +133,9 @@ const writeSnapshot = async ({
       agentType: "general-purpose",
       phase: "Snapshot",
       label: "snapshot",
-      // On haiku, transcribing a long payload turns into summarizing partway through:
-      // measured, 44 raw_findings came out as 2. No judgment is asked of this stage, but
-      // the length of what it copies is what decides the model.
+      // On haiku, transcribing a long payload turns into summarizing partway through.
+      // No judgment is asked of this stage, but the length of what it copies decides
+      // the model.
       model: "sonnet",
       schema: SNAPSHOT_SCHEMA,
     },
@@ -273,12 +272,6 @@ const FOCUS = {
   all: null,
 };
 
-// Reviewers with an agents/reviewers/ definition but no ROUTING row: they run
-// only when a skill invokes them directly, not through /audit's fan-out, so
-// they carry no glob-table row and sit outside FOCUS. A definition named in neither
-// place is left with no caller, so this list is the fence against that.
-const SKILL_ONLY_REVIEWERS = ["causation", "readability", "conformance"];
-
 const ext = (p) => {
   const base = p.slice(p.lastIndexOf("/") + 1);
   const dot = base.lastIndexOf(".");
@@ -298,22 +291,10 @@ const classify = (p) => {
   if (e === ".css" || e === ".html") return ROUTING["*.css,*.html"];
   return ROUTING.default;
 };
-// Runtime mirror of T-014 in audit.routing.test.js: a reviewer name should
-// never sit in both ROUTING and SKILL_ONLY_REVIEWERS. The test only catches
-// this at test time; this check catches the same drift on every actual run.
-const routingSkillOnlyOverlap = [...new Set(Object.values(ROUTING).flat())].filter((r) =>
-  SKILL_ONLY_REVIEWERS.includes(r),
-);
-if (routingSkillOnlyOverlap.length) {
-  log(
-    `Config drift: ROUTING and SKILL_ONLY_REVIEWERS both list ${routingSkillOnlyOverlap.join(", ")}.`,
-  );
-}
-
 // Only Integrate returns source_ids. Kept optional on the shared schema, an Integrate run
-// that omits it still passes validation and R-N tracking breaks per run (measured: one run
-// dropped it and put the ids in the summary prose instead). The reviewer variant lacks the
-// property entirely, so additionalProperties: false rejects a reviewer that invents ids.
+// that omits it still passes validation and R-N tracking breaks per run. The reviewer
+// variant lacks the property entirely, so additionalProperties: false rejects a reviewer
+// that invents ids.
 const findingsSchema = ({ withSourceIds = false } = {}) => ({
   type: "object",
   additionalProperties: false,
@@ -453,10 +434,8 @@ if (!files.length) {
 
 const focusSet = FOCUS[focus] === undefined ? null : FOCUS[focus];
 const assign = {};
-// A file whose classify() reviewers all fall outside the focus intersection
-// gets none: it is a degradation (the file is silently skipped, not audited),
-// so it is recorded here at file-path granularity per WORKFLOWS.md rather
-// than dropped.
+// A file whose classify() reviewers all fall outside the focus intersection drops out of
+// the audit silently. Keep it at file-path granularity so a reader can tell which fell out.
 const zeroReviewerFiles = [];
 for (const f of files) {
   const reviewers = classify(f.path).filter((r) => !focusSet || focusSet.includes(r));
@@ -625,9 +604,7 @@ const VERDICTS_SCHEMA = {
     },
   },
 };
-// Both critic-audit's challenge input and Integrate's survivors input need the same
-// projection (rawFindings' message field renamed to summary); one helper keeps the shape
-// from drifting between the two call sites.
+// One place for the projection, so the shape cannot drift between the two call sites.
 const toCriticRef = (f) => ({
   id: f.id,
   file: f.file,
@@ -675,10 +652,10 @@ const [challenged, verified] = await parallel([
 ]);
 
 // ---- Triage: script owns survivor determination, the critic only returns verdicts ----
-// Loop the finding side (not the verdict side) so a finding the challenge agent dropped
-// a verdict for is not silently lost; it defaults to confirmed and is counted as
-// no_verdict, the same fail-open shape a total challenge-agent failure takes (an empty
-// verdict list leaves every finding no_verdict).
+// Loop the finding side, not the verdict side. A finding the challenge agent dropped a
+// verdict for is not silently lost; it defaults to confirmed and lands in no_verdict.
+// A run where challenge failed entirely takes the same path, so the degradation survives
+// as a count.
 const verdictById = new Map(((challenged && challenged.verdicts) || []).map((v) => [v.id, v]));
 const survivors = [];
 const needsContext = [];
@@ -739,10 +716,8 @@ const integrated = await agent(
   },
 );
 
-// Integrate-absent fallback must stay the triaged survivors (each still carrying its
-// own R-N id), never the pre-triage findings array: that array predates the id
-// assignment in rawFindings, so falling back to it would silently readmit findings
-// the challenge triage already disputed.
+// Falling back to the pre-triage findings array would land on the state before ids were
+// assigned, silently readmitting findings the challenge pass had disputed.
 const finalFindings = (integrated && integrated.findings) || survivorsInput;
 const snapshot = await writeSnapshot({
   preFlight,

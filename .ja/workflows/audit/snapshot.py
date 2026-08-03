@@ -65,10 +65,10 @@ def contradicts_own_tally(data):
 
     raw_findings is survived + needs_context + disputed, so a record carrying a
     tally satisfies len(raw_findings) >= survived + needs_context. A record that
-    fails this lost entries after the tally was computed -- the payload reaches
-    the writer through an LLM prompt, and one that summarizes while transcribing
-    thins the arrays without touching the counts. Records without a tally are
-    left alone; there is nothing to check them against.
+    fails this lost entries after the tally was computed: the payload reaches the
+    writer through an LLM prompt, and summarizing while transcribing thins the
+    arrays without touching the counts. Records without a tally are left alone;
+    there is nothing to check them against.
     """
     tally = data.get("tally")
     raw = data.get("raw_findings")
