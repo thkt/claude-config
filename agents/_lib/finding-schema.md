@@ -87,6 +87,16 @@ Apply in order. If any filter excludes, do not report.
 
 Each reviewer's Calibration section has domain-specific REPORT/SKIP examples. When uncertain, prefer SKIP. The challenger exists to catch false negatives, but false positives waste pipeline capacity.
 
+## Memory Usage
+
+A reviewer with `memory` in its frontmatter uses agent-memory within the boundary in the table below. critic-audit owns the false-positive verdict, which lands in the record as disputed. Therefore the reviewer reports every finding it discovers, including patterns reported and accepted in past runs. The fact that a pattern is known feeds the severity judgment.
+
+| Use                                               | Allowed |
+| ------------------------------------------------- | ------- |
+| Severity judgment material (actor, threat model)  | Yes     |
+| Pre-report re-check steps (grep, verify commands) | Yes     |
+| Whether to report a finding                       | No      |
+
 ## Overview Table
 
 When multiple findings exist, prepend this summary table.
