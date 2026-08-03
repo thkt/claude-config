@@ -125,26 +125,6 @@ test("triage block 内で throw が起きた時、result.adversarial が stall �
 
 // U-002: 入れ子の workflow("audit") が fail-open (challenge_ran=false) した run では、
 // audit findings を critic 検証済みと呼ばず、gate も Ready にならない。
-// T-004 audit が challenge_ran=false を返した run の Synthesize prompt は audit findings を
-//       critic 検証済みと書かない
-// T-005 audit が challenge_ran=true を返した run の文言は変わらない
-// T-006 audit が challenge_ran=false で issues が0件の run の gate は Ready ではなく
-//       Ready (caveat) になる
-// T-007 audit が challenge_ran=true で issues が0件かつ tests が pass の run の gate は
-//       Ready のままになる
-// T-009 audit が findings 0件かつ challenge_ran=false を返した run の gate も Ready ではなく
-//       Ready (caveat) になる
-//
-// contract: workflows/assert.js の challengeStalled (verification signal が run しなかったこと
-// を示す boolean を script が計算する形) と同じ形で auditDegraded を計算する。audit.js 自身の
-// challenge_ran は「verdicts を返した run」と「fail-open (challenge が走らず全件 confirmed に
-// なった run)」を区別する値なので、challenge_ran===false を degraded とみなす。findings 0件の
-// 早期 return も challenge_ran=false を返し、reviewer が何も出さず challenge も走らなかった run
-// が issues 0件のまま Ready に届く穴そのものなので、件数では除外しない。劣化を示す値は script が
-// 計算し、agent には判定させない。Synthesize prompt の audit findings を紹介する一文は劣化時
-// だけ切り替え、通常時 (challenge_ran=true) の "critic-verified" 文言は変えない。gate rule は
-// Ready 分岐の条件に auditDegraded を加える (buildCol=pass, testsCol=pass, issues=0 でも
-// degraded なら Ready でなく Ready (caveat) に落ちる)。
 
 // challenge_ran だけを差し替え、findings は両ケースとも1件持たせる。findings 0件との組み合わせは
 // T-009 が別に押さえる。
@@ -157,8 +137,7 @@ const makeAuditWorkflowStub = (challengeRan) => (name) =>
       }
     : undefined;
 
-// synthesize agent への呼び出しは opts.label === "synthesize" の 1 件のみなので、その prompt
-// 文字列を取り出して audit findings の紹介文言を検査する。
+// synthesize agent への呼び出しは run 全体で 1 件のみ。
 const synthesizePromptOf = (calls) => {
   const call = calls.agent.find((c) => c.opts && c.opts.label === "synthesize");
   return (call && call.prompt) || "";
@@ -243,18 +222,13 @@ test("T-009 audit が findings 0件かつ challenge_ran=false を返した run �
 });
 
 // U-003: audit workflow の返り値を実際に受け取った assert が、劣化を gate に反映する。
-// T-008 は T-004〜T-007 と異なり、workflow("audit") を手書きオブジェクトへ置き換えない。
-// assert.js の workflow stub から workflows/audit.js を runWorkflow でネストして本当に走らせ、
-// audit.js 自身の challenge 段 (label "challenge") にだけ無出力を返して agent stall を再現する。
-// challenge_ran は audit.js 側の fail-open ロジック
-// (`!!(challenged && Array.isArray(challenged.verdicts))`) が自力で false に落とすので、
-// このテストは challenge_ran を直接書かない。audit の返り値から assert の gate 計算までが
-// 実際に繋がっていることが検証対象で、内部レイヤーのスタブ化はしない (seam unit の契約)。
+// T-008 は workflow("audit") を手書きオブジェクトへ置き換えず、audit.js をネストで本当に走らせる。
+// 検証対象が audit の返り値から assert の gate 計算までの接続なので、内部レイヤーはスタブ化しない
+// (seam unit の契約)。
 const auditJs = join(here, "..", "..", "audit.js");
 
-// audit.js の各 stage label に対応する最小応答。found した finding が1件、
-// challenge/snapshot と他の reviewer は無出力 (undefined) のまま返し、
-// challenge_ran=false と findings 非空を audit.js 自身の計算で導く。
+// audit.js の各 stage label に対応する最小応答。challenge 段だけ無出力にして、
+// challenge_ran=false と findings 非空を audit.js 自身に計算させる。
 const auditAgentStub = (prompt, opts) => {
   const label = opts && opts.label;
   if (label === "route") return { files: [{ path: "a.js", churn: 0 }] };
@@ -268,9 +242,7 @@ const auditAgentStub = (prompt, opts) => {
       ],
     };
   // "challenge" (audit.js 自身の challenge 段) / "snapshot" / 他の reviewer label は
-  // 意図的に無出力のまま返す。audit.js の challengeRan は
-  // `!!(challenged && Array.isArray(challenged.verdicts))` で自己計算されるため、
-  // ここで challenge_ran を直接指定する必要はない。
+  // 意図的に無出力のまま返す。
   return undefined;
 };
 

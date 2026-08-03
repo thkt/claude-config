@@ -415,7 +415,7 @@ test("T-003 challenge が空の verdicts を返した run も、結果を返さ�
 // 劣化側は一文を落とすだけで終わらせず、verdict が 1 件も出ていないことを Integrate に名指す
 // (rules/conventions/WORKFLOWS.md § Degradation recording)。この assert が無いと、劣化分岐を
 // 空文字列へ戻しても T-002 / T-003 は通ってしまう。
-test("T-004 challenge が結果を返さない run の Integrate prompt には verdict 不在を名指す一文が入る", async () => {
+test("T-010 challenge が結果を返さない run の Integrate prompt には verdict 不在を名指す一文が入る", async () => {
   const { calls } = await run({ challenge: undefined, integrate: INTEGRATED });
   const call = callOf(calls, "integrate");
   assert.ok(call, "integrate agent が起動する");
