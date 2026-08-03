@@ -145,6 +145,25 @@ const counts = (over) => ({
   ...over,
 });
 
+test("T-028 downgraded の finding は元の severity と下げ後の両方を record に残す", async () => {
+  const { calls } = await run({
+    challenge: {
+      verdicts: [
+        { id: "R-1", verdict: "downgraded", severity: "low" },
+        { id: "R-2", verdict: "confirmed" },
+      ],
+    },
+    integrate: INTEGRATED,
+  });
+  // reviewer が severity を過大に付ける傾向は、元の値と下げ後の差でしか測れない。survivors は
+  // 下げ後しか持たず、Integrate が merge した後は finding 単位で追えない。
+  const payload = snapshotPayload(calls);
+  const raw = Object.fromEntries(payload.raw_findings.map((f) => [f.id, f]));
+  assert.equal(raw["R-1"].severity, "high", "元の severity は reviewer が付けた値のまま残る");
+  assert.equal(raw["R-1"].downgraded_to, "low", "critic が下げた先も併せて残る");
+  assert.equal(raw["R-2"].downgraded_to, undefined, "downgraded でない finding に下げ先は付かない");
+});
+
 test("T-024 snapshot.py が数えた件数が payload と食い違う run は失われた配列名を返す", async () => {
   const { result } = await run({
     challenge: BOTH_CONFIRMED,

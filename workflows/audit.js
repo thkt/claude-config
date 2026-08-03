@@ -676,6 +676,11 @@ for (const f of rawFindings) {
     continue;
   }
   const severity = v.verdict === "downgraded" && v.severity ? v.severity : f.severity;
+  // The lowered value goes in its own field. Overwriting f.severity would erase what the
+  // reviewer assigned, and with it any measure of whether reviewers inflate severity.
+  // survivors carry only the lowered value, and after Integrate merges there is no
+  // per-finding severity left to read.
+  if (severity !== f.severity) f.downgraded_to = severity;
   survivors.push({ ...f, severity });
 }
 log(

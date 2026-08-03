@@ -667,6 +667,10 @@ for (const f of rawFindings) {
     continue;
   }
   const severity = v.verdict === "downgraded" && v.severity ? v.severity : f.severity;
+  // 下げ先は別フィールドに書く。f.severity を上書きすると reviewer が付けた元の値が消え、
+  // 「reviewer が severity を過大に付けるか」を測れなくなる。survivors は下げ後だけを持ち、
+  // Integrate が merge した後は finding 単位で追えない。
+  if (severity !== f.severity) f.downgraded_to = severity;
   survivors.push({ ...f, severity });
 }
 log(
