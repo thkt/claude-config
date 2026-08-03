@@ -22,6 +22,7 @@ const agentStub =
   (prompt, opts) => {
     const { challenge, integrate } = opt;
     const verify = "verify" in opt ? opt.verify : "verify pass output";
+    const snapshot = opt.snapshot;
     const label = opts && opts.label;
     if (label === "route") {
       return { files: [{ path: "sample.js", churn: 0 }] };
@@ -39,7 +40,9 @@ const agentStub =
     if (label === "challenge") return challenge;
     if (label === "verify") return verify;
     if (label === "integrate") return integrate;
-    // snapshot は戻り値を消費しない経路にフォールバックさせるため undefined のまま。
+    // snapshot の既定は undefined (agent が結果を返さなかった経路)。件数の照合を突く test
+    // だけが件数つきの返り値を渡す。
+    if (label === "snapshot") return snapshot;
     return undefined;
   };
 
@@ -60,6 +63,13 @@ const run = (opts) =>
     args: { focus: "security", skipPreflight: true },
     stubs: { agent: agentStub(opts) },
   });
+
+const BOTH_CONFIRMED = {
+  verdicts: [
+    { id: "R-1", verdict: "confirmed" },
+    { id: "R-2", verdict: "confirmed" },
+  ],
+};
 
 const INTEGRATED = {
   findings: [{ file: "sample.js", line: "1", severity: "high", summary: "integrated finding" }],
@@ -122,6 +132,43 @@ test("T-022 disputed で落ちた finding も snapshot payload の raw_findings 
     payload.needs_context.map((f) => f.id),
     ["R-2"],
     "needs_context の id が payload にも載る",
+  );
+});
+
+test("T-024 書き出された record の件数が payload と食い違う run は snapshot.truncated=true を返す", async () => {
+  const { result } = await run({
+    challenge: BOTH_CONFIRMED,
+    integrate: INTEGRATED,
+    // reviewer 2 体が 1 件ずつ返すので payload の raw_findings は 2 件。record 側が 1 件だけ
+    // 書けた状況を作る。
+    snapshot: { path: "/tmp/audit-x.json", raw_findings_count: 1, findings_count: 1 },
+  });
+  assert.equal(result.snapshot.truncated, true, "件数が食い違えば truncated を立てる");
+  assert.deepEqual(
+    result.snapshot.expected,
+    { raw: 2, findings: 1 },
+    "期待した件数が返り値に残り、何件失われたか読める",
+  );
+  assert.deepEqual(result.snapshot.actual, { raw: 1, findings: 1 }, "ディスク上の実件数も残る");
+});
+
+test("T-025 件数が payload と一致する run は snapshot.truncated=false を返す", async () => {
+  const { result } = await run({
+    challenge: BOTH_CONFIRMED,
+    integrate: INTEGRATED,
+    snapshot: { path: "/tmp/audit-y.json", raw_findings_count: 2, findings_count: 1 },
+  });
+  assert.equal(result.snapshot.truncated, false, "一致すれば truncated は false");
+  assert.equal(result.snapshot.written, true, "record が書かれたことも返り値に残る");
+});
+
+test("T-026 snapshot agent が結果を返さない run は written=false を持ち truncated を断定しない", async () => {
+  const { result } = await run({ challenge: BOTH_CONFIRMED, integrate: INTEGRATED });
+  assert.equal(result.snapshot.written, false, "結果が無い run は written=false");
+  assert.equal(
+    result.snapshot.truncated,
+    null,
+    "書かれたか未確認の run を truncated=false と断定しない",
   );
 });
 

@@ -62,6 +62,29 @@ const bundled = (rel) =>
 // snapshot.py's build_record turns the payload keys into the record's fields verbatim.
 // Anything that lives only on the return value cannot be read back from the record, so
 // whatever a reader must find there has to be passed here.
+//
+// The payload only reaches the agent embedded in a prompt, and an agent that summarizes
+// while transcribing leaves the record alone thinned out. Measured: a run whose findings
+// carried long summaries wrote 2 raw_findings where the payload held 44, and nothing caught
+// it until the count contradicted tally. Have the record read back and the counts returned,
+// then compare them here.
+const SNAPSHOT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["path", "raw_findings_count", "findings_count"],
+  properties: {
+    path: { type: "string", description: "the path snapshot.py printed to stdout" },
+    raw_findings_count: {
+      type: "integer",
+      description: "raw_findings element count read back from the written record, not the payload",
+    },
+    findings_count: {
+      type: "integer",
+      description: "findings element count read back from the written record, not the payload",
+    },
+  },
+};
+
 const writeSnapshot = async ({
   preFlight,
   rawFindings,
@@ -89,22 +112,41 @@ const writeSnapshot = async ({
     needs_context: needsContext && needsContext.map(({ id, why }) => ({ id, why })),
     zero_reviewer_files: zeroReviewerFiles,
   });
-  await agent(
+  const written = await agent(
     anchor(
       `You are the snapshot stage of an audit. Write the following JSON payload to a temp file and run ` +
         `\`python3 ${bundled("workflows/audit/snapshot.py")} < <tempfile>\` once. ` +
         `The script resolves the timestamp, branch, and the delta against the ` +
         `prior snapshot (resolved / new / carried, matched on file + message), writes the record under ` +
         `$HOME/.claude/history/, and prints the output path to stdout. ` +
-        `Do not review code or change any finding. Do not write the file by any other means. The payload is as follows.\n${payload}`,
+        `Write the payload verbatim. Do not summarize, omit, reformat, or regenerate it, and do not truncate it for length. ` +
+        `Do not review code or change any finding. Do not write the file by any other means. ` +
+        `Once written, read the record back from the output path and return the actual element counts of raw_findings and findings. ` +
+        `Count what is on disk, not what the payload says. The payload is as follows.\n${payload}`,
     ),
     {
       agentType: "general-purpose",
       phase: "Snapshot",
       label: "snapshot",
       model: "haiku",
+      schema: SNAPSHOT_SCHEMA,
     },
   );
+  // The script owns the comparison. Asking the agent whether it truncated makes the party
+  // that truncated the one reporting on it.
+  const expected = { raw: rawFindings.length, findings: findings.length };
+  if (!written) {
+    log(`Snapshot: the agent returned no result; whether a record was written is unverified.`);
+    return { written: false, truncated: null, expected };
+  }
+  const actual = { raw: written.raw_findings_count, findings: written.findings_count };
+  const truncated = actual.raw !== expected.raw || actual.findings !== expected.findings;
+  if (truncated) {
+    log(
+      `Snapshot truncated: raw_findings ${actual.raw}/${expected.raw}, findings ${actual.findings}/${expected.findings}. The record cannot be used to measure cull rates.`,
+    );
+  }
+  return { written: true, path: written.path, truncated, expected, actual };
 };
 
 // /audit routing table. react-pattern only attaches to JSX files (jsx / tsx), so a
@@ -511,7 +553,7 @@ const skipped = units
   }));
 
 if (!findings.length) {
-  await writeSnapshot({
+  const emptySnapshot = await writeSnapshot({
     preFlight,
     rawFindings,
     findings: [],
@@ -521,6 +563,7 @@ if (!findings.length) {
     zeroReviewerFiles,
   });
   return {
+    snapshot: emptySnapshot,
     findings: [],
     assignments,
     skipped,
@@ -683,7 +726,7 @@ const integrated = await agent(
 // assignment in rawFindings, so falling back to it would silently readmit findings
 // the challenge triage already disputed.
 const finalFindings = (integrated && integrated.findings) || survivorsInput;
-await writeSnapshot({
+const snapshot = await writeSnapshot({
   preFlight,
   rawFindings,
   findings: finalFindings,
@@ -697,6 +740,7 @@ await writeSnapshot({
   zeroReviewerFiles,
 });
 return {
+  snapshot,
   findings: finalFindings,
   survivors,
   needs_context: needsContext,

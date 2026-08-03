@@ -60,6 +60,28 @@ const bundled = (rel) =>
 // 戻り値は使わない。
 // payload のキーは snapshot.py の build_record がそのまま record の項目にする。返り値に
 // しか無い項目は record から読めないので、record で読ませたいものはここへ渡す。
+//
+// payload は prompt に埋め込む形でしか agent に渡せず、agent が書き写す途中で要約すると
+// record だけが痩せる。実測では findings の summary が長い run で raw_findings 44 件が 2 件に
+// なり、tally との矛盾に気づくまで検出できなかった。書き出した record を読み返させて件数を
+// 返させ、script 側で期待値と照合する。
+const SNAPSHOT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["path", "raw_findings_count", "findings_count"],
+  properties: {
+    path: { type: "string", description: "snapshot.py が stdout に出力したパス" },
+    raw_findings_count: {
+      type: "integer",
+      description: "書き出した record を読み返した raw_findings の要素数。payload の値ではない",
+    },
+    findings_count: {
+      type: "integer",
+      description: "書き出した record を読み返した findings の要素数。payload の値ではない",
+    },
+  },
+};
+
 const writeSnapshot = async ({
   preFlight,
   rawFindings,
@@ -87,22 +109,41 @@ const writeSnapshot = async ({
     needs_context: needsContext && needsContext.map(({ id, why }) => ({ id, why })),
     zero_reviewer_files: zeroReviewerFiles,
   });
-  await agent(
+  const written = await agent(
     anchor(
       `あなたは audit の Snapshot 段階を担当する。次の JSON payload を一時ファイルに書き、` +
         `\`python3 ${bundled("workflows/audit/snapshot.py")} < <tempfile>\` を 1 回実行する。` +
         `スクリプトが timestamp・branch・prior snapshot との delta ` +
         `(file + message でマッチした resolved / new / carried) を解決し、` +
         `$HOME/.claude/history/ に記録を書いて出力パスを stdout に返す。` +
-        `コードの review や finding の変更はしない。他の方法でファイルを書かない。Payload は次のとおり。\n${payload}`,
+        `payload は一字一句そのまま書く。要約・省略・整形・再生成はしない。長さを理由に切り詰めない。` +
+        `コードの review や finding の変更はしない。他の方法でファイルを書かない。` +
+        `書き終えたら出力パスの record を読み返し、raw_findings と findings の実際の要素数を返す。` +
+        `payload に書いてある数ではなく、ディスク上の record を数えた値を返す。Payload は次のとおり。\n${payload}`,
     ),
     {
       agentType: "general-purpose",
       phase: "Snapshot",
       label: "snapshot",
       model: "haiku",
+      schema: SNAPSHOT_SCHEMA,
     },
   );
+  // 照合は script が持つ。agent 自身に「切り詰めていないか」を判定させると、切り詰めた当人が
+  // 自己申告することになる。
+  const expected = { raw: rawFindings.length, findings: findings.length };
+  if (!written) {
+    log(`Snapshot: agent が結果を返さなかった。record が書かれたかは未確認。`);
+    return { written: false, truncated: null, expected };
+  }
+  const actual = { raw: written.raw_findings_count, findings: written.findings_count };
+  const truncated = actual.raw !== expected.raw || actual.findings !== expected.findings;
+  if (truncated) {
+    log(
+      `Snapshot truncated: raw_findings ${actual.raw}/${expected.raw}、findings ${actual.findings}/${expected.findings}。record は刈り率の計測に使えない。`,
+    );
+  }
+  return { written: true, path: written.path, truncated, expected, actual };
 };
 
 // /audit の routing 表。react-pattern は JSX を含む拡張子 (jsx / tsx) にだけ付け、素の js の
@@ -507,7 +548,7 @@ const skipped = units
   }));
 
 if (!findings.length) {
-  await writeSnapshot({
+  const emptySnapshot = await writeSnapshot({
     preFlight,
     rawFindings,
     findings: [],
@@ -517,6 +558,7 @@ if (!findings.length) {
     zeroReviewerFiles,
   });
   return {
+    snapshot: emptySnapshot,
     findings: [],
     assignments,
     skipped,
@@ -678,7 +720,7 @@ const integrated = await agent(
 // より前の状態なので、そこへ落とすと challenge triage が disputed と判定した finding を黙って
 // 呼び戻すことになる。
 const finalFindings = (integrated && integrated.findings) || survivorsInput;
-await writeSnapshot({
+const snapshot = await writeSnapshot({
   preFlight,
   rawFindings,
   findings: finalFindings,
@@ -692,6 +734,7 @@ await writeSnapshot({
   zeroReviewerFiles,
 });
 return {
+  snapshot,
   findings: finalFindings,
   survivors,
   needs_context: needsContext,
