@@ -1,4 +1,4 @@
-"""Shared helpers for the dr skill scripts."""
+"""dr skill のスクリプトが共有するヘルパー。"""
 
 import os
 import re
@@ -33,7 +33,7 @@ def resolve_dr_dir(arg=None):
 
 
 def guard_skill_dir(dr_dir, hint):
-    """Reject the skill-definition directory itself as a Decision Record archive."""
+    """skill 定義ディレクトリ自体を Decision Record の置き場として受け付けない。"""
     if (dr_dir / "SKILL.md").is_file():
         fail(
             f"Error: {dr_dir} contains SKILL.md (skill-definition directory,"
@@ -43,11 +43,11 @@ def guard_skill_dir(dr_dir, hint):
 
 
 def split_frontmatter(text):
-    """(frontmatter lines, body lines).
+    """(frontmatter の行, body の行) を返す。
 
-    Frontmatter only when the file opens with a --- line and has a closing ---
-    line. A --- elsewhere (e.g. a body horizontal rule) is never a delimiter, and
-    an unclosed opening --- yields no frontmatter.
+    frontmatter と見なすのは、ファイルが --- の行で始まり、閉じる --- の行を持つ
+    ときだけ。それ以外の位置にある --- (body の水平線など) は区切りにしない。
+    開いたまま閉じない --- は frontmatter 無しとして扱う。
     """
     lines = text.splitlines()
     fence = re.compile(r"^---[ \t]*$")

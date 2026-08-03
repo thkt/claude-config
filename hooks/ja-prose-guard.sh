@@ -44,16 +44,48 @@ case "$file_path" in
   *) exit 0 ;;
 esac
 
-# Prose lines only: line comments, block-comment bodies, and Python docstring delimiters.
-# Counting the whole file would pass on any file holding a Japanese string literal.
-prose=$(LC_ALL=en_US.UTF-8 grep -E '^\s*(#|//|\*|"""|'"'''"')' "$file_path" 2>/dev/null || true)
+# Prose only, never code or string literals. Counting the whole file would pass on any
+# file holding a Japanese string literal; matching comment-looking lines would both miss a
+# docstring's body (its 2nd line onward starts with neither # nor ") and catch Markdown
+# headings inside a generated-text literal.
+case "$file_path" in
+  *.py)
+    # Python has an exact answer available, so take it: ast for docstrings, tokenize for
+    # comments. A regex cannot tell `# heading` inside a triple-quoted template from a
+    # real comment.
+    prose=$(python3 - "$file_path" <<'PY' 2>/dev/null || true
+import ast, io, sys, tokenize
+
+path = sys.argv[1]
+src = open(path, encoding="utf-8").read()
+out = []
+try:
+    tree = ast.parse(src)
+except SyntaxError:
+    sys.exit(0)
+for node in ast.walk(tree):
+    if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        doc = ast.get_docstring(node)
+        if doc:
+            out.append(doc)
+try:
+    for tok in tokenize.generate_tokens(io.StringIO(src).readline):
+        if tok.type == tokenize.COMMENT and not tok.string.startswith("#!"):
+            out.append(tok.string)
+except (tokenize.TokenError, IndentationError):
+    pass
+print("\n".join(out))
+PY
+    )
+    ;;
+  *)
+    prose=$(LC_ALL=en_US.UTF-8 grep -E '^\s*(#|//|\*)' "$file_path" 2>/dev/null || true)
+    prose=$(printf '%s\n' "$prose" | grep -v -E '^#!|^# -\*- coding' || true)
+    ;;
+esac
 
 # No prose at all means nothing to translate (a pure-code identical copy).
-[[ -z "$prose" ]] && exit 0
-
-# Shebang and coding lines are not prose.
-prose=$(printf '%s\n' "$prose" | grep -v -E '^#!|^# -\*- coding' || true)
-[[ -z "$prose" ]] && exit 0
+[[ -z "${prose//[[:space:]]/}" ]] && exit 0
 
 # Threshold 1: a single Japanese character anywhere in the prose clears this guard. The
 # target is a wholesale replacement, not partial drift.
