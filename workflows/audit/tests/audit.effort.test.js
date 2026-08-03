@@ -89,3 +89,16 @@ test("challenge stub が verdicts を返す run は返り値に challenge_ran=tr
   assert.equal(result.tally.needs_context, 0, "needs_context は 0 件");
   assert.equal(result.tally.no_verdict, 0, "verdict 欠落は 0 件");
 });
+
+// general-purpose のままだと無制限の Bash が付き、generator-snapshot の tools 制限
+// (Write と python3 のみ) も Posture も働かない。
+test("Snapshot 段の agent 起動は agentType に generator-snapshot を渡す", async () => {
+  const { calls } = await runToIntegrate();
+  const snapshotCalls = calls.agent.filter((c) => c.opts && c.opts.label === "snapshot");
+  assert.equal(snapshotCalls.length, 1, "snapshot agent が 1 回呼ばれる");
+  assert.equal(
+    snapshotCalls[0].opts.agentType,
+    "generator-snapshot",
+    "Snapshot 段の agentType が generator-snapshot である",
+  );
+});
