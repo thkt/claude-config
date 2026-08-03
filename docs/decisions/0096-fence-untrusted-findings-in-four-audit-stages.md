@@ -29,7 +29,7 @@ decision-makers: thkt
 
 ## Decision Outcome
 
-Option A を採用する。Verify と Integrate は実害が薄いが、fence 適用の限界コストは 1 行の wrap だけで、4 箇所を同じ helper で覆うほうが「どの段が fence 済みか」を読み手が都度確認する必要がなくなる (Option B は不採用)。共有 helper の切り出しは、対象が audit.js 内の 4 呼び出しに留まる現状では `workflows/_lib/` と `.ja/workflows/_lib/` の新設に見合わない。切り出しの判断基準は Reassessment Triggers に譲る (Option C は現時点で不採用)。
+Option A を採用する。Verify と Integrate は実害が薄いが、fence 適用の限界コストは 1 行の wrap だけで、4 箇所を同じ helper で覆うほうが「どの段が fence 済みか」を読み手が都度確認する必要がなくなる (Option B は不採用)。共有 helper の切り出しは、対象が audit.js 内の 4 呼び出しに留まる現状では見合わない。`workflows/_lib/` は `run-workflow.js` で既にあるので新設は要らないが、`.ja/workflows/_lib/` の新設と両側の同期は要る。切り出しの判断基準は Reassessment Triggers に譲る (Option C は現時点で不採用)。
 
 ### Consequences
 
