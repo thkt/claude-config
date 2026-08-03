@@ -540,9 +540,10 @@ try {
   const challengeStalled = codexFindings.length > 0 && !challenged && !verified;
   // The nested audit workflow's own challenge_ran distinguishes "challenge produced
   // verdicts" from "fail-open (challenge did not run, so audit.js let all findings through
-  // as confirmed)". Findings are degraded only in the latter case; an empty-findings run is
-  // audit.js's own early return, not a degradation.
-  const auditDegraded = auditFindings.length > 0 && !!audit && audit.challenge_ran === false;
+  // as confirmed)". The zero-findings early return carries challenge_ran=false too and
+  // counts as degraded, closing the hole where a run whose reviewers found nothing and
+  // whose challenge never ran still reaches Ready with zero issues.
+  const auditDegraded = !!audit && audit.challenge_ran === false;
   const auditFindingsIntro = auditDegraded
     ? "The nested audit workflow's challenge stage did not run (fail-open), so treat the following findings as unverified; include them in issues as-is but flag this in the report."
     : "The integrated findings from the audit workflow (critic-verified; include them in issues as-is) are as follows.";
@@ -571,8 +572,8 @@ try {
 
   // Gate rule. Build smoke fail / test fail / one or more
   // issues means NotReady. Severity remains a fix-priority hint and never affects the
-  // gate. caveat applies only when dynamic evidence is missing for env reasons, and
-  // presumes zero issues.
+  // gate. caveat presumes zero issues and applies when dynamic evidence is missing for env
+  // reasons, or when the nested audit failed open and left its findings unverified.
   if (buildCol === "fail" || testsCol === "fail" || issues.length > 0 || challengeStalled) {
     gate = "NotReady";
   } else if (!envFail && !auditDegraded && (testsCol === "pass" || testsCol === "no-runner")) {

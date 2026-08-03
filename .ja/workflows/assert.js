@@ -531,9 +531,9 @@ try {
   const challengeStalled = codexFindings.length > 0 && !challenged && !verified;
   // 入れ子の audit workflow 自身の challenge_ran は「challenge が verdicts を返した run」と
   // 「fail-open (challenge が走らず audit.js が全件 confirmed のまま通した run)」を区別する
-  // 値。degraded とみなすのは後者のときだけで、findings が空の run は audit.js 側の早期
-  // return であり degradation ではない。
-  const auditDegraded = auditFindings.length > 0 && !!audit && audit.challenge_ran === false;
+  // 値。findings が 0 件の早期 return も challenge_ran=false を返すため degraded に含める。
+  // reviewer が何も出さず challenge も走らなかった run が issues 0 件のまま Ready に届く穴を塞ぐ。
+  const auditDegraded = !!audit && audit.challenge_ran === false;
   const auditFindingsIntro = auditDegraded
     ? "入れ子の audit workflow の challenge stage が走らなかった (fail-open) ため、以下の findings は未検証として扱う。そのまま issues に含めてよいが、report で表面化する。"
     : "audit workflow の統合済み findings (critic 検証済み。そのまま issues に含める) は次のとおり。";
@@ -561,8 +561,9 @@ try {
   issues = mergeIssues(synth ? synth.issues : [...auditFindings, ...promoted]);
 
   // gate 規則。build smoke fail / test fail / issues 1 件以上は
-  // NotReady。severity は修正優先度のヒントに留まり、gate には影響しない。caveat は動的
-  // evidence が env 起因などで欠けたときだけで、issues 0 が前提。
+  // NotReady。severity は修正優先度のヒントに留まり、gate には影響しない。caveat は issues 0 を
+  // 前提に、動的 evidence が env 起因などで欠けたとき、または入れ子の audit が fail-open して
+  // findings が未検証のときに付く。
   if (buildCol === "fail" || testsCol === "fail" || issues.length > 0 || challengeStalled) {
     gate = "NotReady";
   } else if (!envFail && !auditDegraded && (testsCol === "pass" || testsCol === "no-runner")) {

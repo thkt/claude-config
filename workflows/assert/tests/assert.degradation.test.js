@@ -132,21 +132,22 @@ test("triage block 内で throw が起きた時、result.adversarial が stall �
 //       Ready (caveat) になる
 // T-007 audit が challenge_ran=true で issues が0件かつ tests が pass の run の gate は
 //       Ready のままになる
+// T-009 audit が findings 0件かつ challenge_ran=false を返した run の gate も Ready ではなく
+//       Ready (caveat) になる
 //
-// contract: workflows/assert.js の challengeStalled (findings が存在するのに verification
-// signal が run しなかったことを示す boolean を script が計算する形) と同じ形で auditDegraded
-// を計算する。audit.js 自身の challenge_ran は「verdicts を返した run」と「fail-open (findings
-// はあるが challenge が走らず全件 confirmed になった run)」を区別する値なので、audit findings
-// が非空かつ challenge_ran===false のときだけ degraded とみなす (findings が空の run は audit.js
-// 側の早期 return であり degradation ではない)。劣化を示す値は script が計算し、agent には
-// 判定させない。Synthesize prompt の audit findings を紹介する一文は劣化時だけ切り替え、
-// 通常時 (challenge_ran=true) の "critic-verified" 文言は変えない。gate rule は Ready 分岐の
-// 条件に auditDegraded を加える (buildCol=pass, testsCol=pass, issues=0 でも degraded なら
-// Ready でなく Ready (caveat) に落ちる)。
+// contract: workflows/assert.js の challengeStalled (verification signal が run しなかったこと
+// を示す boolean を script が計算する形) と同じ形で auditDegraded を計算する。audit.js 自身の
+// challenge_ran は「verdicts を返した run」と「fail-open (challenge が走らず全件 confirmed に
+// なった run)」を区別する値なので、challenge_ran===false を degraded とみなす。findings 0件の
+// 早期 return も challenge_ran=false を返し、reviewer が何も出さず challenge も走らなかった run
+// が issues 0件のまま Ready に届く穴そのものなので、件数では除外しない。劣化を示す値は script が
+// 計算し、agent には判定させない。Synthesize prompt の audit findings を紹介する一文は劣化時
+// だけ切り替え、通常時 (challenge_ran=true) の "critic-verified" 文言は変えない。gate rule は
+// Ready 分岐の条件に auditDegraded を加える (buildCol=pass, testsCol=pass, issues=0 でも
+// degraded なら Ready でなく Ready (caveat) に落ちる)。
 
-// audit findings を非空にして challenge_ran だけを差し替える。findings が空だと audit.js 側の
-// 早期 return (challenge_ran=false だが degradation ではない) と区別できなくなるため、
-// 両ケースとも findings を1件持たせる。
+// challenge_ran だけを差し替え、findings は両ケースとも1件持たせる。findings 0件との組み合わせは
+// T-009 が別に押さえる。
 const makeAuditWorkflowStub = (challengeRan) => (name) =>
   name === "audit"
     ? {
@@ -222,6 +223,22 @@ test("T-007 audit が challenge_ran=true で issues が0件かつ tests が pass
     result.gate,
     "Ready",
     "audit の challenge が正常に走った run は issues 0件かつ tests pass のとき Ready のままになる",
+  );
+});
+
+test("T-009 audit が findings 0件かつ challenge_ran=false を返した run の gate は Ready ではなく Ready (caveat) になる", async () => {
+  const { result } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: {
+      agent: makeAgent({ ran: true, tests: [] }),
+      workflow: (name) =>
+        name === "audit" ? { findings: [], challenge_ran: false, verify_ran: false } : undefined,
+    },
+  });
+  assert.equal(
+    result.gate,
+    "Ready (caveat)",
+    "reviewer が何も出さず challenge も走らなかった run は issues 0件でも Ready にならない",
   );
 });
 
