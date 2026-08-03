@@ -128,7 +128,10 @@ const writeSnapshot = async ({
       agentType: "general-purpose",
       phase: "Snapshot",
       label: "snapshot",
-      model: "haiku",
+      // On haiku, transcribing a long payload turns into summarizing partway through:
+      // measured, 44 raw_findings came out as 2. No judgment is asked of this stage, but
+      // the length of what it copies is what decides the model.
+      model: "sonnet",
       schema: SNAPSHOT_SCHEMA,
     },
   );

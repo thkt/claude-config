@@ -125,7 +125,9 @@ const writeSnapshot = async ({
       agentType: "general-purpose",
       phase: "Snapshot",
       label: "snapshot",
-      model: "haiku",
+      // haiku では長い payload の書き写しが途中で要約に変わる。実測で raw_findings 44 件が
+      // 2 件になった。判断を求める段ではないが、書き写す長さが model 選択を決める。
+      model: "sonnet",
       schema: SNAPSHOT_SCHEMA,
     },
   );
