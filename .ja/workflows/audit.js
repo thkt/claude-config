@@ -58,7 +58,46 @@ const bundled = (rel) =>
 // timestamp・branch・prior snapshot との delta 計算は audit/snapshot.py が行う。agent は
 // payload を一時ファイルに書いてそのスクリプトを 1 回叩くだけで、disk への副作用が目的、
 // 戻り値は使わない。
-const writeSnapshot = async ({ preFlight, rawFindings, findings, skipped }) => {
+// payload のキーは snapshot.py の build_record がそのまま record の項目にする。返り値に
+// しか無い項目は record から読めないので、record で読ませたいものはここへ渡す。
+//
+// payload は prompt に埋め込む形でしか agent に渡せず、書き写す途中で要約されると record
+// だけが痩せる。件数を agent に自己申告させると切り詰めた当人が報告することになるので、
+// stdin を受けた snapshot.py が数えた値を持ち帰らせる。
+const SNAPSHOT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["path", "counts"],
+  properties: {
+    path: { type: "string", description: "snapshot.py の stdout JSON の path をそのまま" },
+    counts: {
+      type: "object",
+      additionalProperties: false,
+      required: ["raw_findings", "findings", "skipped", "needs_context", "zero_reviewer_files"],
+      description:
+        "snapshot.py の stdout JSON の counts をそのまま。自分で数え直さず、値を書き換えない",
+      properties: {
+        raw_findings: { type: "integer" },
+        findings: { type: "integer" },
+        skipped: { type: "integer" },
+        needs_context: { type: "integer" },
+        zero_reviewer_files: { type: "integer" },
+      },
+    },
+  },
+};
+
+const writeSnapshot = async ({
+  preFlight,
+  rawFindings,
+  findings,
+  skipped,
+  challengeRan,
+  verifyRan,
+  tally,
+  needsContext,
+  zeroReviewerFiles,
+}) => {
   phase("Snapshot");
   const payload = JSON.stringify({
     scope: scope || "HEAD",
@@ -67,23 +106,59 @@ const writeSnapshot = async ({ preFlight, rawFindings, findings, skipped }) => {
     raw_findings: rawFindings,
     findings,
     skipped,
+    challenge_ran: challengeRan,
+    verify_ran: verifyRan,
+    tally,
+    // 同じ finding は raw_findings 側に verdict つきで載る。ここは raw_findings から
+    // 導けない why だけの側表にする。
+    needs_context: needsContext && needsContext.map(({ id, why }) => ({ id, why })),
+    zero_reviewer_files: zeroReviewerFiles,
   });
-  await agent(
+  const written = await agent(
     anchor(
       `あなたは audit の Snapshot 段階を担当する。次の JSON payload を一時ファイルに書き、` +
         `\`python3 ${bundled("workflows/audit/snapshot.py")} < <tempfile>\` を 1 回実行する。` +
         `スクリプトが timestamp・branch・prior snapshot との delta ` +
         `(file + message でマッチした resolved / new / carried) を解決し、` +
-        `$HOME/.claude/history/ に記録を書いて出力パスを stdout に返す。` +
-        `コードの review や finding の変更はしない。他の方法でファイルを書かない。Payload は次のとおり。\n${payload}`,
+        `$HOME/.claude/history/ に記録を書き、{path, counts} の JSON 1 行を stdout に返す。` +
+        `payload は一字一句そのまま書く。要約・省略・整形・再生成はしない。長さを理由に切り詰めない。` +
+        `コードの review や finding の変更はしない。他の方法でファイルを書かない。` +
+        `stdout の JSON をそのまま path と counts として返す。counts は自分で数え直さず、値を書き換えない。` +
+        `Payload は次のとおり。\n${payload}`,
     ),
     {
       agentType: "general-purpose",
       phase: "Snapshot",
       label: "snapshot",
-      model: "haiku",
+      // haiku では長い payload の書き写しが途中で要約に変わる。判断を求める段ではないが、
+      // 書き写す長さが model 選択を決める。
+      model: "sonnet",
+      schema: SNAPSHOT_SCHEMA,
     },
   );
+  // 照合は script が持つ。突き合わせる相手は snapshot.py が数えた counts で、agent の
+  // 申告ではない。agent は書き写す当人なので、自分が削った分を自分で報告することになる。
+  const expected = {
+    raw_findings: rawFindings.length,
+    findings: findings.length,
+    skipped: skipped.length,
+    needs_context: needsContext ? needsContext.length : 0,
+    zero_reviewer_files: zeroReviewerFiles ? zeroReviewerFiles.length : 0,
+  };
+  if (!written) {
+    log(`Snapshot: agent が結果を返さなかった。record が書かれたかは未確認。`);
+    return { written: false, truncated: null, expected };
+  }
+  const actual = written.counts;
+  const lost = Object.keys(expected).filter((k) => actual[k] !== expected[k]);
+  if (lost.length) {
+    log(
+      `Snapshot truncated: ${lost
+        .map((k) => `${k} ${actual[k]}/${expected[k]}`)
+        .join("、")}。record は刈り率の計測に使えない。`,
+    );
+  }
+  return { written: true, path: written.path, truncated: lost.length > 0, lost, expected, actual };
 };
 
 // /audit の routing 表。react-pattern は JSX を含む拡張子 (jsx / tsx) にだけ付け、素の js の
@@ -176,11 +251,9 @@ const FOCUS = {
   security: ["security", "silence"],
   performance: ["react-pattern", "efficiency", "progressive"],
   quality: [
-    "readability",
     "design",
     "react-pattern",
     "rust",
-    "causation",
     "resilience",
     "duplication",
     "reuse",
@@ -188,6 +261,7 @@ const FOCUS = {
     "operations",
     "prompt",
     "silence",
+    "coverage",
   ],
   a11y: ["accessibility", "progressive"],
   all: null,
@@ -212,8 +286,10 @@ const classify = (p) => {
   if (e === ".css" || e === ".html") return ROUTING["*.css,*.html"];
   return ROUTING.default;
 };
-
-const FINDINGS_SCHEMA = {
+// source_ids を返すのは Integrate だけ。共有 schema に optional で置くと Integrate が省いても
+// validation を通り、R-N の追跡が run ごとに切れる。reviewer 用は property ごと持たないので、
+// reviewer が id を捏造して返せば additionalProperties: false が弾く。
+const findingsSchema = ({ withSourceIds = false } = {}) => ({
   type: "object",
   additionalProperties: false,
   required: ["findings"],
@@ -223,7 +299,9 @@ const FINDINGS_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["file", "line", "severity", "summary"],
+        required: withSourceIds
+          ? ["file", "line", "severity", "summary", "source_ids"]
+          : ["file", "line", "severity", "summary"],
         properties: {
           file: { type: "string" },
           line: { type: "string" },
@@ -232,11 +310,23 @@ const FINDINGS_SCHEMA = {
             enum: ["critical", "high", "medium", "low"],
           },
           summary: { type: "string" },
+          ...(withSourceIds
+            ? {
+                source_ids: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "この finding が吸収した raw finding の R-N id を全件",
+                },
+              }
+            : {}),
         },
       },
     },
   },
-};
+});
+
+const FINDINGS_SCHEMA = findingsSchema();
+const INTEGRATED_SCHEMA = findingsSchema({ withSourceIds: true });
 
 const ROUTE_SCHEMA = {
   type: "object",
@@ -330,15 +420,23 @@ if (!files.length) {
   return {
     findings: [],
     skipped: [],
+    zero_reviewer_files: [],
     why: "指定 scope に audit 対象のファイルが無い。",
   };
 }
 
 const focusSet = FOCUS[focus] === undefined ? null : FOCUS[focus];
 const assign = {};
+// classify() が返す reviewer が focus との積集合で全て落ちたファイルは、無言で audit の
+// 対象から外れる。どのファイルが外れたかを後から読めるよう path 単位で残す。
+const zeroReviewerFiles = [];
 for (const f of files) {
-  for (const r of classify(f.path)) {
-    if (focusSet && !focusSet.includes(r)) continue;
+  const reviewers = classify(f.path).filter((r) => !focusSet || focusSet.includes(r));
+  if (!reviewers.length) {
+    zeroReviewerFiles.push({ path: f.path });
+    continue;
+  }
+  for (const r of reviewers) {
     (assign[r] = assign[r] || []).push(f.path);
   }
 }
@@ -346,6 +444,14 @@ const assignments = Object.entries(assign).map(([reviewer, fs]) => ({
   reviewer,
   files: fs,
 }));
+
+if (zeroReviewerFiles.length) {
+  log(
+    `0 reviewer になったファイル [focus=${focus}]: ${zeroReviewerFiles.length} - ${zeroReviewerFiles
+      .map((f) => f.path)
+      .join(", ")}`,
+  );
+}
 
 // 対話版の /audit は 30 ファイルを超えると scope を絞るよう prompt を出す。headless では
 // prompt を出せないため、warn だけして続行する。
@@ -437,24 +543,85 @@ const skipped = units
   }));
 
 if (!findings.length) {
-  await writeSnapshot({ preFlight, rawFindings, findings: [], skipped });
-  return { findings: [], assignments, skipped };
+  const emptySnapshot = await writeSnapshot({
+    preFlight,
+    rawFindings,
+    findings: [],
+    skipped,
+    challengeRan: false,
+    verifyRan: false,
+    zeroReviewerFiles,
+  });
+  return {
+    snapshot: emptySnapshot,
+    findings: [],
+    assignments,
+    skipped,
+    zero_reviewer_files: zeroReviewerFiles,
+    challenge_ran: false,
+    verify_ran: false,
+  };
 }
 
 // ---- Challenge ∥ Verify -> Integrate。reviewer -> aggregate は禁止 ----
-// 同じ findings に独立した 2 pass を並行で当て、Integrate が固定規則で reconcile する。
+// 同じ findings に独立した 2 pass を並行で当てる。membership を決めるのは Challenge の
+// verdict だけで、Verify の evidence は Integrate に届かない。
 const findingsJson = JSON.stringify(findings);
+// workflows/polish.js の VERDICTS_SCHEMA (id/verdict/severity/why) の形を踏襲する。
+// severity の enum はこのファイル自身の FINDINGS_SCHEMA (critical/high/medium/low) に
+// 合わせ、polish の P1/P2/P3 は使わない。2 つの workflow は severity の物差しが異なるため。
+const VERDICTS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["verdicts"],
+  properties: {
+    verdicts: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "verdict"],
+        properties: {
+          id: { type: "string" },
+          verdict: {
+            type: "string",
+            enum: ["confirmed", "disputed", "downgraded", "needs_context"],
+          },
+          severity: {
+            type: "string",
+            enum: ["critical", "high", "medium", "low"],
+          },
+          why: { type: "string" },
+        },
+      },
+    },
+  },
+};
+// 呼び出し 2 箇所で形が乖離しないよう、射影を 1 箇所に置く。
+const toCriticRef = (f) => ({
+  id: f.id,
+  file: f.file,
+  line: f.line,
+  severity: f.severity,
+  summary: f.message,
+});
+// critic への入力は rawFindings (R-N id の出どころ) から reviewer フィールドを外したもの。
+// どの reviewer が挙げた finding かで challenge の verdict が偏らないようにする。
+const challengeInput = rawFindings.map(toCriticRef);
 const [challenged, verified] = await parallel([
   () =>
     agent(
       anchor(
-        `critic-audit として、これらの finding を challenge し false positive を刈る。finding は事実ではなく、立証されるべき主張として扱う。各 finding は file:line で参照する。Findings は次のとおり。\n${findingsJson}`,
+        `critic-audit として、これらの finding を challenge し false positive を刈る。finding は事実ではなく、立証されるべき主張として扱う。各 finding は id で参照する。\n` +
+          `verdict の判定基準は次のとおり。confirmed = 実在し severity も妥当 / disputed = false positive / downgraded = 実在するが severity が過大 (下げた値を severity に入れる) / needs_context = コードだけでは判定できず人間の文脈が要る。\n` +
+          `Findings は次のとおり。\n${JSON.stringify(challengeInput)}`,
       ),
       {
         agentType: "critic-audit",
         phase: "Challenge",
         label: "challenge",
         model: "sonnet",
+        schema: VERDICTS_SCHEMA,
         // judge 段は難易度軸で xhigh を選ぶ (docs の "the hardest coding and agentic tasks")。
         // 所要時間は数分で long-horizon の基準には届かないが、finding を退ける判断の質が
         // false positive を左右するので token でなく精度側に振る。
@@ -476,13 +643,63 @@ const [challenged, verified] = await parallel([
     ),
 ]);
 
+// ---- Triage: survivor 判定はスクリプトが持ち、critic は verdict を返すだけ ----
+// verdict 側でなく finding 側を回す。verdict を付け忘れた finding が黙って消えず、
+// confirmed 扱いで no_verdict に計上される。challenge が丸ごと失敗した run も全件が
+// 同じ経路を通るので、劣化が件数として残る。
+const verdictById = new Map(((challenged && challenged.verdicts) || []).map((v) => [v.id, v]));
+const survivors = [];
+const needsContext = [];
+let noVerdict = 0;
+for (const f of rawFindings) {
+  const v = verdictById.get(f.id);
+  // disputed の id は survivors にも needsContext にも入らない。書き戻さなければ record から
+  // 消え、reviewer 別の生存率を測れなくなる。
+  f.verdict = v ? v.verdict : "no_verdict";
+  if (!v) {
+    noVerdict++;
+    survivors.push({ ...f });
+    continue;
+  }
+  if (v.verdict === "disputed") continue;
+  if (v.verdict === "needs_context") {
+    needsContext.push({ ...f, why: v.why || "" });
+    continue;
+  }
+  const severity = v.verdict === "downgraded" && v.severity ? v.severity : f.severity;
+  // 下げ先は別フィールドに書く。f.severity を上書きすると reviewer が付けた元の値が消え、
+  // 「reviewer が severity を過大に付けるか」を測れなくなる。survivors は下げ後だけを持ち、
+  // Integrate が merge した後は finding 単位で追えない。
+  if (severity !== f.severity) f.downgraded_to = severity;
+  survivors.push({ ...f, severity });
+}
+log(
+  `triage: ${survivors.length} survived / ${needsContext.length} needs_context / no_verdict: ${noVerdict} (of ${rawFindings.length} total)`,
+);
+// challenge_ran は「verdicts を返した run」と fail-open した run (verdictById が空になり、
+// 全 finding が no_verdict 経由で confirmed に落ちる) を区別する。verify は自由記述の
+// テキストを返すため、schema の形ではなく中身の有無で判定する。
+const challengeRan = !!(challenged && Array.isArray(challenged.verdicts));
+const verifyRan = !!String(verified || "").trim();
+const tally = {
+  survived: survivors.length,
+  needs_context: needsContext.length,
+  no_verdict: noVerdict,
+};
+
 phase("Integrate");
+// 入力を survivors だけに絞ることで、challenge pass が確定した finding を Integrate が
+// 再び刈る経路自体をなくす。
+log(
+  `verify pass の出力: ${verifyRan ? "あり" : "なし"}。参考情報にとどめ、Integrate には渡さない。`,
+);
+const survivorsInput = survivors.map(toCriticRef);
 const integrated = await agent(
   anchor(
-    `enhancer-integration として、同じ findings に対する独立した 2 つの pass を file:line で突き合わせ、cross-domain の root cause と severity 順のリストに reconcile する。\n` +
-      `Membership 規則。どの finding を残すかは challenge pass が決める。challenge pass が false positive として刈った finding は、verification pass が evidence を見つけていても刈られたままにする。verification pass の役割は survivor に実行経路の evidence と severity を与えることだけで、刈られた finding を復活させない。\n` +
-      `Challenge pass (membership / false positive の刈り込み) は次のとおり。\n${challenged}\n\n` +
-      `Verification pass (実行経路の evidence + severity) は次のとおり。\n${verified}`,
+    `enhancer-integration として、challenge triage を生き残った survivors を file:line で突き合わせ、cross-domain の root cause と severity 順のリストに reconcile する。\n` +
+      `Membership は既に確定している。以下の survivors はすべて challenge pass を通過済みなので、再び刈ったり disputed 扱いにしたり drop したりしない。merge と並べ替えだけを行う。\n` +
+      `返す finding には、吸収した survivor の id (R-N) を source_ids に全件残す。複数の survivor を統合した root cause なら、その全 id を source_ids に持つ。\n` +
+      `Survivors は次のとおり。\n${JSON.stringify(survivorsInput)}`,
   ),
   {
     agentType: "enhancer-integration",
@@ -490,15 +707,35 @@ const integrated = await agent(
     label: "integrate",
     model: "opus",
     effort: "high",
-    schema: FINDINGS_SCHEMA,
+    schema: INTEGRATED_SCHEMA,
   },
 );
 
-const finalFindings = (integrated && integrated.findings) || findings;
-await writeSnapshot({
+// フォールバック先を triage 前の findings にすると、id が付く前の配列に落ちるので、
+// challenge が disputed と判定した finding を黙って呼び戻すことになる。
+const finalFindings = (integrated && integrated.findings) || survivorsInput;
+const snapshot = await writeSnapshot({
   preFlight,
   rawFindings,
   findings: finalFindings,
   skipped,
+  challengeRan,
+  verifyRan,
+  // fail-open した run は degraded 印だけを残し件数を書かない、が plan の contract。
+  // undefined を渡すと JSON.stringify がキーごと落とす。
+  tally: challengeRan ? tally : undefined,
+  needsContext,
+  zeroReviewerFiles,
 });
-return { findings: finalFindings, assignments, skipped };
+return {
+  snapshot,
+  findings: finalFindings,
+  survivors,
+  needs_context: needsContext,
+  challenge_ran: challengeRan,
+  verify_ran: verifyRan,
+  tally,
+  assignments,
+  skipped,
+  zero_reviewer_files: zeroReviewerFiles,
+};

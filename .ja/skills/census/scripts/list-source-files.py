@@ -1,7 +1,7 @@
-"""List source files in a tree, largest first.
+"""ツリー内のソースファイルを行数降順で一覧する。
 
 Usage: list-source-files.py <repo-root>
-Output: "<lines> <path>" per line, sorted descending.
+Output: 1 行 1 ファイルで "<行数> <パス>" を降順出力。
 """
 import os
 import sys

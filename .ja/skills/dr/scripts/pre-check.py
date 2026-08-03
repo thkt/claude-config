@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Usage: pre-check.py "DR Title"
 
-stdout: JSON with status, number, filename, slug, date, dr_dir, similar_drs
-stderr: validation failures with exit 1
+stdout: status, number, filename, slug, date, dr_dir, similar_drs を持つ JSON
+stderr: 検証に落ちた内容。exit 1
 """
 
 import json
@@ -15,7 +15,7 @@ from dr_common import fail, guard_skill_dir, resolve_dr_dir
 
 
 def similarity(title_a, title_b):
-    """Shared distinct words between the titles, divided by title_a's word count."""
+    """2 つのタイトルで共通する語の異なり数を、title_a の語数で割った値。"""
     words_a = title_a.lower().split()
     if not words_a:
         return 0.0

@@ -59,7 +59,48 @@ const bundled = (rel) =>
 // audit/snapshot.py resolves the timestamp, branch, and the delta against the
 // prior snapshot. The agent only writes the payload to a temp file and runs the
 // script once; the disk side-effect is the goal, its result is not consumed.
-const writeSnapshot = async ({ preFlight, rawFindings, findings, skipped }) => {
+// snapshot.py's build_record turns the payload keys into the record's fields verbatim.
+// Anything that lives only on the return value cannot be read back from the record, so
+// whatever a reader must find there has to be passed here.
+//
+// The payload only reaches the agent embedded in a prompt, and summarizing while
+// transcribing leaves the record alone thinned out. Having the agent report the counts
+// would make the party that cut them the one reporting on it, so they come from
+// snapshot.py, which counted the stdin it received.
+const SNAPSHOT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["path", "counts"],
+  properties: {
+    path: { type: "string", description: "path from snapshot.py's stdout JSON, verbatim" },
+    counts: {
+      type: "object",
+      additionalProperties: false,
+      required: ["raw_findings", "findings", "skipped", "needs_context", "zero_reviewer_files"],
+      description:
+        "counts from snapshot.py's stdout JSON, verbatim. Do not recount and do not alter the values",
+      properties: {
+        raw_findings: { type: "integer" },
+        findings: { type: "integer" },
+        skipped: { type: "integer" },
+        needs_context: { type: "integer" },
+        zero_reviewer_files: { type: "integer" },
+      },
+    },
+  },
+};
+
+const writeSnapshot = async ({
+  preFlight,
+  rawFindings,
+  findings,
+  skipped,
+  challengeRan,
+  verifyRan,
+  tally,
+  needsContext,
+  zeroReviewerFiles,
+}) => {
   phase("Snapshot");
   const payload = JSON.stringify({
     scope: scope || "HEAD",
@@ -68,23 +109,61 @@ const writeSnapshot = async ({ preFlight, rawFindings, findings, skipped }) => {
     raw_findings: rawFindings,
     findings,
     skipped,
+    challenge_ran: challengeRan,
+    verify_ran: verifyRan,
+    tally,
+    // The same findings already appear in raw_findings carrying their verdict. This side
+    // table holds only why, which raw_findings cannot supply.
+    needs_context: needsContext && needsContext.map(({ id, why }) => ({ id, why })),
+    zero_reviewer_files: zeroReviewerFiles,
   });
-  await agent(
+  const written = await agent(
     anchor(
       `You are the snapshot stage of an audit. Write the following JSON payload to a temp file and run ` +
         `\`python3 ${bundled("workflows/audit/snapshot.py")} < <tempfile>\` once. ` +
         `The script resolves the timestamp, branch, and the delta against the ` +
         `prior snapshot (resolved / new / carried, matched on file + message), writes the record under ` +
-        `$HOME/.claude/history/, and prints the output path to stdout. ` +
-        `Do not review code or change any finding. Do not write the file by any other means. The payload is as follows.\n${payload}`,
+        `$HOME/.claude/history/, and prints one line of JSON, {path, counts}, to stdout. ` +
+        `Write the payload verbatim. Do not summarize, omit, reformat, or regenerate it, and do not truncate it for length. ` +
+        `Do not review code or change any finding. Do not write the file by any other means. ` +
+        `Return that stdout JSON as path and counts. Do not recount and do not alter the values. ` +
+        `The payload is as follows.\n${payload}`,
     ),
     {
       agentType: "general-purpose",
       phase: "Snapshot",
       label: "snapshot",
-      model: "haiku",
+      // On haiku, transcribing a long payload turns into summarizing partway through.
+      // No judgment is asked of this stage, but the length of what it copies decides
+      // the model.
+      model: "sonnet",
+      schema: SNAPSHOT_SCHEMA,
     },
   );
+  // The script owns the comparison, and what it compares against is the count snapshot.py
+  // took of its own stdin, not the agent's report. The agent is the party doing the
+  // transcribing, so it would be reporting on what it itself dropped.
+  const expected = {
+    raw_findings: rawFindings.length,
+    findings: findings.length,
+    skipped: skipped.length,
+    needs_context: needsContext ? needsContext.length : 0,
+    zero_reviewer_files: zeroReviewerFiles ? zeroReviewerFiles.length : 0,
+  };
+  if (!written) {
+    log(`Snapshot: the agent returned no result; whether a record was written is unverified.`);
+    return { written: false, truncated: null, expected };
+  }
+  const actual = written.counts;
+  const lost = Object.keys(expected).filter((k) => actual[k] !== expected[k]);
+  if (lost.length) {
+    log(
+      `Snapshot truncated: ${lost
+        .map((k) => `${k} ${actual[k]}/${expected[k]}`)
+        .join(", ")}. The record cannot be used to measure cull rates.`,
+    );
+  }
+  return { written: true, path: written.path, truncated: lost.length > 0, lost, expected, actual };
 };
 
 // /audit routing table. react-pattern only attaches to JSX files (jsx / tsx), so a
@@ -177,11 +256,9 @@ const FOCUS = {
   security: ["security", "silence"],
   performance: ["react-pattern", "efficiency", "progressive"],
   quality: [
-    "readability",
     "design",
     "react-pattern",
     "rust",
-    "causation",
     "resilience",
     "duplication",
     "reuse",
@@ -189,6 +266,7 @@ const FOCUS = {
     "operations",
     "prompt",
     "silence",
+    "coverage",
   ],
   a11y: ["accessibility", "progressive"],
   all: null,
@@ -213,8 +291,11 @@ const classify = (p) => {
   if (e === ".css" || e === ".html") return ROUTING["*.css,*.html"];
   return ROUTING.default;
 };
-
-const FINDINGS_SCHEMA = {
+// Only Integrate returns source_ids. Kept optional on the shared schema, an Integrate run
+// that omits it still passes validation and R-N tracking breaks per run. The reviewer
+// variant lacks the property entirely, so additionalProperties: false rejects a reviewer
+// that invents ids.
+const findingsSchema = ({ withSourceIds = false } = {}) => ({
   type: "object",
   additionalProperties: false,
   required: ["findings"],
@@ -224,7 +305,9 @@ const FINDINGS_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["file", "line", "severity", "summary"],
+        required: withSourceIds
+          ? ["file", "line", "severity", "summary", "source_ids"]
+          : ["file", "line", "severity", "summary"],
         properties: {
           file: { type: "string" },
           line: { type: "string" },
@@ -233,11 +316,23 @@ const FINDINGS_SCHEMA = {
             enum: ["critical", "high", "medium", "low"],
           },
           summary: { type: "string" },
+          ...(withSourceIds
+            ? {
+                source_ids: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "every R-N id of the raw findings this finding absorbed",
+                },
+              }
+            : {}),
         },
       },
     },
   },
-};
+});
+
+const FINDINGS_SCHEMA = findingsSchema();
+const INTEGRATED_SCHEMA = findingsSchema({ withSourceIds: true });
 
 const ROUTE_SCHEMA = {
   type: "object",
@@ -332,15 +427,23 @@ if (!files.length) {
   return {
     findings: [],
     skipped: [],
+    zero_reviewer_files: [],
     why: "No files to audit for the given scope.",
   };
 }
 
 const focusSet = FOCUS[focus] === undefined ? null : FOCUS[focus];
 const assign = {};
+// A file whose classify() reviewers all fall outside the focus intersection drops out of
+// the audit silently. Keep it at file-path granularity so a reader can tell which fell out.
+const zeroReviewerFiles = [];
 for (const f of files) {
-  for (const r of classify(f.path)) {
-    if (focusSet && !focusSet.includes(r)) continue;
+  const reviewers = classify(f.path).filter((r) => !focusSet || focusSet.includes(r));
+  if (!reviewers.length) {
+    zeroReviewerFiles.push({ path: f.path });
+    continue;
+  }
+  for (const r of reviewers) {
     (assign[r] = assign[r] || []).push(f.path);
   }
 }
@@ -348,6 +451,14 @@ const assignments = Object.entries(assign).map(([reviewer, fs]) => ({
   reviewer,
   files: fs,
 }));
+
+if (zeroReviewerFiles.length) {
+  log(
+    `Zero-reviewer files [focus=${focus}]: ${zeroReviewerFiles.length} - ${zeroReviewerFiles
+      .map((f) => f.path)
+      .join(", ")}`,
+  );
+}
 
 // The interactive /audit prompts to narrow scope past 30 files; headless has
 // no prompt, so warn and continue.
@@ -439,25 +550,86 @@ const skipped = units
   }));
 
 if (!findings.length) {
-  await writeSnapshot({ preFlight, rawFindings, findings: [], skipped });
-  return { findings: [], assignments, skipped };
+  const emptySnapshot = await writeSnapshot({
+    preFlight,
+    rawFindings,
+    findings: [],
+    skipped,
+    challengeRan: false,
+    verifyRan: false,
+    zeroReviewerFiles,
+  });
+  return {
+    snapshot: emptySnapshot,
+    findings: [],
+    assignments,
+    skipped,
+    zero_reviewer_files: zeroReviewerFiles,
+    challenge_ran: false,
+    verify_ran: false,
+  };
 }
 
 // ---- Challenge ∥ Verify -> Integrate (reviewer -> aggregate is forbidden) ----
-// Two independent passes over the same findings run concurrently; Integrate
-// reconciles them with a fixed rule.
+// Two independent passes over the same findings run concurrently. Only Challenge's
+// verdicts decide membership; Verify's evidence never reaches Integrate.
 const findingsJson = JSON.stringify(findings);
+// Mirrors workflows/polish.js's VERDICTS_SCHEMA shape (id/verdict/severity/why); the
+// severity enum tracks this file's own FINDINGS_SCHEMA (critical/high/medium/low) rather
+// than polish's P1/P2/P3, since the two workflows score severity on different scales.
+const VERDICTS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["verdicts"],
+  properties: {
+    verdicts: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "verdict"],
+        properties: {
+          id: { type: "string" },
+          verdict: {
+            type: "string",
+            enum: ["confirmed", "disputed", "downgraded", "needs_context"],
+          },
+          severity: {
+            type: "string",
+            enum: ["critical", "high", "medium", "low"],
+          },
+          why: { type: "string" },
+        },
+      },
+    },
+  },
+};
+// One place for the projection, so the shape cannot drift between the two call sites.
+const toCriticRef = (f) => ({
+  id: f.id,
+  file: f.file,
+  line: f.line,
+  severity: f.severity,
+  summary: f.message,
+});
+// The critic's input is rawFindings (the source of the R-N ids triage keys off of) with
+// the reviewer field left out, so the challenge verdict cannot be biased by which
+// reviewer raised the finding.
+const challengeInput = rawFindings.map(toCriticRef);
 const [challenged, verified] = await parallel([
   () =>
     agent(
       anchor(
-        `critic-audit. Challenge these findings to prune false positives. Each finding is a position to be argued, not a fact. Reference each finding by its file:line. The findings are as follows.\n${findingsJson}`,
+        `critic-audit. Challenge these findings to prune false positives. Each finding is a position to be argued, not a fact. Reference each finding by its id.\n` +
+          `The verdict criteria are as follows. confirmed = real and the severity holds / disputed = false positive / downgraded = real but severity inflated (put the lowered severity in severity) / needs_context = undecidable from code alone, needs human context.\n` +
+          `The findings are as follows.\n${JSON.stringify(challengeInput)}`,
       ),
       {
         agentType: "critic-audit",
         phase: "Challenge",
         label: "challenge",
         model: "sonnet",
+        schema: VERDICTS_SCHEMA,
         // Judge stages take xhigh on the difficulty criterion (the docs' "the hardest coding
         // and agentic tasks"). They run for minutes, short of the long-horizon threshold, but
         // the quality of rejecting a finding drives false positives, so spend on accuracy.
@@ -479,13 +651,65 @@ const [challenged, verified] = await parallel([
     ),
 ]);
 
+// ---- Triage: script owns survivor determination, the critic only returns verdicts ----
+// Loop the finding side, not the verdict side. A finding the challenge agent dropped a
+// verdict for is not silently lost; it defaults to confirmed and lands in no_verdict.
+// A run where challenge failed entirely takes the same path, so the degradation survives
+// as a count.
+const verdictById = new Map(((challenged && challenged.verdicts) || []).map((v) => [v.id, v]));
+const survivors = [];
+const needsContext = [];
+let noVerdict = 0;
+for (const f of rawFindings) {
+  const v = verdictById.get(f.id);
+  // A disputed id enters neither survivors nor needsContext. Without the write-back it
+  // vanishes from the record and per-reviewer survival rates cannot be measured.
+  f.verdict = v ? v.verdict : "no_verdict";
+  if (!v) {
+    noVerdict++;
+    survivors.push({ ...f });
+    continue;
+  }
+  if (v.verdict === "disputed") continue;
+  if (v.verdict === "needs_context") {
+    needsContext.push({ ...f, why: v.why || "" });
+    continue;
+  }
+  const severity = v.verdict === "downgraded" && v.severity ? v.severity : f.severity;
+  // The lowered value goes in its own field. Overwriting f.severity would erase what the
+  // reviewer assigned, and with it any measure of whether reviewers inflate severity.
+  // survivors carry only the lowered value, and after Integrate merges there is no
+  // per-finding severity left to read.
+  if (severity !== f.severity) f.downgraded_to = severity;
+  survivors.push({ ...f, severity });
+}
+log(
+  `triage: ${survivors.length} survived / ${needsContext.length} needs_context / no_verdict: ${noVerdict} (of ${rawFindings.length} total)`,
+);
+// challenge_ran separates a run that returned verdicts from the fail-open path (an empty
+// verdictById drops every finding to confirmed via no_verdict). verify returns free-form
+// text, so it is judged by whether content came back rather than by a schema shape.
+const challengeRan = !!(challenged && Array.isArray(challenged.verdicts));
+const verifyRan = !!String(verified || "").trim();
+const tally = {
+  survived: survivors.length,
+  needs_context: needsContext.length,
+  no_verdict: noVerdict,
+};
+
 phase("Integrate");
+// Narrowing the input to survivors removes the path by which Integrate could re-cull a
+// finding the challenge pass already confirmed.
+log(
+  `verify pass returned ${verifyRan ? "output" : "no output"}; kept informational, not forwarded to Integrate.`,
+);
+const survivorsInput = survivors.map(toCriticRef);
 const integrated = await agent(
   anchor(
-    `enhancer-integration. Reconcile two independent passes over the same findings, matched by file:line, into cross-domain root causes and a severity-ordered list.\n` +
-      `Membership rule: the challenge pass decides which findings survive. A finding the challenge pass pruned as a false positive stays pruned even if the verification pass found evidence for it. The verification pass only supplies execution-path evidence and severity for the survivors; it never revives a pruned finding.\n` +
-      `The challenge pass (membership / false-positive pruning) is as follows.\n${challenged}\n\n` +
-      `The verification pass (execution-path evidence + severity) is as follows.\n${verified}`,
+    `enhancer-integration. Reconcile these survivors of the challenge triage, matched by file:line, into cross-domain root causes and a severity-ordered list.\n` +
+      `Membership is already decided: every survivor below already passed the challenge pass. Do not re-cull, dispute, or drop any survivor; only merge and reorder them into root causes.\n` +
+      `Each finding you return must carry source_ids listing every survivor id (R-N) it absorbed, so a root cause merged from several survivors keeps all of their ids.\n` +
+      `The survivors are as follows.\n${JSON.stringify(survivorsInput)}`,
   ),
   {
     agentType: "enhancer-integration",
@@ -493,15 +717,35 @@ const integrated = await agent(
     label: "integrate",
     model: "opus",
     effort: "high",
-    schema: FINDINGS_SCHEMA,
+    schema: INTEGRATED_SCHEMA,
   },
 );
 
-const finalFindings = (integrated && integrated.findings) || findings;
-await writeSnapshot({
+// Falling back to the pre-triage findings array would land on the state before ids were
+// assigned, silently readmitting findings the challenge pass had disputed.
+const finalFindings = (integrated && integrated.findings) || survivorsInput;
+const snapshot = await writeSnapshot({
   preFlight,
   rawFindings,
   findings: finalFindings,
   skipped,
+  challengeRan,
+  verifyRan,
+  // The plan's contract: a fail-open run keeps the degraded mark and writes no counts.
+  // Passing undefined makes JSON.stringify drop the key.
+  tally: challengeRan ? tally : undefined,
+  needsContext,
+  zeroReviewerFiles,
 });
-return { findings: finalFindings, assignments, skipped };
+return {
+  snapshot,
+  findings: finalFindings,
+  survivors,
+  needs_context: needsContext,
+  challenge_ran: challengeRan,
+  verify_ran: verifyRan,
+  tally,
+  assignments,
+  skipped,
+  zero_reviewer_files: zeroReviewerFiles,
+};

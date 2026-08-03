@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Usage: update-index.py [dr-directory]
 
-Regenerates <dr-dir>/README.md from the Decision Record files.
-stdout: path to the updated index file
-stderr: directory not found etc. with exit 1
+Decision Record のファイル群から <dr-dir>/README.md を再生成する。
+stdout: 更新した index ファイルのパス
+stderr: ディレクトリ不在などの失敗内容。exit 1
 """
 
 import os
