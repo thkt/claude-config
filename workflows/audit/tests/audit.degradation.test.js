@@ -375,3 +375,52 @@ test("T-004 別 run の fence は前 run と異なる marker を使う", async (
   assert.ok(secondFence, "2 回目の run の snapshot prompt に marker が乗る");
   assert.notEqual(firstFence.nonce, secondFence.nonce, "別 run の fence は異なる nonce を使う");
 });
+
+// workflows/assert.js の challengeStalled による prompt 分岐に倣う。challenge が verdict を
+// 返さなかった run では、Integrate に「刈るな」と指示しない (membership 確定の一文を出さない)。
+// challenge_ran の定義 (空配列を ran と刻印する) は変えないので、ここでは Integrate prompt の
+// 文言だけを見る。
+const MEMBERSHIP_SENTENCE = "Membership is already decided";
+
+test("T-001 challenge が verdict を返した run の Integrate prompt には membership 確定の一文が入る", async () => {
+  const { calls } = await run({ challenge: BOTH_CONFIRMED, integrate: INTEGRATED });
+  const call = callOf(calls, "integrate");
+  assert.ok(call, "integrate agent が起動する");
+  assert.ok(
+    call.prompt.includes(MEMBERSHIP_SENTENCE),
+    "challenge が verdict を返した run では Integrate prompt に membership 確定の一文が入る",
+  );
+});
+
+test("T-002 challenge が結果を返さない run の Integrate prompt には membership 確定の一文が入らない", async () => {
+  const { calls } = await run({ challenge: undefined, integrate: INTEGRATED });
+  const call = callOf(calls, "integrate");
+  assert.ok(call, "integrate agent が起動する");
+  assert.ok(
+    !call.prompt.includes(MEMBERSHIP_SENTENCE),
+    "challenge が結果を返さない run では Integrate prompt に membership 確定の一文が入らない",
+  );
+});
+
+test("T-003 challenge が空の verdicts を返した run も、結果を返さない run と同じ扱いになる", async () => {
+  const { calls } = await run({ challenge: { verdicts: [] }, integrate: INTEGRATED });
+  const call = callOf(calls, "integrate");
+  assert.ok(call, "integrate agent が起動する");
+  assert.ok(
+    !call.prompt.includes(MEMBERSHIP_SENTENCE),
+    "challenge が空の verdicts を返した run では Integrate prompt に membership 確定の一文が入らない (challenge が結果を返さない run と同じ扱い)",
+  );
+});
+
+// 劣化側は一文を落とすだけで終わらせず、verdict が 1 件も出ていないことを Integrate に名指す
+// (rules/conventions/WORKFLOWS.md § Degradation recording)。この assert が無いと、劣化分岐を
+// 空文字列へ戻しても T-002 / T-003 は通ってしまう。
+test("T-010 challenge が結果を返さない run の Integrate prompt には verdict 不在を名指す一文が入る", async () => {
+  const { calls } = await run({ challenge: undefined, integrate: INTEGRATED });
+  const call = callOf(calls, "integrate");
+  assert.ok(call, "integrate agent が起動する");
+  assert.ok(
+    call.prompt.includes("The challenge pass returned no verdicts"),
+    "challenge が結果を返さない run では Integrate prompt に verdict 不在を名指す一文が入る",
+  );
+});
