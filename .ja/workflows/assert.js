@@ -529,11 +529,19 @@ try {
   // ---- Synthesize: enhancer-evidence 統合 -> script が gate 判定 ----
   phase("Synthesize");
   const challengeStalled = codexFindings.length > 0 && !challenged && !verified;
+  // 入れ子の audit workflow 自身の challenge_ran は「challenge が verdicts を返した run」と
+  // 「fail-open (challenge が走らず audit.js が全件 confirmed のまま通した run)」を区別する
+  // 値。degraded とみなすのは後者のときだけで、findings が空の run は audit.js 側の早期
+  // return であり degradation ではない。
+  const auditDegraded = auditFindings.length > 0 && !!audit && audit.challenge_ran === false;
+  const auditFindingsIntro = auditDegraded
+    ? "入れ子の audit workflow の challenge stage が走らなかった (fail-open) ため、以下の findings は未検証として扱う。そのまま issues に含めてよいが、report で表面化する。"
+    : "audit workflow の統合済み findings (critic 検証済み。そのまま issues に含める) は次のとおり。";
   synth = await agent(
     anchor(
       `enhancer-evidence として、静的 findings、outcome evidence、adversarial 結果を root cause と最終 issues 集合に統合する。\n` +
         `Outcome 基準 (OUTCOME.md) は次のとおり。\n${boot.outcome}\n\n` +
-        `audit workflow の統合済み findings (critic 検証済み。そのまま issues に含める) は次のとおり。\n${JSON.stringify(auditFindings)}\n\n` +
+        `${auditFindingsIntro}\n${JSON.stringify(auditFindings)}\n\n` +
         `Codex findings への challenge pass (membership はこの pass が決める。false positive として刈られた finding は verification pass が evidence を見つけていても復活させない) は次のとおり。\n${challenged || "(challenge stall / findings なし)"}\n\n` +
         `Codex findings への verification pass (survivor への実行経路 evidence と severity 付与のみ) は次のとおり。\n${verified || "(verify stall / findings なし)"}\n\n` +
         `${challengeStalled ? "challenger / verifier が双方 stall したため、Codex findings は未検証。issues に含めず report で表面化する。\n\n" : ""}` +
@@ -557,7 +565,7 @@ try {
   // evidence が env 起因などで欠けたときだけで、issues 0 が前提。
   if (buildCol === "fail" || testsCol === "fail" || issues.length > 0 || challengeStalled) {
     gate = "NotReady";
-  } else if (!envFail && (testsCol === "pass" || testsCol === "no-runner")) {
+  } else if (!envFail && !auditDegraded && (testsCol === "pass" || testsCol === "no-runner")) {
     gate = "Ready";
   } else {
     gate = "Ready (caveat)";

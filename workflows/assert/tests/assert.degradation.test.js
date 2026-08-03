@@ -122,3 +122,105 @@ test("triage block 内で throw が起きた時、result.adversarial が stall �
     "triage block の throw が stall として記録され、clean な 0 件と区別できる",
   );
 });
+
+// U-002: 入れ子の workflow("audit") が fail-open (challenge_ran=false) した run では、
+// audit findings を critic 検証済みと呼ばず、gate も Ready にならない。
+// T-004 audit が challenge_ran=false を返した run の Synthesize prompt は audit findings を
+//       critic 検証済みと書かない
+// T-005 audit が challenge_ran=true を返した run の文言は変わらない
+// T-006 audit が challenge_ran=false で issues が0件の run の gate は Ready ではなく
+//       Ready (caveat) になる
+// T-007 audit が challenge_ran=true で issues が0件かつ tests が pass の run の gate は
+//       Ready のままになる
+//
+// contract: workflows/assert.js の challengeStalled (findings が存在するのに verification
+// signal が run しなかったことを示す boolean を script が計算する形) と同じ形で auditDegraded
+// を計算する。audit.js 自身の challenge_ran は「verdicts を返した run」と「fail-open (findings
+// はあるが challenge が走らず全件 confirmed になった run)」を区別する値なので、audit findings
+// が非空かつ challenge_ran===false のときだけ degraded とみなす (findings が空の run は audit.js
+// 側の早期 return であり degradation ではない)。劣化を示す値は script が計算し、agent には
+// 判定させない。Synthesize prompt の audit findings を紹介する一文は劣化時だけ切り替え、
+// 通常時 (challenge_ran=true) の "critic-verified" 文言は変えない。gate rule は Ready 分岐の
+// 条件に auditDegraded を加える (buildCol=pass, testsCol=pass, issues=0 でも degraded なら
+// Ready でなく Ready (caveat) に落ちる)。
+
+// audit findings を非空にして challenge_ran だけを差し替える。findings が空だと audit.js 側の
+// 早期 return (challenge_ran=false だが degradation ではない) と区別できなくなるため、
+// 両ケースとも findings を1件持たせる。
+const auditWithChallengeRan = (challengeRan) => ({
+  findings: [{ file: "a.js", line: 5, severity: "high", summary: "audit finding" }],
+  challenge_ran: challengeRan,
+  verify_ran: challengeRan,
+});
+
+const makeAuditWorkflowStub = (challengeRan) => (name) =>
+  name === "audit" ? auditWithChallengeRan(challengeRan) : undefined;
+
+// synthesize agent への呼び出しは opts.label === "synthesize" の 1 件のみなので、その prompt
+// 文字列を取り出して audit findings の紹介文言を検査する。
+const synthesizePromptOf = (calls) => {
+  const call = calls.agent.find((c) => c.opts && c.opts.label === "synthesize");
+  return (call && call.prompt) || "";
+};
+
+test("T-004 audit が challenge_ran=false を返した run の Synthesize prompt は audit findings を critic 検証済みと書かない", async () => {
+  const { calls } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: {
+      agent: makeAgent({ ran: true, tests: [] }),
+      workflow: makeAuditWorkflowStub(false),
+    },
+  });
+  const prompt = synthesizePromptOf(calls);
+  assert.ok(prompt.length > 0, "synthesize agent が呼ばれる");
+  assert.ok(
+    !/critic-verified/i.test(prompt),
+    "audit の challenge が fail-open (challenge_ran=false) の run では audit findings を critic 検証済みと書かない",
+  );
+});
+
+test("T-005 audit が challenge_ran=true を返した run の文言は変わらない", async () => {
+  const { calls } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: {
+      agent: makeAgent({ ran: true, tests: [] }),
+      workflow: makeAuditWorkflowStub(true),
+    },
+  });
+  const prompt = synthesizePromptOf(calls);
+  assert.ok(prompt.length > 0, "synthesize agent が呼ばれる");
+  assert.ok(
+    /critic-verified/i.test(prompt),
+    "audit の challenge が正常に走った (challenge_ran=true) run の文言は既存の critic-verified 表記のままになる",
+  );
+});
+
+test("T-006 audit が challenge_ran=false で issues が0件の run の gate は Ready ではなく Ready (caveat) になる", async () => {
+  const { result } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: {
+      agent: makeAgent({ ran: true, tests: [] }),
+      workflow: makeAuditWorkflowStub(false),
+    },
+  });
+  assert.equal(
+    result.gate,
+    "Ready (caveat)",
+    "audit が fail-open した run は issues 0件でも Ready でなく Ready (caveat) になる",
+  );
+});
+
+test("T-007 audit が challenge_ran=true で issues が0件かつ tests が pass の run の gate は Ready のままになる", async () => {
+  const { result } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: {
+      agent: makeAgent({ ran: true, tests: [] }),
+      workflow: makeAuditWorkflowStub(true),
+    },
+  });
+  assert.equal(
+    result.gate,
+    "Ready",
+    "audit の challenge が正常に走った run は issues 0件かつ tests pass のとき Ready のままになる",
+  );
+});

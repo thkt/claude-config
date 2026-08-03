@@ -538,11 +538,19 @@ try {
   // ---- Synthesize: enhancer-evidence integration -> script decides the gate ----
   phase("Synthesize");
   const challengeStalled = codexFindings.length > 0 && !challenged && !verified;
+  // The nested audit workflow's own challenge_ran distinguishes "challenge produced
+  // verdicts" from "fail-open (challenge did not run, so audit.js let all findings through
+  // as confirmed)". Findings are degraded only in the latter case; an empty-findings run is
+  // audit.js's own early return, not a degradation.
+  const auditDegraded = auditFindings.length > 0 && !!audit && audit.challenge_ran === false;
+  const auditFindingsIntro = auditDegraded
+    ? "The nested audit workflow's challenge stage did not run (fail-open), so treat the following findings as unverified; include them in issues as-is but flag this in the report."
+    : "The integrated findings from the audit workflow (critic-verified; include them in issues as-is) are as follows.";
   synth = await agent(
     anchor(
       `As enhancer-evidence, integrate the static findings, outcome evidence, and adversarial results into root causes and a final issues set.\n` +
         `The Outcome criteria (OUTCOME.md) are as follows.\n${boot.outcome}\n\n` +
-        `The integrated findings from the audit workflow (critic-verified; include them in issues as-is) are as follows.\n${JSON.stringify(auditFindings)}\n\n` +
+        `${auditFindingsIntro}\n${JSON.stringify(auditFindings)}\n\n` +
         `The challenge pass over the Codex findings (this pass decides membership; findings pruned as false positives stay pruned even if the verification pass found evidence) is as follows.\n${challenged || "(challenge stalled / no findings)"}\n\n` +
         `The verification pass over the Codex findings (only attaches execution-path evidence and severity to survivors) is as follows.\n${verified || "(verify stalled / no findings)"}\n\n` +
         `${challengeStalled ? "Both challenger and verifier stalled, so the Codex findings are unverified. Do not include them in issues; surface this in the report.\n\n" : ""}` +
@@ -567,7 +575,7 @@ try {
   // presumes zero issues.
   if (buildCol === "fail" || testsCol === "fail" || issues.length > 0 || challengeStalled) {
     gate = "NotReady";
-  } else if (!envFail && (testsCol === "pass" || testsCol === "no-runner")) {
+  } else if (!envFail && !auditDegraded && (testsCol === "pass" || testsCol === "no-runner")) {
     gate = "Ready";
   } else {
     gate = "Ready (caveat)";
