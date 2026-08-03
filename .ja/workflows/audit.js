@@ -688,11 +688,10 @@ log(
 // 全 finding が no_verdict 経由で confirmed に落ちる) を区別する。verify は自由記述の
 // テキストを返すため、schema の形ではなく中身の有無で判定する。
 const challengeRan = !!(challenged && Array.isArray(challenged.verdicts));
-// assert.js の challengeStalled による prompt 分岐に倣う: Integrate に membership 確定済みと
-// 伝えてよいかどうか。challengeRan だけでは空の verdicts 配列も確定済みと数えてしまう
-// (challengeRan 自身の定義はここでは変えない) が、その run では verdict が実際には 1 件も
-// 出ていないので、challengeRan には無い件数チェックをここに足す。
-const membershipDecided = challengeRan && challenged.verdicts.length > 0;
+// assert.js の challengeStalled と同じく劣化側を指す boolean。challengeRan だけでは空の
+// verdicts 配列も走ったと数えてしまう (challengeRan 自身の定義はここでは変えない) が、その run
+// では verdict が 1 件も出ていないので、challengeRan には無い件数チェックをここに足す。
+const challengeDegraded = !challengeRan || challenged.verdicts.length === 0;
 const verifyRan = !!String(verified || "").trim();
 const tally = {
   survived: survivors.length,
@@ -710,7 +709,7 @@ const survivorsInput = survivors.map(toCriticRef);
 const integrated = await agent(
   anchor(
     `enhancer-integration として、challenge triage を生き残った survivors を file:line で突き合わせ、cross-domain の root cause と severity 順のリストに reconcile する。\n` +
-      `${membershipDecided ? "Membership は既に確定している。以下の survivors はすべて challenge pass を通過済みなので、再び刈ったり disputed 扱いにしたり drop したりしない。merge と並べ替えだけを行う。\n" : ""}` +
+      `${challengeDegraded ? "challenge pass が verdict を 1 件も返さなかったため、以下の survivors は未検証のまま通っている。membership は未確定として扱い、根拠が立たない finding は root cause から外してよい。\n" : "Membership は既に確定している。以下の survivors はすべて challenge pass を通過済みなので、再び刈ったり disputed 扱いにしたり drop したりしない。merge と並べ替えだけを行う。\n"}` +
       `返す finding には、吸収した survivor の id (R-N) を source_ids に全件残す。複数の survivor を統合した root cause なら、その全 id を source_ids に持つ。\n` +
       `Survivors は次のとおり。\n${fenced(JSON.stringify(survivorsInput))}`,
   ),
