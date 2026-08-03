@@ -1,25 +1,24 @@
 """Usage: snapshot.py   (audit payload JSON on stdin)
 
-Record one audit run to $HOME/.claude/history/ and compute the
-resolved/new/carried delta against the most recent prior snapshot.
+audit の 1 実行を $HOME/.claude/history/ に記録し、直近の prior snapshot に
+対する resolved/new/carried の delta を計算する。
 
 stdin:  JSON {scope, focus, pre_flight, raw_findings[], findings[], skipped[],
         challenge_ran, verify_ran, tally, needs_context[], zero_reviewer_files[]}
-        each raw_findings entry carries at least {file, message}, plus {id, reviewer,
-        verdict} once the triage pass has run.
-        Every key is copied to the record verbatim; absent keys stay absent. An absent
-        tally means the run failed open, which challenge_ran / verify_ran state directly.
-stdout: one line of JSON, {path, counts}. counts holds the element count of each
-        array this process serialized, so the caller compares against a figure it
-        did not obtain from the agent that transcribed the payload.
-exit 0 on success. exit 1 on an unparseable payload (nothing written).
+        各 raw_findings entry は最低限 {file, message} を持ち、triage を通った後は
+        {id, reviewer, verdict} も持つ。
+        キーは record にそのまま写す。無いキーは無いまま。tally が無い run は
+        fail-open したことを意味し、それは challenge_ran / verify_ran が直接示す。
+stdout: {path, counts} の JSON 1 行。counts はこのプロセスが serialize した各配列の
+        要素数なので、呼び出し元は payload を書き写した agent 由来でない数字と
+        照合できる。
+exit 0 は成功。exit 1 は payload が parse 不能 (何も書かない)。
 
-Resolved fields (shell / prior snapshot), added to the record:
-  branch        git rev-parse --abbrev-ref HEAD (falls back to "unknown")
+record に追加される解決済みフィールド (シェル / prior snapshot 由来):
+  branch        git rev-parse --abbrev-ref HEAD ("unknown" にフォールバック)
   generated_at  UTC ISO-8601
-  delta         {resolved, new, carried} counts vs the most recent prior
-                audit-*.json, matched on (file, message); first run -> all 0 with
-                note "first run".
+  delta         直近の audit-*.json に対する {resolved, new, carried} カウント。
+                (file, message) で照合。初回は全て 0 + note "first run"。
 """
 
 import glob
@@ -44,10 +43,10 @@ def finding_key(f):
 
 
 def compute_delta(current_raw, prior_raw):
-    """resolved = in prior only, new = in current only, carried = in both.
+    """resolved = prior のみ、new = current のみ、carried = 両方に存在。
 
-    prior_raw is None when no prior snapshot exists; the caller records a
-    "first run" note in that case.
+    prior snapshot が無いとき prior_raw は None。その場合は "first run" note を
+    記録する。
     """
     if prior_raw is None:
         return {"resolved": 0, "new": 0, "carried": 0, "note": "first run"}
@@ -61,14 +60,13 @@ def compute_delta(current_raw, prior_raw):
 
 
 def contradicts_own_tally(data):
-    """True when the record holds fewer raw_findings than its own tally accounts for.
+    """record の raw_findings が自身の tally より少ないとき True。
 
-    raw_findings is survived + needs_context + disputed, so a record carrying a
-    tally satisfies len(raw_findings) >= survived + needs_context. A record that
-    fails this lost entries after the tally was computed: the payload reaches the
-    writer through an LLM prompt, and summarizing while transcribing thins the
-    arrays without touching the counts. Records without a tally are left alone;
-    there is nothing to check them against.
+    raw_findings は survived + needs_context + disputed なので、tally を持つ
+    record では len(raw_findings) >= survived + needs_context が成り立つ。これを
+    満たさない record は tally を計算した後に要素を失っている。payload は LLM の
+    prompt を経由して書き手に届くため、書き写す途中で要約されると件数はそのまま
+    に配列だけが痩せる。tally を持たない record は照合する相手が無いので対象外。
     """
     tally = data.get("tally")
     raw = data.get("raw_findings")
@@ -76,23 +74,23 @@ def contradicts_own_tally(data):
         return False
     survived = tally.get("survived", 0)
     needs_context = tally.get("needs_context", 0)
-    # The operands are checked before they are added. A prior carrying "survived": "21"
-    # would raise on the addition, and latest_prior_raw only catches OSError / ValueError,
-    # so main() would die and write no record at all -- for exactly the malformed prior
-    # this function exists to step over.
+    # 加算する前に両オペランドの型を見る。prior の tally が "survived": "21" だと
+    # 加算が TypeError を投げ、latest_prior_raw が拾うのは OSError と ValueError
+    # だけなので main() ごと落ちて record が 1 つも書かれない。この関数がまたぐ
+    # べき壊れた prior で、まさにそれが起きる。
     if not isinstance(survived, int) or not isinstance(needs_context, int):
         return False
     return len(raw) < survived + needs_context
 
 
 def latest_prior_raw(history_dir):
-    """raw_findings of the most recent usable prior audit-*.json, or None.
+    """baseline に使える直近の prior audit-*.json の raw_findings。無ければ None。
 
-    Sorted by filename; the name embeds a UTC timestamp so lexical order is
-    chronological. A prior file that is unreadable, lacks raw_findings, or
-    contradicts its own tally is skipped rather than aborting the run. Taking a
-    thinned record as the baseline reports its missing entries as new on the next
-    run and as resolved on the run after, so the delta stays wrong twice.
+    ファイル名でソートする。名前に UTC timestamp が入るため辞書順が時系列に
+    なる。読めない、raw_findings を欠く、自身の tally と矛盾する prior ファイルは
+    run を中断せずスキップする。痩せた record を baseline に取ると、失われた
+    要素が次の run で new、その次の run で resolved と報告され、delta が 2 回
+    続けて狂う。
     """
     priors = sorted(glob.glob(str(history_dir / "audit-*.json")), reverse=True)
     for path in priors:
@@ -134,11 +132,10 @@ COUNTED_ARRAYS = (
 
 
 def counted_arrays(record):
-    """Element count per array the record carries, for the caller to compare against.
+    """record が持つ配列ごとの要素数。呼び出し元はこれと照合する。
 
-    An absent key counts 0 rather than being omitted, so the caller reads the
-    same key set every run and a dropped array is a count mismatch instead of a
-    missing field.
+    無いキーは省かず 0 と数える。呼び出し元が毎回同じキー集合を読めるので、
+    配列が丸ごと落ちた場合もフィールドの欠落でなく件数の不一致として出る。
     """
     return {
         key: len(record[key]) if isinstance(record.get(key), list) else 0
@@ -180,8 +177,8 @@ def main():
     out_path = HISTORY_DIR / f"audit-{now.strftime('%Y-%m-%d-%H%M%S')}.json"
     with open(out_path, "w") as fh:
         json.dump(record, fh, ensure_ascii=False, indent=2)
-    # The counts come from what this process serialized, so the caller compares
-    # against them instead of against a figure the agent reports about itself.
+    # counts はこのプロセスが serialize した内容から取る。呼び出し元は agent が
+    # 自分について報告した数字ではなく、この値と照合する。
     print(json.dumps({"path": str(out_path), "counts": counted_arrays(record)}))
 
 
