@@ -65,22 +65,28 @@ const bundled = (rel) =>
 //
 // The payload only reaches the agent embedded in a prompt, and an agent that summarizes
 // while transcribing leaves the record alone thinned out. Measured: a run whose findings
-// carried long summaries wrote 2 raw_findings where the payload held 44, and nothing caught
-// it until the count contradicted tally. Have the record read back and the counts returned,
-// then compare them here.
+// carried long summaries wrote 2 raw_findings where the payload held 44. Having the agent
+// report the counts would make the party that cut them the one reporting on it, so the
+// counts come from snapshot.py, which counted the stdin it received.
 const SNAPSHOT_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["path", "raw_findings_count", "findings_count"],
+  required: ["path", "counts"],
   properties: {
-    path: { type: "string", description: "the path snapshot.py printed to stdout" },
-    raw_findings_count: {
-      type: "integer",
-      description: "raw_findings element count read back from the written record, not the payload",
-    },
-    findings_count: {
-      type: "integer",
-      description: "findings element count read back from the written record, not the payload",
+    path: { type: "string", description: "path from snapshot.py's stdout JSON, verbatim" },
+    counts: {
+      type: "object",
+      additionalProperties: false,
+      required: ["raw_findings", "findings", "skipped", "needs_context", "zero_reviewer_files"],
+      description:
+        "counts from snapshot.py's stdout JSON, verbatim. Do not recount and do not alter the values",
+      properties: {
+        raw_findings: { type: "integer" },
+        findings: { type: "integer" },
+        skipped: { type: "integer" },
+        needs_context: { type: "integer" },
+        zero_reviewer_files: { type: "integer" },
+      },
     },
   },
 };
@@ -118,11 +124,11 @@ const writeSnapshot = async ({
         `\`python3 ${bundled("workflows/audit/snapshot.py")} < <tempfile>\` once. ` +
         `The script resolves the timestamp, branch, and the delta against the ` +
         `prior snapshot (resolved / new / carried, matched on file + message), writes the record under ` +
-        `$HOME/.claude/history/, and prints the output path to stdout. ` +
+        `$HOME/.claude/history/, and prints one line of JSON, {path, counts}, to stdout. ` +
         `Write the payload verbatim. Do not summarize, omit, reformat, or regenerate it, and do not truncate it for length. ` +
         `Do not review code or change any finding. Do not write the file by any other means. ` +
-        `Once written, read the record back from the output path and return the actual element counts of raw_findings and findings. ` +
-        `Count what is on disk, not what the payload says. The payload is as follows.\n${payload}`,
+        `Return that stdout JSON as path and counts. Do not recount and do not alter the values. ` +
+        `The payload is as follows.\n${payload}`,
     ),
     {
       agentType: "general-purpose",
@@ -135,21 +141,30 @@ const writeSnapshot = async ({
       schema: SNAPSHOT_SCHEMA,
     },
   );
-  // The script owns the comparison. Asking the agent whether it truncated makes the party
-  // that truncated the one reporting on it.
-  const expected = { raw: rawFindings.length, findings: findings.length };
+  // The script owns the comparison, and what it compares against is the count snapshot.py
+  // took of its own stdin, not the agent's report. The agent is the party doing the
+  // transcribing, so it would be reporting on what it itself dropped.
+  const expected = {
+    raw_findings: rawFindings.length,
+    findings: findings.length,
+    skipped: skipped.length,
+    needs_context: needsContext ? needsContext.length : 0,
+    zero_reviewer_files: zeroReviewerFiles ? zeroReviewerFiles.length : 0,
+  };
   if (!written) {
     log(`Snapshot: the agent returned no result; whether a record was written is unverified.`);
     return { written: false, truncated: null, expected };
   }
-  const actual = { raw: written.raw_findings_count, findings: written.findings_count };
-  const truncated = actual.raw !== expected.raw || actual.findings !== expected.findings;
-  if (truncated) {
+  const actual = written.counts;
+  const lost = Object.keys(expected).filter((k) => actual[k] !== expected[k]);
+  if (lost.length) {
     log(
-      `Snapshot truncated: raw_findings ${actual.raw}/${expected.raw}, findings ${actual.findings}/${expected.findings}. The record cannot be used to measure cull rates.`,
+      `Snapshot truncated: ${lost
+        .map((k) => `${k} ${actual[k]}/${expected[k]}`)
+        .join(", ")}. The record cannot be used to measure cull rates.`,
     );
   }
-  return { written: true, path: written.path, truncated, expected, actual };
+  return { written: true, path: written.path, truncated: lost.length > 0, lost, expected, actual };
 };
 
 // /audit routing table. react-pattern only attaches to JSX files (jsx / tsx), so a

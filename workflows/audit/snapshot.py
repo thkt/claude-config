@@ -58,12 +58,34 @@ def compute_delta(current_raw, prior_raw):
     }
 
 
+def contradicts_own_tally(data):
+    """True when the record holds fewer raw_findings than its own tally accounts for.
+
+    raw_findings is survived + needs_context + disputed, so a record carrying a
+    tally satisfies len(raw_findings) >= survived + needs_context. A record that
+    fails this lost entries after the tally was computed -- the payload reaches
+    the writer through an LLM prompt, and one that summarizes while transcribing
+    thins the arrays without touching the counts. Records without a tally are
+    left alone; there is nothing to check them against.
+    """
+    tally = data.get("tally")
+    raw = data.get("raw_findings")
+    if not isinstance(tally, dict) or not isinstance(raw, list):
+        return False
+    accounted = tally.get("survived", 0) + tally.get("needs_context", 0)
+    if not isinstance(accounted, int):
+        return False
+    return len(raw) < accounted
+
+
 def latest_prior_raw(history_dir):
-    """raw_findings of the most recent prior audit-*.json, or None if none exists.
+    """raw_findings of the most recent usable prior audit-*.json, or None.
 
     Sorted by filename; the name embeds a UTC timestamp so lexical order is
-    chronological. A prior file that is unreadable or lacks raw_findings is
-    skipped rather than aborting the run.
+    chronological. A prior file that is unreadable, lacks raw_findings, or
+    contradicts its own tally is skipped rather than aborting the run. Taking a
+    thinned record as the baseline reports its missing entries as new on the next
+    run and as resolved on the run after, so the delta stays wrong twice.
     """
     priors = sorted(glob.glob(str(history_dir / "audit-*.json")), reverse=True)
     for path in priors:
@@ -71,6 +93,8 @@ def latest_prior_raw(history_dir):
             with open(path) as fh:
                 data = json.load(fh)
         except (OSError, ValueError):
+            continue
+        if contradicts_own_tally(data):
             continue
         raw = data.get("raw_findings")
         if isinstance(raw, list):
@@ -91,6 +115,28 @@ def git_branch():
         return branch or "unknown"
     except (OSError, subprocess.SubprocessError):
         return "unknown"
+
+
+COUNTED_ARRAYS = (
+    "raw_findings",
+    "findings",
+    "skipped",
+    "needs_context",
+    "zero_reviewer_files",
+)
+
+
+def counted_arrays(record):
+    """Element count per array the record carries, for the caller to compare against.
+
+    An absent key counts 0 rather than being omitted, so the caller reads the
+    same key set every run and a dropped array is a count mismatch instead of a
+    missing field.
+    """
+    return {
+        key: len(record[key]) if isinstance(record.get(key), list) else 0
+        for key in COUNTED_ARRAYS
+    }
 
 
 def build_record(payload, branch, generated_at, delta):
@@ -127,7 +173,9 @@ def main():
     out_path = HISTORY_DIR / f"audit-{now.strftime('%Y-%m-%d-%H%M%S')}.json"
     with open(out_path, "w") as fh:
         json.dump(record, fh, ensure_ascii=False, indent=2)
-    print(str(out_path))
+    # The counts come from what this process serialized, so the caller compares
+    # against them instead of against a figure the agent reports about itself.
+    print(json.dumps({"path": str(out_path), "counts": counted_arrays(record)}))
 
 
 if __name__ == "__main__":

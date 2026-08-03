@@ -63,21 +63,27 @@ const bundled = (rel) =>
 //
 // payload は prompt に埋め込む形でしか agent に渡せず、agent が書き写す途中で要約すると
 // record だけが痩せる。実測では findings の summary が長い run で raw_findings 44 件が 2 件に
-// なり、tally との矛盾に気づくまで検出できなかった。書き出した record を読み返させて件数を
-// 返させ、script 側で期待値と照合する。
+// なった。件数を agent に自己申告させると切り詰めた当人が報告することになるので、stdin を
+// 受けた snapshot.py が数えた値 (stdout の counts) を持ち帰らせ、script 側で照合する。
 const SNAPSHOT_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["path", "raw_findings_count", "findings_count"],
+  required: ["path", "counts"],
   properties: {
-    path: { type: "string", description: "snapshot.py が stdout に出力したパス" },
-    raw_findings_count: {
-      type: "integer",
-      description: "書き出した record を読み返した raw_findings の要素数。payload の値ではない",
-    },
-    findings_count: {
-      type: "integer",
-      description: "書き出した record を読み返した findings の要素数。payload の値ではない",
+    path: { type: "string", description: "snapshot.py の stdout JSON の path をそのまま" },
+    counts: {
+      type: "object",
+      additionalProperties: false,
+      required: ["raw_findings", "findings", "skipped", "needs_context", "zero_reviewer_files"],
+      description:
+        "snapshot.py の stdout JSON の counts をそのまま。自分で数え直さず、値を書き換えない",
+      properties: {
+        raw_findings: { type: "integer" },
+        findings: { type: "integer" },
+        skipped: { type: "integer" },
+        needs_context: { type: "integer" },
+        zero_reviewer_files: { type: "integer" },
+      },
     },
   },
 };
@@ -115,11 +121,11 @@ const writeSnapshot = async ({
         `\`python3 ${bundled("workflows/audit/snapshot.py")} < <tempfile>\` を 1 回実行する。` +
         `スクリプトが timestamp・branch・prior snapshot との delta ` +
         `(file + message でマッチした resolved / new / carried) を解決し、` +
-        `$HOME/.claude/history/ に記録を書いて出力パスを stdout に返す。` +
+        `$HOME/.claude/history/ に記録を書き、{path, counts} の JSON 1 行を stdout に返す。` +
         `payload は一字一句そのまま書く。要約・省略・整形・再生成はしない。長さを理由に切り詰めない。` +
         `コードの review や finding の変更はしない。他の方法でファイルを書かない。` +
-        `書き終えたら出力パスの record を読み返し、raw_findings と findings の実際の要素数を返す。` +
-        `payload に書いてある数ではなく、ディスク上の record を数えた値を返す。Payload は次のとおり。\n${payload}`,
+        `stdout の JSON をそのまま path と counts として返す。counts は自分で数え直さず、値を書き換えない。` +
+        `Payload は次のとおり。\n${payload}`,
     ),
     {
       agentType: "general-purpose",
@@ -131,21 +137,29 @@ const writeSnapshot = async ({
       schema: SNAPSHOT_SCHEMA,
     },
   );
-  // 照合は script が持つ。agent 自身に「切り詰めていないか」を判定させると、切り詰めた当人が
-  // 自己申告することになる。
-  const expected = { raw: rawFindings.length, findings: findings.length };
+  // 照合は script が持つ。突き合わせる相手は snapshot.py が数えた counts で、agent の
+  // 申告ではない。agent は書き写す当人なので、自分が削った分を自分で報告することになる。
+  const expected = {
+    raw_findings: rawFindings.length,
+    findings: findings.length,
+    skipped: skipped.length,
+    needs_context: needsContext ? needsContext.length : 0,
+    zero_reviewer_files: zeroReviewerFiles ? zeroReviewerFiles.length : 0,
+  };
   if (!written) {
     log(`Snapshot: agent が結果を返さなかった。record が書かれたかは未確認。`);
     return { written: false, truncated: null, expected };
   }
-  const actual = { raw: written.raw_findings_count, findings: written.findings_count };
-  const truncated = actual.raw !== expected.raw || actual.findings !== expected.findings;
-  if (truncated) {
+  const actual = written.counts;
+  const lost = Object.keys(expected).filter((k) => actual[k] !== expected[k]);
+  if (lost.length) {
     log(
-      `Snapshot truncated: raw_findings ${actual.raw}/${expected.raw}、findings ${actual.findings}/${expected.findings}。record は刈り率の計測に使えない。`,
+      `Snapshot truncated: ${lost
+        .map((k) => `${k} ${actual[k]}/${expected[k]}`)
+        .join("、")}。record は刈り率の計測に使えない。`,
     );
   }
-  return { written: true, path: written.path, truncated, expected, actual };
+  return { written: true, path: written.path, truncated: lost.length > 0, lost, expected, actual };
 };
 
 // /audit の routing 表。react-pattern は JSX を含む拡張子 (jsx / tsx) にだけ付け、素の js の

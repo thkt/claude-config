@@ -27,7 +27,10 @@ const runSnapshot = (payload) => {
       env: { ...process.env, HOME: home },
     });
     assert.equal(res.status, 0, `snapshot.py が exit 0 で終わる (stderr: ${res.stderr})`);
-    return JSON.parse(readFileSync(res.stdout.trim(), "utf8"));
+    // stdout は {path, counts} の JSON 1 行。counts は snapshot.py 自身が数えた値で、
+    // 呼び出し元はこれと payload を照合して切り詰めを検出する。
+    const out = JSON.parse(res.stdout);
+    return JSON.parse(readFileSync(out.path, "utf8"));
   } finally {
     rmSync(home, { recursive: true, force: true });
   }

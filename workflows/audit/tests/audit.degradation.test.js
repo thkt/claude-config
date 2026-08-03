@@ -135,31 +135,63 @@ test("T-022 disputed で落ちた finding も snapshot payload の raw_findings 
   );
 });
 
-test("T-024 書き出された record の件数が payload と食い違う run は snapshot.truncated=true を返す", async () => {
+// snapshot.py が stdout に返す counts の形。agent はこれをそのまま持ち帰る。
+const counts = (over) => ({
+  raw_findings: 2,
+  findings: 1,
+  skipped: 0,
+  needs_context: 0,
+  zero_reviewer_files: 0,
+  ...over,
+});
+
+test("T-024 snapshot.py が数えた件数が payload と食い違う run は失われた配列名を返す", async () => {
   const { result } = await run({
     challenge: BOTH_CONFIRMED,
     integrate: INTEGRATED,
-    // reviewer 2 体が 1 件ずつ返すので payload の raw_findings は 2 件。record 側が 1 件だけ
-    // 書けた状況を作る。
-    snapshot: { path: "/tmp/audit-x.json", raw_findings_count: 1, findings_count: 1 },
+    // reviewer 2 体が 1 件ずつ返すので payload の raw_findings は 2 件。書き写しの途中で
+    // 1 件落ちた状況を作る。
+    snapshot: { path: "/tmp/audit-x.json", counts: counts({ raw_findings: 1 }) },
   });
   assert.equal(result.snapshot.truncated, true, "件数が食い違えば truncated を立てる");
   assert.deepEqual(
-    result.snapshot.expected,
-    { raw: 2, findings: 1 },
-    "期待した件数が返り値に残り、何件失われたか読める",
+    result.snapshot.lost,
+    ["raw_findings"],
+    "どの配列が痩せたかを名前で残す。件数だけでは何を失ったか読めない",
   );
-  assert.deepEqual(result.snapshot.actual, { raw: 1, findings: 1 }, "ディスク上の実件数も残る");
+  assert.equal(result.snapshot.expected.raw_findings, 2, "期待した件数が残る");
+  assert.equal(result.snapshot.actual.raw_findings, 1, "snapshot.py が数えた実件数も残る");
 });
 
 test("T-025 件数が payload と一致する run は snapshot.truncated=false を返す", async () => {
   const { result } = await run({
     challenge: BOTH_CONFIRMED,
     integrate: INTEGRATED,
-    snapshot: { path: "/tmp/audit-y.json", raw_findings_count: 2, findings_count: 1 },
+    snapshot: { path: "/tmp/audit-y.json", counts: counts() },
   });
   assert.equal(result.snapshot.truncated, false, "一致すれば truncated は false");
+  assert.deepEqual(result.snapshot.lost, [], "失われた配列は無い");
   assert.equal(result.snapshot.written, true, "record が書かれたことも返り値に残る");
+});
+
+test("T-027 raw_findings 以外の配列が痩せた run も検出する", async () => {
+  const { result } = await run({
+    challenge: {
+      verdicts: [
+        { id: "R-1", verdict: "confirmed" },
+        { id: "R-2", verdict: "needs_context", why: "呼び出し元が不明" },
+      ],
+    },
+    integrate: INTEGRATED,
+    // needs_context は 1 件あるのに record 側が 0 件。raw_findings と findings だけを
+    // 見ていると、この欠落は素通りする。
+    snapshot: { path: "/tmp/audit-z.json", counts: counts({ raw_findings: 2, findings: 1 }) },
+  });
+  assert.deepEqual(
+    result.snapshot.lost,
+    ["needs_context"],
+    "側表の欠落も検出する。needs_context は why を持つ唯一の場所で raw_findings から復元できない",
+  );
 });
 
 test("T-026 snapshot agent が結果を返さない run は written=false を持ち truncated を断定しない", async () => {
