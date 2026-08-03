@@ -975,6 +975,10 @@ const shipStructure = struct.reference_checked ? struct.findings.map((f) => ({ .
 for (const f of shipStructure)
   if (f.detail && f.detail.trim())
     slots.push({ text: f.detail, kind: "finding", set: (v) => (f.detail = v) });
+// anomaly の evidence は slot に入れない。finding の location / spec_line と同じ扱い。
+// prompt が中身を逐語で残す以上、翻訳で変わるのは末尾の説明句だけになる。一方で 1 要素
+// 増やすたびに全か無かの書き戻しが突合する id が増え、1 つでも欠けると tail 全体が英語の
+// まま ship される。
 for (const a of shipAnomalies)
   if (a.notes && a.notes.trim())
     slots.push({ text: a.notes, kind: "anomaly", set: (v) => (a.notes = v) });

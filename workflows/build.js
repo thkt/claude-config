@@ -1011,6 +1011,10 @@ const shipStructure = struct.reference_checked ? struct.findings.map((f) => ({ .
 for (const f of shipStructure)
   if (f.detail && f.detail.trim())
     slots.push({ text: f.detail, kind: "finding", set: (v) => (f.detail = v) });
+// An anomaly's evidence stays out of the slots, the same way a finding's location and
+// spec_line do. The prompt keeps its elements verbatim, so translating them buys the
+// trailing explanatory clause alone, while each one added is another id the all-or-nothing
+// write-back needs; a single missing id ships the whole tail in English.
 for (const a of shipAnomalies)
   if (a.notes && a.notes.trim())
     slots.push({ text: a.notes, kind: "anomaly", set: (v) => (a.notes = v) });

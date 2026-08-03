@@ -29,6 +29,8 @@ keeps the status line alone. A conformance / structure
 finding puts its severity + category in an inline-code lead and sends the location
 and the quoted source to a continuation line; packed onto one line the severity
 buries and the reader cannot tell where the finding ends and its evidence begins.
+An anomaly splits the same way, its conclusion leading and each supporting fact on its
+own continuation line.
 Bold stays reserved for the section labels, which puts a visual step between a
 section and the findings under it.
 
@@ -229,9 +231,10 @@ def render(payload):
     section(
         L["anomalies"],
         payload.get("code_anomalies"),
-        lambda a: (
-            f"{a.get('unit', '?')} ({a.get('kind', '?')}): {a.get('notes', '')}".rstrip()
-        ),
+        lambda a: [
+            f"{a.get('unit', '?')} ({a.get('kind', '?')}): {a.get('notes', '')}".rstrip(),
+            *(str(e) for e in _list(a.get("evidence"))),
+        ],
     )
 
     # Blank lines around the folded content keep GitHub rendering the markdown

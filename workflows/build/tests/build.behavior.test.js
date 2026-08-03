@@ -1399,6 +1399,50 @@ test("translate-tail の入力が slot ごとに kind を運ぶ", async () => {
   );
 });
 
+// evidence を slot に入れると anomaly 1 件あたりの id が 1 から 1+N に増え、全か無かの
+// 書き戻しが突合に失敗する確率が上がる。1 つでも欠けると tail 全体が英語のまま ship される。
+// evidence 自体は翻訳を通さず shipPayload へ素通りする。
+test("translate-tail の slot に anomaly の evidence は入らない", async () => {
+  const plan = makePlan({ assumptions: [] });
+  const { calls } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      plan,
+      code: {
+        completed: ["U-001"],
+        anomalies: [
+          {
+            unit: "U-001",
+            kind: "no-red",
+            notes: "already implemented",
+            evidence: ["ev one", "ev two"],
+          },
+        ],
+        commits: [{ unit: "U-001", subject: "feat: sample subject" }],
+        tests_pass: true,
+        gates_pass: true,
+      },
+      translate: (prompt) => {
+        const arr = JSON.parse(prompt.trim().split("\n").pop());
+        return { translations: arr.map((o) => ({ id: o.id, text: `JA<${o.text}>` })) };
+      },
+    }),
+  });
+
+  const translateCalls = agentCallsOf(calls, "translate");
+  assert.equal(translateCalls.length, 1, "translate-tail agent が 1 回呼ばれる");
+  const input = JSON.parse(translateCalls[0].prompt.trim().split("\n").pop());
+  assert.deepEqual(
+    input.map((o) => o.text),
+    ["already implemented"],
+    "slot は notes だけで evidence は含まない",
+  );
+
+  const shipCalls = agentCallsOf(calls, "ship");
+  assert.ok(shipCalls[0].prompt.includes("JA<already implemented>"), "notes は翻訳されて載る");
+  assert.ok(shipCalls[0].prompt.includes("ev two"), "evidence は原文のまま載る");
+});
+
 // 訳が id 順を入れ替えて返っても、消費側は id で突合して正しい slot へ書き戻す。
 test("translate-tail の訳が順序入れ替えでも id で正しい slot に反映される", async () => {
   const plan = makePlan({

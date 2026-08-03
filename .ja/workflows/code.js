@@ -73,7 +73,7 @@ const implementOpts = { model: input.model || "sonnet", effort: "high" };
 const RED_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["red_confirmed", "test_files", "notes"],
+  required: ["red_confirmed", "test_files", "notes", "evidence"],
   properties: {
     red_confirmed: {
       type: "boolean",
@@ -82,7 +82,15 @@ const RED_SCHEMA = {
     test_files: { type: "array", items: { type: "string" } },
     notes: {
       type: "string",
-      description: "red_confirmed が false のとき、その理由 (例: 振る舞いが既に存在する)",
+      description:
+        "red_confirmed が false のとき、その結論を 1 文で書く (例: 対象の振る舞いは実装済みで、既存テストが同じ fixture を通している)。根拠は notes に混ぜず evidence へ分ける",
+    },
+    // 1 本の散文で返すと PR 本文で 1 行に潰れ、読み手は結論の切れ目を見つけられない。
+    evidence: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "notes の結論を裏づける根拠。1 項目 1 行で、file:line、コマンドとその結果、既存テスト名のいずれかを書く。項目内で改行しない。根拠が無ければ空配列",
     },
   },
 };
@@ -426,8 +434,8 @@ for (const unit of units) {
       `TDD Red step。${ctx}` +
         `各 test scenario (T-NNN) を失敗するテストとして書く。scenario の name をテスト名として逐語で使う。` +
         `実装コードは一切書かない。テストを実行し、それぞれが意図した理由で失敗することを確認して報告する。` +
-        `Red を作るために既存ファイルを削除・移動・リネーム・空化することは禁止。対象の挙動が既に実装済みなら、それが正しい状態なので red_confirmed=false のまま理由を notes に書く。` +
-        `テストが失敗しない場合は実装せず、理由を notes に書く。`,
+        `Red を作るために既存ファイルを削除・移動・リネーム・空化することは禁止。対象の挙動が既に実装済みなら、それが正しい状態なので red_confirmed=false のまま、結論を notes に 1 文で、根拠を evidence に 1 項目 1 行で書く。何を確認したかの経過は notes に書かない。` +
+        `テストが失敗しない場合は実装しない。`,
     ),
     {
       label: `red:${unit.id}`,
@@ -445,7 +453,7 @@ for (const unit of units) {
         `TDD Red step retry。${ctx}` +
           `前回テストが失敗しなかった。理由は ${red.notes}。\n` +
           `assertion が空でないか、対象コードが呼ばれているかを精査し、テストが対象の振る舞いを本当に検証しているか確かめる。` +
-          `精査後もテストが pass するなら、振る舞いは実装済みと判断して red_confirmed=false のまま理由を notes に書く。`,
+          `精査後もテストが pass するなら、振る舞いは実装済みと判断して red_confirmed=false のままにする。notes に書くのは結論 1 文だけで、精査で見たものは evidence に 1 項目 1 行で並べる。`,
       ),
       {
         label: `red2:${unit.id}`,
@@ -460,7 +468,12 @@ for (const unit of units) {
   if (!red) return stopUnit("red-failed", unit, "red agent が結果を返さなかった");
 
   if (!red.red_confirmed) {
-    anomalies.push({ unit: unit.id, kind: "no-red", notes: red.notes });
+    anomalies.push({
+      unit: unit.id,
+      kind: "no-red",
+      notes: red.notes,
+      evidence: Array.isArray(red.evidence) ? red.evidence : [],
+    });
     log(`${unit.id}: Red 未確認 (${red.notes})。implement step を skip する。`);
     completed.push(unit.id);
     // 実装を飛ばしても Red step が書いたテストはツリーに残るので、ここもコミット対象。

@@ -22,7 +22,8 @@ missing test statements、anomalies) は非空のときだけ出すので、clea
 セクションごとに「None」を繰り返さず短いままになる。<details> を作るのは畳む対象がある
 run だけで、出すものが 1 つも無い run は status 行だけを置く。conformance / structure の finding は severity + category を
 inline code の見出しに置き、location と出典行を継続行へ送る。1 行に詰めると severity が
-埋もれ、どこまでが指摘でどこからが根拠か読み取れなくなる。太字はセクションラベル専用に
+埋もれ、どこまでが指摘でどこからが根拠か読み取れなくなる。anomaly も同じ形で割り、結論を
+親行に、根拠を継続行に置く。太字はセクションラベル専用に
 残すことで、セクションと finding の階層が視覚的に 1 段付く。
 
 2 方向に fail-closed。parse できない payload、または safety-critical key
@@ -219,9 +220,10 @@ def render(payload):
     section(
         L["anomalies"],
         payload.get("code_anomalies"),
-        lambda a: (
-            f"{a.get('unit', '?')} ({a.get('kind', '?')}): {a.get('notes', '')}".rstrip()
-        ),
+        lambda a: [
+            f"{a.get('unit', '?')} ({a.get('kind', '?')}): {a.get('notes', '')}".rstrip(),
+            *(str(e) for e in _list(a.get("evidence"))),
+        ],
     )
 
     # 折りたたみ内容の前後に空行を置くことで、GitHub は HTML <details> ブロック内の
