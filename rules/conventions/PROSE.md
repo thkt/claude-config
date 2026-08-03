@@ -1,8 +1,6 @@
 # Prose
 
-Write software-development prose with words whose baseline the reader can reconstruct and sentences whose role the reader can predict. Applies to test descriptions, Issue / PR bodies, commit messages, plans, code comments, and technical docs.
-
-The tables below are a quick reference, not an exhaustive list. Before finalizing, reread the output and concretize any term whose baseline a reader could not reconstruct, whether or not it appears below.
+Write software-development prose with words whose baseline the reader can reconstruct and sentences whose role the reader can predict. Applies to test descriptions, Issue / PR bodies, commit messages, plans, code comments, and technical docs. Before finalizing, reread the output and concretize any term whose baseline a reader could not reconstruct, whether or not it appears in the tables below.
 
 ## Define Concretely
 
@@ -39,6 +37,10 @@ Models do not generalize an instruction from one item to another, nor infer scop
 | List is exhaustive   | "exactly these: A, B, C"                 |
 | Apply broadly        | "every section, not just the first"      |
 
+## Sentence and Paragraph Ceilings
+
+The longer a sentence runs, the smaller the share of it a reader understands. Cap a sentence at 25 words; when it goes over, split at subject-predicate pairs. Cap a paragraph at 150 words; when it goes over, split it or turn it into a table or list.
+
 ## Predictable Prose
 
 Write so the reader can predict the next sentence's role from the previous one. Do not leave the relation between sentences to the reader's guess; show it at the head and the end of each sentence.
@@ -55,9 +57,20 @@ Write so the reader can predict the next sentence's role from the previous one. 
 | Shift the temperature       | End problem sentences so the burden shows (cannot, must), and post-improvement sentences so the relief shows (becomes able to)                                       |
 | No punch lines              | Drop the "the essence is" / "the only key is" staging and start directly from the content                                                                            |
 
+## Match the Familiar Form
+
+A reader judges difficulty from a document's appearance before reading it, and cannot tell where that difficulty comes from. An unfamiliar form therefore reads as difficult content. Documents that ask the reader neither to decide nor to act are out of scope for the judgment below. OUTCOME, reference tables, and glossaries fall here, among others.
+
+| Rule                      | Directive                                                                                                            |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Choose the form's source  | Take it in this order: template > established format > cognitive sequence. A sibling is not a source                 |
+| Judge the sibling         | When a sibling's sections do not map to notice, understand, decide, act, confirm, do not copy them                   |
+| Borrow the form only      | Borrow section order and section names only. Do not copy wording, or anything violating another section of this file |
+| Deviations carry a reason | When departing from the existing form, write the reason in the document. If you cannot, restore the form             |
+
 ## Delete Document-Updating Sentences
 
-Judge each sentence by what it updates: the situation (facts about the subject, judgments, confidence) or the document (how the document itself looks or proceeds). Delete a sentence that only updates the document. Typical forms that slip into AI-generated bodies are the three below (not limited to these).
+Judge each sentence by what it updates: the situation or the document. The situation is facts about the subject, judgments, and confidence; the document is how it itself looks and proceeds. Delete a sentence that only updates the document. Typical forms that slip into AI-generated bodies are the three below (not limited to these).
 
 | Form                   | Description                                                  |
 | ---------------------- | ------------------------------------------------------------ |
