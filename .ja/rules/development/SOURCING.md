@@ -32,10 +32,10 @@ framework/library の public API に依存するコードを書く局面で適�
 
 適用対象に該当したら、記憶から書く前に次を実行する。
 
-1. 固定バージョンを lockfile/manifest (package.json、Cargo.toml 等) で確認し、そのバージョンの公式 docs を `scout fetch <url>` で引く。scout が入っていない環境では WebFetch に落とす。
+1. 固定バージョンを lockfile/manifest (package.json、Cargo.toml 等) で確認し、そのバージョンの公式 docs を `scout fetch <url>` で引く。
 2. docs の signature に従って書く。記憶と docs が食い違ったら docs を正とする。
 3. 出典 URL をコメントまたはコミットに残す。動作を左右する非自明な API に限り、自明なものへの付与は過剰。URL は docs のトップでなく該当 API のセクション/行アンカーに deep-link し、後で読む者が引用元の signature へ直接着地できるようにする。
 
 ## docs が引けないとき
 
-公式 docs が到達不能 (docs なし、fetch 失敗) のときは、その API 使用を `unverified` として注記し、人間に知らせる。記憶を確定情報として書かない。
+公式 docs が到達不能 (docs なし、fetch 失敗、scout 未導入) のときは、その API 使用を `unverified` として注記し、人間に知らせる。記憶を確定情報として書かない。

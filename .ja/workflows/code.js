@@ -358,7 +358,7 @@ for (const unit of units) {
     `contract は ${unit.contract}。test scenario は ${JSON.stringify(tests)}。\n` +
     `テストコマンドは ${testCmd}。\n` +
     referenceModuleCtx +
-    `フレームワーク / ライブラリの API を書くときは、記憶でなく pinned version の公式 docs に従う。docs は \`scout fetch <url>\` で読み、scout が無ければ WebFetch に落とす。どちらも読めなければその API 使用を未確認としてコード内コメントに残し、実装は続ける。\n` +
+    `フレームワーク / ライブラリの API を書くときは、記憶でなく pinned version の公式 docs に従う。docs は \`scout fetch <url>\` で読む。scout が無い、または fetch が失敗して読めなければ、その API 使用を未確認としてコード内コメントに残し、実装は続ける。\n` +
     `結果を報告する前に、各 claim をこのセッションの tool result と突き合わせる。evidence を指せる作業のみ報告し、未検証のものは notes にその旨を書く。\n` +
     `単体テストの都合を理由に機能の一部を落とすことは禁止。Router / Suspense / 権限 context が要るという理由で、共有コンポーネント・データ取得・遷移導線を省いてはならない。テスト側でその境界を差し替える。plan に無い先送りは禁止で、コード内コメントで「別ユニット」「後続に委ねる」と宣言して実装を狭めることも禁止。contract / files が求める実装の一部をやむを得ず実装しない場合は deferred に列挙する (anomaly として記録され PR に surface される)。\n` +
     // 実装中の advisor 相談は build の設計と噛み合わない。blocker は anomaly として記録して

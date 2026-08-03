@@ -32,10 +32,10 @@ Apply when writing code that depends on a framework or library public API. The j
 
 Once it applies, run the following before writing from memory.
 
-1. Confirm the pinned version from the lockfile / manifest (package.json, Cargo.toml, etc.) and fetch that version's official docs via `scout fetch <url>`, falling back to WebFetch where scout is not installed.
+1. Confirm the pinned version from the lockfile / manifest (package.json, Cargo.toml, etc.) and fetch that version's official docs via `scout fetch <url>`.
 2. Write per the docs signature. When memory and docs disagree, the docs win.
 3. Leave the source URL in a comment or commit. Limit to load-bearing, non-obvious APIs; annotating obvious ones is excess. Deep-link the URL to the cited API's section / line anchor rather than the docs root, so a later reader lands directly on the cited signature.
 
 ## When docs are unreachable
 
-When official docs are unreachable (no docs, fetch failure), mark that API usage `unverified` and surface it to the human. Do not write memory as confirmed fact.
+When official docs are unreachable (no docs, fetch failure, scout not installed), mark that API usage `unverified` and surface it to the human. Do not write memory as confirmed fact.

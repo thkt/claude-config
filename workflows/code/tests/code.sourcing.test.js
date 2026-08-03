@@ -27,43 +27,35 @@ const sites = {
   ),
 };
 
-// docs の取得手段を指示する 3 箇所。primary は scout、fallback は WebFetch で揃える。
-// 片方だけ手段を絞ると、scout が入っている環境でも WebFetch に落ちるか、逆に scout の
-// 無い環境で取得そのものが失敗する。
-test("docs の取得が scout 優先 + WebFetch fallback で揃う", () => {
+// docs の取得手段を指示する 3 箇所。手段は scout に揃える。片方だけ手段を絞ると、
+// 読み手はどちらを先に試すのか決められない。
+test("docs の取得手段が scout で揃う", () => {
   for (const [name, path] of Object.entries(sites)) {
-    const doc = readFileSync(path, "utf8");
-    assert.match(doc, /scout fetch/, `${name}: primary が scout fetch`);
-    assert.match(doc, /WebFetch/, `${name}: fallback が WebFetch`);
+    assert.match(readFileSync(path, "utf8"), /scout fetch/, `${name}: 取得手段が scout fetch`);
   }
 });
 
-// fallback を「scout が無いとき」に紐付ける。条件を書かないと、読み手はどちらを先に
-// 試すのか決められない。
-test("fallback の発動条件が書かれている", () => {
-  const condition = {
-    "code.js (ja)": /scout が無ければ WebFetch/,
-    "code.js (en)": /falling back to WebFetch when scout is unavailable/,
-    "SOURCING.md (ja)": /scout が入っていない環境では WebFetch/,
-    "SOURCING.md (en)": /falling back to WebFetch where scout is not installed/,
-    "research/verification.md (ja)": /scout が使えないときは/,
-    "research/verification.md (en)": /When scout is unavailable/,
-  };
+// WebFetch と WebSearch は PreToolUse hook で deny しうるので、代替手段として書けない。
+// 名前を出した時点で読み手が第 2 の経路と受け取るため、言及ごと禁じる。
+test("WebFetch / WebSearch を代替経路として挙げない", () => {
   for (const [name, path] of Object.entries(sites)) {
-    assert.match(readFileSync(path, "utf8"), condition[name], `${name}: 発動条件`);
+    assert.doesNotMatch(readFileSync(path, "utf8"), /WebFetch|WebSearch/, `${name}: 言及なし`);
   }
 });
 
-// 取得できなかったときの扱い。未確認のまま確定情報として書かせない。
-test("取得できないときの扱いが決まっている", () => {
-  const unresolved = {
-    ja: /未確認としてコード内コメントに残し/,
-    en: /mark that API usage unverified in a code comment/,
+// scout で読めなかったときの扱い。代替手段が無い以上、記憶を確定情報として書かせない。
+test("scout で読めないときは unverified 扱いにする", () => {
+  const unverified = {
+    "code.js (ja)":
+      /scout が無い、または fetch が失敗して読めなければ、その API 使用を未確認として/,
+    "code.js (en)": /When scout is unavailable or the fetch fails, mark that API usage unverified/,
+    "SOURCING.md (ja)": /scout 未導入\) のときは、その API 使用を `unverified`/,
+    "SOURCING.md (en)": /scout not installed\), mark that API usage `unverified`/,
+    "research/verification.md (ja)": /scout 未導入などで一次ソースが辿れない場合/,
+    "research/verification.md (en)":
+      /or scout not being installed, keep the finding but mark it `unverified external claim`/,
   };
-  assert.match(readFileSync(sites["code.js (ja)"], "utf8"), unresolved.ja, "ja: 未確認の記録");
-  assert.match(readFileSync(sites["code.js (en)"], "utf8"), unresolved.en, "en: 未確認の記録");
-  for (const lang of ["ja", "en"]) {
-    const doc = readFileSync(sites[`SOURCING.md (${lang})`], "utf8");
-    assert.match(doc, /unverified/, `${lang}: rules も unverified を指示する`);
+  for (const [name, path] of Object.entries(sites)) {
+    assert.match(readFileSync(path, "utf8"), unverified[name], `${name}: unverified 扱い`);
   }
 });
