@@ -36,18 +36,18 @@ Option A を採用する。Verify と Integrate は実害が薄いが、fence �
 - Good, because Challenge の verdict と Snapshot の shell 実行が、diff の作者が仕込んだ文字列を指示として読まなくなる。marker は run ごとに変わる nonce を含むため、payload 内のどの文字列も marker を再現できない
 - Good, because Snapshot 段が専用 agent (`generator-snapshot`) に変わり、tool 宣言が `python3` 実行と一時ファイル書き込みに絞られた。fence を破られても実行できる操作がその範囲に決定論的に制限される
 - Bad, because fence が防がない範囲が残る。reviewer 起動 prompt (`workflows/audit.js:520`) は各 reviewer に `git diff` を直接叩かせるので、fence を適用したどの段よりも先に、攻撃者が書いたテキストは無制限の tool を持つ reviewer agent に届いている。fence は reviewer から後段への転送だけを覆い、reviewer 自身が読む入口は覆わない
-- Bad, because 宣言文はあくまで prose で、`docs/SECURITY_MODEL.md` が言う "probabilistic defense" の一種に留まる。agent が宣言文を無視する確率をこの変更は 0 にしない。marker が閉じられないことを T-001 が固定するのみで、agent の挙動が実際に変わるかは本 Issue の Premises が明示する通り未実証 (tentative) である
+- Bad, because 宣言文はあくまで prose で、`docs/SECURITY_MODEL.md` が言う "probabilistic defense" の一種に留まる。agent が宣言文を無視する確率をこの変更は 0 にしない。T-001 が固定するのは marker が閉じられないことまでで、agent の挙動が実際に変わるかは未実証である
 - Bad, because `workflows/build.js:206-208` の `fencedBody` は固定 marker のまま残る。issue body から `----- END UNTRUSTED ISSUE BODY -----` を仕込んで早期クローズする経路は、本 DR の変更後も build.js 側に残存する
 - Bad, because polish/assert/adrift/shake/code の 5 workflow は同種の LLM 出力連結 (`JSON.stringify(findings)` 等をそのまま次段の prompt に埋め込む形) を持つが、いずれも fence を適用していない。audit.js だけが境界を持つという非対称が生まれる
 
 ### Confirmation
 
-`workflows/audit.js` の Challenge/Verify/Integrate/Snapshot の 4 呼び出しが `fenced(...)` を経由していることをコードレビューで確認する。`node --test workflows/audit/tests/*.test.js` で、END marker と同じ文字列を `summary` に仕込んだ finding を渡しても抽出領域が JSON として parse できること (T-001)、同一 run 内で marker が一貫すること (T-003)、別 run では marker が変わること (T-004) を確認する。Snapshot 段の agent 起動が `agentType: general-purpose` を渡さず `generator-snapshot` を渡すこと (T-005, T-006) を確認する。
+`workflows/audit.js` の Challenge/Verify/Integrate/Snapshot の 4 呼び出しが `fenced(...)` を経由していることをコードレビューで確認する。`node --test workflows/audit/tests/*.test.js` で、END marker と同じ文字列を `summary` に仕込んだ finding を渡しても抽出領域が JSON として parse できること (T-001)、同一 run 内で marker が一貫すること (T-003)、別 run では marker が変わること (T-004) を確認する。Snapshot 段の agent 起動が `generator-snapshot` を渡すこと (T-006) を確認する。
 
 ## More Information
 
 - 上流の Issue は #304。本 DR は #304 の Plan の U-004 にあたり、fence 実装自体は U-001 (nonce 付き fence helper と 4 段への適用)、専用 agent 定義は U-002、Snapshot 段の agentType 差し替えは U-003、実 `snapshot.py` まで通した偽装 marker の検証は U-005 が担う
-- `workflows/build.js` の `fencedBody` は 1 個目の実装で、本 DR の `fenced()` が 2 個目の instance にあたる。marker を固定文字列から run ごとの nonce に変えた点が build.js からの逸脱で、`JSON.stringify` がハイフンをエスケープしないという同一の欠陥を複製しないための変更である
+- `fenced()` は `workflows/build.js` の `fencedBody` を写したもので、marker を固定文字列から run ごとの nonce に変えた点だけが異なる。`JSON.stringify` がハイフンをエスケープしないという同じ欠陥を複製しないための逸脱である
 - `.ja/workflows/audit.js` が canonical (ADR-0073)。英語側は同一コミットでミラーし、宣言文の翻訳のみを行い、marker の構造と nonce の生成コードは両側で同一にする
 
 ### Reassessment Triggers

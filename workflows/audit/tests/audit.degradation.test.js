@@ -29,7 +29,15 @@ const agentStub =
     }
     if (label === "security") {
       return {
-        findings: [{ file: "sample.js", line: "1", severity: "high", summary: "security finding" }],
+        findings: [
+          {
+            file: "sample.js",
+            line: "1",
+            severity: "high",
+            // fence の test だけが marker を偽装した summary を差し込む。
+            summary: opt.securitySummary || "security finding",
+          },
+        ],
       };
     }
     if (label === "silence") {
@@ -48,12 +56,10 @@ const agentStub =
 
 const callOf = (calls, label) => calls.agent.find((c) => c.opts && c.opts.label === label);
 
-// BEGIN marker: "----- BEGIN <LABEL> <nonce> -----" (行頭開始)。nonce が呼び出しごとに
-// 同じかどうかで「同一 run 内の使い回し」と「別 run での作り直し」を見分ける。
 const FENCE_BEGIN_RE = /^----- BEGIN ([A-Z0-9_ ]+) ([A-Za-z0-9]+) -----$/m;
 
-// prompt から fenced 領域を marker の nonce ごと取り出す。nonce が一致する END が
-// 無ければ null (fencing 未実装、または nonce 不一致で閉じられなかったことを示す)。
+// 対応する nonce の END が無ければ null を返す。fence が閉じられなかったことと、
+// fence がそもそも無いことを、呼び出し側は同じ null として扱う。
 const extractFenced = (prompt) => {
   const begin = prompt.match(FENCE_BEGIN_RE);
   if (!begin) return null;
@@ -301,77 +307,14 @@ test("T-008 needs_context の finding は survivors から外れて返り値の 
   );
 });
 
-// ---- Fencing: reviewer 由来のテキストは run ごとに変わる marker で囲まれた内側に入る ----
-// workflows/build.js の fencedBody に倣う。marker は行頭から始まり、BEGIN/END の間に
-// untrusted な finding テキストを挟む。build.js の marker は固定文字列で、
-// JSON.stringify がハイフンをエスケープしないため payload 内の文字列から閉じられ得る。
-// audit.js の marker は run ごとの nonce を埋め込み、finding の summary が
-// marker と同じ文字列を含んでいても閉じられないことを期待する。FENCE_BEGIN_RE /
-// extractFenced は snapshotPayload と共有するため、このファイルの先頭側で定義済み。
-
-const fencingStub =
-  (opt = {}) =>
-  (prompt, opts) => {
-    const label = opts && opts.label;
-    if (label === "route") return { files: [{ path: "sample.js", churn: 0 }] };
-    if (label === "security") {
-      return {
-        findings: [
-          {
-            file: "sample.js",
-            line: "1",
-            severity: "high",
-            summary: opt.securitySummary || "security finding",
-          },
-        ],
-      };
-    }
-    if (label === "silence") {
-      return {
-        findings: [{ file: "sample.js", line: "1", severity: "high", summary: "silence finding" }],
-      };
-    }
-    if (label === "challenge") {
-      return {
-        verdicts: [
-          { id: "R-1", verdict: "confirmed" },
-          { id: "R-2", verdict: "confirmed" },
-        ],
-      };
-    }
-    if (label === "verify") return "verify pass output";
-    if (label === "integrate") {
-      return {
-        findings: [
-          {
-            file: "sample.js",
-            line: "1",
-            severity: "high",
-            summary: "integrated finding",
-            source_ids: ["R-1", "R-2"],
-          },
-        ],
-      };
-    }
-    if (label === "snapshot") {
-      return {
-        path: "/tmp/audit-fence.json",
-        counts: {
-          raw_findings: 2,
-          findings: 1,
-          skipped: 0,
-          needs_context: 0,
-          zero_reviewer_files: 0,
-        },
-      };
-    }
-    return undefined;
-  };
+// build.js の fencedBody の marker は固定文字列で、JSON.stringify がハイフンを
+// エスケープしないため payload 内の文字列から閉じられる。audit.js は marker に run
+// ごとの nonce を埋め、summary が marker と同じ文字列を含んでも閉じられない形にする。
 
 const runFencing = (opt) =>
   runWorkflow(auditJs, {
     args: { focus: "security", skipPreflight: true },
-    stubs: { agent: fencingStub(opt) },
+    stubs: { agent: agentStub(opt) },
   });
 
 test("T-001 summary に END marker と同じ文字列を含む finding を渡しても、Snapshot prompt から取り出した領域が JSON として parse できる", async () => {
