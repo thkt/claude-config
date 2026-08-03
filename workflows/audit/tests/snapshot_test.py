@@ -110,6 +110,30 @@ class BaselineSelectionTest(unittest.TestCase):
                 "disputed の分だけ raw が tally を上回る record は正常なので baseline に使う",
             )
 
+    def test_record_with_a_non_integer_tally_is_stepped_over_not_raised_on(self):
+        """壊れた prior は例外でなく skip で扱う。
+
+        latest_prior_raw が拾うのは OSError と ValueError だけなので、tally の値が
+        文字列だと加算が TypeError を投げ、main() ごと落ちて record が 1 つも
+        書かれなくなる。読めない prior を飛ばすという既存の姿勢を保つ。
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            history = Path(tmp)
+            self._write(history, "2026-08-02-100000", {"raw_findings": [raw("a.rs", "x")]})
+            self._write(
+                history,
+                "2026-08-02-110000",
+                {
+                    "raw_findings": [raw("b.rs", "y")],
+                    "tally": {"survived": "21", "needs_context": 2},
+                },
+            )
+            self.assertEqual(
+                snapshot.latest_prior_raw(history),
+                [raw("b.rs", "y")],
+                "型が壊れた tally は判定を諦めて record 自体は使う",
+            )
+
     def test_record_without_a_tally_is_used_unchanged(self):
         with tempfile.TemporaryDirectory() as tmp:
             history = Path(tmp)

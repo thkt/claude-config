@@ -9,7 +9,9 @@ stdin:  JSON {scope, focus, pre_flight, raw_findings[], findings[], skipped[],
         verdict} once the triage pass has run.
         Every key is copied to the record verbatim; absent keys stay absent. An absent
         tally means the run failed open, which challenge_ran / verify_ran state directly.
-stdout: the path of the JSON record written.
+stdout: one line of JSON, {path, counts}. counts holds the element count of each
+        array this process serialized, so the caller compares against a figure it
+        did not obtain from the agent that transcribed the payload.
 exit 0 on success. exit 1 on an unparseable payload (nothing written).
 
 Resolved fields (shell / prior snapshot), added to the record:
@@ -72,10 +74,15 @@ def contradicts_own_tally(data):
     raw = data.get("raw_findings")
     if not isinstance(tally, dict) or not isinstance(raw, list):
         return False
-    accounted = tally.get("survived", 0) + tally.get("needs_context", 0)
-    if not isinstance(accounted, int):
+    survived = tally.get("survived", 0)
+    needs_context = tally.get("needs_context", 0)
+    # The operands are checked before they are added. A prior carrying "survived": "21"
+    # would raise on the addition, and latest_prior_raw only catches OSError / ValueError,
+    # so main() would die and write no record at all -- for exactly the malformed prior
+    # this function exists to step over.
+    if not isinstance(survived, int) or not isinstance(needs_context, int):
         return False
-    return len(raw) < accounted
+    return len(raw) < survived + needs_context
 
 
 def latest_prior_raw(history_dir):
