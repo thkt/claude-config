@@ -264,9 +264,9 @@ test("T-008 challenge を stub しない audit を入れ子で走らせた asser
       workflow: runRealAudit,
     },
   });
-  assert.notEqual(
+  assert.equal(
     result.gate,
-    "Ready",
-    "audit を実際に入れ子で走らせ challenge が fail-open (challenge_ran=false) になった run は gate が Ready にならない",
+    "Ready (caveat)",
+    "audit を実際に入れ子で走らせ challenge が fail-open (challenge_ran=false) になった run は gate が Ready (caveat) になる",
   );
 });
