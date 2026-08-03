@@ -13,8 +13,8 @@ Apply each trigger structurally; no self-judged exclusion of a finding is allowe
 Verify external-behavior claims against primary sources.
 
 1. Extract findings whose Source references external behavior not executed this session. Typical cases are hook firing timing, action / parser required schema, library API behavior, and cited-paper claims. Limit to findings where the conclusion, a Next Action, or Disconfirmation depends on the claim being correct
-2. Verify the extracted claims against primary sources in one batch. Use `scout fetch <official docs URL>` for web docs and `scout repo-read` / `scout repo-overview` for sources on GitHub (use-cli-scout is the canonical command reference). When scout is unavailable, fall back to WebFetch / WebSearch
-3. When a primary source is unreachable, such as paywall, no docs, or fetch failure, keep the finding but mark it `unverified external claim`, and do not use it as Disconfirmation evidence or a Next Action premise
+2. Verify the extracted claims against primary sources in one batch. Use `scout fetch <official docs URL>` for web docs and `scout repo-read` / `scout repo-overview` for sources on GitHub (use-cli-scout is the canonical command reference)
+3. When a primary source is unreachable, such as paywall, no docs, fetch failure, or scout not being installed, keep the finding but mark it `unverified external claim`, and do not use it as Disconfirmation evidence or a Next Action premise
 
 ## Same-origin sweep
 

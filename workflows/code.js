@@ -371,7 +371,7 @@ for (const unit of units) {
     `The contract is ${unit.contract}. The test scenarios are ${JSON.stringify(tests)}.\n` +
     `The test command is ${testCmd}.\n` +
     referenceModuleCtx +
-    `When writing framework / library API code, follow the pinned version's official docs rather than memory. Read docs with \`scout fetch <url>\`, falling back to WebFetch when scout is unavailable. If neither reaches them, mark that API usage unverified in a code comment and keep implementing.\n` +
+    `When writing framework / library API code, follow the pinned version's official docs rather than memory. Read docs with \`scout fetch <url>\`. When scout is unavailable or the fetch fails, mark that API usage unverified in a code comment and keep implementing.\n` +
     `Before reporting the result, audit each claim against a tool result from this session. Report only work you can point to evidence for; state unverified items as such in notes.\n` +
     `Unit-test convenience is never a reason to drop part of the feature. Do not omit a shared component, a data fetch, or a navigation affordance because it would need a Router / Suspense / permission context; stub that boundary in the test instead. Deferrals absent from the plan are forbidden, including narrowing the implementation behind a code comment claiming a later unit will do it. If part of what the contract / files require must go unimplemented, list it in deferred (it is recorded as an anomaly and surfaced on the PR).\n` +
     // Consulting advisor mid-implementation clashes with build's design: blockers are recorded

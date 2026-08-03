@@ -25,16 +25,18 @@ graph LR
 
 ## scout
 
-Brave Search API による Web 検索とページ取得。
+Web 検索、ページ取得、GitHub リポジトリ探索。検索系 (`search`、`research`) だけが Brave Search API を使い、`BRAVE_SEARCH_API_KEY` を要求する。`fetch` と `repo-*` は key 無しで動く。
 
 | 観点    | 詳細                                                       |
 | ------- | ---------------------------------------------------------- |
 | Why     | WebFetch/WebSearch はトークンを消費し、Markdown 変換が弱い |
-| How     | 検索は Brave Search API、ページ抽出は readability           |
+| How     | 検索は Brave Search API、ページ抽出は readability          |
 | Install | `brew install thkt/tap/scout`                              |
 | Source  | [thkt/scout](https://github.com/thkt/scout)                |
 
 ### コマンド
+
+正典は use-cli-scout skill と `scout --help`。下表はその抜粋。
 
 | コマンド              | 用途                                          |
 | --------------------- | --------------------------------------------- |
@@ -47,11 +49,7 @@ Brave Search API による Web 検索とページ取得。
 
 ### 適用条件
 
-| scout                            | WebFetch/WebSearch  |
-| -------------------------------- | ------------------- |
-| 最新ドキュメント、リリースノート | 不可 (scout を優先) |
-| GitHub リポジトリ探索            | 不可 (scout を優先) |
-| 編集付きの深いリサーチ           | N/A                 |
+Web 上の情報を読むときは scout を使う。最新ドキュメント、リリースノート、GitHub リポジトリ探索が対象で、深いリサーチは scout research が担う。scout で読めなければ、その API 使用や claim は `unverified` として扱う (rules/development/SOURCING.md)。
 
 ## recall
 
@@ -77,7 +75,7 @@ Brave Search API による Web 検索とページ取得。
 
 ### 適用条件
 
-| recall                                | Grep *.jsonl                  |
+| recall                                | Grep \*.jsonl                 |
 | ------------------------------------- | ----------------------------- |
 | 過去の解: `how did I fix X`           | 現セッションのみ              |
 | パターン想起: `what tool for Y`       | 既知の特定セッション ファイル |

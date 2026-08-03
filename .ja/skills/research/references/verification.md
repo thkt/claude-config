@@ -13,8 +13,8 @@
 外部挙動の claim を一次ソースで検証する。
 
 1. Source が、このセッションで実行していない外部システムの振る舞いを参照する finding を抽出する。hook 発火タイミング、action や parser の要求 schema、ライブラリ API 挙動、引用文献の主張が典型。結論、Next Action、Disconfirmation のいずれかがその claim の正しさへ依存するものに限る
-2. 抽出した claim を一括で一次ソースと突合する。web docs は `scout fetch <公式 docs URL>`、GitHub 上のソースは `scout repo-read` か `scout repo-overview` を使う。コマンドの正典は use-cli-scout。scout が使えないときは WebFetch か WebSearch へフォールバックする
-3. paywall、docs 不在、fetch 失敗などで一次ソースが辿れない場合は finding を残して `unverified external claim` とマークし、Disconfirmation の根拠や Next Action の前提には使わない
+2. 抽出した claim を一括で一次ソースと突合する。web docs は `scout fetch <公式 docs URL>`、GitHub 上のソースは `scout repo-read` か `scout repo-overview` を使う。コマンドの正典は use-cli-scout
+3. paywall、docs 不在、fetch 失敗、scout 未導入などで一次ソースが辿れない場合は finding を残して `unverified external claim` とマークし、Disconfirmation の根拠や Next Action の前提には使わない
 
 ## Same-origin sweep
 

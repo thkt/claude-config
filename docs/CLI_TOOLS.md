@@ -27,16 +27,18 @@ graph LR
 
 ## scout
 
-Web search and page fetching via the Brave Search API.
+Web search, page fetching, and GitHub repository exploration. Only the search commands (`search`, `research`) go through the Brave Search API and require `BRAVE_SEARCH_API_KEY`; `fetch` and `repo-*` run without a key.
 
-| Aspect  | Detail                                                           |
-| ------- | ---------------------------------------------------------------- |
-| Why     | WebFetch/WebSearch consume tokens and lack Markdown conversion   |
-| How     | Brave Search API for search, readability for page extraction      |
-| Install | `brew install thkt/tap/scout`                                    |
-| Source  | [thkt/scout](https://github.com/thkt/scout)                      |
+| Aspect  | Detail                                                         |
+| ------- | -------------------------------------------------------------- |
+| Why     | WebFetch/WebSearch consume tokens and lack Markdown conversion |
+| How     | Brave Search API for search, readability for page extraction   |
+| Install | `brew install thkt/tap/scout`                                  |
+| Source  | [thkt/scout](https://github.com/thkt/scout)                    |
 
 ### Commands
+
+The canonical reference is the use-cli-scout skill and `scout --help`. The table below is an excerpt.
 
 | Command               | Purpose                                      |
 | --------------------- | -------------------------------------------- |
@@ -49,11 +51,7 @@ Web search and page fetching via the Brave Search API.
 
 ### When to Use
 
-| scout                          | WebFetch/WebSearch      |
-| ------------------------------ | ----------------------- |
-| Latest docs, release notes     | Never (scout preferred) |
-| GitHub repo exploration        | Never (scout preferred) |
-| Deep research with compilation | N/A                     |
+Reach for scout for anything on the web. It covers latest docs, release notes, and GitHub repo exploration, and `scout research` handles a compiled multi-page report. When scout cannot read the source, treat that API usage or claim as `unverified` (rules/development/SOURCING.md).
 
 ## recall
 
@@ -69,14 +67,14 @@ index).
 
 ### Commands
 
-| Command                                      | Purpose                            |
-| -------------------------------------------- | ---------------------------------- |
-| `recall search "query"`                      | Full-text search across sessions   |
-| `recall search --days N "query"`             | Filter to last N days              |
-| `recall search --project <PATH> "query"`     | Filter by project path             |
-| `recall search --source <SOURCE> "query"`    | Filter by source (claude or codex) |
-| `recall index`                               | Incrementally index new logs       |
-| `recall rebuild`                             | Re-parse and re-index all sessions |
+| Command                                   | Purpose                            |
+| ----------------------------------------- | ---------------------------------- |
+| `recall search "query"`                   | Full-text search across sessions   |
+| `recall search --days N "query"`          | Filter to last N days              |
+| `recall search --project <PATH> "query"`  | Filter by project path             |
+| `recall search --source <SOURCE> "query"` | Filter by source (claude or codex) |
+| `recall index`                            | Incrementally index new logs       |
+| `recall rebuild`                          | Re-parse and re-index all sessions |
 
 ### When to Use
 
