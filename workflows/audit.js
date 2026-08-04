@@ -57,23 +57,23 @@ const anchor = (p) =>
 // the marker does not help either, because a marker present in the payload is shifted
 // away from what was predicted. No random source exists in the sandbox, and one would
 // change value across a resume even if it did.
-// The base's contents carry no meaning. It only has to be unlikely in a payload, and
-// the padding below takes over whenever it does collide.
+// The base's contents carry no meaning. It only has to be unlikely in a payload, and the
+// padding takes over whenever it does collide. Both go into the regex below, so pick them
+// from characters that carry no regex meaning.
 const FENCE_BASE = "e5f9a2";
 const FENCE_PAD = "0";
+const FENCE_RUNS = new RegExp(`${FENCE_BASE}${FENCE_PAD}*`, "g");
 // Growing the marker one character at a time re-scans the payload on every step, and
 // the payload is exactly where an attacker writes: seeding `base`, `base0`, `base00`, ...
 // makes the step count rise with the payload's own length. A marker padded one longer
 // than the longest run cannot occur, because a longer run would have been the longest.
+// A payload without a single base leaves longest at -1, returning the bare base.
 const fenceMarker = (value) => {
-  if (!value.includes(FENCE_BASE)) return FENCE_BASE;
-  let longestRun = 0;
-  for (let at = value.indexOf(FENCE_BASE); at !== -1; at = value.indexOf(FENCE_BASE, at + 1)) {
-    let run = 0;
-    for (let p = at + FENCE_BASE.length; value[p] === FENCE_PAD; p++) run++;
-    if (run > longestRun) longestRun = run;
+  let longest = -1;
+  for (const [hit] of value.matchAll(FENCE_RUNS)) {
+    longest = Math.max(longest, hit.length - FENCE_BASE.length);
   }
-  return FENCE_BASE + FENCE_PAD.repeat(longestRun + 1);
+  return FENCE_BASE + FENCE_PAD.repeat(longest + 1);
 };
 const fenced = (value) => {
   const marker = fenceMarker(value);
