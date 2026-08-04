@@ -51,7 +51,7 @@ slice が生む issue には `## Plan` がまだ無く、そのまま `/build` �
 
 承認後、batch publish の前に AskUserQuestion で「これら N 件の issue を作成するか」と最終確認する。N 件作成は外向きで巻き戻しにくいため、確認なしの自動 publish はしない。
 
-承認したら blocker を先にする依存順で publish する。"Blocked by" に実 issue 番号を書けるよう、blocker を先に作りその番号を捕捉する。各 issue は下記のテンプレート選択で決めた骨格を使い、本文を一時ファイルに書き出して `gh issue create --title "<title>" --body-file <path>` で起票する。複数行の markdown は `--body` では壊れるので `--body-file` を使う。`<path>` は変数でなくリテラルの絶対パスで書く。PreToolUse hook はシェルの状態を持たず `$B` のような参照を展開できないため、変数で渡すと本文を照合できず起票が止まる。triage label は付けない。AFK consumer 連携は対象外。親 issue は close せず、内容も変更しない。publish 後は作成した issue を依存順に列挙し、各行に issue 番号と blocker の番号を書く。blocker が無ければ「なし」と書く。
+承認したら blocker を先にする依存順で publish する。"Blocked by" に実 issue 番号を書けるよう、blocker を先に作りその番号を捕捉する。各 issue は下記のテンプレート選択で決めた骨格を使い、本文を一時ファイルに書き出して `gh issue create --title "<title>" --body-file <path>` で起票する。複数行の markdown は `--body` では壊れるので `--body-file` を使う。`<path>` は変数でなくリテラルの絶対パスで書く。hook は変数を展開できず、起票が止まる。triage label は付けない。AFK consumer 連携は対象外。親 issue は close せず、内容も変更しない。publish 後は作成した issue を依存順に列挙し、各行に issue 番号と blocker の番号を書く。blocker が無ければ「なし」と書く。
 
 ### テンプレート選択
 

@@ -1,10 +1,9 @@
 #!/bin/zsh
 # PreToolUse hook: match a gh issue create body against the skeleton its title's type
 # points at, and stop the filing when the two diverge.
-# Reads the Bash command out of the PreToolUse input the way hooks/textlint-lint.sh does,
-# then hands the --body-file contents and the title to
-# skills/issue/scripts/validate-issue-body.py. Only a non-empty errors list becomes a deny
-# (same shape as hooks/security/rm-to-trash.sh).
+# Hands the --body-file contents and the title to skills/issue/scripts/validate-issue-body.py.
+# A body that cannot be read is denied alongside one the validator rejects, since a filing
+# that skips the comparison is the same escape this hook exists to close.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -20,11 +19,10 @@ case "$input" in
 esac
 
 # printf, not echo: zsh echo expands backslash escapes and corrupts the JSON (\n inside strings)
-# tool_name is already filtered by the fast-exit case above, so only command is extracted here.
-# Read the command whole rather than through `@tsv` + `read -r`: `@tsv` turns the newlines
-# separating a multi-command call into the two characters `\n`, and the separator split below
-# only knows `&& || ; |`, so a filing preceded by a variable assignment never reaches the
-# validator. `|| command_str=""` keeps a jq failure from ending the hook non-zero under
+# Read the command whole rather than through `@tsv` + `read -r`, which would turn the newlines
+# separating a multi-command call into the two characters `\n`. The split below reads those
+# newlines as command boundaries, so flattening them hides a filing written after a variable
+# assignment. `|| command_str=""` keeps a jq failure from ending the hook non-zero under
 # `set -e`, which lets the filing through as a hook error.
 command_str=$(printf '%s' "$input" | jq -r '.tool_input.command // ""' 2>/dev/null) || command_str=""
 
@@ -35,13 +33,13 @@ fi
 # `gh issue create` names a filing only where it leads a command. The same words turn up
 # inside commit messages (e7db3385 in this repository carries them), and a message body can
 # put them at the start of one of its own lines, so a split that counts every separator
-# would drag an unrelated git commit through the validator. Deciding which separators sit
-# outside quotes needs a scanner sed cannot provide; python3 already runs the validator below.
+# would drag an unrelated git commit through the validator. Telling which separators sit
+# outside quotes takes a scanner that carries state, which sed cannot express.
 if ! segments=$(printf '%s' "$command_str" | python3 -c '
 import sys
 
-# Split on the separators outside quotes. `&&` and `||` split as two single characters,
-# which only leaves an empty segment between them.
+# `&&` and `||` split as two single characters, which only leaves an empty segment
+# between them.
 command = sys.stdin.read()
 segments, current, quote, escaped = [], [], None, False
 for ch in command:
@@ -66,9 +64,8 @@ for ch in command:
 segments.append("".join(current))
 sys.stdout.write("".join(segment + "\x00" for segment in segments))
 ' 2>/dev/null); then
-  # The split decides whether this hook looks at the filing at all, so losing it means the
-  # body goes uninspected. That is the same "cannot judge" state as an unreadable body file,
-  # and it stops the filing for the same reason.
+  # Losing the split leaves no segment identified as the filing, so the body goes
+  # uninspected the same way an unreadable body file leaves it uninspected.
   jq -nc --arg r "issue-body-template: コマンドの分割に失敗し起票を照合できない。python3 が動くか確認する" '{
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
@@ -93,10 +90,10 @@ if [[ -z "$create_segment" ]]; then
   exit 0
 fi
 
-# The flags are read out of the filing segment alone, not the whole command: a `git commit`
-# sharing the command line carries its own `--title`-looking text. `head -1` guards the case
-# where a quoted argument holds a newline and sed prints one match per line, and `|| true`
-# keeps the SIGPIPE that `head` sends from ending the hook under `set -o pipefail`.
+# The flags are read out of the filing segment rather than the whole command, since a
+# `git commit` sharing the command line carries its own `--title`-looking text. `head -1`
+# guards a quoted argument holding a newline, where sed prints one match per line, and
+# `|| true` keeps the SIGPIPE that `head` sends from ending the hook under `set -o pipefail`.
 title=$(printf '%s\n' "$create_segment" | sed -nE 's/.*--title "(([^"\\]|\\.)*)".*/\1/p' | head -1) || true
 if [[ -z "$title" ]]; then
   title=$(printf '%s\n' "$create_segment" | sed -nE "s/.*--title '([^']*)'.*/\1/p" | head -1) || true
@@ -127,9 +124,7 @@ fi
 [[ "$body_file" = /* ]] || body_file="$repo_dir/$body_file"
 
 # A hook carries none of the shell state the command will run under, so a path written as
-# `"$B"` or `$TMPDIR/body.md` arrives unexpanded and names nothing on disk. Passing it on
-# would hand the validator an empty read and file the issue with its body never inspected,
-# so an unreadable path stops the filing instead.
+# `"$B"` or `$TMPDIR/body.md` arrives unexpanded and names nothing on disk.
 if [[ ! -f "$body_file" ]]; then
   jq -nc --arg r "issue-body-template: --body-file の指す先 ($body_file) が読めず本文を照合できない。パスを変数でなくリテラルの絶対パスで書く" '{
     hookSpecificOutput: {
