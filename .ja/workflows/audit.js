@@ -52,10 +52,10 @@ const anchor = (p) =>
 // finding の summary は LLM が生成した自由文で、次段の prompt へそのまま埋め込まれる。
 // そこに紛れ込んだ指示が命令として読まれてはならない。fenced が build.js の fencedBody と
 // 違うのはこの点にある。固定 marker は、JSON.stringify がハイフンをエスケープしないため
-// payload 内の同じ文字列から閉じられる。marker を run 全体の random nonce から取るのでは
-// なく value ごとに算出し、base marker を含む payload では marker を伸ばしてその payload
-// 内に出現しなくなるまで衝突を避ける。衝突しない payload では base marker のまま変わらない。
-// 乱数源でなく伸長で解決するため resume をまたいでも安定する。
+// payload 内の同じ文字列から閉じられる。marker を予測されても、その文字列が payload に
+// ある限り marker 自体がずれるので早期クローズは成立しない。乱数源はサンドボックスに無く、
+// あっても resume をまたいで値が変わる。
+// base の中身に意味は無い。payload に現れにくければよく、衝突しても伸長が引き受ける。
 const FENCE_BASE = "e5f9a2";
 const fenceMarker = (value) => {
   let marker = FENCE_BASE;

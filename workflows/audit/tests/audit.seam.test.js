@@ -239,11 +239,9 @@ test("T-004 prompt を変えた後も snapshot payload の抽出が成立し、�
   );
 });
 
-// U-004: marker 実装 (fenced/fenceMarker) と遮断コンテキスト (run-workflow.js の vm
-// context、production の Node グローバル欠如を再現する realm) を同時に通す。run() は
-// runWorkflow 経由で実 audit.js をその vm context 内で評価するため、ここでの
-// calls.agent は crypto/fetch/process/Buffer 等の未定義グローバル参照で run が例外終了
-// せず、reviewer (Review phase) の起動まで実際に届いたことの証跡になる。
+// marker の算出と遮断コンテキストを同時に通す。run() は実 audit.js を vm context 内で
+// 評価するので、reviewer の呼び出しが calls.agent に残ったこと自体が、未定義グローバルの
+// 参照で途中終了しなかった証跡になる。
 test("T-008 遮断コンテキストで実 audit.js を走らせても未定義グローバルの参照で落ちず reviewer 起動まで進む", async () => {
   const { calls } = await run([{ path: "sample.js", churn: 0 }], {});
   assert.ok(

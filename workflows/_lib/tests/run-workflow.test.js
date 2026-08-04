@@ -1,8 +1,6 @@
-// production sandbox が持たないグローバルを workflow script のテスト実行からも遮断する
-// 挙動を固定する (issue #317 U-002)。crypto / fetch / process / Buffer は本番サンドボックス
-// で ReferenceError になる (issue #317 の Premises で実測済み、"Error: crypto is not defined"
-// は本番で実際に観測された文言)。Date.now と Math.random と引数なし new Date は resume を
-// 理由に挙げる Error に差し替わり、引数つき new Date と Math.floor は影響を受けない。
+// 本番サンドボックスが持たないグローバルを、テスト実行からも同じ形で欠かせることを固定
+// する。ここが緩むと、本番で落ちる script がテストでは通る状態に戻る。供給されるものと
+// 塞がれるものの一覧は rules/conventions/WORKFLOWS.md の Script evaluation form にある。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";

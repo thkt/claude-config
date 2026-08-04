@@ -239,10 +239,8 @@ test("T-008 needs_context の finding は survivors から外れて返り値の 
   );
 });
 
-// build.js の fencedBody の marker は固定文字列で、JSON.stringify がハイフンを
-// エスケープしないため payload 内の文字列から閉じられる。audit.js は marker を value
-// ごとに算出し、payload が marker と同じ文字列を含む場合だけ marker を伸ばして
-// 閉じられない形にする。
+// marker が自分の包む payload から閉じられない性質を固定する。固定 marker を避ける理由と
+// 伸長の条件は audit.js の fenceMarker にある。
 
 test("T-001 summary に END marker と同じ文字列を含む finding を渡しても、Snapshot prompt から取り出した領域が JSON として parse できる", async () => {
   // nonce を知らない攻撃者が打てるのは固定文字列のみ。nonce 込みの本物の marker とは

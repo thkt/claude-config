@@ -53,11 +53,12 @@ const anchor = (p) =>
 // A finding's summary is LLM free text folded verbatim into the next stage's prompt,
 // so an injected directive hiding in it must not read as an instruction. This is why
 // fenced differs from build.js's fencedBody: a fixed marker can be closed early by a
-// payload string equal to it, since JSON.stringify does not escape hyphens. The marker
-// is computed per value instead of drawn from a run-wide random nonce, so a payload
-// that happens to contain the base marker grows the marker until it no longer appears
-// in that payload; a payload that does not collide keeps the base marker unchanged.
-// Using growth instead of a random source keeps resume stable across runs.
+// payload string equal to it, since JSON.stringify does not escape hyphens. Predicting
+// the marker does not help either, because a marker present in the payload is shifted
+// away from what was predicted. No random source exists in the sandbox, and one would
+// change value across a resume even if it did.
+// The base's contents carry no meaning. It only has to be unlikely in a payload, and
+// growth takes over whenever it does collide.
 const FENCE_BASE = "e5f9a2";
 const fenceMarker = (value) => {
   let marker = FENCE_BASE;

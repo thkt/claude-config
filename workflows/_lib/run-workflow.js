@@ -3,10 +3,10 @@
 // (agent/workflow/parallel/pipeline/phase/log), so they cannot run via ESM import.
 // The production sandbox runs scripts in a realm that lacks Node globals (crypto,
 // fetch, process, Buffer, ...) and replaces Date.now / Math.random / no-arg `new Date`
-// with Errors citing resume as the reason (issue #317: a run must be replayable across
-// resume boundaries, so it cannot depend on wall-clock time or randomness). Running
-// scripts here as a plain in-process AsyncFunction would leave Node's real globals
-// reachable, so tests would pass while the same script fails at production runtime.
+// with Errors, because a run has to replay across a resume boundary and cannot depend
+// on wall-clock time or randomness. Running scripts here as a plain in-process
+// AsyncFunction would leave Node's real globals reachable, so tests would pass while
+// the same script fails at production runtime.
 // A fresh node:vm context reproduces that missing-globals set structurally, and
 // vm.compileFunction's `parsingContext` binds identifier lookups to that context
 // instead of the host realm. The context also disallows code generation from strings
@@ -41,8 +41,8 @@ const toHostRealmError = (err) => {
 // Plain objects/arrays/Dates/etc. built inside the vm context carry that context's
 // intrinsics (its own Array.prototype, Object.prototype, ...), so a host-side
 // assert.deepStrictEqual sees them as structurally equal but not reference-equal to a
-// host literal and fails. Rebuild every value that crosses the context/host boundary
-// (agent/workflow calls, log/phase messages, the final result) with host intrinsics.
+// host literal and fails. Rebuild every value crossing the context/host boundary with
+// host intrinsics.
 const rehome = (value, seen = new Map()) => {
   if (value === null || typeof value !== "object") return value;
   if (seen.has(value)) return seen.get(value);
@@ -81,7 +81,7 @@ const rehome = (value, seen = new Map()) => {
 // `Object.create(Math, ...)` stay within one realm.
 // The two messages are the production sandbox's own text, read off a minimal workflow
 // run. A harness that words them differently reports a different signal than the run it
-// stands in for, which is the mismatch this whole context exists to remove.
+// stands in for.
 const SANDBOX_SETUP_SOURCE = `
 (function () {
   const OriginalDate = Date;
@@ -159,11 +159,9 @@ export async function runWorkflow(scriptPath, { args = {}, stubs = {} } = {}) {
   const context = vm.createContext({}, { codeGeneration: { strings: false, wasm: false } });
   vm.runInContext(SANDBOX_SETUP_SOURCE, context, { filename: "sandbox-setup.js" });
 
-  // The script body carries top-level await and top-level return (see the header
-  // comment), which a plain compiled function cannot hold directly. Wrapping it in an
-  // async IIFE before compiling lets `return` resolve the IIFE's promise and `await`
-  // suspend within it, while the outer compiled function stays an ordinary function
-  // that hands that promise back to the caller.
+  // vm.compileFunction produces an ordinary function, which cannot hold the top-level
+  // await the script body carries. An async IIFE around the body restores both that and
+  // the top-level return.
   const run = vm.compileFunction(
     `return (async () => {\n${source}\n})();`,
     ["args", "agent", "workflow", "parallel", "pipeline", "phase", "log"],
