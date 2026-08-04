@@ -14,6 +14,10 @@ TYPE_PREFIX = re.compile(r"^\[([A-Za-z]+)\]")
 HEADING = re.compile(r"^## (.+?)\s*$", flags=re.MULTILINE)
 CODE_BLOCK = re.compile(r"```(?:markdown)?\n(.*?)```", flags=re.DOTALL)
 OPTIONAL_SUFFIX = re.compile(r"\s*\((?:optional|任意)\)\s*$")
+# 骨格に無くても errors にしない節。/think の plan を転記した issue はこの 2 節を必ず持ち、
+# skills/issue/SKILL.md の Phase 3 がそれを指示している。緩和はこの 2 つに限り、
+# 他の骨格外見出しは unknown_section として残す。
+ALLOWED_EXTRA = frozenset({"Plan", "Backlog candidates"})
 
 
 def skeleton_sections(template_text):
@@ -71,6 +75,13 @@ def main():
             results["checks"].append(f"section:{name}=ok")
         else:
             results["errors"].append(f"missing_section:{name}")
+
+    known = {name for name, _ in skeleton_sections(template_text)} | ALLOWED_EXTRA
+    extra = sorted(present - known)
+    for name in extra:
+        results["errors"].append(f"unknown_section:{name}")
+    if not extra:
+        results["checks"].append("unknown_section=none")
 
     print(json.dumps(results, indent=2))
     sys.exit(1 if results["errors"] else 0)

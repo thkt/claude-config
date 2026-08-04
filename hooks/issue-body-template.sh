@@ -26,7 +26,19 @@ if [[ -z "$command_str" ]]; then
   exit 0
 fi
 
-if ! [[ "$command_str" =~ gh[[:space:]]+issue[[:space:]]+create ]]; then
+# `gh issue create` が起票を指すのは、それがコマンドの先頭に立つときだけ。同じ語は
+# コミットメッセージの中にも現れる (このリポジトリの e7db3385 がその例)。文字列の
+# どこかにあるかで判定すると、無関係な git commit がこの hook を通ることになる。
+# 引用符の中の区切り文字でも切れるが、切れた断片の先頭が gh issue create になるのは
+# 起票コマンドを引用符で包んだときだけで、そのときは止めるほうが安全側になる。
+is_create=0
+while IFS= read -r segment; do
+  [[ "$segment" =~ '^[[:space:]]*gh[[:space:]]+issue[[:space:]]+create([[:space:]]|$)' ]] || continue
+  is_create=1
+  break
+done < <(printf '%s\n' "$command_str" | sed -E 's/(&&|\|\||[;|])/\n/g')
+
+if (( is_create == 0 )); then
   exit 0
 fi
 

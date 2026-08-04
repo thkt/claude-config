@@ -91,12 +91,17 @@ const missingSectionBugBody = [
 ].join("\n");
 
 test("T-005 gh issue create 以外の Bash コマンドでは何も返さず素通しする", () => {
-  const { stdout } = runHook("gh issue list");
-  assert.equal(
-    stdout.trim(),
-    "",
-    `gh issue create 以外は無出力で終わる (実際: ${JSON.stringify(stdout)})`,
-  );
+  // 2 件目は起票でなく、引数の中に同じ語を持つだけのコマンド。このリポジトリの
+  // コミット e7db3385 が実際にこの subject を持つ。
+  const passThrough = ["gh issue list", 'git commit -m "fix: gh issue create hook"'];
+  for (const cmd of passThrough) {
+    const { stdout } = runHook(cmd);
+    assert.equal(
+      stdout.trim(),
+      "",
+      `gh issue create 以外は無出力で終わる (${cmd} で実際: ${JSON.stringify(stdout)})`,
+    );
+  }
 });
 
 test("T-006 タイトルに型プレフィックスが無い起票は理由を残して素通しする", () => {

@@ -113,6 +113,42 @@ test("T-002 骨格に無い Plan と Backlog candidates は errors にならな�
   );
 });
 
+test("T-011 必須節が揃っていても骨格に無い節を持つ本文は unknown_section を返す", () => {
+  // 必須節を欠く本文は T-001 が見る。ここは必須節が全部あるため missing_section では
+  // 止まらず、余計な節を見る経路だけが働く。#286 の `## Changes` がこの形にあたる。
+  const body = [
+    "## What & Why",
+    "",
+    "Login fails for some users.",
+    "",
+    "## Steps to Reproduce",
+    "",
+    "1. Open app",
+    "",
+    "## Expected vs Actual",
+    "",
+    "- Expected: 200 OK",
+    "- Actual: 500 error",
+    "",
+    "## Scope",
+    "",
+    "- In scope: login flow",
+    "",
+    "## Changes",
+    "",
+    "- Rewrote the session handler",
+    "",
+  ].join("\n");
+  const { status, out } = runValidate(bugTemplate, "[Bug] Login fails for some users", body);
+  assert.ok(out, "stdout が JSON として parse できる");
+  assert.equal(status, 1, "骨格外の節を持つ本文は exit 1 で終わる");
+  assert.deepEqual(
+    out.errors,
+    ["unknown_section:Changes"],
+    `骨格に無い Changes が節名つきで errors に載る (実際: ${JSON.stringify(out.errors)})`,
+  );
+});
+
 test("T-003 タイトルの型と渡したテンプレートが食い違うとき type_mismatch を返す", () => {
   const body = [
     "## What & Why",
