@@ -11,9 +11,9 @@ paths:
 
 ## Degradation の記録
 
-Degradation とは、失敗または欠落した sub-result を、構造化フィールドと `log()` のどちらにも喪失粒度で記録しないまま drop または default する branch を指す。喪失粒度とは、何が / いくつ / なぜ落ちたかを後から再構成できる情報 (件数、id、対象名、理由)。
+Degradation とは、失敗または欠落した sub-result を、構造化フィールドと `log()` のどちらにも喪失粒度で記録しないまま drop または default する branch を指す。喪失粒度とは、何が/いくつ/なぜ落ちたかを後から再構成できる情報 (件数、id、対象名、理由)。
 
-主チャネルは workflow の返り値。snapshot は audit workflow だけが持つ追加チャネル (DR-0047 の docs/audit/ 書き出し) で、他 workflow の実装者は返り値へ記録する。`log()` は対話中の補完で、返り値だけでは人間が気づけない degradation を実行ログに残す。喪失粒度を返り値の構造化フィールドへ既に残しているなら `log()` は任意。
+主チャネルは workflow の返り値。snapshot は audit workflow だけが持つ追加チャネル (DR-0047 の docs/audit/書き出し) で、他 workflow の実装者は返り値へ記録する。`log()` は対話中の補完で、返り値だけでは人間が気づけない degradation を実行ログに残す。喪失粒度を返り値の構造化フィールドへ既に残しているなら `log()` は任意。
 
 記録すべき粒度を状況ごとに示す。
 
@@ -38,4 +38,10 @@ Degradation とは、失敗または欠落した sub-result を、構造化フ�
 
 ## テストのカバレッジ
 
-現行の degradation サイトはサイトごとに個別テストで守られている。degradation クラス全体 (全 branch が喪失粒度を残すこと) を横断的に保証するテストは無い。新しい drop / default branch を足すときは、そのサイト固有のテストで喪失粒度の記録を検証する。既存テストは新規サイトを自動でガードしない。
+現行の degradation サイトはサイトごとに個別テストで守られている。degradation クラス全体 (全 branch が喪失粒度を残すこと) を横断的に保証するテストは無い。新しい drop/default branch を足すときは、そのサイト固有のテストで喪失粒度の記録を検証する。既存テストは新規サイトを自動でガードしない。
+
+## script の評価形式
+
+workflow script は `new AsyncFunction(source)` として評価される。そのため script 本体に `import` 文を書けず、`workflows/` 配下の 7 script のいずれにも import の実例が無い。共通ロジックを別モジュールへ切り出す設計は採れないため、重複を見つけても script をまたいで括り出す前にこの制約を確かめる。dynamic `import()` が動くかは未実測で、切り出しが必要になった時点で最小の workflow を 1 つ走らせて確かめる。
+
+テストは通常の ES module として実行されるので、この制約が掛かるのは script 本体だけ。`workflows/_lib/run-workflow.js` のようにテストから import する共有ハーネスは置ける。
