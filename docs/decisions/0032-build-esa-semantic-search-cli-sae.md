@@ -73,5 +73,5 @@ esa API page-based paginationの欠落リスクはgap detection（total_count比
 - Spec: ~/.claude/workspace/planning/2026-03-23-sae/spec.md
 - ADR-0021: kiku（Slack semantic search）
 - ADR-0031: ローカルembedding統一（ort + Ruri v3）
-- esa API: https://docs.esa.io/posts/102
-- FTS5 trigram + fts5vocab: https://www.space-i.com/post-blog/sqlite-fts-trigram-tokenizer%E3%81%A7unigram%EF%BC%86bigram%E6%A4%9C%E7%B4%A2%E3%81%BE%E3%81%A7%E3%82%B5%E3%83%9D%E3%83%BC%E3%83%88-%E6%97%A5%E6%9C%AC%E8%AA%9E%E5%85%A8%E6%96%87%E6%A4%9C%E7%B4%A2/
+- esa API: <https://docs.esa.io/posts/102>
+- FTS5 trigram + fts5vocab: <https://www.space-i.com/post-blog/sqlite-fts-trigram-tokenizer%E3%81%A7unigram%EF%BC%86bigram%E6%A4%9C%E7%B4%A2%E3%81%BE%E3%81%A7%E3%82%B5%E3%83%9D%E3%83%BC%E3%83%88-%E6%97%A5%E6%9C%AC%E8%AA%9E%E5%85%A8%E6%96%87%E6%A4%9C%E7%B4%A2/>

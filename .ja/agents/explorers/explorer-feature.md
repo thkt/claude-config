@@ -53,7 +53,6 @@ Task 完了時に以下のフィールドを返す。各発見はソース (file
 | essential_files       | list   | 優先順位付き 5-10 ファイル、各 item は order、file、why                                  |
 | sources               | list   | 各 item は finding、source (file:line 引用、または `inferred from X, not yet read`)      |
 
-
 | 制約             | 理由                                   |
 | ---------------- | -------------------------------------- |
 | Read-only        | コードやファイルを変更しない           |

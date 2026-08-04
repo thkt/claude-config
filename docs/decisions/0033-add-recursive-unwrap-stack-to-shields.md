@@ -66,7 +66,7 @@ Option 2: 新unwrapモジュール + normalize 2フェーズ化。
 
 ### パイプライン
 
-```
+```text
 oneline
   → decode (N7, N5, N6, N3)
   → unwrap (shell-words tokenize → compound split → wrapper strip → shell launcher extract → recurse)
@@ -99,9 +99,9 @@ oneline
 ## Links
 
 - shields source: ~/GitHub/cli/shields/
-- omamori: https://github.com/yottayoshida/omamori
-- omamori v0.6記事: https://zenn.dev/yottayoshida/articles/omamori-plugging-holes-v050-v060
-- shell-words crate: https://crates.io/crates/shell-words
+- omamori: <https://github.com/yottayoshida/omamori>
+- omamori v0.6記事: <https://zenn.dev/yottayoshida/articles/omamori-plugging-holes-v050-v060>
+- shell-words crate: <https://crates.io/crates/shell-words>
 - DA challenge 1: wrapperカバーは「たまたま拾えてるだけ」
 - DA challenge 2: N1がshell-wordsに必要な構造を破壊する
 - DA challenge 3: per-segmentマッチがcross-segmentパターンを壊す

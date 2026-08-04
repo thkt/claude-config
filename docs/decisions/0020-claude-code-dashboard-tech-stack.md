@@ -26,9 +26,9 @@ Code 活用状況を可視化するダッシュボードを新規構築する。
 
 ## Considered Options
 
-* データ収集: Stop hook で JSONL 解析 (採用) / Hook 経由で直接送信 / 別エージェントで polling
-* 技術スタック: Cloudflare 統一 (採用) / Vercel + Supabase / 自前 VPS
-* 配布方式: Plugin Marketplace (採用) / settings.json 手動編集 / 専用 CLI installer
+- データ収集: Stop hook で JSONL 解析 (採用) / Hook 経由で直接送信 / 別エージェントで polling
+- 技術スタック: Cloudflare 統一 (採用) / Vercel + Supabase / 自前 VPS
+- 配布方式: Plugin Marketplace (採用) / settings.json 手動編集 / 専用 CLI installer
 
 ## Decision Outcome
 

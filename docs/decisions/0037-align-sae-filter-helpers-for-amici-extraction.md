@@ -14,9 +14,9 @@ saeの `hybrid_search` / `fts_search` / `vec_search` にタグ・カテゴリ・
 
 ## Considered Options
 
-* `append_eq_filter` ヘルパーを導入し category/created_by を統合
-* 個別ヘルパーのまま維持
-* `append_in_filter` を今 sae に追加
+- `append_eq_filter` ヘルパーを導入し category/created_by を統合
+- 個別ヘルパーのまま維持
+- `append_in_filter` を今 sae に追加
 
 ## Decision Outcome
 
@@ -53,13 +53,16 @@ esaのtagsカラムはJSON配列格納。`json_each` + EXISTSサブクエリはe
 ## Consequences
 
 ### amici 抽出時に移動できるもの
+
 - `anon_placeholders` / `in_placeholders` / `as_sql_params`
 - `append_eq_filter`
 
 ### sae に残るもの
+
 - `append_tags_filter`（esa JSON配列固有）
 
 ### yomu でやること（amici 抽出時）
+
 - `append_type_filter` を `append_in_filter` ベースにリファクタ
 - `append_in_filter` をamiciに定義
 

@@ -18,9 +18,9 @@ Claude設定ディレクトリ（`.claude/`）には複数のドキュメント�
 
 ## Considered Options
 
-* 単一 CLAUDE.md 維持 (役割分離なし、簡略化のみ)
-* 役割別ファイルへの完全分離 (CLAUDE.md/AGENTS.md/HUMANS.md など)
-* 役割分離 + 規約集中化 (採用): CLAUDE.md は AI 向け、ルール集を rules/ に集約
+- 単一 CLAUDE.md 維持 (役割分離なし、簡略化のみ)
+- 役割別ファイルへの完全分離 (CLAUDE.md/AGENTS.md/HUMANS.md など)
+- 役割分離 + 規約集中化 (採用): CLAUDE.md は AI 向け、ルール集を rules/ に集約
 
 ## Decision Outcome
 

@@ -26,7 +26,7 @@ status: "proposed"
 
 ### 依存関係マップ（重要な発見）
 
-```
+```text
 PRE_TASK_CHECK_SPEC.md ← settings.json (UserPromptSubmit hook)
 AI_OPERATION_PRINCIPLES.md ← /research コマンド（マーカー定義）
 WORKFLOW_GUIDE.md ← README.md（ユーザードキュメント）
@@ -96,9 +96,9 @@ WORKFLOW_GUIDE.md ← README.md（ユーザードキュメント）
 
 ## Considered Options
 
-* 案A: 現状維持
-* 案B: 大規模削減（当初案）
-* 案C: 本 ADR の計画（採用）
+- 案A: 現状維持
+- 案B: 大規模削減（当初案）
+- 案C: 本 ADR の計画（採用）
 
 ### 案A: 現状維持
 
@@ -119,7 +119,7 @@ WORKFLOW_GUIDE.md ← README.md（ユーザードキュメント）
 
 ### 監査で確認した依存関係
 
-```
+```text
 スキル → エージェント依存:
 - applying-code-principles: 9 エージェントが依存
 - generating-tdd-tests: generator-test, reviewer-testability, /code, /fix

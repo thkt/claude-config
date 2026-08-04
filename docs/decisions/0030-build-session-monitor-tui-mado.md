@@ -27,9 +27,9 @@ ratatuiベースのRust TUIバイナリ `mado` を新規構築する。Ghostty s
 
 ## Considered Options
 
-* A: Rust TUI (ratatui) - Ghostty split に常駐する TUI、JSONL のみ読む
-* B: Tauri v2 アプリ - SessionDock と同じメニューバー + ダッシュボード
-* C: CLI デーモン + 通知 - バックグラウンドで動き、状態変化を通知のみ
+- A: Rust TUI (ratatui) - Ghostty split に常駐する TUI、JSONL のみ読む
+- B: Tauri v2 アプリ - SessionDock と同じメニューバー + ダッシュボード
+- C: CLI デーモン + 通知 - バックグラウンドで動き、状態変化を通知のみ
 
 ### 検討したアプローチ
 
@@ -91,5 +91,5 @@ notify crate（FSEvents）はディレクトリ単位の監視が煩雑で、ses
 
 - SOW: ~/.claude/workspace/planning/2026-03-22-mado/sow.md
 - Spec: ~/.claude/workspace/planning/2026-03-22-mado/spec.md
-- SessionDock: https://github.com/adachic/sessiondock
+- SessionDock: <https://github.com/adachic/sessiondock>
 - Ghostty AppleScript: Ghostty v1.3 release (2026-03-09)

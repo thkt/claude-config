@@ -169,5 +169,5 @@ Phase 2 で JSON `error.code` を導入した時点で、内部の `ScoutError::
 * Revision (2026-05-13) follow-up issues: thkt/scout#83 (TIMEOUT 124), thkt/scout#84 (INTERNAL 70/UNKNOWN 104), thkt/scout#85 (classification priority)
 * Revision (2026-08-02): 決定当時の記述が現行 scout と食い違っていた 3 点を更新。(1) search backend が Brave に移行し (scout DR-0005/v2.0.0)、必須 env var 名が `GEMINI_API_KEY` から `BRAVE_SEARCH_API_KEY` に変わったため、上表の例示を現行名に置換。(2) search 0 件は `NOT_FOUND` (66) ではなく空出力で exit 0 を返すため (scout DR-0020: 1 行 1 URL 出力)、66 の発生条件から削除。(3) SIGINT/SIGTERM 由来の 130/143 が scout DR-0017 で追加されており、上表の 9 種には含まれない。exit code の割り当て自体は変えていない
 * Standards: sysexits.h, GNU coreutils `timeout`, MCP Tools spec
-* Inspiration: kodak_diary "終了コードを PJ 独自ルールにしすぎないための設計メモ" (https://zenn.dev/kodak_diary/articles/5a84d597c69b0b) - 数値↔文字列分離、分類優先順位、80-104 拡張枠の方針を参考
+* Inspiration: kodak_diary "終了コードを PJ 独自ルールにしすぎないための設計メモ" (<https://zenn.dev/kodak_diary/articles/5a84d597c69b0b>) - 数値↔文字列分離、分類優先順位、80-104 拡張枠の方針を参考
 * Existing exemplars: yomu (`--json` global), sae (`output.rs:6-8` two-stream output), recall (`USER_ERROR_MARKERS`), amici (`cli::exit_code::codes` で sysexits u8 定数 + `CliError` trait 提供済み)

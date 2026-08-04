@@ -36,11 +36,13 @@ A future contributor cannot derive the intended destination from existing struct
 - When the same `scope:` clusters across repos, treat as a promotion candidate to RULES or meta ADR.
 
 Good:
+
 - Builds on the existing tree shape; migration is incremental.
 - `audit-adr-scopes.py` mechanizes horizontal-expansion detection.
 - ADR immutability and RULES livingness coexist without contradiction.
 
 Bad:
+
 - Scope-vocabulary design is now a recurring responsibility (current set: `rust`, `ts`, `cli`, `coding`, `testing`, `evaluation`, `meta`, `documentation`).
 - Three artifact-types means a small learning curve for new contributors.
 
@@ -49,9 +51,11 @@ Bad:
 All directives become ADRs; RULES and CLAUDE.md become navigation indices that reference ADRs.
 
 Good:
+
 - Single source of truth, unified history.
 
 Bad:
+
 - ADR immutability conflicts with the living-document nature of "always-on" directives.
 - Loses RULES `paths:` auto-attach mechanism.
 - High one-time migration cost for the existing 18 RULES files.
@@ -61,9 +65,11 @@ Bad:
 Continue without an explicit boundary; rely on convention.
 
 Good:
+
 - Zero immediate cost.
 
 Bad:
+
 - New decisions land inconsistently across artifacts.
 - `audit-adr-scopes.py` operates without a stable contract.
 - The three irregularities (Context) continue to accumulate.

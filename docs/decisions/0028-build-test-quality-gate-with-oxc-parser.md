@@ -23,9 +23,9 @@ oxc_parserベースの独立Rustバイナリ `litmus` を新規構築し、gates
 
 ## Considered Options
 
-* A: gates 内蔵 (oxc_parser を gates の Cargo 依存に追加)
-* B: 独立バイナリ (新規 tap バイナリ、gates から GateDefinition で呼び出し)
-* C: ESLint カスタムルール
+- A: gates 内蔵 (oxc_parser を gates の Cargo 依存に追加)
+- B: 独立バイナリ (新規 tap バイナリ、gates から GateDefinition で呼び出し)
+- C: ESLint カスタムルール
 
 ### 検討したアプローチ
 

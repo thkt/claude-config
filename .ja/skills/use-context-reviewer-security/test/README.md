@@ -13,7 +13,7 @@ reviewer-security の検出精度を客観評価するためのテストハー�
 
 ## 構成
 
-```
+```text
 test/
 ├── README.md            # この文書
 ├── expected.json        # 期待値定義 (検出すべき / 検出すべきでない)

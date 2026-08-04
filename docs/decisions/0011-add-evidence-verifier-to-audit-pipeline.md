@@ -72,7 +72,7 @@ Chosen option: "Architect: Evidence Verifier を新設し Challenger と並列�
 
 ## Pipeline Change
 
-```
+```text
 Before:
   Reviewers → Challenger → Integrator → Leader
 

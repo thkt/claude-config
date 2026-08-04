@@ -17,9 +17,9 @@ ADR 0001/0002で定義したモジュール化パターンを全体に適用す�
 
 ## Considered Options
 
-* 現状維持: references/ と skills/ の二重構造を継続
-* 段階的移行: skills 中心化を 1 項目ずつ進める
-* 一括再構築 (採用): references 廃止 + skills/ 統合 + 6 項目変更を同時実施
+- 現状維持: references/ と skills/ の二重構造を継続
+- 段階的移行: skills 中心化を 1 項目ずつ進める
+- 一括再構築 (採用): references 廃止 + skills/ 統合 + 6 項目変更を同時実施
 
 ## Decision Outcome
 

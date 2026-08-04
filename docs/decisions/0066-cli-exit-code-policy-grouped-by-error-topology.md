@@ -164,6 +164,6 @@ ADR-0065 改訂時に着想元 (kodak_diary 記事) で言及されていた 2 �
 
 * ADR-0060: Adopt Agent-Friendly CLI Design Principles
 * ADR-0065: scout JSON output schema and sysexits exit code policy
-* Inspiration: kodak_diary "終了コードを PJ 独自ルールにしすぎないための設計メモ" (https://zenn.dev/kodak_diary/articles/5a84d597c69b0b)
+* Inspiration: kodak_diary "終了コードを PJ 独自ルールにしすぎないための設計メモ" (<https://zenn.dev/kodak_diary/articles/5a84d597c69b0b>)
 * Existing exemplar: `amici::cli::exit_code` (sysexits.h u8 定数 + `CliError` trait)
 * Standards: sysexits.h, GNU coreutils `timeout`

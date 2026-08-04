@@ -6,7 +6,7 @@ The Claude Code permission evaluation flow (PreToolUse Hook → Deny Rules → A
 
 An LLM is a text generator and tool_use is one output format. Once Bash is allowed, OS capabilities pass through as-is.
 
-ref: https://zenn.dev/commander/articles/72a907ce68a8c1
+ref: <https://zenn.dev/commander/articles/72a907ce68a8c1>
 
 ## Defense Layers
 

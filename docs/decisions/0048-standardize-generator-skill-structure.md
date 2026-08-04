@@ -68,7 +68,6 @@ generator 系 SKILL.md の必須セクションとオプショナルセクショ
 - `## Flow: <X>` の 1 行フロー図（Execution テーブルで十分、冗長）
 - Execution Step と内容が重複する独立セクション（例: `## Message Selection`）
 - `## Task` 見出し（`## Agent` に統一）
-
 - Good: 4 skill 統一で LLM 可読性・姉妹整合確保
 - Good: 固有ブロック許容で skill の特色を殺さない
 - Good: MODULARIZATION の Thin Wrapper と整合

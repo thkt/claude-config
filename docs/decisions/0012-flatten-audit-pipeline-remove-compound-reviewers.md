@@ -19,10 +19,10 @@ Audit pipeline uses 3-layer architecture: Leader → Compound-reviewer → Sub-r
 
 ## Considered Options
 
-* Option A: Flat Spawn
-* Option B: Focus-Based Routing (file type → reviewer mapping)
-* Option C: Two-Phase Adaptive (quick scan → specialist)
-* Option D: Status Quo
+- Option A: Flat Spawn
+- Option B: Focus-Based Routing (file type → reviewer mapping)
+- Option C: Two-Phase Adaptive (quick scan → specialist)
+- Option D: Status Quo
 
 ### Option A: Flat Spawn
 

@@ -52,4 +52,4 @@ Preview URL: http://localhost:3000
 | Scope            | 認証トークンのリフレッシュは含めない (別 PR)          | 大きな PR で省略 (reviewer が境界を推測) |
 | Design Decisions | 大規模データセットの OOM 回避にストリーミングを採用   | 省略 (reviewer が理由推測を強いられる)   |
 | How to Test      | Export をクリック → .csv が 3 行でダウンロードを確認  | 機能をテスト (曖昧)                      |
-| Preview URL      | Preview URL: http://localhost:3000/dashboard          | UI 変更があるのに欠落                    |
+| Preview URL      | Preview URL: <http://localhost:3000/dashboard>          | UI 変更があるのに欠落                    |

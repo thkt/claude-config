@@ -74,7 +74,7 @@ rg 自体にはこれらを AI 向けに最適化する機能がない。パイ�
 
 ### Architecture
 
-```
+```text
 stdin (rg output) → parse → filter → group-by-path → format → stdout
 ```
 

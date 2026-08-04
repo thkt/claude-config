@@ -137,6 +137,6 @@ CI / cross-tenant / embedding poisoning を out of scope と判定した根拠�
 * Threat Model: `~/GitHub/cli/yomu/.claude/workspace/planning/2026-05-19-indirect-prompt-injection-defense/threat-model.md`
 * SOW / Spec / Approaches: 同ディレクトリ配下
 * OUTCOME.md: `~/GitHub/cli/yomu/.claude/OUTCOME.md` (Behavior 拡張済み、本 ADR と同 commit cycle)
-* OWASP LLM01:2025 Prompt Injection (https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+* OWASP LLM01:2025 Prompt Injection (<https://owasp.org/www-project-top-10-for-large-language-model-applications/>)
 * OWASP 2025 新規: Vector and Embedding Weaknesses
 * ADR-0060: Adopt Agent-Friendly CLI Design Principles

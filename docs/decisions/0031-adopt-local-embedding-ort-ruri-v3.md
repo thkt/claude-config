@@ -107,7 +107,7 @@ recallのembedderは同期（sync）で実装する。kiku/yomuの既存 `Embed`
 
 ## Links
 
-- sui-memory（参考）: https://zenn.dev/noprogllama/articles/7c24b2c2410213
-- Ruri v3: https://huggingface.co/cl-nagoya/ruri-v3-310m
-- ort crate: https://crates.io/crates/ort
+- sui-memory（参考）: <https://zenn.dev/noprogllama/articles/7c24b2c2410213>
+- Ruri v3: <https://huggingface.co/cl-nagoya/ruri-v3-310m>
+- ort crate: <https://crates.io/crates/ort>
 - kiku ADR: [ADR-0021](0021-build-slack-semantic-search-mcp-kiku.md)

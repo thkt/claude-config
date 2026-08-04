@@ -79,21 +79,25 @@ ADR-0042 で `skills/creating-adrs/scripts/` に配置された 8 スクリプ�
 ## Scope
 
 適用対象:
+
 - adr / creating-adrs
 - glossary / extracting-ubiquitous-language
 - preview / screening-pr-review
 
 対象外:
+
 - ADR-0048 で扱う generator 系 (commit/checkout/pr/issue) - subagent spawn パターン
 - reviewing-* / *-reviewer - skill + agent の役割別ケース (ADR-0048 scope と別)
 
 ## Rollback Plan
 
 Trigger Conditions:
+
 - 2つ目以上の wrapper が同じ impl を参照する状況が発生
 - 統合後の SKILL.md が 500 lines を超過 (SKILLS.md 準拠閾値)
 
 Rollback Steps:
+
 1. 該当 skill を `{wrapper}` + `{impl}` に再分割
 2. impl 側を user-invocable: false に戻す
 3. 新 ADR で再分離の理由を記録
