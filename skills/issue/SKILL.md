@@ -62,7 +62,9 @@ Establish the issue's Why before drafting the body. One question per message, at
 
 ### Template source
 
-List `.md` files via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'`. If a GitHub template whose filename or `name` contains the type exists, read its body and strip the leading frontmatter fields `name` / `about` / `labels` / `title` for the skeleton. Otherwise use `templates/<type>.md` directly under the skill directory.
+List the entries via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` and take the skeleton for the type in this order: `<type>.yml` (issue form) > `<type>.md` > `templates/<type>.md` directly under the skill directory. The repository's own template comes first because that is what a web-UI filing uses; a CLI filing that ignores it leaves two shapes of the same issue type in one tracker.
+
+For a `.yml`, each `body` entry's `attributes.label` becomes a section name and only those with `validations.required` true are required. A form states the minimum the web UI makes someone fill in, so a CLI filing that adds sections to it is not deviating. For a `.md`, strip the leading frontmatter fields `name` / `about` / `labels` / `title` for the skeleton.
 
 ### Confidence marking
 
@@ -102,10 +104,20 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 ## Phase 4: Publishing
 
 1. Present the issue preview. Collect any inline tentative marks into a tentative block. Add no new content, mirror what the body already carries, and omit the block at zero items. Then confirm via AskUserQuestion: "Create this issue?" When there is no `## Plan` section and the extent puts it on the build workflow, add "hold the filing and draft a plan via `/think`" as an option
-2. Write the body to a temp file, attach labels, and run `gh issue create --title "<title>" --body-file <path>`. Capture the issue URL from its output
+2. Write the body to a temp file. Run `${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>` and handle errors per Error Handling below. Once it exits 0, attach labels and run `gh issue create --title "<title>" --body-file <path>`. Capture the issue URL from its output
 3. If split was approved in Phase 1, suggest running /slice with the published epic number. Do not launch it automatically
 4. For an issue that is not split, suggest the next step. Where a filed issue goes is decided by its extent: a fix confined to 1-3 files goes to `/fix <number>`; 4 or more files, or a new feature, goes to the build workflow with the number. When an issue bound for the build workflow has no Plan section, it gets a plan via `/think`, transferred by `/issue <number>`, before it is handed over, and `/qualify` inspects it before the hand-off. Launch none of them automatically
 
 ### Labels
 
 `priority:*` is required, set to critical / high / medium / low by impact. For other labels, follow the repository's conventions.
+
+## Error Handling
+
+`${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py` reports `{errors, warnings, checks}` as JSON on stdout, and exits 1 when `errors` is non-empty. The `/issue <number>` route that transfers a plan into an existing issue replaces Phase 4's creation with `gh issue edit`, so this check does not run for it. Handle each error per the table below.
+
+| Error                    | Action                                                                                                                                                            |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `missing_section:<name>` | Restore the dropped heading from the template skeleton and re-validate                                                                                            |
+| `type_mismatch:*`        | Treat the title's bracketed type as correct, re-select the template matching it, and rewrite the body from that template. Never resolve it by rewriting the title |
+| `unknown_section:<name>` | Drop the off-skeleton heading or fold it into one the skeleton carries. A filing whose skeleton is a `.yml` never sees this                                       |

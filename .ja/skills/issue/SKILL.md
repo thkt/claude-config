@@ -62,7 +62,9 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 
 ### テンプレート選択
 
-`gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` で `.md` を列挙する。ファイル名や `name` が種別を含む GitHub テンプレートがあれば、その本文を読んで先頭 frontmatter の `name`/`about`/`labels`/`title` を外し骨格にする。無ければ、skill ディレクトリ直下の `templates/<type>.md` を使う。
+`gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` で列挙し、種別に対応するものを次の順で骨格に取る。`<type>.yml` (issue form) > `<type>.md` > skill ディレクトリ直下の `templates/<type>.md`。リポジトリ自身のテンプレートを先に取るのは、Web UI からの起票がそれを使うため。CLI 起票がそれを無視すると、同じ種別の issue が 1 つの tracker に 2 通りの形で並ぶ。
+
+`.yml` は各 `body` 要素の `attributes.label` が骨格の節名になり、`validations.required` が真のものだけが必須になる。form は Web UI が埋めさせる最小要件なので、CLI 起票がそこへ節を足すのは逸脱ではない。`.md` は先頭 frontmatter の `name`/`about`/`labels`/`title` を外して骨格にする。
 
 ### 確信度マーキング
 
@@ -102,10 +104,20 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 ## Phase 4: 起票
 
 1. Issue プレビューを提示する。インライン仮マークがあれば仮ブロックに集約する。新規内容は足さず本文が持つものを写し、0 件なら省略する。最後に AskUserQuestion で `Create this issue?` と確認する。`## Plan` 節が無く build workflow に渡す規模なら、選択肢に「起票を保留して `/think` で plan を作る」を足す
-2. 本文を一時ファイルに書き出し、ラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票する。出力から Issue URL を取得する
+2. 本文を一時ファイルに書き出す。`${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <Template source で選んだ骨格ファイル> <title> <body-file>` を実行し、エラーは後述の Error Handling に従って対処する。exit 0 になったらラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票する。出力から Issue URL を取得する
 3. Phase 1 で分割を承認していれば、起票した epic 番号を添えて `/slice` の実行を提案する。自動では起動しない
 4. 分割しない issue には次の手を提案する。起票済み issue の渡し先は影響範囲で決め、1〜3 ファイルに収まる修正なら `/fix <番号>`、4 ファイル以上または新機能なら build workflow に番号を渡す。build workflow に渡す issue が Plan 節を持たないなら、`/think` で plan を作り `/issue <番号>` で転記してから渡し、渡す前の検分には `/qualify` を使う。いずれも自動では起動しない
 
 ### ラベル
 
 `priority:*` は必須とし、影響度に応じて critical、high、medium、low のいずれかを付ける。それ以外のラベルは、リポジトリの慣例に合わせる。
+
+## Error Handling
+
+`${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py` は `{errors, warnings, checks}` を JSON で標準出力に返し、`errors` が 1 件以上あれば exit 1 で終わる。既存 issue へ plan を転記する `/issue <番号>` の経路は Phase 4 の起票を `gh issue edit` に置き換えるため、この検査は対象外。エラーは下表に従って対処する。
+
+| エラー                   | 対処                                                                                                                 |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `missing_section:<name>` | テンプレート骨格から落ちた見出しを戻し、再検証する                                                                   |
+| `type_mismatch:*`        | タイトルの角括弧の型を正とし、それに合うテンプレートを選び直して本文を書き直す。タイトルの書き換えによる解消はしない |
+| `unknown_section:<name>` | 骨格に無い見出しを外すか、骨格側の見出しに寄せる。`.yml` を骨格にした起票では出ない                                 |
