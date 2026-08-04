@@ -44,8 +44,7 @@ const toHostRealmError = (err) => {
 // host literal and fails. Rebuild every value that crosses the context/host boundary
 // (agent/workflow calls, log/phase messages, the final result) with host intrinsics.
 const rehome = (value, seen = new Map()) => {
-  if (value === null || (typeof value !== "object" && typeof value !== "function")) return value;
-  if (typeof value === "function") return value;
+  if (value === null || typeof value !== "object") return value;
   if (seen.has(value)) return seen.get(value);
 
   const tag = Object.prototype.toString.call(value);
