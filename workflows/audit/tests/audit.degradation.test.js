@@ -324,8 +324,8 @@ test("T-011 base marker とその詰め物違いを並べて仕込んでも、ma
   const baseline = await run({});
   const baseMarker = extractFenced(callOf(baseline.calls, "snapshot").prompt).nonce;
 
-  // 1 文字ずつ伸ばす実装だと、この 3 つが順に marker を押し上げて走査が繰り返される。
-  // 最長連鎖を数える実装では 1 回の走査で決まり、歩数は仕込んだ数に依らない。
+  // 固めるのは決まった marker であって走査の歩数ではない。1 文字ずつ伸ばす実装も同じ
+  // marker に行き着くため、これは書き換えに対する回帰ガードとして働く。
   const { calls } = await run({
     security: {
       findings: [

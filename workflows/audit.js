@@ -63,10 +63,8 @@ const FENCE_BASE = "e5f9a2";
 const FENCE_PAD = "0";
 // Growing the marker one character at a time re-scans the payload on every step, and
 // the payload is exactly where an attacker writes: seeding `base`, `base0`, `base00`, ...
-// makes the step count rise with the payload's own length. Instead, count the longest
-// run of padding that already follows the base anywhere in the payload, and clear it in
-// one go. A marker padded one longer than that run cannot occur, because a longer run
-// would have been the longest.
+// makes the step count rise with the payload's own length. A marker padded one longer
+// than the longest run cannot occur, because a longer run would have been the longest.
 const fenceMarker = (value) => {
   if (!value.includes(FENCE_BASE)) return FENCE_BASE;
   let longestRun = 0;

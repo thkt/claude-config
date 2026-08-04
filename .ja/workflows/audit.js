@@ -60,8 +60,8 @@ const FENCE_BASE = "e5f9a2";
 const FENCE_PAD = "0";
 // marker を 1 文字ずつ伸ばすと、1 歩ごとに payload 全体を走査し直すことになる。その payload
 // こそ攻撃者が書く場所で、`base`、`base0`、`base00` と種を蒔けば歩数が payload の長さに
-// 応じて増える。代わりに、payload 内で base に続く詰め物の最長連鎖を数え、一度で越える。
-// その連鎖より 1 つ長い marker は payload に出現しない。出現するならそれが最長連鎖になる。
+// 応じて増える。最長連鎖より 1 つ長い marker が payload に出現しないのは、出現するなら
+// それが最長連鎖になるため。
 const fenceMarker = (value) => {
   if (!value.includes(FENCE_BASE)) return FENCE_BASE;
   let longestRun = 0;
