@@ -52,9 +52,8 @@ const anchor = (p) =>
 // finding の summary は LLM が生成した自由文で、次段の prompt へそのまま埋め込まれる。
 // そこに紛れ込んだ指示が命令として読まれてはならない。fenced が build.js の fencedBody と
 // 違うのはこの点にある。固定 marker は、JSON.stringify がハイフンをエスケープしないため
-// payload 内の同じ文字列から閉じられる。marker を予測されても、その文字列が payload に
-// ある限り marker 自体がずれるので早期クローズは成立しない。乱数源はサンドボックスに無く、
-// あっても resume をまたいで値が変わる。
+// payload 内の同じ文字列から閉じられる。乱数源はサンドボックスに無く、あっても resume を
+// またいで値が変わる。
 // base の中身に意味は無い。payload に現れにくければよい。base と詰め物はどちらも下の
 // regex に埋め込むので、メタ文字を含まない文字から選ぶ。
 const FENCE_BASE = "e5f9a2";
@@ -63,8 +62,8 @@ const FENCE_RUNS = new RegExp(`${FENCE_BASE}${FENCE_PAD}*`, "g");
 // marker を 1 文字ずつ伸ばすと、1 歩ごとに payload 全体を走査し直すことになる。その payload
 // こそ攻撃者が書く場所で、`base`、`base0`、`base00` と種を蒔けば歩数が payload の長さに
 // 応じて増える。最長連鎖より 1 つ長い marker が payload に出現しないのは、出現するなら
-// それが最長連鎖になるため。longest の初期値が -1 なのは、衝突しない payload を別の分岐に
-// せずに済ませるため。
+// それが最長連鎖になるため。marker を予測されても早期クローズが成立しないのも同じ理由に
+// よる。longest の初期値が -1 なのは、衝突しない payload を別の分岐にせずに済ませるため。
 const fenceMarker = (value) => {
   let longest = -1;
   for (const [hit] of value.matchAll(FENCE_RUNS)) {

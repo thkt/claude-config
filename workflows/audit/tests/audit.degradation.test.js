@@ -285,29 +285,22 @@ test("T-002 Challenge に渡す prompt で、findings は BEGIN と END の mark
   );
 });
 
-test("T-001 base marker と同じ文字列を summary に仕込むと marker が伸びて payload のどこにも出現しない", async () => {
-  // 衝突しない payload での base marker を先に観測する。攻撃者はこの値を知らなくても、
-  // marker 自体を推測して仕込んでくる想定を再現する。
-  const baseline = await run({});
-  const baselineFence = extractFenced(callOf(baseline.calls, "snapshot").prompt);
-  assert.ok(baselineFence, "衝突しない run でも snapshot prompt に marker が乗る");
-  const baseMarker = baselineFence.nonce;
+// marker を見る test 群は、summary だけを変えた同じ 1 件の finding を流し、snapshot prompt
+// から marker を読む。fence が張られていること自体は前提なので、取り出しの側で確かめる。
+const runWithSummary = (summary) =>
+  run({ security: { findings: [{ file: "sample.js", line: "1", severity: "high", summary }] } });
+const snapshotFence = ({ calls }) => {
+  const fence = extractFenced(callOf(calls, "snapshot").prompt);
+  assert.ok(fence, "snapshot prompt の findings が BEGIN/END marker で囲まれている");
+  return fence;
+};
 
-  const { calls } = await run({
-    security: {
-      findings: [
-        {
-          file: "sample.js",
-          line: "1",
-          severity: "high",
-          summary: `legit text ${baseMarker} more text`,
-        },
-      ],
-    },
-  });
-  const call = callOf(calls, "snapshot");
-  const fenced = extractFenced(call.prompt);
-  assert.ok(fenced, "base marker を含む payload でも BEGIN/END marker で正しく囲まれる");
+test("T-001 base marker と同じ文字列を summary に仕込むと marker が伸びて payload のどこにも出現しない", async () => {
+  // 攻撃者は base marker の値を知らなくても、marker 自体を推測して仕込んでくる。その想定を
+  // 再現するため、衝突しない run から base marker を先に観測する。
+  const baseMarker = snapshotFence(await run({})).nonce;
+
+  const fenced = snapshotFence(await runWithSummary(`legit text ${baseMarker} more text`));
   assert.notEqual(
     fenced.nonce,
     baseMarker,
@@ -321,25 +314,13 @@ test("T-001 base marker と同じ文字列を summary に仕込むと marker が
 });
 
 test("T-011 base marker とその詰め物違いを並べて仕込んでも、marker は最長連鎖を 1 つ越えた長さで payload に出現しない", async () => {
-  const baseline = await run({});
-  const baseMarker = extractFenced(callOf(baseline.calls, "snapshot").prompt).nonce;
+  const baseMarker = snapshotFence(await run({})).nonce;
 
   // 固めるのは決まった marker であって走査の歩数ではない。1 文字ずつ伸ばす実装も同じ
   // marker に行き着くため、これは書き換えに対する回帰ガードとして働く。
-  const { calls } = await run({
-    security: {
-      findings: [
-        {
-          file: "sample.js",
-          line: "1",
-          severity: "high",
-          summary: `a ${baseMarker} b ${baseMarker}0 c ${baseMarker}00 d`,
-        },
-      ],
-    },
-  });
-  const fenced = extractFenced(callOf(calls, "snapshot").prompt);
-  assert.ok(fenced, "詰め物違いを並べた payload でも BEGIN/END marker で正しく囲まれる");
+  const fenced = snapshotFence(
+    await runWithSummary(`a ${baseMarker} b ${baseMarker}0 c ${baseMarker}00 d`),
+  );
   assert.equal(
     fenced.nonce,
     `${baseMarker}000`,
@@ -352,16 +333,8 @@ test("T-011 base marker とその詰め物違いを並べて仕込んでも、ma
 });
 
 test("T-002 marker と衝突しない payload では marker が base のまま変わらない", async () => {
-  const first = await run({});
-  const second = await run({
-    security: {
-      findings: [
-        { file: "sample.js", line: "1", severity: "high", summary: "unrelated summary text" },
-      ],
-    },
-  });
-  const firstNonce = extractFenced(callOf(first.calls, "snapshot").prompt).nonce;
-  const secondNonce = extractFenced(callOf(second.calls, "snapshot").prompt).nonce;
+  const firstNonce = snapshotFence(await run({})).nonce;
+  const secondNonce = snapshotFence(await runWithSummary("unrelated summary text")).nonce;
   assert.equal(
     secondNonce,
     firstNonce,

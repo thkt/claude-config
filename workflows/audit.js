@@ -53,10 +53,8 @@ const anchor = (p) =>
 // A finding's summary is LLM free text folded verbatim into the next stage's prompt,
 // so an injected directive hiding in it must not read as an instruction. This is why
 // fenced differs from build.js's fencedBody: a fixed marker can be closed early by a
-// payload string equal to it, since JSON.stringify does not escape hyphens. Predicting
-// the marker does not help either, because a marker present in the payload is shifted
-// away from what was predicted. No random source exists in the sandbox, and one would
-// change value across a resume even if it did.
+// payload string equal to it, since JSON.stringify does not escape hyphens. No random
+// source exists in the sandbox, and one would change value across a resume even if it did.
 // The base's contents carry no meaning. It only has to be unlikely in a payload. Both the
 // base and the padding go into the regex below, so pick them from characters that carry
 // no regex meaning.
@@ -66,7 +64,8 @@ const FENCE_RUNS = new RegExp(`${FENCE_BASE}${FENCE_PAD}*`, "g");
 // Growing the marker one character at a time re-scans the payload on every step, and
 // the payload is exactly where an attacker writes: seeding `base`, `base0`, `base00`, ...
 // makes the step count rise with the payload's own length. A marker padded one longer
-// than the longest run cannot occur, because a longer run would have been the longest.
+// than the longest run cannot occur, because a longer run would have been the longest,
+// so predicting the marker does not let an attacker close the fence early either.
 // longest starts at -1 so a payload that never collides needs no branch of its own.
 const fenceMarker = (value) => {
   let longest = -1;
