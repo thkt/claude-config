@@ -219,15 +219,8 @@ test("T-004 prompt を変えた後も snapshot payload の抽出が成立し、�
     security: {
       findings: [{ file: "sample.js", line: "1", severity: "high", summary: "security finding" }],
     },
-    silence: {
-      findings: [{ file: "sample.js", line: "1", severity: "high", summary: "silence finding" }],
-    },
-    challenge: {
-      verdicts: [
-        { id: "R-1", verdict: "confirmed" },
-        { id: "R-2", verdict: "confirmed" },
-      ],
-    },
+    silence: SILENCE_FINDING,
+    challenge: BOTH_CONFIRMED,
     integrate: INTEGRATED,
   });
   assert.ok(

@@ -27,6 +27,26 @@ def raw(file, message):
     return {"file": file, "message": message}
 
 
+# Shared by the two CLI tests that both feed one raw_findings/findings/skipped/
+# needs_context/zero_reviewer_files payload and check the resulting counts;
+# duplicating the literal payload in each test body would drift silently if a
+# key were added on only one side.
+COUNTED_PAYLOAD = {
+    "raw_findings": [raw("a.rs", "x"), raw("b.rs", "y")],
+    "findings": [raw("a.rs", "root")],
+    "skipped": [],
+    "needs_context": [{"id": "R-2", "why": "unclear"}],
+    "zero_reviewer_files": [],
+}
+COUNTED_PAYLOAD_COUNTS = {
+    "raw_findings": 2,
+    "findings": 1,
+    "skipped": 0,
+    "needs_context": 1,
+    "zero_reviewer_files": 0,
+}
+
+
 class CliTest(unittest.TestCase):
     def _run(self, payload, home):
         env = {"HOME": str(home), "PATH": ""}
@@ -64,26 +84,10 @@ class CliTest(unittest.TestCase):
         報告することになる。stdin を受けた Python が数えれば agent は介在できない。
         """
         with tempfile.TemporaryDirectory() as home:
-            payload = {
-                "raw_findings": [raw("a.rs", "x"), raw("b.rs", "y")],
-                "findings": [raw("a.rs", "root")],
-                "skipped": [],
-                "needs_context": [{"id": "R-2", "why": "unclear"}],
-                "zero_reviewer_files": [],
-            }
-            result = self._run(payload, home)
+            result = self._run(COUNTED_PAYLOAD, home)
             self.assertEqual(result.returncode, 0, result.stderr)
             out = json.loads(result.stdout)
-            self.assertEqual(
-                out["counts"],
-                {
-                    "raw_findings": 2,
-                    "findings": 1,
-                    "skipped": 0,
-                    "needs_context": 1,
-                    "zero_reviewer_files": 0,
-                },
-            )
+            self.assertEqual(out["counts"], COUNTED_PAYLOAD_COUNTS)
             self.assertTrue(Path(out["path"]).exists())
 
     def test_written_record_has_no_delta_key(self):
@@ -124,27 +128,11 @@ class CliTest(unittest.TestCase):
     def test_stdout_still_reports_path_and_counts(self):
         """T-003: stdout は path と counts を従来どおり返す。"""
         with tempfile.TemporaryDirectory() as home:
-            payload = {
-                "raw_findings": [raw("a.rs", "x"), raw("b.rs", "y")],
-                "findings": [raw("a.rs", "root")],
-                "skipped": [],
-                "needs_context": [{"id": "R-2", "why": "unclear"}],
-                "zero_reviewer_files": [],
-            }
-            result = self._run(payload, home)
+            result = self._run(COUNTED_PAYLOAD, home)
             self.assertEqual(result.returncode, 0, result.stderr)
             out = json.loads(result.stdout)
             self.assertEqual(set(out.keys()), {"path", "counts"})
-            self.assertEqual(
-                out["counts"],
-                {
-                    "raw_findings": 2,
-                    "findings": 1,
-                    "skipped": 0,
-                    "needs_context": 1,
-                    "zero_reviewer_files": 0,
-                },
-            )
+            self.assertEqual(out["counts"], COUNTED_PAYLOAD_COUNTS)
             self.assertTrue(Path(out["path"]).exists())
 
     def test_unparseable_payload_exits_1_and_writes_nothing(self):
