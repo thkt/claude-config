@@ -1,0 +1,81 @@
+// production sandbox が持たないグローバルを workflow script のテスト実行からも遮断する
+// 挙動を固定する (issue #317 U-002)。crypto / fetch / process / Buffer は本番サンドボックス
+// で ReferenceError になる (issue #317 の Premises で実測済み、"Error: crypto is not defined"
+// は本番で実際に観測された文言)。Date.now と Math.random と引数なし new Date は resume を
+// 理由に挙げる Error に差し替わり、引数つき new Date と Math.floor は影響を受けない。
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { runWorkflow } from "../run-workflow.js";
+
+// runWorkflow はファイルパスからソースを読む契約 (readFileSync) なので、script 本文を
+// 一時ファイルへ書き出してから渡す。テストごとに専用の一時ディレクトリを使い、他テストの
+// script ファイルと衝突しないようにする。
+const withScript = async (source, run) => {
+  const dir = mkdtempSync(join(tmpdir(), "run-workflow-test-"));
+  const path = join(dir, "script.js");
+  writeFileSync(path, source);
+  try {
+    return await run(path);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+};
+
+test("T-004 crypto を参照する script は ReferenceError で落ちる", async () => {
+  await withScript("return crypto.randomUUID();", async (path) => {
+    await assert.rejects(
+      () => runWorkflow(path, {}),
+      (err) => {
+        assert.ok(err instanceof ReferenceError, "ReferenceError で落ちる");
+        assert.match(err.message, /crypto is not defined/);
+        return true;
+      },
+    );
+  });
+});
+
+test("T-005 fetch と process と Buffer を参照する script も同じく落ちる", async () => {
+  const cases = [
+    { name: "fetch", source: "return fetch('https://example.com');" },
+    { name: "process", source: "return process.version;" },
+    { name: "Buffer", source: "return Buffer.from('x');" },
+  ];
+  for (const { name, source } of cases) {
+    await withScript(source, async (path) => {
+      await assert.rejects(
+        () => runWorkflow(path, {}),
+        (err) => {
+          assert.ok(err instanceof ReferenceError, `${name} は ReferenceError で落ちる`);
+          assert.match(err.message, new RegExp(`${name} is not defined`));
+          return true;
+        },
+      );
+    });
+  }
+});
+
+test("T-006 Date.now を呼ぶ script は resume を理由に挙げる Error で落ちる", async () => {
+  await withScript("return Date.now();", async (path) => {
+    await assert.rejects(
+      () => runWorkflow(path, {}),
+      (err) => {
+        assert.match(err.message, /resume/i, "resume を理由に挙げる文言を含む");
+        return true;
+      },
+    );
+  });
+});
+
+test("T-007 引数つき new Date と Math.floor は落ちずに値を返す", async () => {
+  await withScript(
+    "return { time: new Date(0).getTime(), floor: Math.floor(3.7) };",
+    async (path) => {
+      const { result } = await runWorkflow(path, {});
+      assert.equal(result.time, 0, "new Date(0) は落ちずに 1970-01-01 の epoch を返す");
+      assert.equal(result.floor, 3, "Math.floor は落ちずに小数を切り捨てた値を返す");
+    },
+  );
+});
