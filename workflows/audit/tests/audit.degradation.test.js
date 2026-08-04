@@ -13,8 +13,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const auditJs = join(here, "..", "..", "audit.js");
 
 // Route -> Review (security / silence の 2 reviewer) -> Challenge/Verify -> Integrate まで
-// 通す最小 stub (既定応答は _fixtures.js の defaultAgentStub)。focus: "security" で
-// rawFindings の id を R-1 (security) / R-2 (silence) に固定する。
+// 通す最小 stub。既定応答と id の採番は _fixtures.js の defaultAgentStub が決める。
 const run = (opts) =>
   runWorkflow(auditJs, {
     args: { focus: "security", skipPreflight: true },

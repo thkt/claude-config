@@ -1,9 +1,6 @@
-// audit.js を runWorkflow 経由でテストする各ファイルが個別に組んでいた agentStub
-// (route/security/silence の既定応答 + challenge/verify/integrate/snapshot の差し替え)、
-// callOf、snapshot prompt からの payload 抽出 (snapshotPayload) を 1 箇所に集める。
 // focus: "security" のとき reviewer は security -> silence の順で起動し (audit.js の
 // ROUTING["*.js"] / FOCUS 絞り込み)、rawFindings の id は R-1 (security) / R-2 (silence)
-// に固定される。
+// に固定される。各 test ファイルの assert はこの採番を前提に書かれている。
 
 const DEFAULT_ROUTE = { files: [{ path: "sample.js", churn: 0 }] };
 const DEFAULT_SECURITY = {
@@ -51,9 +48,7 @@ export const extractFenced = (prompt) => {
   return body ? { label, nonce, content: body[1] } : null;
 };
 
-// snapshot agent への prompt 末尾に payload が BEGIN/END marker で囲まれて埋め込まれる
-// (audit.js の writeSnapshot / fenced 参照)。marker の内側だけを取り出して parse する。
-// snapshot agent が起動しない、または marker が無い run では null を返す。
+// payload の埋め込み形式は audit.js の writeSnapshot と fenced が決める。
 export const snapshotPayload = (calls) => {
   const call = callOf(calls, "snapshot");
   if (!call) return null;

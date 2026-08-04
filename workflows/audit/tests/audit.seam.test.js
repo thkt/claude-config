@@ -42,12 +42,10 @@ const INTEGRATED = {
   findings: [{ file: "sample.js", line: "1", severity: "high", summary: "integrated finding" }],
 };
 
-// audit.js の writeSnapshot は payload を BEGIN/END marker で囲んで prompt に埋め込む
-// (audit.js の fenced 参照)。marker からの抽出は _fixtures.js の snapshotPayload に委ね、
-// ここでは抽出済み payload を実 snapshot.py の stdin へ渡す経路だけを担う。
-// security/silence/challenge/integrate は明示的に渡さなければ (T-019 のように {} で呼べば)
-// undefined のままになる。defaultAgentStub は `"key" in opt` でキーの有無を見るため、
-// この関数のように opt に無いキーが素通しで undefined になる呼び方でも既定値には落ちない。
+// marker からの抽出は _fixtures.js の snapshotPayload に委ね、ここでは抽出済み payload を
+// 実 snapshot.py の stdin へ渡す経路だけを担う。この run は 4 つのキーを常に
+// defaultAgentStub へ渡すので、呼び出し側が省いた段にも undefined が入り、_fixtures.js の
+// 既定応答には落ちない。
 const run = async (routeFiles, { security, silence, challenge, integrate } = {}) => {
   const { result, calls } = await runWorkflow(auditJs, {
     args: { focus: "security", skipPreflight: true },
@@ -168,9 +166,7 @@ test("T-007 summary に END marker を仕込んだ finding を実 snapshot.py �
   );
 });
 
-// U-003 T-006: degradation と seam がそれぞれ自前で持っていた fence 抽出 regex を
-// _fixtures.js の snapshotPayload に一本化したことをソースの文字列で固定する。振る舞い
-// 経由の assert では「2 ファイルとも動く」までしか見えず、抽出定義が実際に 1 箇所へ
+// 振る舞い経由の assert では「2 ファイルとも動く」までしか見えず、抽出定義が 1 箇所へ
 // 集約されたかは分からないため、ソースを直接読む。
 test("T-006 degradation と seam の payload 抽出が `workflows/audit/tests/_fixtures.js` の同一 export を参照し、prompt の文言に依存する regex がこの 2 ファイルに残らない", () => {
   const sources = {

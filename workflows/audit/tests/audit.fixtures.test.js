@@ -1,8 +1,5 @@
-// workflows/audit/tests/_fixtures.js に集約する対象の挙動を先に固定する。
-// audit.degradation.test.js / audit.seam.test.js / audit.triage.test.js / audit.integrate.test.js /
-// audit.effort.test.js が各ファイルで個別に組んでいた agentStub (route/security/silence の既定
-// 応答 + challenge/verify/integrate/snapshot の差し替え) と callOf、snapshot prompt からの
-// payload 抽出 (snapshotPayload) を _fixtures.js の named export として 1 箇所に集める。
+// _fixtures.js を使う側の test は audit.js の挙動を見ており、fixture 自身の挙動は
+// どこも見ない。既定値の差し替えを壊しても利用側の test は通ってしまうため、ここで固定する。
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";

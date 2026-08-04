@@ -14,7 +14,6 @@ const auditJs = join(here, "..", "..", "audit.js");
 // defaultAgentStub)。findings が空だと早期 return して Challenge 以降へ進まないので、
 // Integrate まで届けるため integrate の応答を明示的に渡す。focus: "security" を選ぶのは
 // routing 表で security と silence がどちらも *.js に載り、reviewer が 2 件に収まるため。
-// skipPreflight: true は pre-flight agent の stub を不要にする。
 const INTEGRATED = {
   findings: [{ file: "sample.js", line: "1", severity: "high", summary: "integrated finding" }],
 };
@@ -44,10 +43,7 @@ test("challenge / verify agent の effort が xhigh である", async () => {
 
 // challenge の stub が verdicts を返す経路が fail-open (challenge 未応答で全件 confirmed 扱い) と
 // 区別できる形で返り値に残ることを確認する。verdicts の形は polish.js / audit.js 双方の
-// VERDICTS_SCHEMA と同じ { verdicts: [{ id, verdict, severity, why }] }
-// (rawFindings の id は R-1 = security / R-2 = silence の順、audit.triage.test.js と同じ組み方)。
-// route/security/silence/verify/integrate の枝は runToIntegrate と共通なので、challenge の
-// 返り値だけを defaultAgentStub に渡して差し替える。
+// VERDICTS_SCHEMA と同じ { verdicts: [{ id, verdict, severity, why }] }。
 test("challenge stub が verdicts を返す run は返り値に challenge_ran=true と件数の入った tally を持つ", async () => {
   const { result } = await runWorkflow(auditJs, {
     args: { focus: "security", skipPreflight: true },

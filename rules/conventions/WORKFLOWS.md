@@ -13,7 +13,7 @@ Conventions for workflow scripts (headless deterministic pipelines) under `workf
 
 Degradation is a branch that drops or defaults a failed or missing sub-result without recording it at loss granularity in either a structured field or `log()`. Loss granularity is the information that lets a reader reconstruct what / how many / why was lost (count, id, target name, reason).
 
-The primary channel is the workflow return value. The snapshot is an additional channel only the audit workflow has (the docs/audit/ write per DR-0047); implementers of the other workflows record on the return value. `log()` is a conversational supplement that surfaces on the run log a degradation the return value alone would hide from a human. When the loss granularity already lives in a structured return field, `log()` is optional.
+The primary channel is the workflow return value. The snapshot is an additional channel only the audit workflow has (the `docs/audit/` write per DR-0047); implementers of the other workflows record on the return value. `log()` is a conversational supplement that surfaces on the run log a degradation the return value alone would hide from a human. When the loss granularity already lives in a structured return field, `log()` is optional.
 
 The granularity to record per situation is below.
 
