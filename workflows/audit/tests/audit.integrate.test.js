@@ -6,43 +6,18 @@ import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflow } from "../../_lib/run-workflow.js";
+import { defaultAgentStub, callOf } from "./_fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const auditJs = join(here, "..", "..", "audit.js");
 
 // Route -> Review (security / silence の 2 reviewer) -> Challenge/Verify -> Integrate まで
 // 通す最小 stub。focus: "security" で rawFindings の id を R-1 (security) / R-2 (silence) に
-// 固定する。
-const agentStub =
-  ({ challenge, verify, integrate } = {}) =>
-  (prompt, opts) => {
-    const label = opts && opts.label;
-    if (label === "route") {
-      return { files: [{ path: "sample.js", churn: 0 }] };
-    }
-    if (label === "security") {
-      return {
-        findings: [{ file: "sample.js", line: "1", severity: "high", summary: "security finding" }],
-      };
-    }
-    if (label === "silence") {
-      return {
-        findings: [{ file: "sample.js", line: "1", severity: "high", summary: "silence finding" }],
-      };
-    }
-    if (label === "challenge") return challenge;
-    if (label === "verify") return verify !== undefined ? verify : "verify pass output";
-    if (label === "integrate") return integrate;
-    // snapshot は戻り値を消費しない経路にフォールバックさせるため undefined のまま。
-    return undefined;
-  };
-
-const callOf = (calls, label) => calls.agent.find((c) => c.opts && c.opts.label === label);
-
+// 固定する (既定応答は _fixtures.js の defaultAgentStub)。
 const run = (opts) =>
   runWorkflow(auditJs, {
     args: { focus: "security", skipPreflight: true },
-    stubs: { agent: agentStub(opts) },
+    stubs: { agent: defaultAgentStub(opts) },
   });
 
 const BOTH_CONFIRMED = {
