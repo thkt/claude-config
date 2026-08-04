@@ -55,12 +55,22 @@ const anchor = (p) =>
 // payload 内の同じ文字列から閉じられる。marker を予測されても、その文字列が payload に
 // ある限り marker 自体がずれるので早期クローズは成立しない。乱数源はサンドボックスに無く、
 // あっても resume をまたいで値が変わる。
-// base の中身に意味は無い。payload に現れにくければよく、衝突しても伸長が引き受ける。
+// base の中身に意味は無い。payload に現れにくければよく、衝突しても下の詰め物が引き受ける。
 const FENCE_BASE = "e5f9a2";
+const FENCE_PAD = "0";
+// marker を 1 文字ずつ伸ばすと、1 歩ごとに payload 全体を走査し直すことになる。その payload
+// こそ攻撃者が書く場所で、`base`、`base0`、`base00` と種を蒔けば歩数が payload の長さに
+// 応じて増える。代わりに、payload 内で base に続く詰め物の最長連鎖を数え、一度で越える。
+// その連鎖より 1 つ長い marker は payload に出現しない。出現するならそれが最長連鎖になる。
 const fenceMarker = (value) => {
-  let marker = FENCE_BASE;
-  while (value.includes(marker)) marker += "0";
-  return marker;
+  if (!value.includes(FENCE_BASE)) return FENCE_BASE;
+  let longestRun = 0;
+  for (let at = value.indexOf(FENCE_BASE); at !== -1; at = value.indexOf(FENCE_BASE, at + 1)) {
+    let run = 0;
+    for (let p = at + FENCE_BASE.length; value[p] === FENCE_PAD; p++) run++;
+    if (run > longestRun) longestRun = run;
+  }
+  return FENCE_BASE + FENCE_PAD.repeat(longestRun + 1);
 };
 const fenced = (value) => {
   const marker = fenceMarker(value);

@@ -320,6 +320,37 @@ test("T-001 base marker と同じ文字列を summary に仕込むと marker が
   );
 });
 
+test("T-011 base marker とその詰め物違いを並べて仕込んでも、marker は最長連鎖を 1 つ越えた長さで payload に出現しない", async () => {
+  const baseline = await run({});
+  const baseMarker = extractFenced(callOf(baseline.calls, "snapshot").prompt).nonce;
+
+  // 1 文字ずつ伸ばす実装だと、この 3 つが順に marker を押し上げて走査が繰り返される。
+  // 最長連鎖を数える実装では 1 回の走査で決まり、歩数は仕込んだ数に依らない。
+  const { calls } = await run({
+    security: {
+      findings: [
+        {
+          file: "sample.js",
+          line: "1",
+          severity: "high",
+          summary: `a ${baseMarker} b ${baseMarker}0 c ${baseMarker}00 d`,
+        },
+      ],
+    },
+  });
+  const fenced = extractFenced(callOf(calls, "snapshot").prompt);
+  assert.ok(fenced, "詰め物違いを並べた payload でも BEGIN/END marker で正しく囲まれる");
+  assert.equal(
+    fenced.nonce,
+    `${baseMarker}000`,
+    "payload 内の最長連鎖が 2 なので marker はそれを 1 つ越えた 3 個の詰め物を持つ",
+  );
+  assert.ok(
+    !fenced.content.includes(fenced.nonce),
+    "決まった marker は payload のどこにも出現しない",
+  );
+});
+
 test("T-002 marker と衝突しない payload では marker が base のまま変わらない", async () => {
   const first = await run({});
   const second = await run({

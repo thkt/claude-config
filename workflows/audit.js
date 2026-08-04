@@ -58,12 +58,24 @@ const anchor = (p) =>
 // away from what was predicted. No random source exists in the sandbox, and one would
 // change value across a resume even if it did.
 // The base's contents carry no meaning. It only has to be unlikely in a payload, and
-// growth takes over whenever it does collide.
+// the padding below takes over whenever it does collide.
 const FENCE_BASE = "e5f9a2";
+const FENCE_PAD = "0";
+// Growing the marker one character at a time re-scans the payload on every step, and
+// the payload is exactly where an attacker writes: seeding `base`, `base0`, `base00`, ...
+// makes the step count rise with the payload's own length. Instead, count the longest
+// run of padding that already follows the base anywhere in the payload, and clear it in
+// one go. A marker padded one longer than that run cannot occur, because a longer run
+// would have been the longest.
 const fenceMarker = (value) => {
-  let marker = FENCE_BASE;
-  while (value.includes(marker)) marker += "0";
-  return marker;
+  if (!value.includes(FENCE_BASE)) return FENCE_BASE;
+  let longestRun = 0;
+  for (let at = value.indexOf(FENCE_BASE); at !== -1; at = value.indexOf(FENCE_BASE, at + 1)) {
+    let run = 0;
+    for (let p = at + FENCE_BASE.length; value[p] === FENCE_PAD; p++) run++;
+    if (run > longestRun) longestRun = run;
+  }
+  return FENCE_BASE + FENCE_PAD.repeat(longestRun + 1);
 };
 const fenced = (value) => {
   const marker = fenceMarker(value);
