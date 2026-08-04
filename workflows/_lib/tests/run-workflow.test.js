@@ -62,7 +62,13 @@ test("T-006 Date.now を呼ぶ script は resume を理由に挙げる Error で
     await assert.rejects(
       () => runWorkflow(path, {}),
       (err) => {
-        assert.match(err.message, /resume/i, "resume を理由に挙げる文言を含む");
+        // 部分一致だと harness が独自の言い回しに差し替わっても通ってしまう。実測した
+        // 本番の文言そのものと突き合わせる。
+        assert.equal(
+          err.message,
+          "Date.now() / new Date() are unavailable in workflow scripts (breaks resume). Stamp results after the workflow returns, or pass timestamps via args.",
+          "本番サンドボックスと同じ文言で落ちる",
+        );
         return true;
       },
     );

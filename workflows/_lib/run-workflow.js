@@ -79,25 +79,27 @@ const rehome = (value, seen = new Map()) => {
 // Runs once per fresh context, before the workflow script. Shadows Date / Math with
 // the context's own intrinsics rather than the host's, so `extends Date` and
 // `Object.create(Math, ...)` stay within one realm.
+// The two messages are the production sandbox's own text, read off a minimal workflow
+// run. A harness that words them differently reports a different signal than the run it
+// stands in for, which is the mismatch this whole context exists to remove.
 const SANDBOX_SETUP_SOURCE = `
 (function () {
   const OriginalDate = Date;
-  function forbidResume(name) {
-    throw new Error(name + " is unavailable in workflow scripts because a run must be able to resume without depending on it");
-  }
+  const DATE_MESSAGE = "Date.now() / new Date() are unavailable in workflow scripts (breaks resume). Stamp results after the workflow returns, or pass timestamps via args.";
+  const RANDOM_MESSAGE = "Math.random() is unavailable in workflow scripts (breaks resume). For N independent samples, include the index in the agent label or prompt.";
   class SandboxDate extends OriginalDate {
     constructor(...ctorArgs) {
-      if (ctorArgs.length === 0) forbidResume("new Date()");
+      if (ctorArgs.length === 0) throw new Error(DATE_MESSAGE);
       super(...ctorArgs);
     }
     static now() {
-      forbidResume("Date.now");
+      throw new Error(DATE_MESSAGE);
     }
   }
   globalThis.Date = SandboxDate;
   globalThis.Math = Object.create(Math, {
     random: {
-      value: function () { forbidResume("Math.random"); },
+      value: function () { throw new Error(RANDOM_MESSAGE); },
       enumerable: true,
       configurable: true,
       writable: true,
