@@ -155,3 +155,55 @@ test("T-008 骨格の必須節を欠く本文の起票に permissionDecision den
     );
   });
 });
+
+// bug.md の必須節 (What & Why / Steps to Reproduce / Expected vs Actual / Scope) の代わりに
+// feature.md の節構成 (What & Why / Acceptance Criteria / Scope / Testing Decisions) を持つ本文。
+const featureShapedBody = [
+  "## What & Why",
+  "",
+  "Add CSV export so users can analyze offline.",
+  "",
+  "## Acceptance Criteria",
+  "",
+  "- [ ] When user clicks Export, a .csv downloads",
+  "",
+  "## Scope",
+  "",
+  "- In scope: export flow",
+  "- Out of scope: import flow",
+  "",
+  "## Testing Decisions",
+  "",
+  "- Test the CSV serializer",
+  "",
+].join("\n");
+
+test("T-009 Bug のタイトルで feature の節構成を持つ本文を起票しようとすると deny が返る", () => {
+  withBodyFile(featureShapedBody, (bodyPath) => {
+    const cmd = `gh issue create --title "[Bug] Login fails for some users" --body-file ${bodyPath}`;
+    const { out, stdout } = runHook(cmd);
+    assert.ok(out, `stdout が JSON として parse できる (実際: ${JSON.stringify(stdout)})`);
+    assert.equal(
+      out?.hookSpecificOutput?.permissionDecision,
+      "deny",
+      `タイトルが Bug でも本文が feature の節構成だと deny を返す (実際: ${JSON.stringify(stdout)})`,
+    );
+  });
+});
+
+test("T-010 タイトルの型が指す骨格に沿う本文の起票は deny されずに通る", () => {
+  withBodyFile(validBugBody, (bodyPath) => {
+    const cmd = `gh issue create --title "[Bug] Login fails for some users" --body-file ${bodyPath}`;
+    const { out, stdout, status } = runHook(cmd);
+    assert.equal(
+      status,
+      0,
+      `骨格に沿う本文の起票では hook が exit 0 で終わる (実際: ${JSON.stringify(stdout)})`,
+    );
+    assert.notEqual(
+      out?.hookSpecificOutput?.permissionDecision,
+      "deny",
+      `タイトルの型が指す骨格に沿う本文は deny されない (実際: ${JSON.stringify(stdout)})`,
+    );
+  });
+});
