@@ -238,3 +238,31 @@ test("T-004 prompt を変えた後も snapshot payload の抽出が成立し、�
     "security 1 件 + silence 1 件の 2 件が record に残る",
   );
 });
+
+// marker の算出と遮断コンテキストを同時に通す。run() は実 audit.js を vm context 内で
+// 評価するので、reviewer の呼び出しが calls.agent に残ったこと自体が、未定義グローバルの
+// 参照で途中終了しなかった証跡になる。
+test("T-008 遮断コンテキストで実 audit.js を走らせても未定義グローバルの参照で落ちず reviewer 起動まで進む", async () => {
+  const { calls } = await run([{ path: "sample.js", churn: 0 }], {});
+  assert.ok(
+    calls.agent.some((c) => c.opts && c.opts.phase === "Review"),
+    "遮断コンテキストで実 audit.js を走らせても、Review phase の reviewer agent 呼び出しまで到達する",
+  );
+});
+
+test("T-009 遮断コンテキスト下で END marker を仕込んだ finding を実 snapshot.py まで通しても record の raw_findings が payload と同数になる", async () => {
+  const { record, calls } = await run([{ path: "sample.js", churn: 0 }], {
+    security: FORGED_SECURITY_FINDING,
+    silence: SILENCE_FINDING,
+    challenge: BOTH_CONFIRMED,
+    integrate: INTEGRATED,
+  });
+  const payload = snapshotPayload(calls);
+  assert.ok(payload, "遮断コンテキスト下でも snapshot payload が抽出できる");
+  assert.ok(record, "遮断コンテキスト下でも snapshot が record をディスクに書き出す");
+  assert.equal(
+    record.raw_findings.length,
+    payload.raw_findings.length,
+    "END marker を仕込んだ finding があっても、書き出された record の raw_findings は payload と同数になる",
+  );
+});

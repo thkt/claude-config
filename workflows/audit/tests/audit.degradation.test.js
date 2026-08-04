@@ -239,9 +239,8 @@ test("T-008 needs_context の finding は survivors から外れて返り値の 
   );
 });
 
-// build.js の fencedBody の marker は固定文字列で、JSON.stringify がハイフンを
-// エスケープしないため payload 内の文字列から閉じられる。audit.js は marker に run
-// ごとの nonce を埋め、summary が marker と同じ文字列を含んでも閉じられない形にする。
+// marker が自分の包む payload から閉じられない性質を固定する。固定 marker を避ける理由と
+// 伸長の条件は audit.js の fenceMarker にある。
 
 test("T-001 summary に END marker と同じ文字列を含む finding を渡しても、Snapshot prompt から取り出した領域が JSON として parse できる", async () => {
   // nonce を知らない攻撃者が打てるのは固定文字列のみ。nonce 込みの本物の marker とは
@@ -286,31 +285,67 @@ test("T-002 Challenge に渡す prompt で、findings は BEGIN と END の mark
   );
 });
 
-test("T-003 fence の marker は同一 run の中で 2 回呼んでも同じ値を使う", async () => {
-  const { calls } = await run({});
-  const challengeCall = callOf(calls, "challenge");
-  const snapshotCall = callOf(calls, "snapshot");
-  const challengeFence = challengeCall && extractFenced(challengeCall.prompt);
-  const snapshotFence = snapshotCall && extractFenced(snapshotCall.prompt);
-  assert.ok(challengeFence, "challenge prompt に marker が乗る");
-  assert.ok(snapshotFence, "snapshot prompt に marker が乗る");
-  assert.equal(
-    challengeFence.nonce,
-    snapshotFence.nonce,
-    "同一 run 内の fence は同じ nonce を使い回す",
+test("T-001 base marker と同じ文字列を summary に仕込むと marker が伸びて payload のどこにも出現しない", async () => {
+  // 衝突しない payload での base marker を先に観測する。攻撃者はこの値を知らなくても、
+  // marker 自体を推測して仕込んでくる想定を再現する。
+  const baseline = await run({});
+  const baselineFence = extractFenced(callOf(baseline.calls, "snapshot").prompt);
+  assert.ok(baselineFence, "衝突しない run でも snapshot prompt に marker が乗る");
+  const baseMarker = baselineFence.nonce;
+
+  const { calls } = await run({
+    security: {
+      findings: [
+        {
+          file: "sample.js",
+          line: "1",
+          severity: "high",
+          summary: `legit text ${baseMarker} more text`,
+        },
+      ],
+    },
+  });
+  const call = callOf(calls, "snapshot");
+  const fenced = extractFenced(call.prompt);
+  assert.ok(fenced, "base marker を含む payload でも BEGIN/END marker で正しく囲まれる");
+  assert.notEqual(
+    fenced.nonce,
+    baseMarker,
+    "payload が base marker と同じ文字列を含む run では marker は base のままで終わらない",
+  );
+  assert.ok(fenced.nonce.length > baseMarker.length, "衝突を避けるため marker は base より伸びる");
+  assert.ok(
+    !fenced.content.includes(fenced.nonce),
+    "伸びた marker は payload のどこにも出現しない",
   );
 });
 
-test("T-004 別 run の fence は前 run と異なる marker を使う", async () => {
+test("T-002 marker と衝突しない payload では marker が base のまま変わらない", async () => {
   const first = await run({});
-  const second = await run({});
-  const firstCall = callOf(first.calls, "snapshot");
-  const secondCall = callOf(second.calls, "snapshot");
-  const firstFence = firstCall && extractFenced(firstCall.prompt);
-  const secondFence = secondCall && extractFenced(secondCall.prompt);
-  assert.ok(firstFence, "1 回目の run の snapshot prompt に marker が乗る");
-  assert.ok(secondFence, "2 回目の run の snapshot prompt に marker が乗る");
-  assert.notEqual(firstFence.nonce, secondFence.nonce, "別 run の fence は異なる nonce を使う");
+  const second = await run({
+    security: {
+      findings: [
+        { file: "sample.js", line: "1", severity: "high", summary: "unrelated summary text" },
+      ],
+    },
+  });
+  const firstNonce = extractFenced(callOf(first.calls, "snapshot").prompt).nonce;
+  const secondNonce = extractFenced(callOf(second.calls, "snapshot").prompt).nonce;
+  assert.equal(
+    secondNonce,
+    firstNonce,
+    "marker と衝突しない payload では run をまたいでも marker が base のまま変わらない",
+  );
+});
+
+test("T-003 1つの fence の BEGIN と END が同じ marker を使う", async () => {
+  const { calls } = await run({});
+  const call = callOf(calls, "snapshot");
+  const beginMatch = call.prompt.match(/----- BEGIN UNTRUSTED FINDINGS ([A-Za-z0-9]+) -----/);
+  const endMatch = call.prompt.match(/----- END UNTRUSTED FINDINGS ([A-Za-z0-9]+) -----/);
+  assert.ok(beginMatch, "prompt に BEGIN marker がある");
+  assert.ok(endMatch, "prompt に END marker がある");
+  assert.equal(beginMatch[1], endMatch[1], "同じ fence の BEGIN と END は同じ marker を使う");
 });
 
 // workflows/assert.js の challengeStalled による prompt 分岐に倣う。challenge が verdict を
