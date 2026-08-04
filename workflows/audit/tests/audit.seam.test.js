@@ -211,9 +211,8 @@ test("T-008 偽装 marker を含む run でも snapshot.py が返す counts と 
   );
 });
 
-// U-002 で Snapshot prompt の文言 (delta 言及の削除) を変えても、payload 抽出は fence
-// marker (BEGIN/END + nonce) にしか依存しないため、抽出と実 snapshot.py までの経路が
-// 壊れないことを確かめる。
+// payload の抽出は fence marker (BEGIN/END + nonce) だけを見る。Snapshot prompt の
+// 文章を書き換えても抽出が壊れないことを、この test が固定する。
 test("T-004 prompt を変えた後も snapshot payload の抽出が成立し、実 snapshot.py まで通した record の件数が payload と一致する", async () => {
   const { record, counts } = await run([{ path: "sample.js", churn: 0 }], {
     security: {

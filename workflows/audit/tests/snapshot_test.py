@@ -27,10 +27,8 @@ def raw(file, message):
     return {"file": file, "message": message}
 
 
-# Shared by the two CLI tests that both feed one raw_findings/findings/skipped/
-# needs_context/zero_reviewer_files payload and check the resulting counts;
-# duplicating the literal payload in each test body would drift silently if a
-# key were added on only one side.
+# payload と counts を各 test 本体に書き写すと、片側にだけキーが増えたときに
+# 気づかないまま食い違う。
 COUNTED_PAYLOAD = {
     "raw_findings": [raw("a.rs", "x"), raw("b.rs", "y")],
     "findings": [raw("a.rs", "root")],
