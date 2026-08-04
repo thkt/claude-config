@@ -64,7 +64,7 @@ Turn a finding into a question when reading the body alone does not settle it, w
 
 Raise one question per finding, and put the answer you expect first among the options as the hypothesis. Word each option as an action the user decides on, not as an operation qualify performs. Use multiSelect only when one finding's options are not mutually exclusive. With 5 or more findings that need a decision, put the 4 most severe into AskUserQuestion and list the rest as question text with its hypothesis.
 
-Add the answers you get to the next-step line. With 0 findings that need a decision, skip the AskUserQuestion call and write "none" in the questions section. Raise no questions either when Phase 2 stopped at needs-plan. The next step is already settled as drafting the plan, so an answer does not change what happens at pickup.
+Add the answers you get to the next-step line. With 0 findings that need a decision, make no AskUserQuestion call and place no questions section. Raise no questions either when Phase 2 stopped at needs-plan. The next step is already settled as drafting the plan, so an answer does not change what happens at pickup.
 
 ## Rules
 
