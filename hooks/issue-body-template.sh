@@ -17,7 +17,8 @@ case "$input" in
 esac
 
 # printf, not echo: zsh echo expands backslash escapes and corrupts the JSON (\n inside strings)
-read -r tool_name command_str < <(printf '%s' "$input" | jq -r '[.tool_name // "", .tool_input.command // ""] | @tsv' 2>/dev/null) || true
+# tool_name is already filtered by the fast-exit case above, so only command is extracted here.
+read -r command_str < <(printf '%s' "$input" | jq -r '[.tool_input.command // ""] | @tsv' 2>/dev/null) || true
 # @tsv doubles backslashes — undo to get original command string
 command_str="${command_str//\\\\/\\}"
 
