@@ -11,10 +11,15 @@ const skills = {
 };
 const buildJs = join(root, "workflows", "build.js");
 
+// 見出し間の本文だけを取り出す。Phase 2/Phase 3/質問節の判定で繰り返し使う。
+function sliceSection(doc, head, tail) {
+  return doc.slice(doc.indexOf(head), doc.indexOf(tail));
+}
+
 // Phase 3 の軸表を [軸, 通る条件, 重大度] のセル配列へ分解する。ヘッダ行と
 // 区切り線 (---) の 2 行は判定対象に含めない。
 function getPhase3DataRows(doc) {
-  const phase3 = doc.slice(doc.indexOf("## Phase 3"), doc.indexOf("## Phase 4"));
+  const phase3 = sliceSection(doc, "## Phase 3", "## Phase 4");
   const lines = phase3.split("\n").filter((line) => line.trim().startsWith("|"));
   return lines.slice(2).map((line) =>
     line
@@ -46,7 +51,7 @@ test("build の停止条件を skill 本文に書き写さない", () => {
   for (const [lang, path] of Object.entries(skills)) {
     assert.ok(existsSync(path), `${path} が存在する`);
     const doc = readFileSync(path, "utf8");
-    const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
+    const phase2 = sliceSection(doc, "## Phase 2", "## Phase 3");
     assert.ok(phase2.length > 0, `${lang}: Phase 2 を読める`);
     assert.doesNotMatch(
       phase2.replace(/^\d+\.\s/gm, "").replace(/Phase \d/g, ""),
@@ -94,7 +99,7 @@ test("verdict 3 値と判定順が両言語で一致する", () => {
 test("各言語の SKILL.md が needs-plan でも Bug の原因言明を見る規則を持つ", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
-    const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
+    const phase2 = sliceSection(doc, "## Phase 2", "## Phase 3");
     assert.match(phase2, /Bug/, `${lang}: Phase 2 が Bug を分岐条件として持つ`);
     assert.match(
       phase2,
@@ -109,7 +114,7 @@ test("各言語の SKILL.md が needs-plan でも Bug の原因言明を見る�
 test("Phase 2 節に数字が残らない既存の検査を通る", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
-    const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
+    const phase2 = sliceSection(doc, "## Phase 2", "## Phase 3");
     assert.doesNotMatch(
       phase2.replace(/^\d+\.\s/gm, "").replace(/Phase \d/g, ""),
       /\d/,
@@ -124,13 +129,17 @@ test("Phase 2 節に数字が残らない既存の検査を通る", () => {
 test("各言語の SKILL.md の軸表に重大度 blocker の表示フィールド行が存在する", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
-    const fieldRow = getPhase3DataRows(doc).find(
-      (cells) =>
-        cells[2] === "blocker" && FIELD_ROW_KEYWORDS[lang].every((re) => re.test(cells[1])),
+    const fieldRow = getPhase3DataRows(doc).find((cells) =>
+      FIELD_ROW_KEYWORDS[lang].every((re) => re.test(cells[1])),
     );
     assert.ok(
       fieldRow,
-      `${lang}: Phase 3 の軸表に表示フィールドの追加・変更を検分する blocker 行があり、通る条件が AC と T-NNN への列挙を指す`,
+      `${lang}: Phase 3 の軸表に表示フィールドの追加・変更を検分する行があり、通る条件が AC と T-NNN への列挙を指す`,
+    );
+    assert.equal(
+      fieldRow[2],
+      "blocker",
+      `${lang}: 表示フィールドの列挙が欠けた issue は blocker として止める`,
     );
   }
 });
@@ -148,4 +157,29 @@ test("軸表の行数が両言語で一致する", () => {
     );
   }
   assert.equal(counts.ja, counts.en, "軸表の行数が両言語で一致する");
+});
+
+// 質問は verdict / blocker / advice をテキストで出し切った後に AskUserQuestion で
+// 出す。順序が崩れると verdict を見ないまま選ばせることになる。さらに qualify は
+// issue 本文を書き換えないので、答えが付いた blocker を解消済みと読むと needs-fix
+// の issue が build-ready へ反転し、build が同じ条件で止まる。
+test("質問節が AskUserQuestion を指名し verdict の不変をルール表に持つ", () => {
+  const SECTION = { ja: ["### 質問", "## ルール"], en: ["### Questions", "## Rules"] };
+  const VERDICT_RULE = {
+    ja: /verdict は取得した時点の issue 本文/,
+    en: /verdict comes from the issue body as fetched/i,
+  };
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    const [head, tail] = SECTION[lang];
+    const section = sliceSection(doc, head, tail);
+    assert.ok(section.length > 0, `${lang}: 質問節を読める`);
+    assert.match(section, /AskUserQuestion/, `${lang}: 質問を AskUserQuestion で出す`);
+    assert.match(section, /multiSelect/, `${lang}: multiSelect の適用条件を書いている`);
+    assert.match(
+      doc.slice(doc.indexOf(tail)),
+      VERDICT_RULE[lang],
+      `${lang}: ルール表が verdict を本文から決める規則を持つ`,
+    );
+  }
 });

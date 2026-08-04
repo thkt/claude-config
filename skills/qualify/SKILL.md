@@ -50,7 +50,7 @@ Check that the issue follows `/issue`'s output format and that the plan's premis
 
 ## Phase 4: Verdict and output
 
-Return the output in conversation. The order is the verdict on one line, the blockers, the advice, then the questions. Write "none" for a section with 0 entries. Evaluate the verdicts in the table below top to bottom and take the first one that matches. The table's value is the default next step; when Phase 2 settled a different next step from the issue type, that one replaces it.
+Return the output in conversation. Write the text in the order the verdict on one line, the blockers, then the advice, and raise the questions after it via AskUserQuestion. Write "none" for a section with 0 entries. Evaluate the verdicts in the table below top to bottom and take the first one that matches. The table's value is the default next step; when Phase 2 settled a different next step from the issue type, that one replaces it.
 
 | Verdict     | Condition            | Next step                                                       |
 | ----------- | -------------------- | --------------------------------------------------------------- |
@@ -60,14 +60,19 @@ Return the output in conversation. The order is the verdict on one line, the blo
 
 ### Questions
 
-Turn a finding into a question when reading the body alone does not settle it, which covers gaps in the spec and undecided judgments. A format defect comes back as the correction written out directly. Attach the answer you expect to each question as a hypothesis, and address the questions to the user.
+Turn a finding into a question when reading the body alone does not settle it, which covers gaps in the spec and undecided judgments. A format defect comes back as the correction written out directly.
+
+Raise one question per finding, and put the answer you expect first among the options as the hypothesis. Word each option as an action the user decides on, not as an operation qualify performs. Use multiSelect only when one finding's options are not mutually exclusive. With 5 or more findings that need a decision, put the 4 most severe into AskUserQuestion and list the rest as question text with its hypothesis.
+
+Add the answers you get to the next-step line. With 0 findings that need a decision, skip the AskUserQuestion call and write "none" in the questions section. Raise no questions either when Phase 2 stopped at needs-plan. The next step is already settled as drafting the plan, so an answer does not change what happens at pickup.
 
 ## Rules
 
-| Rule                         | Content                                                                                      |
-| ---------------------------- | -------------------------------------------------------------------------------------------- |
-| Result destination           | The inspection's result goes to the conversation, and GitHub sees only issue reads           |
-| One at a time                | One invocation inspects one issue                                                            |
-| Build owns the call          | Revalidate owns the verdict on whether preconditions exist; this check forecasts             |
-| Priority presence only       | Look only at whether a priority label is attached                                            |
-| build.js owns the conditions | Read the build-stopping conditions from build.js at run time. The conditions live there only |
+| Rule                         | Content                                                                                                                                               |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Result destination           | The inspection's result goes to the conversation, and GitHub sees only issue reads                                                                    |
+| One at a time                | One invocation inspects one issue                                                                                                                     |
+| The body owns the verdict    | The verdict comes from the issue body as fetched. After a question gets an answer the verdict holds its value, and the answer goes into the next step |
+| Build owns the call          | Revalidate owns the verdict on whether preconditions exist; this check forecasts                                                                      |
+| Priority presence only       | Look only at whether a priority label is attached                                                                                                     |
+| build.js owns the conditions | Read the build-stopping conditions from build.js at run time. The conditions live there only                                                          |
