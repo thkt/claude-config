@@ -210,3 +210,39 @@ test("T-008 偽装 marker を含む run でも snapshot.py が返す counts と 
     "偽装 marker を含む run でも counts.raw_findings が 2 件のまま保たれ、truncated (件数の目減り) が起きない",
   );
 });
+
+// U-002 で Snapshot prompt の文言 (delta 言及の削除) を変えても、payload 抽出は fence
+// marker (BEGIN/END + nonce) にしか依存しないため、抽出と実 snapshot.py までの経路が
+// 壊れないことを確かめる。
+test("T-004 prompt を変えた後も snapshot payload の抽出が成立し、実 snapshot.py まで通した record の件数が payload と一致する", async () => {
+  const { record, counts } = await run([{ path: "sample.js", churn: 0 }], {
+    security: {
+      findings: [{ file: "sample.js", line: "1", severity: "high", summary: "security finding" }],
+    },
+    silence: {
+      findings: [{ file: "sample.js", line: "1", severity: "high", summary: "silence finding" }],
+    },
+    challenge: {
+      verdicts: [
+        { id: "R-1", verdict: "confirmed" },
+        { id: "R-2", verdict: "confirmed" },
+      ],
+    },
+    integrate: INTEGRATED,
+  });
+  assert.ok(
+    record,
+    "prompt の文言が変わっても、抽出した payload が実 snapshot.py まで通り record がディスクに書き出される",
+  );
+  assert.ok(counts, "snapshot.py の stdout から counts が得られる");
+  assert.equal(
+    record.raw_findings.length,
+    counts.raw_findings,
+    "実 snapshot.py まで通した record の raw_findings 件数が snapshot.py 自身が数えた counts と一致する",
+  );
+  assert.equal(
+    record.raw_findings.length,
+    2,
+    "security 1 件 + silence 1 件の 2 件が record に残る",
+  );
+});
