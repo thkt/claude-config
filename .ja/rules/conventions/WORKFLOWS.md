@@ -42,6 +42,6 @@ Degradation とは、失敗または欠落した sub-result を、構造化フ�
 
 ## script の評価形式
 
-workflow script は `new AsyncFunction(source)` として評価される。そのため script 本体に `import` 文を書けず、`workflows/` 配下の 7 script のいずれにも import の実例が無い。共通ロジックを別モジュールへ切り出す設計は採れないため、重複を見つけても script をまたいで括り出す前にこの制約を確かめる。dynamic `import()` が動くかは未実測で、切り出しが必要になった時点で最小の workflow を 1 つ走らせて確かめる。
+workflow script は `new AsyncFunction(source)` として評価される。そのため script 本体に `import` 文を書けず、`workflows/` 配下のどの script にも import の実例が無い。共通ロジックを別モジュールへ切り出す設計は採れないため、重複を見つけても script をまたいで括り出す前にこの制約を確かめる。dynamic `import()` が動くかは未実測で、切り出しが必要になった時点で最小の workflow を 1 つ走らせて確かめる。
 
 テストは通常の ES module として実行されるので、この制約が掛かるのは script 本体だけ。`workflows/_lib/run-workflow.js` のようにテストから import する共有ハーネスは置ける。

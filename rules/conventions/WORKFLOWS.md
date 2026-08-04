@@ -42,6 +42,6 @@ Each current degradation site is guarded by its own site-specific test. No cross
 
 ## Script evaluation form
 
-A workflow script is evaluated as `new AsyncFunction(source)`. The script body therefore cannot carry an `import` statement, and none of the 7 scripts under `workflows/` holds one. Splitting shared logic into a separate module is not available as a design, so confirm this constraint before factoring duplication out across scripts. Whether dynamic `import()` works is unmeasured; run one minimal workflow to find out at the point the split becomes necessary.
+A workflow script is evaluated as `new AsyncFunction(source)`. The script body therefore cannot carry an `import` statement, and no script under `workflows/` holds one. Splitting shared logic into a separate module is not available as a design, so confirm this constraint before factoring duplication out across scripts. Whether dynamic `import()` works is unmeasured; run one minimal workflow to find out at the point the split becomes necessary.
 
 Tests run as ordinary ES modules, so the constraint binds the script body alone. A shared harness imported from tests, such as `workflows/_lib/run-workflow.js`, can be placed.
