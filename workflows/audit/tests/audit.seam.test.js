@@ -10,7 +10,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { runWorkflow } from "../../_lib/run-workflow.js";
-import { snapshotPayload } from "./_fixtures.js";
+import { defaultAgentStub, snapshotPayload } from "./_fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const auditJs = join(here, "..", "..", "audit.js");
@@ -45,20 +45,21 @@ const INTEGRATED = {
 // audit.js の writeSnapshot は payload を BEGIN/END marker で囲んで prompt に埋め込む
 // (audit.js の fenced 参照)。marker からの抽出は _fixtures.js の snapshotPayload に委ね、
 // ここでは抽出済み payload を実 snapshot.py の stdin へ渡す経路だけを担う。
+// security/silence/challenge/integrate は明示的に渡さなければ (T-019 のように {} で呼べば)
+// undefined のままになる。defaultAgentStub は `"key" in opt` でキーの有無を見るため、
+// この関数のように opt に無いキーが素通しで undefined になる呼び方でも既定値には落ちない。
 const run = async (routeFiles, { security, silence, challenge, integrate } = {}) => {
-  const agentStub = (prompt, opts) => {
-    const label = opts && opts.label;
-    if (label === "route") return { files: routeFiles };
-    if (label === "security") return security;
-    if (label === "silence") return silence;
-    if (label === "challenge") return challenge;
-    if (label === "verify") return "verify pass output";
-    if (label === "integrate") return integrate;
-    return undefined;
-  };
   const { result, calls } = await runWorkflow(auditJs, {
     args: { focus: "security", skipPreflight: true },
-    stubs: { agent: agentStub },
+    stubs: {
+      agent: defaultAgentStub({
+        route: { files: routeFiles },
+        security,
+        silence,
+        challenge,
+        integrate,
+      }),
+    },
   });
   const payload = snapshotPayload(calls);
   const { record, counts } = payload ? runSnapshot(JSON.stringify(payload)) : {};
