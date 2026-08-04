@@ -8,7 +8,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 
@@ -139,7 +139,10 @@ test("T-007 本文が --body でインライン指定された起票は理由を
 
 test("T-008 骨格の必須節を欠く本文の起票に permissionDecision deny を返す", () => {
   withBodyFile(missingSectionBugBody, (bodyPath) => {
-    const cmd = `gh issue create --title "[Bug] Login fails for some users" --body-file ${bodyPath}`;
+    // cd で一時ディレクトリを指すのは、hook がリポジトリ独自テンプレートを先に探すため。
+    // 指さないと実行時の cwd が読まれ、このリポジトリの .github/ISSUE_TEMPLATE が骨格に
+    // なって、skill 直下の templates/bug.md を見るこの test の前提が崩れる。
+    const cmd = `cd ${dirname(bodyPath)} && gh issue create --title "[Bug] Login fails for some users" --body-file ${bodyPath}`;
     const { out, stdout } = runHook(cmd);
     assert.ok(out, `stdout が JSON として parse できる (実際: ${JSON.stringify(stdout)})`);
     assert.equal(
@@ -185,7 +188,10 @@ const featureShapedBody = [
 
 test("T-009 Bug のタイトルで feature の節構成を持つ本文を起票しようとすると deny が返る", () => {
   withBodyFile(featureShapedBody, (bodyPath) => {
-    const cmd = `gh issue create --title "[Bug] Login fails for some users" --body-file ${bodyPath}`;
+    // cd で一時ディレクトリを指すのは、hook がリポジトリ独自テンプレートを先に探すため。
+    // 指さないと実行時の cwd が読まれ、このリポジトリの .github/ISSUE_TEMPLATE が骨格に
+    // なって、skill 直下の templates/bug.md を見るこの test の前提が崩れる。
+    const cmd = `cd ${dirname(bodyPath)} && gh issue create --title "[Bug] Login fails for some users" --body-file ${bodyPath}`;
     const { out, stdout } = runHook(cmd);
     assert.ok(out, `stdout が JSON として parse できる (実際: ${JSON.stringify(stdout)})`);
     assert.equal(
@@ -198,7 +204,10 @@ test("T-009 Bug のタイトルで feature の節構成を持つ本文を起票�
 
 test("T-010 タイトルの型が指す骨格に沿う本文の起票は deny されずに通る", () => {
   withBodyFile(validBugBody, (bodyPath) => {
-    const cmd = `gh issue create --title "[Bug] Login fails for some users" --body-file ${bodyPath}`;
+    // cd で一時ディレクトリを指すのは、hook がリポジトリ独自テンプレートを先に探すため。
+    // 指さないと実行時の cwd が読まれ、このリポジトリの .github/ISSUE_TEMPLATE が骨格に
+    // なって、skill 直下の templates/bug.md を見るこの test の前提が崩れる。
+    const cmd = `cd ${dirname(bodyPath)} && gh issue create --title "[Bug] Login fails for some users" --body-file ${bodyPath}`;
     const { out, stdout, status } = runHook(cmd);
     assert.equal(
       status,
@@ -211,4 +220,44 @@ test("T-010 タイトルの型が指す骨格に沿う本文の起票は deny �
       `タイトルの型が指す骨格に沿う本文は deny されない (実際: ${JSON.stringify(stdout)})`,
     );
   });
+});
+
+test("T-012 リポジトリに issue form があるとき、skill 直下でなくその form の label が骨格になる", () => {
+  const dir = mkdtempSync(join(tmpdir(), "issue-body-form-"));
+  try {
+    const formDir = join(dir, ".github", "ISSUE_TEMPLATE");
+    mkdirSync(formDir, { recursive: true });
+    writeFileSync(
+      join(formDir, "bug.yml"),
+      [
+        "name: Bug report",
+        "body:",
+        "  - type: markdown",
+        "    attributes:",
+        "      value: Thanks for filing",
+        "  - type: input",
+        "    attributes:",
+        "      label: Impact",
+        "    validations:",
+        "      required: true",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    // form の label だけを持ち、skill 直下 templates/bug.md の必須節 (What & Why ほか) は
+    // 1 つも持たない本文。form が骨格に選ばれていなければ missing_section で deny される。
+    const bodyPath = join(dir, "body.md");
+    writeFileSync(bodyPath, "## Impact\n\nLogin is down for everyone.\n", "utf8");
+
+    const cmd = `cd ${dir} && gh issue create --title "[Bug] Login is down" --body-file ${bodyPath}`;
+    const { out, stdout, status } = runHook(cmd);
+    assert.equal(status, 0, `form の label に沿う本文で hook が exit 0 で終わる (実際: ${stdout})`);
+    assert.notEqual(
+      out?.hookSpecificOutput?.permissionDecision,
+      "deny",
+      `form の label に沿う本文は deny されない (実際: ${JSON.stringify(stdout)})`,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

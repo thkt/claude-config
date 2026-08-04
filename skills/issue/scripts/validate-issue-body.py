@@ -43,6 +43,41 @@ def skeleton_sections(template_text):
     return sections
 
 
+def form_sections(form_text):
+    """(name, optional) pairs read from a GitHub issue form's (.yml) body entries.
+
+    The form turns each label into a heading when someone files through the web UI.
+    Taking those same labels as the skeleton for a CLI filing gives both routes the same
+    sections. Only an entry whose `validations.required` is true counts as required, and
+    a markdown entry carries no label so it drops out.
+
+    No YAML parser ships with the standard library. An issue form's body is a flat
+    `- type:` sequence with no nesting, so splitting on that separator and reading each
+    piece covers it.
+    """
+    body_start = re.search(r"^body:\s*$", form_text, flags=re.MULTILINE)
+    if body_start is None:
+        return []
+    entries = re.split(r"^\s*- type:\s*", form_text[body_start.end() :], flags=re.MULTILINE)[1:]
+    sections = []
+    for entry in entries:
+        if entry.split("\n", 1)[0].strip() == "markdown":
+            continue
+        label = re.search(r"^\s*label:\s*(.+?)\s*$", entry, flags=re.MULTILINE)
+        if label is None:
+            continue
+        name = label.group(1).strip().strip("\"'")
+        required = re.search(r"^\s*required:\s*true\s*$", entry, flags=re.MULTILINE) is not None
+        sections.append((name, not required))
+    return sections
+
+
+def template_sections(template_path, template_text):
+    if template_path.suffix in (".yml", ".yaml"):
+        return form_sections(template_text)
+    return skeleton_sections(template_text)
+
+
 def body_section_names(body_text):
     return {OPTIONAL_SUFFIX.sub("", name) for name in HEADING.findall(body_text)}
 
@@ -53,7 +88,8 @@ def main():
         sys.exit(1)
     template_path, title, body_path = sys.argv[1], sys.argv[2], sys.argv[3]
 
-    template_text = Path(template_path).read_text(encoding="utf-8")
+    template = Path(template_path)
+    template_text = template.read_text(encoding="utf-8")
     body_text = Path(body_path).read_text(encoding="utf-8")
 
     results = {"errors": [], "warnings": [], "checks": []}
@@ -69,7 +105,8 @@ def main():
     else:
         results["errors"].append("type_mismatch:title has no bracketed type prefix")
 
-    required = [name for name, optional in skeleton_sections(template_text) if not optional]
+    sections = template_sections(template, template_text)
+    required = [name for name, optional in sections if not optional]
     present = body_section_names(body_text)
     for name in required:
         if name in present:
@@ -77,12 +114,17 @@ def main():
         else:
             results["errors"].append(f"missing_section:{name}")
 
-    known = {name for name, _ in skeleton_sections(template_text)} | ALLOWED_EXTRA
-    extra = sorted(present - known)
-    for name in extra:
-        results["errors"].append(f"unknown_section:{name}")
-    if not extra:
-        results["checks"].append("unknown_section=none")
+    # A .yml lists a web form's minimum, not a closed set of sections. A CLI filing that
+    # adds to it is not deviating, so off-skeleton headings are only faulted for .md.
+    if template.suffix in (".yml", ".yaml"):
+        results["checks"].append("unknown_section=skipped (form template)")
+    else:
+        known = {name for name, _ in sections} | ALLOWED_EXTRA
+        extra = sorted(present - known)
+        for name in extra:
+            results["errors"].append(f"unknown_section:{name}")
+        if not extra:
+            results["checks"].append("unknown_section=none")
 
     print(json.dumps(results, indent=2))
     sys.exit(1 if results["errors"] else 0)

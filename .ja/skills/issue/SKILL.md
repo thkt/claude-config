@@ -62,7 +62,9 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 
 ### テンプレート選択
 
-`gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` で `.md` を列挙する。ファイル名や `name` が種別を含む GitHub テンプレートがあれば、その本文を読んで先頭 frontmatter の `name`/`about`/`labels`/`title` を外し骨格にする。無ければ、skill ディレクトリ直下の `templates/<type>.md` を使う。
+`gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` で列挙し、種別に対応するものを次の順で骨格に取る。`<type>.yml` (issue form) > `<type>.md` > skill ディレクトリ直下の `templates/<type>.md`。リポジトリ自身のテンプレートを先に取るのは、Web UI からの起票がそれを使うため。CLI 起票がそれを無視すると、同じ種別の issue が 1 つの tracker に 2 通りの形で並ぶ。
+
+`.yml` は各 `body` 要素の `attributes.label` が骨格の節名になり、`validations.required` が真のものだけが必須になる。form は Web UI が埋めさせる最小要件なので、CLI 起票がそこへ節を足すのは逸脱ではない。`.md` は先頭 frontmatter の `name`/`about`/`labels`/`title` を外して骨格にする。
 
 ### 確信度マーキング
 

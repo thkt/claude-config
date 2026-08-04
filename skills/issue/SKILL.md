@@ -62,7 +62,9 @@ Establish the issue's Why before drafting the body. One question per message, at
 
 ### Template source
 
-List `.md` files via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'`. If a GitHub template whose filename or `name` contains the type exists, read its body and strip the leading frontmatter fields `name` / `about` / `labels` / `title` for the skeleton. Otherwise use `templates/<type>.md` directly under the skill directory.
+List the entries via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` and take the skeleton for the type in this order: `<type>.yml` (issue form) > `<type>.md` > `templates/<type>.md` directly under the skill directory. The repository's own template comes first because that is what a web-UI filing uses; a CLI filing that ignores it leaves two shapes of the same issue type in one tracker.
+
+For a `.yml`, each `body` entry's `attributes.label` becomes a section name and only those with `validations.required` true are required. A form states the minimum the web UI makes someone fill in, so a CLI filing that adds sections to it is not deviating. For a `.md`, strip the leading frontmatter fields `name` / `about` / `labels` / `title` for the skeleton.
 
 ### Confidence marking
 
