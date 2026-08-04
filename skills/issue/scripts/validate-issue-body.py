@@ -14,21 +14,20 @@ TYPE_PREFIX = re.compile(r"^\[([A-Za-z]+)\]")
 HEADING = re.compile(r"^## (.+?)\s*$", flags=re.MULTILINE)
 CODE_BLOCK = re.compile(r"```(?:markdown)?\n(.*?)```", flags=re.DOTALL)
 OPTIONAL_SUFFIX = re.compile(r"\s*\((?:optional|任意)\)\s*$")
+FORM_SUFFIXES = (".yml", ".yaml")
 # Headings that stay out of errors despite being absent from the skeleton. An issue
 # carrying a transferred /think plan always has these two, and Phase 3 of
-# skills/issue/SKILL.md is what puts them there. The exemption stops at these two;
-# every other off-skeleton heading stays an unknown_section.
+# skills/issue/SKILL.md is what puts them there.
 ALLOWED_EXTRA = frozenset({"Plan", "Backlog candidates"})
 
 
 def skeleton_sections(template_text):
     """(name, optional) pairs read from the first code block under "## Template".
 
-    section_body's own stop-bound (next "^#{1,level} ") cannot be reused here:
-    the skeleton itself is markdown full of "## " headings inside the code
-    fence, so that bound would stop at the first of those instead of at
-    "## Guidelines". The code fence is self-delimiting, so this locates the
-    heading start only and lets CODE_BLOCK find the first fence after it.
+    Reading up to the next heading is not available here: the skeleton itself is
+    markdown full of "## " headings inside the code fence, so that bound stops at the
+    first of those instead of at "## Guidelines". The code fence closes itself, so this
+    locates the heading start only and looks for the first fence after it.
     """
     heading_match = re.search(r"^## Template\s*$", template_text, flags=re.MULTILINE)
     if heading_match is None:
@@ -48,8 +47,7 @@ def form_sections(form_text):
 
     The form turns each label into a heading when someone files through the web UI.
     Taking those same labels as the skeleton for a CLI filing gives both routes the same
-    sections. Only an entry whose `validations.required` is true counts as required, and
-    a markdown entry carries no label so it drops out.
+    sections. Only an entry whose `validations.required` is true counts as required.
 
     No YAML parser ships with the standard library. An issue form's body is a flat
     `- type:` sequence with no nesting, so splitting on that separator and reading each
@@ -72,12 +70,6 @@ def form_sections(form_text):
     return sections
 
 
-def template_sections(template_path, template_text):
-    if template_path.suffix in (".yml", ".yaml"):
-        return form_sections(template_text)
-    return skeleton_sections(template_text)
-
-
 def body_section_names(body_text):
     return {OPTIONAL_SUFFIX.sub("", name) for name in HEADING.findall(body_text)}
 
@@ -95,7 +87,7 @@ def main():
     results = {"errors": [], "warnings": [], "checks": []}
 
     title_match = TYPE_PREFIX.match(title)
-    template_type = Path(template_path).stem
+    template_type = template.stem
     if title_match:
         title_type = title_match.group(1).lower()
         if title_type != template_type:
@@ -105,7 +97,8 @@ def main():
     else:
         results["errors"].append("type_mismatch:title has no bracketed type prefix")
 
-    sections = template_sections(template, template_text)
+    is_form = template.suffix in FORM_SUFFIXES
+    sections = form_sections(template_text) if is_form else skeleton_sections(template_text)
     required = [name for name, optional in sections if not optional]
     present = body_section_names(body_text)
     for name in required:
@@ -116,7 +109,7 @@ def main():
 
     # A .yml lists a web form's minimum, not a closed set of sections. A CLI filing that
     # adds to it is not deviating, so off-skeleton headings are only faulted for .md.
-    if template.suffix in (".yml", ".yaml"):
+    if is_form:
         results["checks"].append("unknown_section=skipped (form template)")
     else:
         known = {name for name, _ in sections} | ALLOWED_EXTRA

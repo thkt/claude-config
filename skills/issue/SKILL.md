@@ -104,7 +104,7 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 ## Phase 4: Publishing
 
 1. Present the issue preview. Collect any inline tentative marks into a tentative block. Add no new content, mirror what the body already carries, and omit the block at zero items. Then confirm via AskUserQuestion: "Create this issue?" When there is no `## Plan` section and the extent puts it on the build workflow, add "hold the filing and draft a plan via `/think`" as an option
-2. Write the body to a temp file. Run `${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py ${CLAUDE_SKILL_DIR}/templates/<type>.md <title> <body-file>` and handle errors per Error Handling below. Once it exits 0, attach labels and run `gh issue create --title "<title>" --body-file <path>`. Capture the issue URL from its output
+2. Write the body to a temp file. Run `${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>` and handle errors per Error Handling below. Once it exits 0, attach labels and run `gh issue create --title "<title>" --body-file <path>`. Capture the issue URL from its output
 3. If split was approved in Phase 1, suggest running /slice with the published epic number. Do not launch it automatically
 4. For an issue that is not split, suggest the next step. Where a filed issue goes is decided by its extent: a fix confined to 1-3 files goes to `/fix <number>`; 4 or more files, or a new feature, goes to the build workflow with the number. When an issue bound for the build workflow has no Plan section, it gets a plan via `/think`, transferred by `/issue <number>`, before it is handed over, and `/qualify` inspects it before the hand-off. Launch none of them automatically
 
@@ -120,3 +120,4 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `missing_section:<name>` | Restore the dropped heading from the template skeleton and re-validate                                                                                            |
 | `type_mismatch:*`        | Treat the title's bracketed type as correct, re-select the template matching it, and rewrite the body from that template. Never resolve it by rewriting the title |
+| `unknown_section:<name>` | Drop the off-skeleton heading or fold it into one the skeleton carries. A filing whose skeleton is a `.yml` never sees this                                       |

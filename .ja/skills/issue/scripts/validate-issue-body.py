@@ -14,20 +14,19 @@ TYPE_PREFIX = re.compile(r"^\[([A-Za-z]+)\]")
 HEADING = re.compile(r"^## (.+?)\s*$", flags=re.MULTILINE)
 CODE_BLOCK = re.compile(r"```(?:markdown)?\n(.*?)```", flags=re.DOTALL)
 OPTIONAL_SUFFIX = re.compile(r"\s*\((?:optional|任意)\)\s*$")
+FORM_SUFFIXES = (".yml", ".yaml")
 # 骨格に無くても errors にしない節。/think の plan を転記した issue はこの 2 節を必ず持ち、
-# skills/issue/SKILL.md の Phase 3 がそれを指示している。緩和はこの 2 つに限り、
-# 他の骨格外見出しは unknown_section として残す。
+# skills/issue/SKILL.md の Phase 3 がそれを指示している。
 ALLOWED_EXTRA = frozenset({"Plan", "Backlog candidates"})
 
 
 def skeleton_sections(template_text):
     """"## Template" 配下、最初のコードブロックから読む (name, optional) のペア。
 
-    section_body の stop 境界 ("^#{1,level} " の次の一致) はここでは使えない。
-    骨格そのものが "## " 見出しだらけの markdown をコードフェンスの中に持つため、
-    その境界だと "## Guidelines" ではなくフェンス内の最初の見出しで止まってしまう。
-    コードフェンスは自己完結して閉じるので、ここでは見出しの開始位置だけを特定し、
-    その後ろで CODE_BLOCK に最初のフェンスを探させる。
+    次の見出しまでを節の範囲とする読み方はここでは取れない。骨格そのものが "## " 見出し
+    だらけの markdown をコードフェンスの中に持つため、その境界だと "## Guidelines" では
+    なくフェンス内の最初の見出しで止まる。コードフェンスは自己完結して閉じるので、
+    見出しの開始位置だけを特定し、その後ろで最初のフェンスを探す。
     """
     heading_match = re.search(r"^## Template\s*$", template_text, flags=re.MULTILINE)
     if heading_match is None:
@@ -47,7 +46,7 @@ def form_sections(form_text):
 
     フォームは Web UI からの起票で label を見出しに変える。同じ label を CLI 起票の
     骨格にも使えば、どちらの経路で立った issue も同じ節を持つ。`validations.required`
-    が真の要素だけを必須とし、説明文だけの markdown 要素は label を持たないので落ちる。
+    が真の要素だけを必須とする。
 
     YAML パーサは標準ライブラリに無い。issue form の body は `- type:` 区切りの平坦な
     並びで入れ子を持たないため、区切りで割ってから各断片を読む。
@@ -69,12 +68,6 @@ def form_sections(form_text):
     return sections
 
 
-def template_sections(template_path, template_text):
-    if template_path.suffix in (".yml", ".yaml"):
-        return form_sections(template_text)
-    return skeleton_sections(template_text)
-
-
 def body_section_names(body_text):
     return {OPTIONAL_SUFFIX.sub("", name) for name in HEADING.findall(body_text)}
 
@@ -92,7 +85,7 @@ def main():
     results = {"errors": [], "warnings": [], "checks": []}
 
     title_match = TYPE_PREFIX.match(title)
-    template_type = Path(template_path).stem
+    template_type = template.stem
     if title_match:
         title_type = title_match.group(1).lower()
         if title_type != template_type:
@@ -102,7 +95,8 @@ def main():
     else:
         results["errors"].append("type_mismatch:title has no bracketed type prefix")
 
-    sections = template_sections(template, template_text)
+    is_form = template.suffix in FORM_SUFFIXES
+    sections = form_sections(template_text) if is_form else skeleton_sections(template_text)
     required = [name for name, optional in sections if not optional]
     present = body_section_names(body_text)
     for name in required:
@@ -113,7 +107,7 @@ def main():
 
     # .yml は Web UI フォームの最小要件を並べたもので、閉じた節リストではない。CLI 起票が
     # そこへ節を足すのは逸脱でないため、余計な節を咎めるのは .md 骨格のときに限る。
-    if template.suffix in (".yml", ".yaml"):
+    if is_form:
         results["checks"].append("unknown_section=skipped (form template)")
     else:
         known = {name for name, _ in sections} | ALLOWED_EXTRA
