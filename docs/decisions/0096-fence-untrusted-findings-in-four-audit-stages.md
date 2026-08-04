@@ -33,7 +33,7 @@ Option A を採用する。Verify と Integrate は実害が薄いが、fence �
 
 ### Consequences
 
-- Good, because Challenge の verdict と Snapshot の shell 実行が、diff の作者が仕込んだ文字列を指示として読まなくなる。marker は run ごとに変わる nonce を含むため、payload 内のどの文字列も marker を再現できない
+- Good, because Challenge の verdict と Snapshot の shell 実行が、diff の作者が仕込んだ文字列を指示として読まなくなる。marker は payload の内容を見てから決まり、payload がその文字列を含む間は伸ばし続けて決着するため、最終的な marker はその payload のどこにも出現しない
 - Good, because Snapshot 段が専用 agent (`generator-snapshot`) に変わり、tool 宣言が `python3` 実行と一時ファイル書き込みに絞られた。fence を破られても実行できる操作がその範囲に決定論的に制限される
 - Bad, because fence が防がない範囲が残る。reviewer 起動 prompt (`workflows/audit.js:520`) は各 reviewer に `git diff` を直接叩かせるので、fence を適用したどの段よりも先に、攻撃者が書いたテキストは無制限の tool を持つ reviewer agent に届いている。fence は reviewer から後段への転送だけを覆い、reviewer 自身が読む入口は覆わない
 - Bad, because 宣言文はあくまで prose で、`docs/SECURITY_MODEL.md` が言う "probabilistic defense" の一種に留まる。agent が宣言文を無視する確率をこの変更は 0 にしない。T-001 が固定するのは marker が閉じられないことまでで、agent の挙動が実際に変わるかは未実証である
@@ -42,7 +42,7 @@ Option A を採用する。Verify と Integrate は実害が薄いが、fence �
 
 ### Confirmation
 
-`workflows/audit.js` の Challenge/Verify/Integrate/Snapshot の 4 呼び出しが `fenced(...)` を経由していることをコードレビューで確認する。`node --test workflows/audit/tests/*.test.js` で、END marker と同じ文字列を `summary` に仕込んだ finding を渡しても抽出領域が JSON として parse できること (T-001)、同一 run 内で marker が一貫すること (T-003)、別 run では marker が変わること (T-004) を確認する。Snapshot 段の agent 起動が `generator-snapshot` を渡すこと (T-006) を確認する。
+`workflows/audit.js` の Challenge/Verify/Integrate/Snapshot の 4 呼び出しが `fenced(...)` を経由していることをコードレビューで確認する。`node --test workflows/audit/tests/*.test.js` で、base marker と同じ文字列を `summary` に仕込んでも marker が伸びて payload のどこにも出現しないこと (T-001)、marker と衝突しない payload では run をまたいでも marker が base のまま変わらないこと (T-002)、1 つの fence の BEGIN と END が同じ marker を使うこと (T-003) を確認する。Snapshot 段の agent 起動が `generator-snapshot` を渡すこと (T-006) を確認する。
 
 ## More Information
 

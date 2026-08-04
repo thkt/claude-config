@@ -45,3 +45,5 @@ Degradation とは、失敗または欠落した sub-result を、構造化フ�
 workflow script は `new AsyncFunction(source)` として評価される。そのため script 本体に `import` 文を書けず、`workflows/` 配下のどの script にも import の実例が無い。共通ロジックを別モジュールへ切り出す設計は採れないため、重複を見つけても script をまたいで括り出す前にこの制約を確かめる。dynamic `import()` が動くかは未実測で、切り出しが必要になった時点で最小の workflow を 1 つ走らせて確かめる。
 
 テストは通常の ES module として実行されるので、この制約が掛かるのは script 本体だけ。`workflows/_lib/run-workflow.js` のようにテストから import する共有ハーネスは置ける。
+
+script に実際に渡るグローバルは `agent`/`workflow`/`parallel`/`pipeline`/`phase`/`log` と `args` の 7 つに限られる (`workflows/_lib/run-workflow.js` の `vm.compileFunction` 引数リスト)。`crypto`/`fetch`/`process`/`Buffer` は存在せず参照すると `ReferenceError` になり、"crypto is not defined" という文言は本番サンドボックスで実際に観測された (issue #317 の Premises)。`Date.now()`、`Math.random()`、引数なし `new Date()` も resume を理由に挙げる Error に差し替わり、引数つき `new Date()` と `Math.floor` は影響を受けない。文字列からのコード生成 (`eval`、`new Function`) も無効化されている。
