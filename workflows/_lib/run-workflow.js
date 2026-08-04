@@ -41,12 +41,10 @@ const toHostRealmError = (err) => {
 // Plain objects and arrays built inside the vm context carry that context's intrinsics
 // (its own Array.prototype, Object.prototype, ...), so a host-side assert.deepStrictEqual
 // sees them as structurally equal but not reference-equal to a host literal and fails.
-// Rebuilding them with host intrinsics is what lets a test assert against a plain literal.
 // Map, Set, Date, RegExp and Error are deliberately not special-cased. Production turns a
-// workflow's return value into JSON, where each of those becomes {} (measured). Copying
-// them by type would keep, in tests alone, what the real run drops -- the same
-// tests-pass-production-fails split this context exists to close. Falling through to the
-// own-keys copy reproduces production's {}.
+// workflow's return value into JSON, where each of those arrives as {} (measured). Copying
+// them by type would keep in tests alone what the real run drops, which is the same
+// tests-pass-production-fails split this context exists to close.
 const rehome = (value, seen = new Map()) => {
   if (value === null || typeof value !== "object") return value;
   if (seen.has(value)) return seen.get(value);

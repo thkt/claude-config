@@ -89,8 +89,6 @@ test("T-008 返り値に置いた Map と Set と Date と RegExp は、本番�
     "return { map: new Map([['k', 'v']]), set: new Set([1]), date: new Date(0), re: /x/g, plain: { a: 1 }, arr: [1, 2] };",
     async (path) => {
       const { result } = await runWorkflow(path, {});
-      // 本番は返り値を JSON にするため、この 4 つはどれも {} で届く。harness が型どおりに
-      // 複製すると、テストだけが本番より多くの情報を見ることになる。
       assert.deepEqual(result.map, {}, "Map は本番と同じく空オブジェクトで届く");
       assert.deepEqual(result.set, {}, "Set は本番と同じく空オブジェクトで届く");
       assert.deepEqual(result.date, {}, "Date は本番と同じく空オブジェクトで届く");
