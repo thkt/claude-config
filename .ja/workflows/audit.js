@@ -63,9 +63,8 @@ const fenced = (value) =>
 const bundled = (rel) =>
   `"$(P="$HOME/.claude/${rel}"; [ -f "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
 
-// timestamp・branch・prior snapshot との delta 計算は audit/snapshot.py が行う。agent は
-// payload を一時ファイルに書いてそのスクリプトを 1 回叩くだけで、disk への副作用が目的、
-// 戻り値は使わない。
+// timestamp・branch の解決は audit/snapshot.py が行う。agent は payload を一時ファイルに
+// 書いてそのスクリプトを 1 回叩くだけで、disk への副作用が目的、戻り値は使わない。
 // payload のキーは snapshot.py の build_record がそのまま record の項目にする。返り値に
 // しか無い項目は record から読めないので、record で読ませたいものはここへ渡す。
 //
@@ -126,8 +125,7 @@ const writeSnapshot = async ({
     anchor(
       `あなたは audit の Snapshot 段階を担当する。次の JSON payload を一時ファイルに書き、` +
         `\`python3 ${bundled("workflows/audit/snapshot.py")} < <tempfile>\` を 1 回実行する。` +
-        `スクリプトが timestamp・branch・prior snapshot との delta ` +
-        `(file + message でマッチした resolved / new / carried) を解決し、` +
+        `スクリプトが timestamp・branch を解決し、` +
         `$HOME/.claude/history/ に記録を書き、{path, counts} の JSON 1 行を stdout に返す。` +
         `payload は一字一句そのまま書く。要約・省略・整形・再生成はしない。長さを理由に切り詰めない。` +
         `コードの review や finding の変更はしない。他の方法でファイルを書かない。` +

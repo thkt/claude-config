@@ -64,9 +64,9 @@ const fenced = (value) =>
 const bundled = (rel) =>
   `"$(P="$HOME/.claude/${rel}"; [ -f "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
 
-// audit/snapshot.py resolves the timestamp, branch, and the delta against the
-// prior snapshot. The agent only writes the payload to a temp file and runs the
-// script once; the disk side-effect is the goal, its result is not consumed.
+// audit/snapshot.py resolves the timestamp and branch. The agent only writes the
+// payload to a temp file and runs the script once; the disk side-effect is the
+// goal, its result is not consumed.
 // snapshot.py's build_record turns the payload keys into the record's fields verbatim.
 // Anything that lives only on the return value cannot be read back from the record, so
 // whatever a reader must find there has to be passed here.
@@ -129,8 +129,7 @@ const writeSnapshot = async ({
     anchor(
       `You are the snapshot stage of an audit. Write the following JSON payload to a temp file and run ` +
         `\`python3 ${bundled("workflows/audit/snapshot.py")} < <tempfile>\` once. ` +
-        `The script resolves the timestamp, branch, and the delta against the ` +
-        `prior snapshot (resolved / new / carried, matched on file + message), writes the record under ` +
+        `The script resolves the timestamp and branch, writes the record under ` +
         `$HOME/.claude/history/, and prints one line of JSON, {path, counts}, to stdout. ` +
         `Write the payload verbatim. Do not summarize, omit, reformat, or regenerate it, and do not truncate it for length. ` +
         `Do not review code or change any finding. Do not write the file by any other means. ` +
