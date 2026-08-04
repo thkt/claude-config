@@ -38,36 +38,21 @@ const toHostRealmError = (err) => {
   return err;
 };
 
-// Plain objects/arrays/Dates/etc. built inside the vm context carry that context's
-// intrinsics (its own Array.prototype, Object.prototype, ...), so a host-side
-// assert.deepStrictEqual sees them as structurally equal but not reference-equal to a
-// host literal and fails. Rebuild every value crossing the context/host boundary with
-// host intrinsics.
+// Plain objects and arrays built inside the vm context carry that context's intrinsics
+// (its own Array.prototype, Object.prototype, ...), so a host-side assert.deepStrictEqual
+// sees them as structurally equal but not reference-equal to a host literal and fails.
+// Map, Set, Date, RegExp and Error are deliberately not special-cased. Production turns a
+// workflow's return value into JSON, where each of those arrives as {} (measured). Copying
+// them by type would keep in tests alone what the real run drops, which is the same
+// tests-pass-production-fails split this context exists to close.
 const rehome = (value, seen = new Map()) => {
   if (value === null || typeof value !== "object") return value;
   if (seen.has(value)) return seen.get(value);
-
-  const tag = Object.prototype.toString.call(value);
-  if (tag === "[object Error]") return toHostRealmError(value);
-  if (tag === "[object Date]") return new Date(value.getTime());
-  if (tag === "[object RegExp]") return new RegExp(value.source, value.flags);
 
   if (Array.isArray(value)) {
     const out = [];
     seen.set(value, out);
     for (const item of value) out.push(rehome(item, seen));
-    return out;
-  }
-  if (tag === "[object Map]") {
-    const out = new Map();
-    seen.set(value, out);
-    for (const [k, v] of value) out.set(rehome(k, seen), rehome(v, seen));
-    return out;
-  }
-  if (tag === "[object Set]") {
-    const out = new Set();
-    seen.set(value, out);
-    for (const v of value) out.add(rehome(v, seen));
     return out;
   }
   const out = {};

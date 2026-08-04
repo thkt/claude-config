@@ -83,3 +83,18 @@ test("T-007 引数つき new Date と Math.floor は落ちずに値を返す", a
     },
   );
 });
+
+test("T-008 返り値に置いた Map と Set と Date と RegExp は、本番の JSON 化と同じく空オブジェクトになる", async () => {
+  await withScript(
+    "return { map: new Map([['k', 'v']]), set: new Set([1]), date: new Date(0), re: /x/g, plain: { a: 1 }, arr: [1, 2] };",
+    async (path) => {
+      const { result } = await runWorkflow(path, {});
+      assert.deepEqual(result.map, {}, "Map は本番と同じく空オブジェクトで届く");
+      assert.deepEqual(result.set, {}, "Set は本番と同じく空オブジェクトで届く");
+      assert.deepEqual(result.date, {}, "Date は本番と同じく空オブジェクトで届く");
+      assert.deepEqual(result.re, {}, "RegExp は本番と同じく空オブジェクトで届く");
+      assert.deepEqual(result.plain, { a: 1 }, "plain object は中身を保ったまま届く");
+      assert.deepEqual(result.arr, [1, 2], "array は中身を保ったまま届く");
+    },
+  );
+});
