@@ -5,44 +5,23 @@ import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflow } from "../../_lib/run-workflow.js";
+import { defaultAgentStub } from "./_fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const auditJs = join(here, "..", "..", "audit.js");
 
-// Review -> Challenge/Verify -> Integrate まで到達させる最小 stub。
-// findings が空だと早期 return して Challenge 以降へ進まない。focus: "security" を選ぶのは
+// Review -> Challenge/Verify -> Integrate まで到達させる最小 stub (既定応答は _fixtures.js の
+// defaultAgentStub)。findings が空だと早期 return して Challenge 以降へ進まないので、
+// Integrate まで届けるため integrate の応答を明示的に渡す。focus: "security" を選ぶのは
 // routing 表で security と silence がどちらも *.js に載り、reviewer が 2 件に収まるため。
-// skipPreflight: true は pre-flight agent の stub を不要にする。challenge の返り値だけが
-// テストごとに変わるので引数化する (既定は素通しの文字列、tally test だけ verdicts を渡す)。
-const agentStub =
-  (challenge = "challenge pass output") =>
-  (prompt, opts) => {
-    const label = opts && opts.label;
-    if (label === "route") {
-      return { files: [{ path: "sample.js", churn: 0 }] };
-    }
-    if (label === "security" || label === "silence") {
-      return {
-        findings: [{ file: "sample.js", line: "1", severity: "high", summary: `${label} finding` }],
-      };
-    }
-    if (label === "challenge") return challenge;
-    if (label === "verify") return "verify pass output";
-    if (label === "integrate") {
-      return {
-        findings: [
-          { file: "sample.js", line: "1", severity: "high", summary: "integrated finding" },
-        ],
-      };
-    }
-    // snapshot は戻り値を消費しないので undefined のままでよい。
-    return undefined;
-  };
+const INTEGRATED = {
+  findings: [{ file: "sample.js", line: "1", severity: "high", summary: "integrated finding" }],
+};
 
 const runToIntegrate = () =>
   runWorkflow(auditJs, {
     args: { focus: "security", skipPreflight: true },
-    stubs: { agent: agentStub() },
+    stubs: { agent: defaultAgentStub({ integrate: INTEGRATED }) },
   });
 
 test("integrate agent の effort が high である", async () => {
@@ -64,19 +43,19 @@ test("challenge / verify agent の effort が xhigh である", async () => {
 
 // challenge の stub が verdicts を返す経路が fail-open (challenge 未応答で全件 confirmed 扱い) と
 // 区別できる形で返り値に残ることを確認する。verdicts の形は polish.js / audit.js 双方の
-// VERDICTS_SCHEMA と同じ { verdicts: [{ id, verdict, severity, why }] }
-// (rawFindings の id は R-1 = security / R-2 = silence の順、audit.triage.test.js と同じ組み方)。
-// route/security/silence/verify/integrate の枝は runToIntegrate と共通なので、challenge の
-// 返り値だけを agentStub に渡して差し替える。
+// VERDICTS_SCHEMA と同じ { verdicts: [{ id, verdict, severity, why }] }。
 test("challenge stub が verdicts を返す run は返り値に challenge_ran=true と件数の入った tally を持つ", async () => {
   const { result } = await runWorkflow(auditJs, {
     args: { focus: "security", skipPreflight: true },
     stubs: {
-      agent: agentStub({
-        verdicts: [
-          { id: "R-1", verdict: "confirmed" },
-          { id: "R-2", verdict: "confirmed" },
-        ],
+      agent: defaultAgentStub({
+        integrate: INTEGRATED,
+        challenge: {
+          verdicts: [
+            { id: "R-1", verdict: "confirmed" },
+            { id: "R-2", verdict: "confirmed" },
+          ],
+        },
       }),
     },
   });

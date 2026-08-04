@@ -13,7 +13,7 @@ Conventions for workflow scripts (headless deterministic pipelines) under `workf
 
 Degradation is a branch that drops or defaults a failed or missing sub-result without recording it at loss granularity in either a structured field or `log()`. Loss granularity is the information that lets a reader reconstruct what / how many / why was lost (count, id, target name, reason).
 
-The primary channel is the workflow return value. The snapshot is an additional channel only the audit workflow has (the docs/audit/ write per DR-0047); implementers of the other workflows record on the return value. `log()` is a conversational supplement that surfaces on the run log a degradation the return value alone would hide from a human. When the loss granularity already lives in a structured return field, `log()` is optional.
+The primary channel is the workflow return value. The snapshot is an additional channel only the audit workflow has (the `docs/audit/` write per DR-0047); implementers of the other workflows record on the return value. `log()` is a conversational supplement that surfaces on the run log a degradation the return value alone would hide from a human. When the loss granularity already lives in a structured return field, `log()` is optional.
 
 The granularity to record per situation is below.
 
@@ -39,3 +39,9 @@ Sites that already keep loss granularity in a structured field (a return array o
 ## Test coverage
 
 Each current degradation site is guarded by its own site-specific test. No cross-cutting test guarantees the whole degradation class (that every branch keeps loss granularity). When adding a new drop / default branch, verify the loss-granularity recording in that site's own test. Existing tests do not automatically guard a new site.
+
+## Script evaluation form
+
+A workflow script is evaluated as `new AsyncFunction(source)`. The script body therefore cannot carry an `import` statement, and no script under `workflows/` holds one. Splitting shared logic into a separate module is not available as a design, so confirm this constraint before factoring duplication out across scripts. Whether dynamic `import()` works is unmeasured; run one minimal workflow to find out at the point the split becomes necessary.
+
+Tests run as ordinary ES modules, so the constraint binds the script body alone. A shared harness imported from tests, such as `workflows/_lib/run-workflow.js`, can be placed.
