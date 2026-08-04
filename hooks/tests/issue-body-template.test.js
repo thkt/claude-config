@@ -93,7 +93,17 @@ const missingSectionBugBody = [
 test("T-005 gh issue create 以外の Bash コマンドでは何も返さず素通しする", () => {
   // 2 件目は起票でなく、引数の中に同じ語を持つだけのコマンド。このリポジトリの
   // コミット e7db3385 が実際にこの subject を持つ。
-  const passThrough = ["gh issue list", 'git commit -m "fix: gh issue create hook"'];
+  // 3 件目は同じ語が本文の行頭に来る commit message。引用の内側の改行までコマンドの
+  // 区切りとして数えると、この行が起票と見分けられなくなる。
+  const passThrough = [
+    "gh issue list",
+    'git commit -m "fix: gh issue create hook"',
+    [
+      "git commit -m 'fix(hooks): stop a filing that skips the skeleton",
+      "",
+      'gh issue create --title "[Bug] x" --body-file /nonexistent/body.md now denies\'',
+    ].join("\n"),
+  ];
   for (const cmd of passThrough) {
     const { stdout } = runHook(cmd);
     assert.equal(
@@ -220,6 +230,73 @@ test("T-010 タイトルの型が指す骨格に沿う本文の起票は deny �
       `タイトルの型が指す骨格に沿う本文は deny されない (実際: ${JSON.stringify(stdout)})`,
     );
   });
+});
+
+test("T-013 変数代入を別行に置いた起票でも骨格を欠く本文なら deny が返る", () => {
+  withBodyFile(missingSectionBugBody, (bodyPath) => {
+    // 起票を書くとき、一時ファイルのパスは変数へ代入してから使うのが自然な形になる。
+    // その代入は改行で区切られ `gh issue create` は先頭行から外れるので、行を分けた
+    // この形が実際に走る形になる。単一行の T-008 では通り抜ける。
+    const cmd = [
+      `cd ${dirname(bodyPath)}`,
+      `B=${bodyPath}`,
+      'gh issue create --title "[Bug] Login fails for some users" --body-file "$B"',
+    ].join("\n");
+    const { out, stdout } = runHook(cmd);
+    assert.ok(out, `stdout が JSON として parse できる (実際: ${JSON.stringify(stdout)})`);
+    assert.equal(
+      out?.hookSpecificOutput?.permissionDecision,
+      "deny",
+      `gh issue create が先頭行でなくても deny を返す (実際: ${JSON.stringify(stdout)})`,
+    );
+  });
+});
+
+test("T-014 --body-file の指す先が読めない起票は deny する", () => {
+  // hook はシェルの状態を持たないので `$B` を展開できない。展開できないまま素通しすると
+  // 起票の本文を一度も読まずに通すことになるので、読めないパスは止める側へ倒す。
+  const cmd = 'gh issue create --title "[Bug] Login fails" --body-file "$B"';
+  const { out, stdout } = runHook(cmd);
+  assert.ok(out, `stdout が JSON として parse できる (実際: ${JSON.stringify(stdout)})`);
+  assert.equal(
+    out?.hookSpecificOutput?.permissionDecision,
+    "deny",
+    `読めないパスの起票は deny を返す (実際: ${JSON.stringify(stdout)})`,
+  );
+  assert.ok(
+    stdout.includes("--body-file"),
+    `理由に --body-file の指す先が読めない旨が残る (実際: ${JSON.stringify(stdout)})`,
+  );
+});
+
+test("T-015 コマンドを分割できないときは骨格に沿う本文でも起票を deny する", () => {
+  const dir = mkdtempSync(join(tmpdir(), "issue-body-split-"));
+  try {
+    // 分割が失われると、どの断片が起票なのかを決められないまま本文を一度も読まずに通す
+    // ことになる。その状態を、複製の分割呼び出しを存在しないコマンドへ差し替えて作る。
+    const broken = join(dir, "broken.sh");
+    const prepared = spawnSync("sh", [
+      "-c",
+      `sed "s/| python3 -c/| nonexistent-python3 -c/" ${hook} > ${broken} && chmod +x ${broken}`,
+    ]);
+    assert.equal(prepared.status, 0, `複製の用意が成功する (実際: ${prepared.stderr})`);
+
+    const bodyPath = join(dir, "body.md");
+    writeFileSync(bodyPath, validBugBody, "utf8");
+    const command = `cd ${dir} && gh issue create --title "[Bug] Login fails for some users" --body-file ${bodyPath}`;
+    const res = spawnSync(broken, {
+      input: JSON.stringify({ tool_name: "Bash", tool_input: { command } }),
+      encoding: "utf8",
+    });
+    const stdout = res.stdout ?? "";
+    assert.match(
+      stdout,
+      /"permissionDecision":"deny"/,
+      `分割できないときは deny を返す (実際: ${JSON.stringify(stdout)})`,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("T-012 リポジトリに issue form があるとき、skill 直下でなくその form の label が骨格になる", () => {

@@ -21,33 +21,85 @@ esac
 
 # printf, not echo: zsh echo expands backslash escapes and corrupts the JSON (\n inside strings)
 # tool_name is already filtered by the fast-exit case above, so only command is extracted here.
-read -r command_str < <(printf '%s' "$input" | jq -r '[.tool_input.command // ""] | @tsv' 2>/dev/null) || true
-# @tsv doubles backslashes — undo to get original command string
-command_str="${command_str//\\\\/\\}"
+# Read the command whole rather than through `@tsv` + `read -r`: `@tsv` turns the newlines
+# separating a multi-command call into the two characters `\n`, and the separator split below
+# only knows `&& || ; |`, so a filing preceded by a variable assignment never reaches the
+# validator. `|| command_str=""` keeps a jq failure from ending the hook non-zero under
+# `set -e`, which lets the filing through as a hook error.
+command_str=$(printf '%s' "$input" | jq -r '.tool_input.command // ""' 2>/dev/null) || command_str=""
 
 if [[ -z "$command_str" ]]; then
   exit 0
 fi
 
 # `gh issue create` names a filing only where it leads a command. The same words turn up
-# inside commit messages (e7db3385 in this repository carries them), so matching anywhere
-# in the string drags an unrelated git commit through the validator. A separator inside
-# quotes splits here too, but a split piece starts with `gh issue create` only when the
-# filing command itself was quoted, and stopping on that is the safe side.
-is_create=0
-while IFS= read -r segment; do
-  [[ "$segment" =~ '^[[:space:]]*gh[[:space:]]+issue[[:space:]]+create([[:space:]]|$)' ]] || continue
-  is_create=1
-  break
-done < <(printf '%s\n' "$command_str" | sed -E 's/(&&|\|\||[;|])/\n/g')
+# inside commit messages (e7db3385 in this repository carries them), and a message body can
+# put them at the start of one of its own lines, so a split that counts every separator
+# would drag an unrelated git commit through the validator. Deciding which separators sit
+# outside quotes needs a scanner sed cannot provide; python3 already runs the validator below.
+if ! segments=$(printf '%s' "$command_str" | python3 -c '
+import sys
 
-if (( is_create == 0 )); then
+# Split on the separators outside quotes. `&&` and `||` split as two single characters,
+# which only leaves an empty segment between them.
+command = sys.stdin.read()
+segments, current, quote, escaped = [], [], None, False
+for ch in command:
+    if escaped:
+        current.append(ch)
+        escaped = False
+    elif ch == "\\" and quote != "\x27":
+        current.append(ch)
+        escaped = True
+    elif quote:
+        current.append(ch)
+        if ch == quote:
+            quote = None
+    elif ch in "\x27\"":
+        current.append(ch)
+        quote = ch
+    elif ch in ";|&\n":
+        segments.append("".join(current))
+        current = []
+    else:
+        current.append(ch)
+segments.append("".join(current))
+sys.stdout.write("".join(segment + "\x00" for segment in segments))
+' 2>/dev/null); then
+  # The split decides whether this hook looks at the filing at all, so losing it means the
+  # body goes uninspected. That is the same "cannot judge" state as an unreadable body file,
+  # and it stops the filing for the same reason.
+  jq -nc --arg r "issue-body-template: コマンドの分割に失敗し起票を照合できない。python3 が動くか確認する" '{
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: $r
+    }
+  }'
   exit 0
 fi
 
-title=$(printf '%s\n' "$command_str" | sed -nE 's/.*--title "(([^"\\]|\\.)*)".*/\1/p')
+create_segment=""
+repo_segment=""
+while IFS= read -r -d '' segment; do
+  if [[ -z "$create_segment" ]] && [[ "$segment" =~ '^[[:space:]]*gh[[:space:]]+issue[[:space:]]+create([[:space:]]|$)' ]]; then
+    create_segment="$segment"
+  elif [[ -z "$repo_segment" ]] && [[ "$segment" =~ '^[[:space:]]*cd[[:space:]]' ]]; then
+    repo_segment="$segment"
+  fi
+done <<< "$segments"
+
+if [[ -z "$create_segment" ]]; then
+  exit 0
+fi
+
+# The flags are read out of the filing segment alone, not the whole command: a `git commit`
+# sharing the command line carries its own `--title`-looking text. `head -1` guards the case
+# where a quoted argument holds a newline and sed prints one match per line, and `|| true`
+# keeps the SIGPIPE that `head` sends from ending the hook under `set -o pipefail`.
+title=$(printf '%s\n' "$create_segment" | sed -nE 's/.*--title "(([^"\\]|\\.)*)".*/\1/p' | head -1) || true
 if [[ -z "$title" ]]; then
-  title=$(printf '%s\n' "$command_str" | sed -nE "s/.*--title '([^']*)'.*/\1/p")
+  title=$(printf '%s\n' "$create_segment" | sed -nE "s/.*--title '([^']*)'.*/\1/p" | head -1) || true
 fi
 
 if [[ -z "$title" ]] || ! [[ "$title" =~ "^\[([A-Za-z]+)\]" ]]; then
@@ -57,19 +109,37 @@ if [[ -z "$title" ]] || ! [[ "$title" =~ "^\[([A-Za-z]+)\]" ]]; then
 fi
 issue_type="${match[1]:l}"
 
-body_file=$(printf '%s\n' "$command_str" | sed -nE "s/.*--body-file[[:space:]]+('([^']*)'|\"([^\"]*)\"|([^ ]+)).*/\2\3\4/p")
+# The repository's own template wins: that is what the web UI files against, and a CLI
+# filing that ignores it would leave two shapes of the same issue type in one tracker.
+# The command's own `cd` names the repository when there is one; otherwise this hook
+# already runs where the tool call would. A relative --body-file is read against the same
+# directory, so this has to be settled before the body file is resolved.
+repo_dir=$(printf '%s\n' "$repo_segment" | sed -nE 's/^[[:space:]]*cd[[:space:]]+([^ &;|]+).*/\1/p' | head -1) || true
+[[ -z "$repo_dir" ]] && repo_dir="$PWD"
+
+body_file=$(printf '%s\n' "$create_segment" | sed -nE "s/.*--body-file[[:space:]]+('([^']*)'|\"([^\"]*)\"|([^ ]+)).*/\2\3\4/p" | head -1) || true
 if [[ -z "$body_file" ]]; then
   jq -nc --arg r "issue-body-template: --body がインライン指定で --body-file 経由ではないため骨格の照合ができず素通しした" \
     '{"decision":"approve","reason":$r}'
   exit 0
 fi
 
-# The repository's own template wins: that is what the web UI files against, and a CLI
-# filing that ignores it would leave two shapes of the same issue type in one tracker.
-# The command's own `cd` names the repository when there is one; otherwise this hook
-# already runs where the tool call would.
-repo_dir=$(printf '%s\n' "$command_str" | sed -nE 's/^[[:space:]]*cd[[:space:]]+([^ &;|]+).*/\1/p')
-[[ -z "$repo_dir" ]] && repo_dir="$PWD"
+[[ "$body_file" = /* ]] || body_file="$repo_dir/$body_file"
+
+# A hook carries none of the shell state the command will run under, so a path written as
+# `"$B"` or `$TMPDIR/body.md` arrives unexpanded and names nothing on disk. Passing it on
+# would hand the validator an empty read and file the issue with its body never inspected,
+# so an unreadable path stops the filing instead.
+if [[ ! -f "$body_file" ]]; then
+  jq -nc --arg r "issue-body-template: --body-file の指す先 ($body_file) が読めず本文を照合できない。パスを変数でなくリテラルの絶対パスで書く" '{
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: $r
+    }
+  }'
+  exit 0
+fi
 
 template=""
 for candidate in \
