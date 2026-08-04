@@ -104,7 +104,7 @@ Q1 が実証されたため accepted とする。Q2 の competing stop は単純
 
 ## Links
 
-- /goal 公式 docs: https://code.claude.com/docs/en/goal
+- /goal 公式 docs: <https://code.claude.com/docs/en/goal>
 - Claude Code 2.1.139 リリース (2026-05-12) で /goal 追加
 - 旧 SOW (flow-controller 自作前提): ~/.claude/workspace/planning/2026-03-16-flow-controller/sow.md
 - completion-gate spec: ~/.claude/workspace/planning/2026-03-10-completion-gate/spec.md

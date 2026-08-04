@@ -24,9 +24,9 @@ audit の pre-flight 分析（knip, react-doctor 等）は `commands/audit.md` �
 
 ## Considered Options
 
-* Option A: Hook Trinity（Rust CLI バイナリ）
-* Option B: シェルスクリプト hook
-* Option C: audit.md 内の手順強化
+- Option A: Hook Trinity（Rust CLI バイナリ）
+- Option B: シェルスクリプト hook
+- Option C: audit.md 内の手順強化
 
 ### Option A: Hook Trinity（Rust CLI バイナリ）
 
@@ -44,7 +44,7 @@ Step 2.5 の指示をより強い表現（MUST, REQUIRED 等）に変更。
 
 **Option A: Hook Trinity** を採用。
 
-```
+```text
 guardrails  → PreToolUse(Write|Edit)  → ファイル単位のゲート
 formatter   → PostToolUse(Write|Edit) → ファイル単位の整形
 reviews     → PreToolUse(Skill)       → プロジェクト全体の分析

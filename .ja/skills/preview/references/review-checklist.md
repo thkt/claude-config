@@ -23,7 +23,7 @@ plan が見つからない場合、PR 説明 + commit messages を意図のソ�
 
 ### 出力形式
 
-```
+```text
 Plan Alignment: [CLEAN | MISSING <N> | OUT-OF-SCOPE <N> | WRONG <N> | MIXED]
 Intent source: <issue #N Plan section | *.plan.md path | PR description | commit messages>
 Missing (U): U-NNN - <description> (plan: "<quoted line>")

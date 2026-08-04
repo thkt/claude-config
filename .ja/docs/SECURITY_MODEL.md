@@ -6,7 +6,7 @@ Claude Code の権限評価フロー (PreToolUse Hook → Deny Rules → Allow R
 
 LLM はテキスト生成器であり、tool_use は出力フォーマットの 1 つ。Bash が許可されたら、OS のケーパビリティはそのまま通る。
 
-参考: https://zenn.dev/commander/articles/72a907ce68a8c1
+参考: <https://zenn.dev/commander/articles/72a907ce68a8c1>
 
 ## 防御レイヤー
 

@@ -14,9 +14,9 @@ user-invocable: false
 PR 本文は `/pr` から文字列として渡される。下表のいずれかが欠落していれば、`mode: failed` と欠落フィールド名を返し、判断は `/pr` に任せる。
 
 | フィールド  | ソース                                                    |
-| ----------- | --------------------------------------------------------- | --- |
+| ----------- | --------------------------------------------------------- |
 | Preview URL | PR 本文の冒頭にある `Preview URL: <URL>` 行               |
-| Steps       | PR 本文の `## How to Test` セクション配下の番号付きリスト | 。  |
+| Steps | PR 本文の `## How to Test` セクション配下の番号付きリスト |
 
 ## ブラウザ engine
 
@@ -61,18 +61,18 @@ step 間に `agent-browser wait 500` を挟む。各操作の前に `snapshot` �
 
 stdout の 1 行。
 
-```
+```text
 mode=screenshot artifact=/absolute/path/to/step-01.png
 ```
 
 動画を撮ったとき。
 
-```
+```text
 mode=video artifact=/absolute/path/to/capture.mp4
 ```
 
 失敗時。
 
-```
+```text
 mode=failed reason=<one-line reason>
 ```

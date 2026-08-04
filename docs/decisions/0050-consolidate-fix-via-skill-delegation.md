@@ -131,11 +131,13 @@ Chosen option: Option 3。理由は ADR-0049 と同じ「caller 数が empirical
 ## Rollback Plan
 
 Trigger Conditions:
+
 - `/fix` SKILL.md が 150 行超過 (Miller's Law 超過兆候)
 - delegation 先の skill が 2 つ以上で責務分離が崩れる
 - 2 つ目以降の command が同内容の workflow reference を必要とする
 
 Rollback Steps:
+
 1. `fix-workflow.md` を git 履歴から復元
 2. `/fix SKILL.md` の該当箇所を参照形式に戻す
 3. `orchestrating-workflows/SKILL.md` Workflows 表に /fix エントリ復活

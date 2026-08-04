@@ -6,7 +6,7 @@
 
 1 行は `glob`/`description`/`path` の 3 列を持つ Markdown テーブル行として書く。
 
-```
+```text
 | glob | description | path |
 | --- | --- | --- |
 | src/*.tsx | コンポーネント規約 | docs/conventions/component-tsx.md |

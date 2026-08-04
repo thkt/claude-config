@@ -130,4 +130,4 @@ AS-003 (Canvas/Heptabase への移住判断) で撤退する場合、carte リ�
 - carte SOW: [~/.claude/workspace/planning/2026-04-19-carte/sow.md](../workspace/planning/2026-04-19-carte/sow.md)
 - carte Spec: [~/.claude/workspace/planning/2026-04-19-carte/spec.md](../workspace/planning/2026-04-19-carte/spec.md)
 - CCPlanView (fork source): /Users/thkt/GitHub/apps/CCPlanView
-- k1LoW/mo (CLI 起動パターンの参考): https://github.com/k1LoW/mo
+- k1LoW/mo (CLI 起動パターンの参考): <https://github.com/k1LoW/mo>

@@ -57,6 +57,7 @@ Rust の petgraph crate でインメモリグラフを構築。DB には保存�
 **Chosen option: A (SQLite Reference Graph)**
 
 理由:
+
 1. **依存ゼロ**: 既存の rusqlite だけで実現可能。yomu の「1バイナリ1責務」を完全に維持
 2. **十分な性能**: フロントエンドプロジェクト (1k-5k ファイル) の規模では recursive CTE で < 100ms 応答可能
 3. **一貫性**: chunks と references が同じ DB・同じトランザクションで管理され、データ不整合のリスクがない

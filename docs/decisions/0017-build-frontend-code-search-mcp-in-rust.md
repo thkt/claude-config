@@ -89,7 +89,7 @@ scout) と同じパターンで独立リポジトリ (`yomu`) として管理す
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────┐
 │ MCP Server (rmcp, stdio)        │
 │  tools: search, index, status   │

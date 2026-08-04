@@ -99,6 +99,7 @@ standard-version / release-it / semantic-release / changesets は npx 経由で�
 ## Scope
 
 適用対象:
+
 - skills/yomu-search → skills/use-yomu
 - skills/recall-search → skills/use-recall
 - skills/scout-search → skills/use-scout
@@ -107,6 +108,7 @@ standard-version / release-it / semantic-release / changesets は npx 経由で�
 - .ja/skills/ ミラー側も同等（use-scout は新規作成）
 
 対象外:
+
 - user-invocable: true の skill（命名は user が発火する slash command として独立）
 - reviewing-* / *-reviewer ペア（skill + agent の役割別、ADR-0048 の scope）
 - generator 系 (commit/checkout/pr/issue) (ADR-0048)
@@ -114,10 +116,12 @@ standard-version / release-it / semantic-release / changesets は npx 経由で�
 ## Rollback Plan
 
 Trigger Conditions:
+
 - `use-*` prefix が LLM discovery に想定より悪影響（description 見落としが頻発）
 - 新たな CLI ラッパー追加時に `use-` が意味通じないケース
 
 Rollback Steps:
+
 1. git revert で rename 回復（content 変更は edit の積み重ねで再適用）
 2. marketplace.json を旧 path に戻す
 3. 新 ADR で再変更の理由を記録

@@ -102,6 +102,6 @@ Appropriateness recognizability / User engagement / Inclusivity は人間 UI 前
 
 ### References
 
-- Source: https://zenn.dev/assign/articles/b3d1d07d385b87
+- Source: <https://zenn.dev/assign/articles/b3d1d07d385b87>
 - Standards: clig.dev, sysexits.h, MCP Tools spec
 - Existing exemplars (audit 2026-05-03): yomu, recall, sae

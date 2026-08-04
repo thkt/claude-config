@@ -59,7 +59,7 @@ Option 2: 定期ジョブ + pending.mdステージング。
 
 ### データフロー
 
-```
+```text
 LaunchAgent → run.sh → claude -p (朝/夕 cron)
   ├─ READ:  GitHub Issues (gh) + Slack (slack-search.sh) + BACKLOG.md
   ├─ WRITE: ~/.claude/workspace/inbox/pending.md
@@ -123,7 +123,7 @@ Slackトークンを `claude -p` のBashコマンドに露出させるとshields
 
 ## Links
 
-- open-zeu (参考): https://github.com/bradwmorris/open-zeu
+- open-zeu (参考): <https://github.com/bradwmorris/open-zeu>
 - ADR-0001: code command responsibility separation
 - DA challenge: concurrent write, 責務分離違反, Deadline列の過剰設計
 - ジョブ実装: ~/Personal/jobs/backlog-sync/

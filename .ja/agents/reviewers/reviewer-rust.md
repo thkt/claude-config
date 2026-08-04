@@ -38,7 +38,7 @@ Rust コードのみ (`*.rs`, `Cargo.toml`)。Rust 以外は対象外。言語�
 | 観点                               | この reviewer (rust) | reviewer-design                        | reviewer-silence           |
 | ---------------------------------- | -------------------- | -------------------------------------- | -------------------------- |
 | レンズ                             | Rust 慣用句的か？    | モジュールがインタフェースに見合うか？ | サイレント障害パターンか？ |
-| `let _ = ` で握りつぶした `Result` | 慣用句違反           | 対象外                                 | 空ハンドラ相当             |
+| `let _ =` で握りつぶした `Result` | 慣用句違反           | 対象外                                 | 空ハンドラ相当             |
 | `Box<dyn Trait>` 過剰              | trait 設計の悪臭     | 対象外                                 | 対象外                     |
 | SAFETY なしの `unsafe`             | 不変条件のギャップ   | 対象外                                 | 対象外                     |
 | `clone()` 濫用                     | 所有権の悪臭         | 対象外                                 | 対象外                     |
@@ -74,7 +74,7 @@ clippy を先に実行する。reviewer は clippy が拾えない領域 (設計
 引用源なしの finding は確定違反として主張せず `verification: pending_spec_check` でフラグする。
 
 - BAD: "GitHub は `.hidden` repo 名を reject" (引用なし) → 実際は `.github` 等 dot-prefix を許可。false-premise
-- GOOD: "Suspected: GitHub は `.hidden` repo 名を reject する可能性。https://docs.github.com/en/repositories で検証してから flag" + `verification: pending_spec_check`
+- GOOD: "Suspected: GitHub は `.hidden` repo 名を reject する可能性。<https://docs.github.com/en/repositories> で検証してから flag" + `verification: pending_spec_check`
 
 reviewer 直感が外部仕様と矛盾する false-premise findings を防ぐ。
 

@@ -74,7 +74,7 @@ user-invocable: false
 
 RGRC サイクルは振る舞いごとに縦へ積む。全テストを先に書き、全実装を後でまとめる横方向の展開は決してしない。
 
-```
+```text
 Wrong (horizontal):
   Red:   test1, test2, test3, test4, test5
   Green: impl1, impl2, impl3, impl4, impl5

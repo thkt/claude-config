@@ -23,10 +23,10 @@ AI-DLC の Construction Phase では Functional Design（ビジネスロジッ�
 
 ## Considered Options
 
-* Option A: Step 分離（Step 5a/5b 新設）
-* Option B: Step 4 サブセクション化
-* Option C: /feature Phase 6 追加
-* Option D: /audit reviewer 追加
+- Option A: Step 分離（Step 5a/5b 新設）
+- Option B: Step 4 サブセクション化
+- Option C: /feature Phase 6 追加
+- Option D: /audit reviewer 追加
 
 ### Option A: Step 分離（Step 5a/5b 新設）
 
