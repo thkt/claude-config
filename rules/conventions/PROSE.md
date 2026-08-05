@@ -1,35 +1,37 @@
 # Prose
 
-Write software-development prose with words whose baseline the reader can reconstruct and sentences whose role the reader can predict. Applies to test descriptions, Issue / PR bodies, commit messages, plans, code comments, and technical docs. Before finalizing, reread the output and concretize any term whose baseline a reader could not reconstruct, whether or not it appears in the tables below.
+Write software-development prose with words whose baseline the reader can reconstruct and sentences whose role the reader can predict. Applies to test descriptions, Issue/PR bodies, commit messages, plans, code comments, and technical docs. Before finalizing, reread the output and concretize any term whose baseline a reader could not reconstruct, whether or not it appears in the tables below.
 
 ## Define Concretely
 
-| Banned term                                               | Problem                                                      | Replace with                                                                   |
-| --------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| correct / normal / abnormal                               | No baseline                                                  | Condition and expected result                                                  |
-| usual / ordinary / standard / general                     | Whose usual?                                                 | Default value or precondition                                                  |
-| expected value / as intended / as specified               | Empty reference                                              | Concrete value or behavior                                                     |
-| process (noun / verb)                                     | What operation?                                              | Transform, validate, persist, etc.                                             |
-| data / information                                        | What data?                                                   | User name, order list, etc.                                                    |
-| without issues                                            | What was actually checked?                                   | List verified conditions                                                       |
-| appropriately / properly                                  | What counts as appropriate?                                  | Concrete operation and criteria                                                |
-| robust / leverage / delve                                 | What improves, and how?                                      | Concrete property or operation                                                 |
-| Abstract verbs (works, layers, supports, etc.)            | Actual operation invisible                                   | Verbs naming the real operation and result                                     |
-| Compressed nouns (change impact, context retention, etc.) | Missing particles and verbs hide the relation between words  | Phrase restored with particles and verbs. Established technical terms excepted |
-| Literal translation of another language's idiom           | Does not read to someone who does not know the source phrase | Drop the phrase and state what it refers to. Established phrases excepted      |
+The right column lists examples, not limited to these. The next section's table works the same way. Rewrite any word that causes the same problem into that row's target form.
+
+| Target form                                                        | Words to rewrite                                                                     |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| State the condition and the expected result                        | 正しく / 正常 / 異常 / correct / normal / abnormal                                   |
+| State the default value or the precondition                        | 通常 / 一般的 / 標準的 / usual / ordinary / standard / general                       |
+| State the concrete value or behavior                               | 期待値 / 意図どおり / 仕様どおり / as intended / as specified                        |
+| Name the actual operation, such as transform, validate, or persist | 処理する / 処理 / process                                                            |
+| Name the contents, such as user name or order list                 | データ / 情報 / data / information                                                   |
+| List the conditions you verified                                   | 問題なく / without issues                                                            |
+| State the concrete operation and its criteria                      | 適切に / きちんと / appropriately / properly                                         |
+| State the concrete property or operation                           | 堅牢 / 活用する / 掘り下げる / robust / leverage / delve                             |
+| Use verbs naming the real operation and result                     | Abstract verbs such as 効く / 重ねる / 支える / works / layers / supports            |
+| Restore the phrase with particles and verbs                        | Compressed nouns such as 変更影響 / 文脈保持. Established technical terms stay as is |
+| Drop the phrase and state what it refers to                        | Literal translation of another language's idiom. Established phrases stay as is      |
 
 ## State Comparison Baseline
 
-| Banned term          | Problem       | Replace with                       |
-| -------------------- | ------------- | ---------------------------------- |
-| large / small amount | No threshold  | Concrete number or threshold       |
-| large / small (size) | No baseline   | Concrete size or comparison target |
-| latest / oldest      | Scope unclear | Scope and sort key                 |
-| fast / slow          | No threshold  | Measured value and threshold       |
+| Target form                                  | Words to rewrite                          |
+| -------------------------------------------- | ----------------------------------------- |
+| State the concrete number or threshold       | 大量 / 少量 / large amount / small amount |
+| State the concrete size or comparison target | 大きい / 小さい / large / small           |
+| State the scope and the sort key             | 最新 / 最古 / latest / oldest             |
+| State the measured value and the threshold   | 速い / 遅い / fast / slow                 |
 
 ## State Scope Explicitly
 
-Models do not generalize an instruction from one item to another, nor infer scope you did not state. When authoring a rule, spec, or prompt, make the intended scope explicit.
+Models do not generalize an instruction from one item to another, nor do they infer scope you did not state. Therefore, when authoring a rule, spec, or prompt, write the intended scope into the text.
 
 | Intent               | Write                                    |
 | -------------------- | ---------------------------------------- |
@@ -48,14 +50,14 @@ Write so the reader can predict the next sentence's role from the previous one. 
 | Rule                        | Directive                                                                                                                                                            |
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Announce with connectives   | A sentence turning to contrast, concession, causation, or an example announces its role with a leading connective (in contrast, therefore, for example)              |
-| Negation after the premise  | Drop the "not merely X" opener and state the content directly. When negating, first give the reason the reader would assume X                                        |
+| Negation after the premise  | State the content directly. When negating, first give the reason the reader would assume X                                                                           |
 | Resolve raised questions    | After stating a problem, give its cause or handling; after stating an operation, give its result in the next sentence, then move on                                  |
 | Connect with demonstratives | When the referent is unique in the previous sentence, receive it with "that" to signal continuation. When candidates are plural, rewrite the noun                    |
 | Keep the subject            | Put a subject on any sentence where whose judgment or what action changes                                                                                            |
-| No personification          | Do not make a program, file, or test the subject of emotion, perception, or intent. Write "the formatter duplicates the row", not "the formatter dislikes it"        |
-| No life-or-death wording    | Replace alive / dead / surviving with the actual condition. Write "the hook does not fire", not "the hook is dead". Established terms such as dead code are excepted |
+| Write the action            | Make the actual action the predicate for a program, file, or test. Write "the formatter duplicates the row", not "the formatter dislikes it"                         |
+| State the real condition    | Replace alive / dead / surviving with the actual condition. Write "the hook does not fire", not "the hook is dead". Established terms such as dead code are excepted |
 | Shift the temperature       | End problem sentences so the burden shows (cannot, must), and post-improvement sentences so the relief shows (becomes able to)                                       |
-| No punch lines              | Drop the "the essence is" / "the only key is" staging and start directly from the content                                                                            |
+| Start from the content      | Start directly from what you want to convey. Do not stage it with "the essence is" or "the only key is"                                                              |
 
 ## Match the Familiar Form
 
