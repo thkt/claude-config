@@ -13,6 +13,8 @@ Write for a teammate who shares context and can open the linked docs. The issue 
 
 ## Redundancy patterns
 
+Fix redundancy of the same nature even when the table below does not name it.
+
 | Pattern                | Fix                                                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Doc transcription      | Fold restated linked docs or logs into link + one-line takeaway; write only the delta                                    |

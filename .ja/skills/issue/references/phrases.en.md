@@ -1,6 +1,6 @@
 # Empty phrases (English)
 
-Detect and fix LLM-style empty phrasing in the issue body. Use alongside prose-review.md when the body is in English.
+Detect and fix LLM-style empty phrasing in the issue body. Use alongside prose-review.md when the body is in English. Fix empty phrasing of the same nature even when the table below does not name it. The Signal column gives detection cues, so extend each one to phrasings of the same shape.
 
 | Pattern            | Signal                                                     | Fix                                                    |
 | ------------------ | ---------------------------------------------------------- | ------------------------------------------------------ |

@@ -14,6 +14,8 @@ Write for a teammate who shares the context and can open the links. A PR carries
 
 ## Redundancy patterns
 
+Fix redundancy of the same nature even when the table below does not name it.
+
 | Pattern                | Fix                                                                                                   |
 | ---------------------- | ----------------------------------------------------------------------------------------------------- |
 | Diff transcription     | Drop enumerations of changed files or functions; the diff carries them. Keep the intent of the change |
