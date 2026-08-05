@@ -101,8 +101,9 @@ test("各言語のテンプレートが reference_module を kind と理由の�
   }
 });
 
-// 骨格が落としたフィールドは、そのとおり書いた plan が build の Load で invalid-plan
-// として止まってから初めて分かる。骨格と validate の要求を build.js 側から突き合わせる。
+// 骨格が落としたフィールドは、そのとおり書いた plan が Load で invalid-plan として
+// 止まってから初めて分かる。フィールド名を骨格側から書き写すと、validate が要求を
+// 変えたときにこの突合が追随しないので、build.js の validate を起点にする。
 test("kind が module のとき build.js が必須にするフィールドが骨格の参照モジュール小節にある", () => {
   const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
   const fieldMatch = buildJs.match(
@@ -118,9 +119,9 @@ test("kind が module のとき build.js が必須にするフィールドが骨
     assert.ok(start !== -1, `${lang}: ${heading} 見出しが存在する`);
     const rest = doc.slice(start + heading.length);
     const nextHeading = rest.search(/^#{2,3}[ \t]/m);
-    const section = nextHeading === -1 ? rest : rest.slice(0, nextHeading);
+    assert.notStrictEqual(nextHeading, -1, `${lang}: 参照モジュール見出しの後に別の見出しが続く`);
     assert.match(
-      section,
+      rest.slice(0, nextHeading),
       new RegExp(`^- ${fieldName}:`, "m"),
       `${lang}: 参照モジュール小節が ${fieldName} 行を持つ`,
     );
