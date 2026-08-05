@@ -160,6 +160,122 @@ test("T-014 agents/reviewers/の定義は ROUTING か skill-only allowlist の�
   );
 });
 
+// T-001〜T-004: audit が scope を revision と path で区別し、種別 (kind) と実行コマンド
+// (command) を resolution として返り値に載せる回。workflows/polish.js の scopeNote に
+// 倣い、判定は rev-parse (scope 指定時の path/revision 判定) と git status --porcelain
+// (scope 省略時の未コミット変更判定) を実行するだけの agent 段 (label: scope-kind /
+// scope-status) に閉じ、分岐表とコマンド組み立ては script (audit.js) 側が持つ想定。
+// route 段はその script 組み立て済みコマンドを実行するだけで、kind/command 自体は
+// script が判定結果からそのまま返り値に載せる。
+const scopeStub =
+  ({ scopeKind, scopeStatus, route } = {}) =>
+  (prompt, opts) => {
+    const label = opts && opts.label;
+    if (label === "scope-kind") return scopeKind;
+    if (label === "scope-status") return scopeStatus;
+    if (label === "route") return route;
+    return undefined;
+  };
+
+const runScoped = async (extraArgs, stubOpts) => {
+  const { result, logs } = await runWorkflow(auditJs, {
+    args: { skipPreflight: true, ...extraArgs },
+    stubs: { agent: scopeStub(stubOpts) },
+  });
+  return { result, logs };
+};
+
+test("作業ツリーに未コミット変更が無いとき、path を scope に渡すとその path 配下の追跡ファイルが Route の対象に入る", async () => {
+  const files = ["src/sample.js"];
+
+  const { result } = await runScoped(
+    { scope: "src" },
+    {
+      // 実測 (git 2.x): 実在するパスを渡すと exit 0 でそのパスをそのまま返し、実在しない
+      // 名前は exit 128 になる。どちらも SHA 行にはならないので path 側へ分かれる。
+      scopeKind: { exit_code: 0, stdout: "src" },
+      route: { files: files.map((path) => ({ path, churn: 0 })) },
+    },
+  );
+
+  assert.equal(result.resolution.kind, "path");
+  assert.match(result.resolution.command, /ls-files/);
+  assert.match(result.resolution.command, /src/);
+  assert.deepEqual(unassigned(result, files), [], "path 配下のファイルが assignments に載る");
+});
+
+test("`main...HEAD` 形式の範囲指定を scope に渡すと revision として解決され、path 絞り込みに落ちない", async () => {
+  const files = ["workflows/audit.js"];
+
+  const { result } = await runScoped(
+    { scope: "main...HEAD" },
+    {
+      // git rev-parse "main...HEAD" は範囲の両端を SHA 行で返す (実測)。
+      scopeKind: {
+        exit_code: 0,
+        stdout:
+          "1df91449501666aca9c6016f05a18de61028cb1e\n1df91449501666aca9c6016f05a18de61028cb1e\n^1df91449501666aca9c6016f05a18de61028cb1e",
+      },
+      route: { files: files.map((path) => ({ path, churn: 1 })) },
+    },
+  );
+
+  assert.equal(result.resolution.kind, "revision");
+  assert.match(result.resolution.command, /diff/);
+  assert.doesNotMatch(result.resolution.command, /ls-files/);
+  assert.deepEqual(
+    unassigned(result, files),
+    [],
+    "revision の diff 対象ファイルが assignments に載る",
+  );
+});
+
+test("scope 省略で未コミット変更が 0 件のとき、base から HEAD までの diff が対象になる", async () => {
+  const files = ["workflows/polish.js"];
+
+  const { result } = await runScoped(
+    {},
+    {
+      // git status --porcelain が空 (未コミット変更 0 件)
+      scopeStatus: { stdout: "" },
+      route: { files: files.map((path) => ({ path, churn: 2 })) },
+    },
+  );
+
+  assert.equal(result.resolution.kind, "branch");
+  assert.equal(result.resolution.command, "git diff --name-only main...HEAD");
+  assert.deepEqual(
+    unassigned(result, files),
+    [],
+    "base...HEAD の diff 対象ファイルが assignments に載る",
+  );
+});
+
+test("対象 0 件で終わる run が、対象なしと変更なしを読み分けられる resolution を返り値に持つ", async () => {
+  // path scope が 0 件 (対象なし): scope の path 配下に追跡ファイルが無い
+  const { result: pathResult } = await runScoped(
+    { scope: "empty-dir" },
+    {
+      scopeKind: { exit_code: 0, stdout: "empty-dir" },
+      route: { files: [] },
+    },
+  );
+  // scope 省略かつ base...HEAD の diff も 0 件 (変更なし)
+  const { result: branchResult } = await runScoped(
+    {},
+    {
+      scopeStatus: { stdout: "" },
+      route: { files: [] },
+    },
+  );
+
+  assert.equal(pathResult.resolution.kind, "path");
+  assert.equal(pathResult.resolution.reason, "no-target");
+  assert.equal(branchResult.resolution.kind, "branch");
+  assert.equal(branchResult.resolution.reason, "no-changes");
+  assert.notEqual(pathResult.resolution.reason, branchResult.resolution.reason);
+});
+
 test("T-015 focus 指定で 0 reviewer になったファイルが件数とパスつきで返り値に載る", async () => {
   // *.js は ROUTING["*.js"] に accessibility / progressive を含まないため、
   // focus: "a11y" (FOCUS.a11y = ["accessibility", "progressive"]) と交差させると

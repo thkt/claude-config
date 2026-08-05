@@ -408,12 +408,75 @@ const PREFLIGHT_SCHEMA = {
   },
 };
 
+const SCOPE_KIND_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["exit_code", "stdout"],
+  properties: {
+    exit_code: { type: "integer", description: "exit code of git rev-parse" },
+    stdout: { type: "string", description: "stdout of git rev-parse, verbatim" },
+  },
+};
+
+const SCOPE_STATUS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["stdout"],
+  properties: {
+    stdout: { type: "string", description: "stdout of git status --porcelain, verbatim" },
+  },
+};
+
+// ---- Scope resolution ----
+// git takes a revision and a path in the same position, so passing a path collapses into
+// the uncommitted changes under it. The kind is read from `git rev-parse` output, and this
+// script owns the branch table and the command it builds. The agent stage runs git once and
+// returns the result; it holds no judgment about which command to assemble.
+const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
+// rev-parse returns 40-hex SHA lines alone once it resolves a revision, with a leading ^ on
+// the excluded side of a range. A path comes back verbatim, so whether every line is a SHA
+// separates the two.
+const SHA_LINE = /^\^?[0-9a-f]{40}$/;
+const resolveScope = async () => {
+  if (scope) {
+    const probe = await agent(
+      anchor(
+        `Run \`git rev-parse ${scope}\` once and return its exit code and stdout verbatim. Run no other command, and change no file and no git state.`,
+      ),
+      { label: "scope-kind", phase: "Route", schema: SCOPE_KIND_SCHEMA, model: "haiku" },
+    );
+    const lines = String((probe && probe.stdout) || "")
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+    const revision =
+      probe && probe.exit_code === 0 && lines.length > 0 && lines.every((l) => SHA_LINE.test(l));
+    return revision
+      ? { kind: "revision", command: `git diff --name-only ${scope}` }
+      : { kind: "path", command: `git ls-files ${scope}` };
+  }
+  const status = await agent(
+    anchor(
+      `Run \`git status --porcelain\` once and return its stdout verbatim. Run no other command, and change no file and no git state.`,
+    ),
+    { label: "scope-status", phase: "Route", schema: SCOPE_STATUS_SCHEMA, model: "haiku" },
+  );
+  if (!status) {
+    log(
+      "Scope resolution: `git status --porcelain` returned no output. Falling back to the HEAD diff without confirming whether uncommitted changes exist.",
+    );
+    return { kind: "uncommitted", command: "git diff --name-only HEAD", undetermined: true };
+  }
+  return String(status.stdout || "").trim()
+    ? { kind: "uncommitted", command: "git diff --name-only HEAD" }
+    : { kind: "branch", command: `git diff --name-only ${base}...HEAD` };
+};
+const resolution = await resolveScope();
+
 // ---- Pre-flight ∥ Route: two stages that share no data run concurrently ----
 // Bare phase() races under parallel(), so each thunk names its own group via
 // opts.phase.
-const scopeInstr = scope
-  ? `Scope is "${scope}". Run \`git diff --name-only ${scope}\` for the file list.`
-  : `No scope given. List staged + modified files: union of \`git diff --name-only HEAD\` and \`git diff --name-only --staged\`.`;
+const scopeInstr = `Run \`${resolution.command}\` for the file list.`;
 const [preFlightRaw, route] = await parallel([
   // Tests-only; static analysis is the gates hook's job. A test failure is
   // recorded as context but does not block and does not become a finding.
@@ -454,11 +517,19 @@ const preFlight = preFlightRaw || {
 
 const files = ((route && route.files) || []).filter((f) => f.path);
 if (!files.length) {
+  // The kind decides why zero came back. A path means no tracked file sits under it
+  // (no target); the three diff kinds mean the diff is empty (no changes). A caller
+  // reads the two apart.
+  const reason = resolution.kind === "path" ? "no-target" : "no-changes";
   return {
     findings: [],
     skipped: [],
     zero_reviewer_files: [],
-    why: "No files to audit for the given scope.",
+    resolution: { ...resolution, reason },
+    why:
+      reason === "no-target"
+        ? `No tracked file sits under scope "${scope}" (${resolution.command}).`
+        : `The target diff is empty (${resolution.command}).`,
   };
 }
 
@@ -597,6 +668,7 @@ if (!findings.length) {
     zero_reviewer_files: zeroReviewerFiles,
     challenge_ran: false,
     verify_ran: false,
+    resolution,
   };
 }
 
@@ -783,4 +855,5 @@ return {
   assignments,
   skipped,
   zero_reviewer_files: zeroReviewerFiles,
+  resolution,
 };

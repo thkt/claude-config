@@ -399,11 +399,72 @@ const PREFLIGHT_SCHEMA = {
   },
 };
 
+const SCOPE_KIND_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["exit_code", "stdout"],
+  properties: {
+    exit_code: { type: "integer", description: "exit code of git rev-parse" },
+    stdout: { type: "string", description: "stdout of git rev-parse, verbatim" },
+  },
+};
+
+const SCOPE_STATUS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["stdout"],
+  properties: {
+    stdout: { type: "string", description: "stdout of git status --porcelain, verbatim" },
+  },
+};
+
+// ---- Scope 解決 ----
+// git は revision と path を同じ位置で受けるため、path を渡すとその配下の未コミット変更へ潰れる。
+// 種別は `git rev-parse` の出力から読み、分岐表とコマンド組み立てはこの script が持つ。agent 段は
+// git を 1 回実行して結果を返すだけで、どのコマンドを組むかの判断は持たない。
+const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
+// rev-parse は revision を解決すると 40 桁の SHA 行だけを返し、範囲指定では除外側に ^ が付く。
+// path を渡したときはその path をそのまま返すため、全行が SHA かどうかで両者が分かれる。
+const SHA_LINE = /^\^?[0-9a-f]{40}$/;
+const resolveScope = async () => {
+  if (scope) {
+    const probe = await agent(
+      anchor(
+        `\`git rev-parse ${scope}\` を 1 回だけ実行し、exit code と stdout をそのまま返す。他のコマンドは実行せず、ファイルも git の状態も変更しない。`,
+      ),
+      { label: "scope-kind", phase: "Route", schema: SCOPE_KIND_SCHEMA, model: "haiku" },
+    );
+    const lines = String((probe && probe.stdout) || "")
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+    const revision =
+      probe && probe.exit_code === 0 && lines.length > 0 && lines.every((l) => SHA_LINE.test(l));
+    return revision
+      ? { kind: "revision", command: `git diff --name-only ${scope}` }
+      : { kind: "path", command: `git ls-files ${scope}` };
+  }
+  const status = await agent(
+    anchor(
+      `\`git status --porcelain\` を 1 回だけ実行し、stdout をそのまま返す。他のコマンドは実行せず、ファイルも git の状態も変更しない。`,
+    ),
+    { label: "scope-status", phase: "Route", schema: SCOPE_STATUS_SCHEMA, model: "haiku" },
+  );
+  if (!status) {
+    log(
+      "Scope 解決: `git status --porcelain` が出力を返さなかった。未コミット変更の有無を確かめないまま HEAD との diff へ落とす。",
+    );
+    return { kind: "uncommitted", command: "git diff --name-only HEAD", undetermined: true };
+  }
+  return String(status.stdout || "").trim()
+    ? { kind: "uncommitted", command: "git diff --name-only HEAD" }
+    : { kind: "branch", command: `git diff --name-only ${base}...HEAD` };
+};
+const resolution = await resolveScope();
+
 // ---- Pre-flight ∥ Route。互いにデータを共有しない 2 段なので並行に走らせる ----
 // 素の phase() は parallel() 内で race するため、各 thunk が opts.phase で自分の group を指定する。
-const scopeInstr = scope
-  ? `scope は "${scope}"。対象ファイルは \`git diff --name-only ${scope}\` で列挙する。`
-  : `scope 指定は無い。staged + modified のファイルを対象とする。\`git diff --name-only HEAD\` と \`git diff --name-only --staged\` の和集合を取る。`;
+const scopeInstr = `対象ファイルは \`${resolution.command}\` で列挙する。`;
 const [preFlightRaw, route] = await parallel([
   // test 実行のみ。静的解析は gates hook の担当。test の失敗は context として記録するだけで、
   // block もせず finding にもしない。
@@ -444,11 +505,18 @@ const preFlight = preFlightRaw || {
 
 const files = ((route && route.files) || []).filter((f) => f.path);
 if (!files.length) {
+  // 0 件の理由は種別で決まる。path はその配下に追跡ファイルが無い (対象なし)、
+  // 差分を見る 3 種は差分が空 (変更なし)。呼び出し側はこの 2 つを読み分ける。
+  const reason = resolution.kind === "path" ? "no-target" : "no-changes";
   return {
     findings: [],
     skipped: [],
     zero_reviewer_files: [],
-    why: "指定 scope に audit 対象のファイルが無い。",
+    resolution: { ...resolution, reason },
+    why:
+      reason === "no-target"
+        ? `scope "${scope}" の配下に追跡対象のファイルが無い (${resolution.command})。`
+        : `対象の差分が空 (${resolution.command})。`,
   };
 }
 
@@ -587,6 +655,7 @@ if (!findings.length) {
     zero_reviewer_files: zeroReviewerFiles,
     challenge_ran: false,
     verify_ran: false,
+    resolution,
   };
 }
 
@@ -769,4 +838,5 @@ return {
   assignments,
   skipped,
   zero_reviewer_files: zeroReviewerFiles,
+  resolution,
 };
