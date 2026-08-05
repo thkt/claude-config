@@ -118,11 +118,16 @@ test("feature テンプレートが UI に触れる issue 限定の任意 Access
   }
 });
 
+const matchRefs = {
+  ja: join(root, ".ja", "skills", "issue", "references", "duplication-match.md"),
+  en: join(root, "skills", "issue", "references", "duplication-match.md"),
+};
+
 // 判定基準を書かないと、独立に変わりうる記述まで参照に潰れる。
-test("各言語の SKILL.md が、照合対象を同じ知識の重複と定義する", () => {
-  for (const [lang, path] of Object.entries(skills)) {
+test("各言語の duplication-match.md が、照合対象を同じ知識の重複と定義する", () => {
+  for (const [lang, path] of Object.entries(matchRefs)) {
     assert.ok(existsSync(path), `${path} が存在する`);
-    const phase2 = extractPhase2(readFileSync(path, "utf8"));
+    const matchRef = readFileSync(path, "utf8");
     const [target, criterion, independent] =
       lang === "ja"
         ? [/同じ知識が重なる/, /片方を直すともう片方も直る/, /独立に変わりうる/]
@@ -131,9 +136,9 @@ test("各言語の SKILL.md が、照合対象を同じ知識の重複と定義�
             /editing one forces the other to change/i,
             /change independently/i,
           ];
-    assert.match(phase2, target, `${lang}: 同じ知識の重複が対象`);
-    assert.match(phase2, criterion, `${lang}: 同じ知識の判定基準`);
-    assert.match(phase2, independent, `${lang}: 独立に変わるものは両方に残す`);
+    assert.match(matchRef, target, `${lang}: 同じ知識の重複が対象`);
+    assert.match(matchRef, criterion, `${lang}: 同じ知識の判定基準`);
+    assert.match(matchRef, independent, `${lang}: 独立に変わるものは両方に残す`);
   }
 });
 
@@ -154,12 +159,12 @@ const COUNTERPARTS = {
   ],
 };
 
-test("各言語の SKILL.md が、重なる 4 組と Acceptance Criteria の例外を並べる", () => {
-  for (const [lang, path] of Object.entries(skills)) {
-    const phase2 = extractPhase2(readFileSync(path, "utf8"));
+test("各言語の duplication-match.md が、重なる 4 組と Acceptance Criteria の例外を並べる", () => {
+  for (const [lang, path] of Object.entries(matchRefs)) {
+    const matchRef = readFileSync(path, "utf8");
     for (const [section, counterpart] of COUNTERPARTS[lang]) {
       assert.match(
-        phase2,
+        matchRef,
         new RegExp(`${section}[^\\n]*${counterpart}`),
         `${lang}: ${section} は ${counterpart} と重なる`,
       );
@@ -171,20 +176,20 @@ test("各言語の SKILL.md が、重なる 4 組と Acceptance Criteria の例�
             /Acceptance Criteria overlaps Outcome/i,
             /drives the human merge call and never reaches build/i,
           ];
-    assert.match(phase2, overlap, `${lang}: Acceptance Criteria も重なる`);
-    assert.match(phase2, why, `${lang}: それでも本文に残す理由`);
+    assert.match(matchRef, overlap, `${lang}: Acceptance Criteria も重なる`);
+    assert.match(matchRef, why, `${lang}: それでも本文に残す理由`);
   }
 });
 
-test("各言語の SKILL.md が、参照を本文から Plan へ向けると書く", () => {
-  for (const [lang, path] of Object.entries(skills)) {
-    const phase2 = extractPhase2(readFileSync(path, "utf8"));
+test("各言語の duplication-match.md が、参照を本文から Plan へ向けると書く", () => {
+  for (const [lang, path] of Object.entries(matchRefs)) {
+    const matchRef = readFileSync(path, "utf8");
     if (lang === "ja") {
-      assert.match(phase2, /参照は本文から `## Plan` へ向ける/, "ja: 参照の向き");
-      assert.match(phase2, /本文の節はそのあとに生まれる/, "ja: 向きが決まる理由");
+      assert.match(matchRef, /参照は本文から `## Plan` へ向ける/, "ja: 参照の向き");
+      assert.match(matchRef, /本文の節はそのあとに生まれる/, "ja: 向きが決まる理由");
     } else {
-      assert.match(phase2, /reference runs from the body to `## Plan`/i, "en: 参照の向き");
-      assert.match(phase2, /sections come into existence after it/i, "en: 向きが決まる理由");
+      assert.match(matchRef, /reference runs from the body to `## Plan`/i, "en: 参照の向き");
+      assert.match(matchRef, /sections come into existence after it/i, "en: 向きが決まる理由");
     }
   }
 });
@@ -209,29 +214,33 @@ test("各言語の SKILL.md で照合が Phase 2 の最後の手順に置かれ�
   }
 });
 
-test("各言語の SKILL.md が、重複した本文側を `## Plan` への参照に置き換えると書く", () => {
-  for (const [lang, path] of Object.entries(skills)) {
-    const phase2 = extractPhase2(readFileSync(path, "utf8"));
+test("各言語の duplication-match.md が、重複した本文側を `## Plan` への参照に置き換えると書く", () => {
+  for (const [lang, path] of Object.entries(matchRefs)) {
+    const matchRef = readFileSync(path, "utf8");
     if (lang === "ja") {
-      assert.match(phase2, /## Plan[\s\S]{0,20}参照/, "ja: Plan への参照置き換え");
-      assert.match(phase2, /見出しが何をする変更かを述べる 1 行/, "ja: 見出しごとに 1 行残す規定");
+      assert.match(matchRef, /## Plan[\s\S]{0,20}参照/, "ja: Plan への参照置き換え");
+      assert.match(
+        matchRef,
+        /見出しが何をする変更かを述べる 1 行/,
+        "ja: 見出しごとに 1 行残す規定",
+      );
     } else {
-      assert.match(phase2, /## Plan[\s\S]{0,20}reference/i, "en: reference to Plan");
-      assert.match(phase2, /one line that states what change/i, "en: 見出しごとに 1 行残す規定");
+      assert.match(matchRef, /## Plan[\s\S]{0,20}reference/i, "en: reference to Plan");
+      assert.match(matchRef, /one line that states what change/i, "en: 見出しごとに 1 行残す規定");
     }
   }
 });
 
-test("各言語の SKILL.md が、食い違うときは plan を正として本文を直すと書く", () => {
-  for (const [lang, path] of Object.entries(skills)) {
-    const phase2 = extractPhase2(readFileSync(path, "utf8"));
+test("各言語の duplication-match.md が、食い違うときは plan を正として本文を直すと書く", () => {
+  for (const [lang, path] of Object.entries(matchRefs)) {
+    const matchRef = readFileSync(path, "utf8");
     if (lang === "ja") {
-      assert.match(phase2, /食い違う/, "ja: 食い違いへの言及");
-      assert.match(phase2, /plan を正として/, "ja: plan を正とする方針");
+      assert.match(matchRef, /食い違う/, "ja: 食い違いへの言及");
+      assert.match(matchRef, /plan を正として/, "ja: plan を正とする方針");
     } else {
-      assert.match(phase2, /conflict/i, "en: conflict への言及");
+      assert.match(matchRef, /conflict/i, "en: conflict への言及");
       assert.match(
-        phase2,
+        matchRef,
         /plan[\s\S]{0,20}(is authoritative|as authoritative|as the source of truth)/i,
         "en: plan authoritative への言及",
       );

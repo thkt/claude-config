@@ -15,7 +15,7 @@ argument-hint: "[issue description | issue number]"
 
 `$ARGUMENTS` は Issue 説明。空なら AskUserQuestion で説明を尋ねる。
 
-issue 番号か URL だけを受け取ったときは、起票済み issue へ plan を転記する。`gh issue view <ref> --json title,body` で取った本文を起草済みとみなして Phase 2 から始め、Phase 4 の起票を `gh issue edit <ref> --body-file <path>` に置き換える。plan 下書きが無ければ `/think` の実行を提案して止まり、`## Plan` を既に持つ issue は `/qualify` の検分に回す。
+issue 番号か URL だけを受け取ったときは、起票済み issue へ plan を転記する。`gh issue view <ref> --json title,body` で取った本文を起草済みとみなして Phase 2 から始め、Phase 4 の起票を `gh issue edit <ref> --body-file <path>` に置き換え、本文検証は行わない。plan 下書きが無ければ `/think` の実行を提案して止まり、`## Plan` を既に持つ issue は `/qualify` の検分に回す。
 
 ## 言語
 
@@ -44,11 +44,9 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 
 ここで決めるのは起票するかどうか。次の 3 基準をすべて満たす bug は軽微で、起票せず `/fix` で直接対応する選択肢がある。起票する場合も、本文フッターに「軽微につき `/fix` で対応してもよい」と注記する。原因未特定の間欠 bug は該当しない。
 
-| 基準     | 内容                         |
-| -------- | ---------------------------- |
-| 変更範囲 | 1 ファイルに収まる           |
-| 再現     | 再現手順が確定している       |
-| 調査     | コードベースの横断調査が不要 |
+- 変更が 1 ファイルに収まる
+- 再現手順が確定している
+- コードベースの横断調査が不要
 
 ### Why 壁打ち
 
@@ -84,18 +82,7 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 
 1. `${CLAUDE_SKILL_DIR}/references/prose-review.md` と、本文言語に対応する空句ファイルの基準で本文をインライン精査する。空句ファイルは日本語なら `phrases.ja.md`、英語なら `phrases.en.md`。Phase 3 で移設する Plan 節は対象外とし、手を入れない
 2. 会話に challenge の verdict と findings があれば、本文に折り込むべき指摘だけ 1 回反映する。verdict と findings 自体は本文に入れない
-3. plan 下書きがあれば、前項までの編集を終えた本文を、選んだ plan 下書き 1 つと「重複の照合」の手順で照合する。会話に `/think` のものがあればそれを、無ければ `.claude/workspace/planning/` の該当ファイルを選ぶ。plan 下書きが無ければ、この照合を省く
-
-### 重複の照合
-
-本文と `## Plan` で同じ知識が重なる箇所すべてを対象にする。同じ知識かどうかは、片方を直すともう片方も直る関係かで判定し、独立に変わりうるものは両方に残す。重複した本文側は `## Plan` への参照に置き換える。置き換えたあとも、その見出しが何をする変更かを述べる 1 行、却下理由と根拠の file:line、痛みの記述は本文に残す。参照は本文から `## Plan` へ向ける。plan は `/think` が本文より先に独立したファイルへ書き出し、本文の節はそのあとに生まれる。食い違うときは plan を正として本文を直す。Acceptance Criteria も Outcome と重なるが、人間のマージ判断に使い build に届かないので本文に残す。
-
-| 本文の節          | Plan 側の対応    |
-| ----------------- | ---------------- |
-| Approach          | unit の contract |
-| Testing Decisions | T-NNN            |
-| Premises          | 前提             |
-| Scope の In scope | files            |
+3. plan 下書きがあれば、前項までの編集を終えた本文を、選んだ plan 下書き 1 つと `${CLAUDE_SKILL_DIR}/references/duplication-match.md` の手順で照合する。会話に `/think` のものがあればそれを、無ければ `.claude/workspace/planning/` の該当ファイルを選ぶ。plan 下書きが無ければ、この照合を省く
 
 ## Phase 3: Plan 移設
 
@@ -104,20 +91,10 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 ## Phase 4: 起票
 
 1. Issue プレビューを提示する。インライン仮マークがあれば仮ブロックに集約する。新規内容は足さず本文が持つものを写し、0 件なら省略する。最後に AskUserQuestion で `Create this issue?` と確認する。`## Plan` 節が無く build workflow に渡す規模なら、選択肢に「起票を保留して `/think` で plan を作る」を足す
-2. 本文を一時ファイルに書き出す。`${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <Template source で選んだ骨格ファイル> <title> <body-file>` を実行し、エラーは後述の Error Handling に従って対処する。exit 0 になったらラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票する。`<path>` は変数でなくリテラルの絶対パスで書く。hook は変数を展開できず、起票が止まる。出力から Issue URL を取得する
+2. 本文を一時ファイルに書き出す。`${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <Template source で選んだ骨格ファイル> <title> <body-file>` を実行し、エラーは `${CLAUDE_SKILL_DIR}/references/validation-errors.md` に従って対処する。exit 0 になったらラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票する。`<path>` は変数でなくリテラルの絶対パスで書く。hook は変数を展開できず、起票が止まる。出力から Issue URL を取得する
 3. Phase 1 で分割を承認していれば、起票した epic 番号を添えて `/slice` の実行を提案する。自動では起動しない
 4. 分割しない issue には次の手を提案する。起票済み issue の渡し先は影響範囲で決め、1〜3 ファイルに収まる修正なら `/fix <番号>`、4 ファイル以上または新機能なら build workflow に番号を渡す。build workflow に渡す issue が Plan 節を持たないなら、`/think` で plan を作り `/issue <番号>` で転記してから渡し、渡す前の検分には `/qualify` を使う。いずれも自動では起動しない
 
 ### ラベル
 
 `priority:*` は必須とし、影響度に応じて critical、high、medium、low のいずれかを付ける。それ以外のラベルは、リポジトリの慣例に合わせる。
-
-## Error Handling
-
-`${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py` は `{errors, warnings, checks}` を JSON で標準出力に返し、`errors` が 1 件以上あれば exit 1 で終わる。既存 issue へ plan を転記する `/issue <番号>` の経路は Phase 4 の起票を `gh issue edit` に置き換えるため、この検査は対象外。エラーは下表に従って対処する。
-
-| エラー                   | 対処                                                                                                                 |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `missing_section:<name>` | テンプレート骨格から落ちた見出しを戻し、再検証する                                                                   |
-| `type_mismatch:*`        | タイトルの角括弧の型を正とし、それに合うテンプレートを選び直して本文を書き直す。タイトルの書き換えによる解消はしない |
-| `unknown_section:<name>` | 骨格に無い見出しを外すか、骨格側の見出しに寄せる。`.yml` を骨格にした起票では出ない                                  |
