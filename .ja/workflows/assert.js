@@ -424,8 +424,9 @@ try {
   })().catch(() => null);
 
   // audit の scope: branch diff は base...HEAD、uncommitted は audit 既定 (HEAD diff)、
-  // target mode は path を素通しする。audit の Route は git diff ベースなので target mode では
-  // 列挙が痩せる可能性がある (既知の制約。Codex review と adversarial は明示 file list で補う)。
+  // target mode は path を素通しする。audit は scope の種別を rev-parse で判定し、path なら
+  // git ls-files でファイル集合へ解決するため、target mode も配下の追跡ファイルを列挙する。
+  // base も渡す。渡さないと、非 main の base で起動した assert と audit 既定の main が食い違う。
   const auditScope =
     boot.mode === "diff" ? (boot.diff_kind === "branch" ? `${base}...HEAD` : "") : scope;
   const codexScopeInstr =
@@ -491,7 +492,7 @@ try {
       ]);
       return { codexFindings: findings, challenged: ch, verified: vf };
     },
-    () => workflow("audit", { repo, scope: auditScope, skipPreflight: true }),
+    () => workflow("audit", { repo, scope: auditScope, base, skipPreflight: true }),
   ]);
   // thunk が reject すると parallel() は該当スロットを null にするため codexRes を null-safe に開く。
   const codexFindings = (codexRes && codexRes.codexFindings) || [];

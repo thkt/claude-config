@@ -430,9 +430,10 @@ try {
   })().catch(() => null);
 
   // audit scope: branch diff uses base...HEAD, uncommitted uses audit's default (HEAD
-  // diff), target mode passes the path through. audit's Route is git-diff based, so
-  // target mode may under-enumerate (known limitation; Codex review and adversarial
-  // compensate with an explicit file list).
+  // diff), target mode passes the path through. audit decides the scope kind via
+  // rev-parse and resolves a path through git ls-files, so target mode enumerates the
+  // tracked files under it. base goes along too: without it, an assert started on a
+  // non-main base disagrees with audit's own default of main.
   const auditScope =
     boot.mode === "diff" ? (boot.diff_kind === "branch" ? `${base}...HEAD` : "") : scope;
   const codexScopeInstr =
@@ -501,7 +502,7 @@ try {
       ]);
       return { codexFindings: findings, challenged: ch, verified: vf };
     },
-    () => workflow("audit", { repo, scope: auditScope, skipPreflight: true }),
+    () => workflow("audit", { repo, scope: auditScope, base, skipPreflight: true }),
   ]);
   // A rejected thunk becomes null in the parallel() result slot, so open codexRes null-safe.
   const codexFindings = (codexRes && codexRes.codexFindings) || [];

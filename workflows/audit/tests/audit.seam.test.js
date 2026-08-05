@@ -266,3 +266,98 @@ test("T-009 遮断コンテキスト下で END marker を仕込んだ finding �
     "END marker を仕込んだ finding があっても、書き出された record の raw_findings は payload と同数になる",
   );
 });
+
+// ---- scope 解決の seam (#325 U-003) ----
+// assert が audit へ渡す 2 種類の値 (branch mode の範囲指定と target mode の path) を、
+// assert.js の実行で取り出してから audit.js へ流す。渡す側と受ける側の食い違いは、
+// 両方を通すこの経路でしか出ない。ファイル内の既存 T-008/T-009 とは別系統なので、
+// テスト名には plan 側の id を書かない。
+const assertJs = join(here, "..", "..", "assert.js");
+
+const bootFor = (mode, diffKind) => ({
+  codex_available: true,
+  mode,
+  diff_kind: diffKind,
+  scope_files: ["workflows/audit.js"],
+  outcome: "absent",
+  worktree_ok: true,
+  worktree_path: "/tmp/assert-wt",
+  install: "ok",
+  build: "pass",
+  reason: "",
+});
+
+// assert を 1 回走らせ、audit へ渡された args を取り出す。audit は nested workflow なので
+// runWorkflow は calls.workflow に記録するだけで、その本体は実行しない。
+const auditArgsFromAssert = async (args, boot) => {
+  const { calls } = await runWorkflow(assertJs, {
+    args,
+    stubs: {
+      agent: (prompt, opts) => {
+        const label = opts && opts.label;
+        if (label === "bootstrap") return boot;
+        if (label === "test-exec") return { outcome: "pass", passed: 1, failed: 0 };
+        if (label === "adversarial") return { ran: true, tests: [] };
+        if (label === "codex-review") return { ran: true, findings: [] };
+        if (label === "synthesize") return { issues: [], root_causes: [], report: "ok" };
+        if (label === "cleanup") return {};
+        return undefined;
+      },
+    },
+  });
+  const call = calls.workflow.find((c) => c.name === "audit");
+  assert.ok(call, "assert が audit を nested workflow として呼ぶ");
+  return call.args;
+};
+
+const resolutionFor = async (auditArgs, probe) => {
+  const { result } = await runWorkflow(auditJs, {
+    args: { ...auditArgs, skipPreflight: true },
+    stubs: {
+      agent: (prompt, opts) => {
+        const label = opts && opts.label;
+        if (label === "scope-kind") return probe;
+        if (label === "scope-status") return { stdout: "" };
+        if (label === "route") return { files: [] };
+        return undefined;
+      },
+    },
+  });
+  return result.resolution;
+};
+
+test("assert が branch mode で渡す範囲指定が、audit 側で revision として解決される", async () => {
+  const auditArgs = await auditArgsFromAssert({ base: "main" }, bootFor("diff", "branch"));
+  assert.equal(auditArgs.scope, "main...HEAD", "assert は範囲指定を scope に載せる");
+
+  const sha = "1df91449501666aca9c6016f05a18de61028cb1e";
+  const resolution = await resolutionFor(auditArgs, {
+    exit_code: 0,
+    stdout: `${sha}\n${sha}\n^${sha}`,
+  });
+  assert.equal(resolution.kind, "revision");
+  assert.doesNotMatch(resolution.command, /ls-files/);
+});
+
+test("assert が target mode で渡す path が、audit 側で追跡ファイル一覧に解決される", async () => {
+  const auditArgs = await auditArgsFromAssert(
+    { scope: "workflows", base: "main" },
+    bootFor("target", ""),
+  );
+  assert.equal(auditArgs.scope, "workflows", "assert は path をそのまま scope に載せる");
+
+  const resolution = await resolutionFor(auditArgs, { exit_code: 0, stdout: "workflows" });
+  assert.equal(resolution.kind, "path");
+  assert.match(resolution.command, /ls-files workflows/);
+});
+
+test("assert が非 main の base で起動されたとき、audit の解決もその base を使う", async () => {
+  const auditArgs = await auditArgsFromAssert({ base: "develop" }, bootFor("diff", "uncommitted"));
+  assert.equal(auditArgs.base, "develop", "assert は自分の base を audit へ渡す");
+
+  // uncommitted の assert は scope を空で渡すので、audit は未コミット変更の有無から解決する。
+  // scope-status stub が空を返すため branch へ落ち、渡された base がコマンドに出る。
+  const resolution = await resolutionFor(auditArgs, null);
+  assert.equal(resolution.kind, "branch");
+  assert.equal(resolution.command, "git diff --name-only develop...HEAD");
+});
