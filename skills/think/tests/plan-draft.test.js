@@ -101,6 +101,32 @@ test("各言語のテンプレートが reference_module を kind と理由の�
   }
 });
 
+// 骨格が落としたフィールドは、そのとおり書いた plan が build の Load で invalid-plan
+// として止まってから初めて分かる。骨格と validate の要求を build.js 側から突き合わせる。
+test("kind が module のとき build.js が必須にするフィールドが骨格の参照モジュール小節にある", () => {
+  const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
+  const fieldMatch = buildJs.match(
+    /refModule\.kind === "module"[\s\S]{0,200}?String\(refModule\.(\w+)\s*\|\|/,
+  );
+  assert.ok(fieldMatch, "build.js の validate から kind module 限定必須フィールドの名前を読める");
+  const fieldName = fieldMatch[1];
+  const headings = { ja: "### 参照モジュール", en: "### Reference module" };
+  for (const [lang, path] of Object.entries(templates)) {
+    const doc = read(path);
+    const heading = headings[lang];
+    const start = doc.indexOf(heading);
+    assert.ok(start !== -1, `${lang}: ${heading} 見出しが存在する`);
+    const rest = doc.slice(start + heading.length);
+    const nextHeading = rest.search(/^#{2,3}[ \t]/m);
+    const section = nextHeading === -1 ? rest : rest.slice(0, nextHeading);
+    assert.match(
+      section,
+      new RegExp(`^- ${fieldName}:`, "m"),
+      `${lang}: 参照モジュール小節が ${fieldName} 行を持つ`,
+    );
+  }
+});
+
 test("各言語のテンプレートが Bug タスク用の root_cause 行を持つ", () => {
   for (const [lang, path] of Object.entries(templates)) {
     const doc = read(path);
@@ -350,7 +376,10 @@ test("テンプレートの実機確認見出しが build.js の抽出正規表�
 test("各言語が委譲した基準に引き取る機構を添えると定める", () => {
   const expected = {
     ja: { skill: /引き取る機構/, template: /この基準を引き取る機構/ },
-    en: { skill: /names the mechanism that takes it on/, template: /mechanism that takes this criterion on/ },
+    en: {
+      skill: /names the mechanism that takes it on/,
+      template: /mechanism that takes this criterion on/,
+    },
   };
   for (const [lang, re] of Object.entries(expected)) {
     assert.match(read(skills[lang]), re.skill, `${lang}: SKILL.md が機構を添える規則を持つ`);

@@ -19,6 +19,7 @@ reference_module: {kind + reason as an object (kind: module/no-module/new-shape)
 
 {Omit the whole subsection when kind is not module.}
 
+- path: {the one path that identifies the module to replicate (`src/foo/`); the files below sit under it}
 - instances: {how many existing features already share this shape; say "Nth instance" when 2 or more}
 - files: {each file to replicate, with its role (`src/foo/list.tsx` list screen)}
 - conventions: {shared conventions later units must keep (composed components, where formatting lives, how state is passed)}
