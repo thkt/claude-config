@@ -19,6 +19,7 @@ reference_module: {kind + reason を object で (kind: module/no-module/new-shap
 
 {kind が module 以外のときはこの小節を丸ごと省略する。}
 
+- path: {複製元を一意に指す path 1 つ (`src/foo/`)。下の files はその配下に並ぶ}
 - instances: {この形を既に共有する既存機能の数。2 以上なら「N 例目」と書く}
 - files: {複製する各ファイルとその役割 (`src/foo/list.tsx` 一覧画面)}
 - conventions: {後続 unit が維持する共有慣例 (合成する共有コンポーネント、フォーマット処理の置き場所、状態の渡し方)}
