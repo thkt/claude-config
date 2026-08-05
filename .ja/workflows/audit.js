@@ -3,7 +3,7 @@ export const meta = {
   description:
     'audit の fan-out を決定論的に行う workflow。ファイルの routing (glob 表) は script 内で完結するため、reviewer の選択が drift しない。git I/O と各 reviewer / critic は agent として走る。pipeline は reviewer -> challenge -> verify -> integrate で、reviewer -> aggregate ではない。単体でも、build から workflow("audit") 経由の入れ子でも呼べる。',
   whenToUse:
-    "diff に対して adversarial な reviewer 一式を決定論的に発火させ、review を main loop の裁量に任せない。/audit または Workflow({name:'audit'}) で直接起動する。launcher skill は無い。起動前に scope や focus が不明なら、ユーザーに 2 点を確認する。focus (all / security / performance / quality / a11y) と scope (staged を含む HEAD diff、path、別 repo のいずれか)。確認結果は args で渡す。例 Workflow({name:'audit', args:{focus:'security', scope:'src/'}})。args を省くと focus=all で HEAD diff を audit する。clarification の受け渡しも fan-out も、この workflow が一手に引き受ける。",
+    "diff に対して adversarial な reviewer 一式を決定論的に発火させ、review を main loop の裁量に任せない。/audit または Workflow({name:'audit'}) で直接起動する。launcher skill は無い。起動前に scope や focus が不明なら、ユーザーに 2 点を確認する。focus (all / security / performance / quality / a11y) と scope (staged を含む HEAD diff、path、別 repo のいずれか)。確認結果は args で渡す。例 Workflow({name:'audit', args:{focus:'security', scope:'src/'}})。scope に path を渡すとその配下の追跡ファイル、revision を渡すとその diff が対象になる。base (既定 main) は、scope 省略かつ未コミット変更が無いときの比較先。args を省くと focus=all で、未コミット変更、無ければ main からの branch diff を audit する。clarification の受け渡しも fan-out も、この workflow が一手に引き受ける。",
   phases: [
     { title: "Pre-flight" },
     { title: "Route" },
@@ -129,6 +129,7 @@ const writeSnapshot = async ({
   phase("Snapshot");
   const payload = JSON.stringify({
     scope: scope || "HEAD",
+    resolution: { kind: resolution.kind, command: resolution.command },
     focus,
     pre_flight: preFlight,
     raw_findings: rawFindings,
@@ -399,11 +400,82 @@ const PREFLIGHT_SCHEMA = {
   },
 };
 
+const SCOPE_KIND_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["exit_code", "stdout"],
+  properties: {
+    exit_code: { type: "integer", description: "exit code of git rev-parse" },
+    stdout: { type: "string", description: "stdout of git rev-parse, verbatim" },
+  },
+};
+
+const SCOPE_STATUS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["stdout"],
+  properties: {
+    stdout: { type: "string", description: "stdout of git status --porcelain, verbatim" },
+  },
+};
+
+// ---- Scope 解決 ----
+// git は revision と path を同じ位置で受けるため、path を渡すとその配下の未コミット変更へ潰れる。
+// 分岐表とコマンド組み立てはこの script が持ち、agent 段には git の実行だけを残す。判断を
+// prompt へ移すと、routing を script 側に置く冒頭コメントの理由が崩れる。
+const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
+// rev-parse は revision を解決すると 40 桁の SHA 行だけを返し、範囲指定では除外側に ^ が付く。
+// path を渡したときはその path をそのまま返す。
+const SHA_LINE = /^\^?[0-9a-f]{40}$/;
+const resolveScope = async () => {
+  if (scope) {
+    const probe = await agent(
+      anchor(
+        `\`git rev-parse ${scope}\` を 1 回だけ実行し、exit code と stdout をそのまま返す。他のコマンドは実行せず、ファイルも git の状態も変更しない。`,
+      ),
+      { label: "scope-kind", phase: "Route", schema: SCOPE_KIND_SCHEMA, model: "haiku" },
+    );
+    const lines = String((probe && probe.stdout) || "")
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+    const revision =
+      probe && probe.exit_code === 0 && lines.length > 0 && lines.every((l) => SHA_LINE.test(l));
+    // path はファイル集合を選ぶので diff を持たず、後段の reviewer はファイル本文を読む側へ回る。
+    return revision
+      ? { kind: "revision", command: `git diff --name-only ${scope}`, diffArg: scope }
+      : { kind: "path", command: `git ls-files ${scope}`, diffArg: "" };
+  }
+  const status = await agent(
+    anchor(
+      `\`git status --porcelain\` を 1 回だけ実行し、stdout をそのまま返す。他のコマンドは実行せず、ファイルも git の状態も変更しない。`,
+    ),
+    { label: "scope-status", phase: "Route", schema: SCOPE_STATUS_SCHEMA, model: "haiku" },
+  );
+  if (!status) {
+    log(
+      "Scope 解決: `git status --porcelain` が出力を返さなかった。未コミット変更の有無を確かめないまま HEAD との diff へ落とす。",
+    );
+    return {
+      kind: "uncommitted",
+      command: "git diff --name-only HEAD",
+      diffArg: "HEAD",
+      undetermined: true,
+    };
+  }
+  return String(status.stdout || "").trim()
+    ? { kind: "uncommitted", command: "git diff --name-only HEAD", diffArg: "HEAD" }
+    : {
+        kind: "branch",
+        command: `git diff --name-only ${base}...HEAD`,
+        diffArg: `${base}...HEAD`,
+      };
+};
+const resolution = await resolveScope();
+
 // ---- Pre-flight ∥ Route。互いにデータを共有しない 2 段なので並行に走らせる ----
 // 素の phase() は parallel() 内で race するため、各 thunk が opts.phase で自分の group を指定する。
-const scopeInstr = scope
-  ? `scope は "${scope}"。対象ファイルは \`git diff --name-only ${scope}\` で列挙する。`
-  : `scope 指定は無い。staged + modified のファイルを対象とする。\`git diff --name-only HEAD\` と \`git diff --name-only --staged\` の和集合を取る。`;
+const scopeInstr = `対象ファイルは \`${resolution.command}\` で列挙する。`;
 const [preFlightRaw, route] = await parallel([
   // test 実行のみ。静的解析は gates hook の担当。test の失敗は context として記録するだけで、
   // block もせず finding にもしない。
@@ -444,11 +516,18 @@ const preFlight = preFlightRaw || {
 
 const files = ((route && route.files) || []).filter((f) => f.path);
 if (!files.length) {
+  // 0 件の理由は種別で決まる。path はその配下に追跡ファイルが無い (対象なし)、
+  // 差分を見る 3 種は差分が空 (変更なし)。
+  const reason = resolution.kind === "path" ? "no-target" : "no-changes";
   return {
     findings: [],
     skipped: [],
     zero_reviewer_files: [],
-    why: "指定 scope に audit 対象のファイルが無い。",
+    resolution: { ...resolution, reason },
+    why:
+      reason === "no-target"
+        ? `scope "${scope}" の配下に追跡対象のファイルが無い (${resolution.command})。`
+        : `対象の差分が空 (${resolution.command})。`,
   };
 }
 
@@ -482,9 +561,9 @@ if (zeroReviewerFiles.length) {
 
 // 対話版の /audit は 30 ファイルを超えると scope を絞るよう prompt を出す。headless では
 // prompt を出せないため、warn だけして続行する。
-if (files.length > 30 && !scope && !noLimit) {
+if (files.length > 30 && !noLimit) {
   log(
-    `ファイル数が soft limit 超過。scope 指定なしで ${files.length} ファイル (> 30)。headless のためそのまま続行する (scope を絞る prompt は出せない)。この warn を消すには scope か noLimit を渡す。`,
+    `ファイル数が soft limit 超過。${resolution.kind} として解決した結果 ${files.length} ファイル (> 30)。headless のためそのまま続行する (scope を絞る prompt は出せない)。この warn を消すには scope を絞るか noLimit を渡す。`,
   );
 }
 
@@ -526,7 +605,11 @@ const raw = await parallel(
       agent(
         anchor(
           `reviewer-${u.reviewer} として、次のファイルを review する。対象は ${u.files.join(", ")}。` +
-            `review の根拠は \`git diff ${scope || "HEAD"}\` の該当 path に置く。finding には必ず file:line を付け、severity を添えて返す。\n` +
+            `${
+              resolution.diffArg
+                ? `review の根拠は \`git diff ${resolution.diffArg}\` の該当 path に置く。`
+                : `対象ファイルの本文をそのまま読んで review する。path scope は diff でなく追跡ファイルの集合を選ぶので、根拠に置く diff が無い。`
+            }finding には必ず file:line を付け、severity を添えて返す。\n` +
             `Churn (fix commit の数。多いほど壊れやすい) は次のとおり。\n${churnMap}\n\n${RELIABILITY}`,
         ),
         {
@@ -587,6 +670,7 @@ if (!findings.length) {
     zero_reviewer_files: zeroReviewerFiles,
     challenge_ran: false,
     verify_ran: false,
+    resolution,
   };
 }
 
@@ -769,4 +853,5 @@ return {
   assignments,
   skipped,
   zero_reviewer_files: zeroReviewerFiles,
+  resolution,
 };

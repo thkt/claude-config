@@ -400,3 +400,27 @@ test("T-010 challenge が結果を返さない run の Integrate prompt には v
     "challenge が結果を返さない run では Integrate prompt に verdict 不在を名指す一文が入る",
   );
 });
+
+// scope 省略時の解決は git status --porcelain の結果に依る。その agent が応答を返さないと
+// 未コミット変更の有無が分からないまま HEAD diff へ落ちるので、何が確かめられなかったかを
+// 返り値と log の両方に残す (WORKFLOWS.md § Degradation recording の fail-open の行)。
+test("T-011 scope 解決の status agent が応答を返さない run が、未確定であることを返り値と log に残す", async () => {
+  const { result, logs } = await runWorkflow(auditJs, {
+    args: { skipPreflight: true },
+    stubs: {
+      agent: (prompt, opts) => {
+        const label = opts && opts.label;
+        if (label === "scope-status") return null;
+        if (label === "route") return { files: [] };
+        return undefined;
+      },
+    },
+  });
+
+  assert.equal(result.resolution.undetermined, true, "未確定であることが返り値に残る");
+  assert.equal(result.resolution.kind, "uncommitted", "確認できないまま HEAD diff へ落ちる");
+  assert.ok(
+    logs.some((l) => /status --porcelain/.test(l)),
+    "どのコマンドの結果を確かめられなかったかが log に残る",
+  );
+});

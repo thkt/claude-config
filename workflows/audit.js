@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Deterministic audit fan-out. File routing (glob table) runs in the script, so reviewer selection cannot drift; git I/O and each reviewer / critic run as agents. Pipeline is reviewer -> challenge -> verify -> integrate, not reviewer -> aggregate. Callable standalone or nested from build via workflow("audit").',
   whenToUse:
-    "Fires the full adversarial reviewer set on a diff deterministically, instead of leaving review to the main loop's discretion. Invoked directly as /audit or Workflow({name:'audit'}); there is no launcher skill. BEFORE invoking, if scope or focus is unclear, ask the user two things: focus (all / security / performance / quality / a11y) and scope (the staged HEAD diff, a path, or another repo). Then pass them as args, e.g. Workflow({name:'audit', args:{focus:'security', scope:'src/'}}); omit args to audit the HEAD diff with focus=all. This workflow owns both the clarification handoff and the fan-out.",
+    "Fires the full adversarial reviewer set on a diff deterministically, instead of leaving review to the main loop's discretion. Invoked directly as /audit or Workflow({name:'audit'}); there is no launcher skill. BEFORE invoking, if scope or focus is unclear, ask the user two things: focus (all / security / performance / quality / a11y) and scope (the staged HEAD diff, a path, or another repo). Then pass them as args, e.g. Workflow({name:'audit', args:{focus:'security', scope:'src/'}}). A path scope targets the tracked files under it, a revision scope targets its diff, and base (default main) is the comparison point when scope is omitted and the tree is clean; omit args to audit the uncommitted changes with focus=all, falling back to the branch diff against main. This workflow owns both the clarification handoff and the fan-out.",
   phases: [
     { title: "Pre-flight" },
     { title: "Route" },
@@ -135,6 +135,7 @@ const writeSnapshot = async ({
   phase("Snapshot");
   const payload = JSON.stringify({
     scope: scope || "HEAD",
+    resolution: { kind: resolution.kind, command: resolution.command },
     focus,
     pre_flight: preFlight,
     raw_findings: rawFindings,
@@ -408,12 +409,85 @@ const PREFLIGHT_SCHEMA = {
   },
 };
 
+const SCOPE_KIND_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["exit_code", "stdout"],
+  properties: {
+    exit_code: { type: "integer", description: "exit code of git rev-parse" },
+    stdout: { type: "string", description: "stdout of git rev-parse, verbatim" },
+  },
+};
+
+const SCOPE_STATUS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["stdout"],
+  properties: {
+    stdout: { type: "string", description: "stdout of git status --porcelain, verbatim" },
+  },
+};
+
+// ---- Scope resolution ----
+// git takes a revision and a path in the same position, so passing a path collapses into
+// the uncommitted changes under it. This script owns the branch table and the command it
+// builds, leaving the agent stage nothing but the git call. Moving that judgment into the
+// prompt undoes the reason the header comment gives for keeping routing in the script.
+const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
+// rev-parse returns 40-hex SHA lines alone once it resolves a revision, with a leading ^ on
+// the excluded side of a range. A path comes back verbatim.
+const SHA_LINE = /^\^?[0-9a-f]{40}$/;
+const resolveScope = async () => {
+  if (scope) {
+    const probe = await agent(
+      anchor(
+        `Run \`git rev-parse ${scope}\` once and return its exit code and stdout verbatim. Run no other command, and change no file and no git state.`,
+      ),
+      { label: "scope-kind", phase: "Route", schema: SCOPE_KIND_SCHEMA, model: "haiku" },
+    );
+    const lines = String((probe && probe.stdout) || "")
+      .trim()
+      .split("\n")
+      .filter(Boolean);
+    const revision =
+      probe && probe.exit_code === 0 && lines.length > 0 && lines.every((l) => SHA_LINE.test(l));
+    // A path selects a file set rather than a diff, so it carries none and the downstream
+    // reviewer reads the files instead.
+    return revision
+      ? { kind: "revision", command: `git diff --name-only ${scope}`, diffArg: scope }
+      : { kind: "path", command: `git ls-files ${scope}`, diffArg: "" };
+  }
+  const status = await agent(
+    anchor(
+      `Run \`git status --porcelain\` once and return its stdout verbatim. Run no other command, and change no file and no git state.`,
+    ),
+    { label: "scope-status", phase: "Route", schema: SCOPE_STATUS_SCHEMA, model: "haiku" },
+  );
+  if (!status) {
+    log(
+      "Scope resolution: `git status --porcelain` returned no output. Falling back to the HEAD diff without confirming whether uncommitted changes exist.",
+    );
+    return {
+      kind: "uncommitted",
+      command: "git diff --name-only HEAD",
+      diffArg: "HEAD",
+      undetermined: true,
+    };
+  }
+  return String(status.stdout || "").trim()
+    ? { kind: "uncommitted", command: "git diff --name-only HEAD", diffArg: "HEAD" }
+    : {
+        kind: "branch",
+        command: `git diff --name-only ${base}...HEAD`,
+        diffArg: `${base}...HEAD`,
+      };
+};
+const resolution = await resolveScope();
+
 // ---- Pre-flight ∥ Route: two stages that share no data run concurrently ----
 // Bare phase() races under parallel(), so each thunk names its own group via
 // opts.phase.
-const scopeInstr = scope
-  ? `Scope is "${scope}". Run \`git diff --name-only ${scope}\` for the file list.`
-  : `No scope given. List staged + modified files: union of \`git diff --name-only HEAD\` and \`git diff --name-only --staged\`.`;
+const scopeInstr = `Run \`${resolution.command}\` for the file list.`;
 const [preFlightRaw, route] = await parallel([
   // Tests-only; static analysis is the gates hook's job. A test failure is
   // recorded as context but does not block and does not become a finding.
@@ -454,11 +528,18 @@ const preFlight = preFlightRaw || {
 
 const files = ((route && route.files) || []).filter((f) => f.path);
 if (!files.length) {
+  // The kind decides why zero came back. A path means no tracked file sits under it
+  // (no target); the three diff kinds mean the diff is empty (no changes).
+  const reason = resolution.kind === "path" ? "no-target" : "no-changes";
   return {
     findings: [],
     skipped: [],
     zero_reviewer_files: [],
-    why: "No files to audit for the given scope.",
+    resolution: { ...resolution, reason },
+    why:
+      reason === "no-target"
+        ? `No tracked file sits under scope "${scope}" (${resolution.command}).`
+        : `The target diff is empty (${resolution.command}).`,
   };
 }
 
@@ -492,9 +573,9 @@ if (zeroReviewerFiles.length) {
 
 // The interactive /audit prompts to narrow scope past 30 files; headless has
 // no prompt, so warn and continue.
-if (files.length > 30 && !scope && !noLimit) {
+if (files.length > 30 && !noLimit) {
   log(
-    `File-count policy: ${files.length} files exceed the soft limit of 30 and no scope was given. Continuing headless (no narrow-scope prompt); pass a scope or noLimit to silence this.`,
+    `File-count policy: resolving as ${resolution.kind} produced ${files.length} files, over the soft limit of 30. Continuing headless (no narrow-scope prompt); narrow the scope or pass noLimit to silence this.`,
   );
 }
 
@@ -536,7 +617,11 @@ const raw = await parallel(
       agent(
         anchor(
           `reviewer-${u.reviewer}. Review these files from the diff. The targets are ${u.files.join(", ")}. ` +
-            `Base the review on \`git diff ${scope || "HEAD"}\` for those paths. Every finding needs file:line. Return findings with severity.\n` +
+            `${
+              resolution.diffArg
+                ? `Base the review on \`git diff ${resolution.diffArg}\` for those paths. `
+                : `Read those files directly. A path scope selects tracked files rather than a diff, so no diff anchors the review. `
+            }Every finding needs file:line. Return findings with severity.\n` +
             `The churn (fix-commit counts, high = fragile) is as follows.\n${churnMap}\n\n${RELIABILITY}`,
         ),
         {
@@ -597,6 +682,7 @@ if (!findings.length) {
     zero_reviewer_files: zeroReviewerFiles,
     challenge_ran: false,
     verify_ran: false,
+    resolution,
   };
 }
 
@@ -783,4 +869,5 @@ return {
   assignments,
   skipped,
   zero_reviewer_files: zeroReviewerFiles,
+  resolution,
 };
