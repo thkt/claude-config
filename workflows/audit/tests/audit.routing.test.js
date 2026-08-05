@@ -161,13 +161,8 @@ test("T-014 agents/reviewers/の定義は ROUTING か skill-only allowlist の�
   );
 });
 
-// T-001〜T-004: audit が scope を revision と path で区別し、種別 (kind) と実行コマンド
-// (command) を resolution として返り値に載せる回。workflows/polish.js の scopeNote に
-// 倣い、判定は rev-parse (scope 指定時の path/revision 判定) と git status --porcelain
-// (scope 省略時の未コミット変更判定) を実行するだけの agent 段 (label: scope-kind /
-// scope-status) に閉じ、分岐表とコマンド組み立ては script (audit.js) 側が持つ想定。
-// route 段はその script 組み立て済みコマンドを実行するだけで、kind/command 自体は
-// script が判定結果からそのまま返り値に載せる。
+// T-001〜T-004: scope の種別ごとの解決を固定する回。分岐は audit.js が持ち、agent 段が
+// 返すのは git の生出力だけなので、stub もその出力だけを模す。
 const scopeStub =
   ({ scopeKind, scopeStatus, route } = {}) =>
   (prompt, opts) => {
@@ -237,7 +232,6 @@ test("scope 省略で未コミット変更が 0 件のとき、base から HEAD 
   const { result } = await runScoped(
     {},
     {
-      // git status --porcelain が空 (未コミット変更 0 件)
       scopeStatus: { stdout: "" },
       route: { files: files.map((path) => ({ path, churn: 2 })) },
     },

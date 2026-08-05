@@ -421,11 +421,11 @@ const SCOPE_STATUS_SCHEMA = {
 
 // ---- Scope 解決 ----
 // git は revision と path を同じ位置で受けるため、path を渡すとその配下の未コミット変更へ潰れる。
-// 種別は `git rev-parse` の出力から読み、分岐表とコマンド組み立てはこの script が持つ。agent 段は
-// git を 1 回実行して結果を返すだけで、どのコマンドを組むかの判断は持たない。
+// 分岐表とコマンド組み立てはこの script が持ち、agent 段には git の実行だけを残す。判断を
+// prompt へ移すと、routing を script 側に置く冒頭コメントの理由が崩れる。
 const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 // rev-parse は revision を解決すると 40 桁の SHA 行だけを返し、範囲指定では除外側に ^ が付く。
-// path を渡したときはその path をそのまま返すため、全行が SHA かどうかで両者が分かれる。
+// path を渡したときはその path をそのまま返す。
 const SHA_LINE = /^\^?[0-9a-f]{40}$/;
 const resolveScope = async () => {
   if (scope) {
@@ -441,8 +441,7 @@ const resolveScope = async () => {
       .filter(Boolean);
     const revision =
       probe && probe.exit_code === 0 && lines.length > 0 && lines.every((l) => SHA_LINE.test(l));
-    // diffArg は後段の reviewer が読む diff の引数。path はファイル集合を選ぶので diff を
-    // 持たず、reviewer はファイル本文を読む側へ回る。
+    // path はファイル集合を選ぶので diff を持たず、後段の reviewer はファイル本文を読む側へ回る。
     return revision
       ? { kind: "revision", command: `git diff --name-only ${scope}`, diffArg: scope }
       : { kind: "path", command: `git ls-files ${scope}`, diffArg: "" };
@@ -518,7 +517,7 @@ const preFlight = preFlightRaw || {
 const files = ((route && route.files) || []).filter((f) => f.path);
 if (!files.length) {
   // 0 件の理由は種別で決まる。path はその配下に追跡ファイルが無い (対象なし)、
-  // 差分を見る 3 種は差分が空 (変更なし)。呼び出し側はこの 2 つを読み分ける。
+  // 差分を見る 3 種は差分が空 (変更なし)。
   const reason = resolution.kind === "path" ? "no-target" : "no-changes";
   return {
     findings: [],

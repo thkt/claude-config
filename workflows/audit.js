@@ -430,13 +430,12 @@ const SCOPE_STATUS_SCHEMA = {
 
 // ---- Scope resolution ----
 // git takes a revision and a path in the same position, so passing a path collapses into
-// the uncommitted changes under it. The kind is read from `git rev-parse` output, and this
-// script owns the branch table and the command it builds. The agent stage runs git once and
-// returns the result; it holds no judgment about which command to assemble.
+// the uncommitted changes under it. This script owns the branch table and the command it
+// builds, leaving the agent stage nothing but the git call. Moving that judgment into the
+// prompt undoes the reason the header comment gives for keeping routing in the script.
 const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 // rev-parse returns 40-hex SHA lines alone once it resolves a revision, with a leading ^ on
-// the excluded side of a range. A path comes back verbatim, so whether every line is a SHA
-// separates the two.
+// the excluded side of a range. A path comes back verbatim.
 const SHA_LINE = /^\^?[0-9a-f]{40}$/;
 const resolveScope = async () => {
   if (scope) {
@@ -452,8 +451,8 @@ const resolveScope = async () => {
       .filter(Boolean);
     const revision =
       probe && probe.exit_code === 0 && lines.length > 0 && lines.every((l) => SHA_LINE.test(l));
-    // diffArg is the diff argument the downstream reviewer reads. A path selects a file
-    // set rather than a diff, so it carries none and the reviewer reads the files instead.
+    // A path selects a file set rather than a diff, so it carries none and the downstream
+    // reviewer reads the files instead.
     return revision
       ? { kind: "revision", command: `git diff --name-only ${scope}`, diffArg: scope }
       : { kind: "path", command: `git ls-files ${scope}`, diffArg: "" };
@@ -530,8 +529,7 @@ const preFlight = preFlightRaw || {
 const files = ((route && route.files) || []).filter((f) => f.path);
 if (!files.length) {
   // The kind decides why zero came back. A path means no tracked file sits under it
-  // (no target); the three diff kinds mean the diff is empty (no changes). A caller
-  // reads the two apart.
+  // (no target); the three diff kinds mean the diff is empty (no changes).
   const reason = resolution.kind === "path" ? "no-target" : "no-changes";
   return {
     findings: [],
