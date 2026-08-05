@@ -6,6 +6,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflow } from "../../_lib/run-workflow.js";
+import { snapshotPayload } from "./_fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const auditJs = join(here, "..", "..", "audit.js");
@@ -178,11 +179,11 @@ const scopeStub =
   };
 
 const runScoped = async (extraArgs, stubOpts) => {
-  const { result, logs } = await runWorkflow(auditJs, {
+  const { result, logs, calls } = await runWorkflow(auditJs, {
     args: { skipPreflight: true, ...extraArgs },
     stubs: { agent: scopeStub(stubOpts) },
   });
-  return { result, logs };
+  return { result, logs, calls };
 };
 
 test("作業ツリーに未コミット変更が無いとき、path を scope に渡すとその path 配下の追跡ファイルが Route の対象に入る", async () => {
@@ -274,6 +275,54 @@ test("対象 0 件で終わる run が、対象なしと変更なしを読み分
   assert.equal(branchResult.resolution.kind, "branch");
   assert.equal(branchResult.resolution.reason, "no-changes");
   assert.notEqual(pathResult.resolution.reason, branchResult.resolution.reason);
+});
+
+// T-005〜T-007: Route が決めた種別を後段の 3 箇所 (reviewer への指示、soft limit の判定、
+// snapshot payload) が読む回。種別ごとに見る対象が変わるので、後段が raw の scope を読み
+// 続けると Route の解決結果と食い違う。
+test("path を scope に渡した run で、reviewer への指示が diff の参照でなくファイル本文の読み取りになる", async () => {
+  const { calls } = await runScoped(
+    { scope: "workflows" },
+    {
+      scopeKind: { exit_code: 0, stdout: "workflows" },
+      route: { files: [{ path: "workflows/audit.js", churn: 0 }] },
+    },
+  );
+
+  // reviewer の label は `<reviewer 名>#<batch>` で、agent 名は prompt の先頭に載る。
+  const reviewer = calls.agent.find((c) => (c.prompt || "").includes("reviewer-"));
+  assert.ok(reviewer, "reviewer が起動する");
+  assert.doesNotMatch(reviewer.prompt, /git diff/, "path scope では diff を参照させない");
+  assert.match(reviewer.prompt, /read those files/i, "ファイル本文の読み取りを指示する");
+});
+
+test("解決後のファイル数が 30 を超えると、scope 指定の有無に関わらず soft limit の log が出る", async () => {
+  const files = Array.from({ length: 31 }, (_, i) => ({ path: `workflows/f${i}.js`, churn: 0 }));
+
+  const { logs } = await runScoped(
+    { scope: "workflows" },
+    { scopeKind: { exit_code: 0, stdout: "workflows" }, route: { files } },
+  );
+
+  assert.ok(
+    logs.some((l) => /soft limit/i.test(l) && l.includes("31")),
+    "scope を渡した run でも 31 ファイルが soft limit の log に載る",
+  );
+});
+
+test("snapshot payload が、解決後の種別と実行したコマンドを記録する", async () => {
+  const { calls } = await runScoped(
+    { scope: "workflows" },
+    {
+      scopeKind: { exit_code: 0, stdout: "workflows" },
+      route: { files: [{ path: "workflows/audit.js", churn: 0 }] },
+    },
+  );
+
+  const payload = snapshotPayload(calls);
+  assert.ok(payload, "snapshot payload が書き出される");
+  assert.equal(payload.resolution.kind, "path");
+  assert.match(payload.resolution.command, /ls-files/);
 });
 
 test("T-015 focus 指定で 0 reviewer になったファイルが件数とパスつきで返り値に載る", async () => {

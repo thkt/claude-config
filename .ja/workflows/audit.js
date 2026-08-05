@@ -129,6 +129,7 @@ const writeSnapshot = async ({
   phase("Snapshot");
   const payload = JSON.stringify({
     scope: scope || "HEAD",
+    resolution: { kind: resolution.kind, command: resolution.command },
     focus,
     pre_flight: preFlight,
     raw_findings: rawFindings,
@@ -440,9 +441,11 @@ const resolveScope = async () => {
       .filter(Boolean);
     const revision =
       probe && probe.exit_code === 0 && lines.length > 0 && lines.every((l) => SHA_LINE.test(l));
+    // diffArg は後段の reviewer が読む diff の引数。path はファイル集合を選ぶので diff を
+    // 持たず、reviewer はファイル本文を読む側へ回る。
     return revision
-      ? { kind: "revision", command: `git diff --name-only ${scope}` }
-      : { kind: "path", command: `git ls-files ${scope}` };
+      ? { kind: "revision", command: `git diff --name-only ${scope}`, diffArg: scope }
+      : { kind: "path", command: `git ls-files ${scope}`, diffArg: "" };
   }
   const status = await agent(
     anchor(
@@ -454,11 +457,20 @@ const resolveScope = async () => {
     log(
       "Scope 解決: `git status --porcelain` が出力を返さなかった。未コミット変更の有無を確かめないまま HEAD との diff へ落とす。",
     );
-    return { kind: "uncommitted", command: "git diff --name-only HEAD", undetermined: true };
+    return {
+      kind: "uncommitted",
+      command: "git diff --name-only HEAD",
+      diffArg: "HEAD",
+      undetermined: true,
+    };
   }
   return String(status.stdout || "").trim()
-    ? { kind: "uncommitted", command: "git diff --name-only HEAD" }
-    : { kind: "branch", command: `git diff --name-only ${base}...HEAD` };
+    ? { kind: "uncommitted", command: "git diff --name-only HEAD", diffArg: "HEAD" }
+    : {
+        kind: "branch",
+        command: `git diff --name-only ${base}...HEAD`,
+        diffArg: `${base}...HEAD`,
+      };
 };
 const resolution = await resolveScope();
 
@@ -550,9 +562,9 @@ if (zeroReviewerFiles.length) {
 
 // 対話版の /audit は 30 ファイルを超えると scope を絞るよう prompt を出す。headless では
 // prompt を出せないため、warn だけして続行する。
-if (files.length > 30 && !scope && !noLimit) {
+if (files.length > 30 && !noLimit) {
   log(
-    `ファイル数が soft limit 超過。scope 指定なしで ${files.length} ファイル (> 30)。headless のためそのまま続行する (scope を絞る prompt は出せない)。この warn を消すには scope か noLimit を渡す。`,
+    `ファイル数が soft limit 超過。${resolution.kind} として解決した結果 ${files.length} ファイル (> 30)。headless のためそのまま続行する (scope を絞る prompt は出せない)。この warn を消すには scope を絞るか noLimit を渡す。`,
   );
 }
 
@@ -594,7 +606,11 @@ const raw = await parallel(
       agent(
         anchor(
           `reviewer-${u.reviewer} として、次のファイルを review する。対象は ${u.files.join(", ")}。` +
-            `review の根拠は \`git diff ${scope || "HEAD"}\` の該当 path に置く。finding には必ず file:line を付け、severity を添えて返す。\n` +
+            `${
+              resolution.diffArg
+                ? `review の根拠は \`git diff ${resolution.diffArg}\` の該当 path に置く。`
+                : `対象ファイルの本文をそのまま読んで review する。path scope は diff でなく追跡ファイルの集合を選ぶので、根拠に置く diff が無い。`
+            }finding には必ず file:line を付け、severity を添えて返す。\n` +
             `Churn (fix commit の数。多いほど壊れやすい) は次のとおり。\n${churnMap}\n\n${RELIABILITY}`,
         ),
         {

@@ -135,6 +135,7 @@ const writeSnapshot = async ({
   phase("Snapshot");
   const payload = JSON.stringify({
     scope: scope || "HEAD",
+    resolution: { kind: resolution.kind, command: resolution.command },
     focus,
     pre_flight: preFlight,
     raw_findings: rawFindings,
@@ -451,9 +452,11 @@ const resolveScope = async () => {
       .filter(Boolean);
     const revision =
       probe && probe.exit_code === 0 && lines.length > 0 && lines.every((l) => SHA_LINE.test(l));
+    // diffArg is the diff argument the downstream reviewer reads. A path selects a file
+    // set rather than a diff, so it carries none and the reviewer reads the files instead.
     return revision
-      ? { kind: "revision", command: `git diff --name-only ${scope}` }
-      : { kind: "path", command: `git ls-files ${scope}` };
+      ? { kind: "revision", command: `git diff --name-only ${scope}`, diffArg: scope }
+      : { kind: "path", command: `git ls-files ${scope}`, diffArg: "" };
   }
   const status = await agent(
     anchor(
@@ -465,11 +468,20 @@ const resolveScope = async () => {
     log(
       "Scope resolution: `git status --porcelain` returned no output. Falling back to the HEAD diff without confirming whether uncommitted changes exist.",
     );
-    return { kind: "uncommitted", command: "git diff --name-only HEAD", undetermined: true };
+    return {
+      kind: "uncommitted",
+      command: "git diff --name-only HEAD",
+      diffArg: "HEAD",
+      undetermined: true,
+    };
   }
   return String(status.stdout || "").trim()
-    ? { kind: "uncommitted", command: "git diff --name-only HEAD" }
-    : { kind: "branch", command: `git diff --name-only ${base}...HEAD` };
+    ? { kind: "uncommitted", command: "git diff --name-only HEAD", diffArg: "HEAD" }
+    : {
+        kind: "branch",
+        command: `git diff --name-only ${base}...HEAD`,
+        diffArg: `${base}...HEAD`,
+      };
 };
 const resolution = await resolveScope();
 
@@ -563,9 +575,9 @@ if (zeroReviewerFiles.length) {
 
 // The interactive /audit prompts to narrow scope past 30 files; headless has
 // no prompt, so warn and continue.
-if (files.length > 30 && !scope && !noLimit) {
+if (files.length > 30 && !noLimit) {
   log(
-    `File-count policy: ${files.length} files exceed the soft limit of 30 and no scope was given. Continuing headless (no narrow-scope prompt); pass a scope or noLimit to silence this.`,
+    `File-count policy: resolving as ${resolution.kind} produced ${files.length} files, over the soft limit of 30. Continuing headless (no narrow-scope prompt); narrow the scope or pass noLimit to silence this.`,
   );
 }
 
@@ -607,7 +619,11 @@ const raw = await parallel(
       agent(
         anchor(
           `reviewer-${u.reviewer}. Review these files from the diff. The targets are ${u.files.join(", ")}. ` +
-            `Base the review on \`git diff ${scope || "HEAD"}\` for those paths. Every finding needs file:line. Return findings with severity.\n` +
+            `${
+              resolution.diffArg
+                ? `Base the review on \`git diff ${resolution.diffArg}\` for those paths. `
+                : `Read those files directly. A path scope selects tracked files rather than a diff, so no diff anchors the review. `
+            }Every finding needs file:line. Return findings with severity.\n` +
             `The churn (fix-commit counts, high = fragile) is as follows.\n${churnMap}\n\n${RELIABILITY}`,
         ),
         {
