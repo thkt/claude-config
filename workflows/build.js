@@ -257,7 +257,11 @@ const PLAN_SCHEMA = obj(
         tests: {
           type: "array",
           items: obj(["id", "name"], {
-            id: { type: "string", description: "T-001 format (unique across the plan)" },
+            id: {
+              type: "string",
+              description:
+                "T-001 format, or the prefixed T-SK077 form where the repo's convention uses one (unique across the plan)",
+            },
             name: {
               type: "string",
               description:
@@ -356,9 +360,11 @@ const afterHeading = body.slice(planHeading.index + planHeading[0].length);
 const nextSection = afterHeading.search(/^##[^#]/m);
 const planSection = nextSection === -1 ? afterHeading : afterHeading.slice(0, nextSection);
 // Match ids at their definition position only, not prose references (see think templates/plan.md).
+// A test id's prefix is optional. Where a repo's convention writes prefixed ids in test
+// docs (`[T-SK077]`), a plan restricted to bare ids leaves the rename to implementation time.
 const idSet = (re) => new Set([...planSection.matchAll(re)].map((m) => m[1]));
 const bodyUnitIds = idSet(/^###\s+(U-\d{3})\b/gm);
-const bodyTestIds = idSet(/^[ \t]*[-*+][ \t]+(T-\d{3})\b/gm);
+const bodyTestIds = idSet(/^[ \t]*[-*+][ \t]+(T-[A-Z]*\d{3})\b/gm);
 
 const plan = await agent(
   anchor(
