@@ -37,7 +37,7 @@ if [[ -f "$NPMRC" ]] && grep -q '^ignore-scripts=true' "$NPMRC" 2>/dev/null; the
   exit 0
 fi
 
-REASON="~/.npmrc に ignore-scripts=true が未設定です。サプライチェーン攻撃対策として必須です。echo 'ignore-scripts=true' >> ~/.npmrc を実行後に再試行してください。"
+REASON="npm-safe-install: ~/.npmrc に ignore-scripts=true が無く、依存の install script が任意のコードを実行できる。echo 'ignore-scripts=true' >> ~/.npmrc を実行してから再試行する。"
 jq -n --arg reason "$REASON" '{
   hookSpecificOutput: {
     hookEventName: "PreToolUse",

@@ -22,7 +22,7 @@ Read `language` from `~/.claude/settings.json` and translate the PR body into th
 If there are no commits, the directory is not a git repository, or gh auth fails, report the error and abort.
 
 1. Detect the base branch (§ Base Branch Detection)
-2. Select the base branch via AskUserQuestion. The options are main / develop / detected
+2. Select the base branch via AskUserQuestion. The options are main, develop, and the detected one. When the detected branch is main or develop, two options collapse into one, so take the detected branch without asking
 3. Run the § Analysis Sources commands in parallel
 4. Detect UI changes (§ UI Change Detection)
 5. Select the template (§ PR Template)

@@ -61,7 +61,7 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 
 ## Non-obvious
 
-1. `Skill("use-context-root-cause-analysis")` を起動して 5 Whys を実行する。Finding ID または Finding 直接入力経由なら、finding の file:line と summary を 5 Whys の起点として渡す。Symptom/Root cause/Pattern を出力する。
+1. `Skill("use-context-root-cause-analysis")` を起動して 5 Whys を実行する。Finding ID または Finding 直接入力経由なら、finding の file:line と summary を 5 Whys の起点として渡す。Symptom/Root cause/Pattern を出力する。Issue Handoff 経由で issue 本文が原因を file:line まで特定しているときは 5 Whys を省き、その原因を Root cause として引き継いで Pattern だけ判定する。
 2. `Task(subagent_type: generator-test)` で regression test を生成する。渡すのは symptom、再現手順、step 1 の root cause
 3. regression test が Red であることを確認
 4. 修正を適用

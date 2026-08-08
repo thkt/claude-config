@@ -18,7 +18,7 @@ esac
 
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
 
-# Only process package manager commands (bash builtin parameter expansion — no fork)
+# Only process package manager commands. Bash builtin parameter expansion, no fork
 FIRST_TOKEN="${COMMAND%% *}"
 case "$FIRST_TOKEN" in
   npm|npx|pnpm|yarn|bun|bunx) ;;
@@ -101,7 +101,7 @@ jq -n \
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
       permissionDecision: "allow",
-      permissionDecisionReason: ($from + " → ni"),
+      permissionDecisionReason: ("auto-package-manager: " + $from + " → ni"),
       updatedInput: {
         command: $cmd
       }

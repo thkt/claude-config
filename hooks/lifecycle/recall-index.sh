@@ -40,7 +40,7 @@ fi
 touch "$LAST"
 
 # Detach so the embed pass never delays the prompt. SQLite WAL serializes concurrent writers,
-# so parallel session starts are safe without an explicit lock (verified: WAL checkpoints clean).
+# so parallel session starts are safe without an explicit lock.
 ( "$RECALL" index >/dev/null 2>&1 & )
 
 exit 0
