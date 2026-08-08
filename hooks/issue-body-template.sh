@@ -2,12 +2,25 @@
 # PreToolUse hook: match a gh issue create body against the skeleton its title's type
 # points at, and stop the filing when the two diverge.
 # Hands the --body-file contents and the title to skills/issue/scripts/validate-issue-body.py.
-# A body that cannot be read is denied alongside one the validator rejects, since a filing
-# that skips the comparison is the same escape this hook exists to close.
+# Every state that leaves the body uncompared denies the filing alongside a body the
+# validator rejects, since skipping the comparison is the same escape this hook exists to
+# close. Each reason names the way out of the state it stops.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 VALIDATOR="$SCRIPT_DIR/../skills/issue/scripts/validate-issue-body.py"
+
+# Not a top-level `decision`: PreToolUse accepts only "block" there, so an "approve" written
+# at that level asserts a permission the harness never grants.
+deny() {
+  jq -nc --arg r "$1" '{
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: $r
+    }
+  }'
+}
 
 input=$(cat)
 
@@ -66,13 +79,7 @@ sys.stdout.write("".join(segment + "\x00" for segment in segments))
 ' 2>/dev/null); then
   # Losing the split leaves no segment identified as the filing, so the body goes
   # uninspected the same way an unreadable body file leaves it uninspected.
-  jq -nc --arg r "issue-body-template: コマンドの分割に失敗し起票を照合できない。python3 が動くか確認する" '{
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: $r
-    }
-  }'
+  deny "issue-body-template: コマンドの分割に失敗し起票を照合できない。python3 が動くか確認する"
   exit 0
 fi
 
@@ -100,8 +107,7 @@ if [[ -z "$title" ]]; then
 fi
 
 if [[ -z "$title" ]] || ! [[ "$title" =~ "^\[([A-Za-z]+)\]" ]]; then
-  jq -nc --arg r "issue-body-template: タイトルに型プレフィックス ([Bug] 等) が無く骨格の照合ができないため素通しした" \
-    '{"decision":"approve","reason":$r}'
+  deny "issue-body-template: タイトルに型プレフィックス ([Bug] 等) が無く、どの骨格と照合するかを決められない。タイトルを型で始める"
   exit 0
 fi
 issue_type="${match[1]:l}"
@@ -116,8 +122,7 @@ repo_dir=$(printf '%s\n' "$repo_segment" | sed -nE 's/^[[:space:]]*cd[[:space:]]
 
 body_file=$(printf '%s\n' "$create_segment" | sed -nE "s/.*--body-file[[:space:]]+('([^']*)'|\"([^\"]*)\"|([^ ]+)).*/\2\3\4/p" | head -1) || true
 if [[ -z "$body_file" ]]; then
-  jq -nc --arg r "issue-body-template: --body がインライン指定で --body-file 経由ではないため骨格の照合ができず素通しした" \
-    '{"decision":"approve","reason":$r}'
+  deny "issue-body-template: 本文が --body のインライン指定で骨格と照合できない。本文を一時ファイルへ書き --body-file にリテラルの絶対パスで渡す"
   exit 0
 fi
 
@@ -126,13 +131,7 @@ fi
 # A hook carries none of the shell state the command will run under, so a path written as
 # `"$B"` or `$TMPDIR/body.md` arrives unexpanded and names nothing on disk.
 if [[ ! -f "$body_file" ]]; then
-  jq -nc --arg r "issue-body-template: --body-file の指す先 ($body_file) が読めず本文を照合できない。パスを変数でなくリテラルの絶対パスで書く" '{
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: $r
-    }
-  }'
+  deny "issue-body-template: --body-file の指す先 ($body_file) が読めず本文を照合できない。パスを変数でなくリテラルの絶対パスで書く"
   exit 0
 fi
 
@@ -149,21 +148,25 @@ for candidate in \
 done
 
 if [[ -z "$template" ]]; then
-  # No skeleton anywhere for this type, so there is nothing to compare the body against.
+  known=$(ls "$SCRIPT_DIR/../skills/issue/templates/" 2>/dev/null | sed 's/\.md$//' | paste -sd, -) || known=""
+  choices=""
+  [[ -n "$known" ]] && choices="型を $known のいずれかにするか、"
+  deny "issue-body-template: 型 [$issue_type] に対応する骨格が .github/ISSUE_TEMPLATE/ にも skills/issue/templates/ にも無く本文を照合できない。${choices}skills/issue/templates/${issue_type}.md を足す"
   exit 0
 fi
 
-validate_output=$(python3 "$VALIDATOR" "$template" "$title" "$body_file" 2>/dev/null) || true
-# An empty join means the validator found nothing, could not run, or wrote no JSON. All
-# three leave the filing alone, so one extraction covers both the test and the message.
-reason=$(printf '%s' "$validate_output" | jq -r '.errors // [] | join("; ")' 2>/dev/null) || reason=""
+# The validator exits 1 both for a rejected body and for its own crash, since an uncaught
+# Python exception exits 1 too. The contract that separates them is the JSON on stdout.
+# stderr stays unredirected so a traceback reaches the debug log.
+validate_output=$(python3 "$VALIDATOR" "$template" "$title" "$body_file") || true
+errors_type=$(printf '%s' "$validate_output" | jq -r '.errors | type' 2>/dev/null) || errors_type=""
 
+if [[ "$errors_type" != "array" ]]; then
+  deny "issue-body-template: validator ($VALIDATOR) が errors 配列を返さず本文を照合できない。python3 で直接実行して出力を確かめる"
+  exit 0
+fi
+
+reason=$(printf '%s' "$validate_output" | jq -r '.errors | join("; ")' 2>/dev/null) || reason=""
 if [[ -n "$reason" ]]; then
-  jq -nc --arg r "issue-body-template: 本文の節構成が骨格と食い違う ($reason)" '{
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: $r
-    }
-  }'
+  deny "issue-body-template: 本文の節構成が骨格と食い違う ($reason)"
 fi

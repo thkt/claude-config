@@ -244,7 +244,11 @@ const PLAN_SCHEMA = obj(
         tests: {
           type: "array",
           items: obj(["id", "name"], {
-            id: { type: "string", description: "T-001 形式 (plan 全体で一意)" },
+            id: {
+              type: "string",
+              description:
+                "T-001 形式、または repo の規約に合わせた接頭辞つきの T-SK077 形式 (plan 全体で一意)",
+            },
             name: {
               type: "string",
               description: "検証する仕様の 1 行言明 (条件 + 期待結果)。テスト名になる",
@@ -340,9 +344,11 @@ const afterHeading = body.slice(planHeading.index + planHeading[0].length);
 const nextSection = afterHeading.search(/^##[^#]/m);
 const planSection = nextSection === -1 ? afterHeading : afterHeading.slice(0, nextSection);
 // id は定義位置のみ照合し、prose 中の参照は数えない (think templates/plan.md 参照)。
+// テスト id の接頭辞は任意。doc に [T-SK077] のような接頭辞つき id を書く規約の
+// repo で plan が接頭辞なししか書けないと、実装時の改番に頼ることになる。
 const idSet = (re) => new Set([...planSection.matchAll(re)].map((m) => m[1]));
 const bodyUnitIds = idSet(/^###\s+(U-\d{3})\b/gm);
-const bodyTestIds = idSet(/^[ \t]*[-*+][ \t]+(T-\d{3})\b/gm);
+const bodyTestIds = idSet(/^[ \t]*[-*+][ \t]+(T-[A-Z]*\d{3})\b/gm);
 
 const plan = await agent(
   anchor(
