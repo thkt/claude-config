@@ -101,7 +101,7 @@ jq -n \
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
       permissionDecision: "allow",
-      permissionDecisionReason: ($from + " → ni"),
+      permissionDecisionReason: ("auto-package-manager: " + $from + " → ni"),
       updatedInput: {
         command: $cmd
       }

@@ -22,7 +22,7 @@ source "$SCRIPT_DIR/lib/japanese-detect.sh"
 
 # $'...', not '...': jq --arg passes the string through as written, so an unexpanded `\n`
 # arrives as two characters and collapses the table into one line.
-STRUCTURE_CHECKLIST=$'## 構造レビュー（ワークスロップ防止）\n\nbody を送信する前に、以下を確認してください：\n\n| チェック | 問い |\n|---|---|\n| 筆者の判断 | 筆者自身の結論が1〜3行で冒頭に書かれているか？AI出力が主役になっていないか |\n| 半分にできるか | この文書は半分にできるか？できないなら何が重要か分かっていない可能性がある |\n| 事実と意見の区別 | 事実・推測・提案にラベルが貼られ、分離されているか |\n| アクションの明確さ | 読み手に求める行動が具体的か（「ご確認ください」ではなく「Xを判断してください」） |\n| 読み手の認知負荷 | この文書は読み手の負荷を下げているか、仕事を押し付けていないか |\n\n問題がある項目のみ body を修正してください。'
+STRUCTURE_CHECKLIST=$'## 構造レビュー\n\nこの body は作成済み。下表から外れる項目があれば gh issue edit か gh pr edit で直す。\n\n| チェック | 問い |\n|---|---|\n| 筆者の判断 | 筆者自身の結論が冒頭 1-3 行にあるか。AI の出力が主役になっていないか |\n| 分量 | 半分に削れるか。削れるなら、何を伝えるかを絞り切れていない |\n| 事実と意見 | 事実、推測、提案が分けて書かれているか |\n| 読み手の行動 | 求める行動が具体的か。「ご確認ください」でなく「X を判断する」の形か |\n| 読み手の負担 | 読み手が判断に使う時間を減らしているか。調べ直す作業を渡していないか |\n\n外れる項目が無ければ何もしない。'
 
 input=$(cat)
 
@@ -105,7 +105,7 @@ if [[ -f "$TEXTLINT_CONFIG" ]] && printf '%s' "$body" | has_japanese $ja_thresho
 
   if [[ -n "$lint_output" ]]; then
     lint_clean=$(printf '%s\n' "$lint_output" | grep -v "^$tmpfile$" | sed "s|$tmpfile|$target_label|g")
-    lint_section=$(printf '## textlint 校正結果\n\n以下の指摘を確認し、必要に応じて %s テキストを修正してください。\n\n%s\n\n' "$target_label" "$lint_clean")
+    lint_section=$(printf '## textlint 校正結果\n\nこの %s は作成済み。以下の指摘のうち直す価値があるものを編集で反映する。\n\n%s\n\n' "$target_label" "$lint_clean")
   fi
 fi
 
