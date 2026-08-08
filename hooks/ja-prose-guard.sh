@@ -95,9 +95,9 @@ fi
 
 prose_lines=$(printf '%s\n' "$prose" | grep -c . || true)
 
-# stdout の JSON で返す。exit 0 の stderr は誰にも表示されないので、警告がそこに
-# 出るだけでは退行を止められない。systemMessage が人間に、additionalContext が
-# 書き換えた本人に届く。
+# Returned as JSON on stdout. Stderr from a hook that exits 0 reaches no one, so a warning
+# written there cannot stop the regression. systemMessage reaches the human, and
+# additionalContext reaches whoever rewrote the file.
 msg="ja-prose-guard: .ja/ は canonical で prose は日本語 (MIRROR.md)。$file_path のコメント / docstring ${prose_lines} 行に日本語が 1 文字もない。英語で書き直していないか確認する。過去訳は git log --oneline -- \"$file_path\" から取れる。"
 
 jq -n --arg m "$msg" '{

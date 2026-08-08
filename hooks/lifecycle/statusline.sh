@@ -91,7 +91,6 @@ render_context() {
     percentage=$(printf "%.0f" "$CONTEXT_USED_PCT")
     remaining=$((100 - percentage))
 
-    # Cache hit rate
     local cache_hit_pct=0 has_cache=0
     if [[ "${CACHE_READ:-}" =~ ^[0-9]+$ ]] && [[ "${CACHE_CREATION:-}" =~ ^[0-9]+$ ]]; then
         local cache_total=$((CACHE_READ + CACHE_CREATION))
