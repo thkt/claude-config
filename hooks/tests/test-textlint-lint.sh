@@ -17,10 +17,13 @@ test_issue_create_advisory() {
   json=$(make_bash_json "$cmd")
   local output
   output=$(echo "$json" | "$HOOK" 2>/dev/null) || true
-  assert_contains "outputs JSON" "decision" "$output"
-  assert_contains "decision is approve" "approve" "$output"
+  assert_contains "returns hookSpecificOutput" "hookSpecificOutput" "$output"
+  assert_contains "names the PreToolUse event" "PreToolUse" "$output"
+  assert_not_contains "no top-level decision" '"decision"' "$output"
   assert_contains "has textlint findings" "textlint 校正結果" "$output"
   assert_contains "has structure checklist" "構造レビュー" "$output"
+  # A real newline encodes as \n in JSON, an unexpanded one as \\n.
+  assert_not_contains "newlines are expanded" '\\n' "$output"
 }
 
 test_issue_create_clean() {
@@ -32,8 +35,22 @@ test_issue_create_clean() {
   local output
   output=$(echo "$json" | "$HOOK" 2>/dev/null) || true
   assert_contains "has structure checklist" "構造レビュー" "$output"
-  assert_contains "decision is approve" "approve" "$output"
+  assert_contains "returns hookSpecificOutput" "additionalContext" "$output"
   assert_not_contains "no textlint findings" "textlint 校正結果" "$output"
+}
+
+test_tmpdir_trailing_slash() {
+  echo "T-019: TMPDIR が末尾スラッシュ付きでも一時ファイルのパスが指摘に残らない"
+  # macOS が渡す TMPDIR は末尾スラッシュ付き。走らせる環境の TMPDIR が既にその形の場合が
+  # あるので 2 つ足し、剥ぎ取りが 1 つで止まらないことまで見る。
+  local body='この機能はユーザーが設定を変更することができます。この説明は日本語判定の五十文字閾値を超えるための追加の文章です。'
+  local cmd="gh issue create --title \"test\" --body \"$body\""
+  local json
+  json=$(make_bash_json "$cmd")
+  local output
+  output=$(echo "$json" | TMPDIR="${TMPDIR:-/tmp}//" "$HOOK" 2>/dev/null) || true
+  assert_contains "has textlint findings" "textlint 校正結果" "$output"
+  assert_not_contains "no temp file path" "body.md" "$output"
 }
 
 test_non_gh_command_skipped() {
@@ -125,12 +142,13 @@ test_english_body_structure_only() {
   local output
   output=$(echo "$json" | "$HOOK" 2>/dev/null) || true
   assert_contains "has structure checklist" "構造レビュー" "$output"
-  assert_contains "decision is approve" "approve" "$output"
+  assert_contains "returns hookSpecificOutput" "additionalContext" "$output"
 }
 
 echo "=== textlint-lint.sh tests ==="
 test_issue_create_advisory
 test_issue_create_clean
+test_tmpdir_trailing_slash
 test_non_gh_command_skipped
 test_pr_create_advisory
 test_pr_create_multiline_body

@@ -1,15 +1,28 @@
 #!/bin/zsh
 # PreToolUse hook: lint text for gh issue/pr create (+ structure review checklist) and git commit
-# Returns advisory (approve + additionalContext) with textlint results; checklist is issue/pr only
+# Returns the findings as additionalContext; checklist is issue/pr only
 set -euo pipefail
 
 TEXTLINT_DIR="$HOME/.claude/hooks/textlint"
 TEXTLINT_CONFIG="$TEXTLINT_DIR/.textlintrc.json"
 
+# Not a top-level decision / additionalContext pair: PreToolUse reads context only out of
+# hookSpecificOutput, so findings written at that level reach no one.
+advise() {
+  jq -nc --arg c "$1" '{
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      additionalContext: $c
+    }
+  }'
+}
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/lib/japanese-detect.sh"
 
-STRUCTURE_CHECKLIST='## 構造レビュー（ワークスロップ防止）\n\nbody を送信する前に、以下を確認してください：\n\n| チェック | 問い |\n|---|---|\n| 筆者の判断 | 筆者自身の結論が1〜3行で冒頭に書かれているか？AI出力が主役になっていないか |\n| 半分にできるか | この文書は半分にできるか？できないなら何が重要か分かっていない可能性がある |\n| 事実と意見の区別 | 事実・推測・提案にラベルが貼られ、分離されているか |\n| アクションの明確さ | 読み手に求める行動が具体的か（「ご確認ください」ではなく「Xを判断してください」） |\n| 読み手の認知負荷 | この文書は読み手の負荷を下げているか、仕事を押し付けていないか |\n\n問題がある項目のみ body を修正してください。'
+# $'...', not '...': jq --arg passes the string through as written, so an unexpanded `\n`
+# arrives as two characters and collapses the table into one line.
+STRUCTURE_CHECKLIST=$'## 構造レビュー（ワークスロップ防止）\n\nbody を送信する前に、以下を確認してください：\n\n| チェック | 問い |\n|---|---|\n| 筆者の判断 | 筆者自身の結論が1〜3行で冒頭に書かれているか？AI出力が主役になっていないか |\n| 半分にできるか | この文書は半分にできるか？できないなら何が重要か分かっていない可能性がある |\n| 事実と意見の区別 | 事実・推測・提案にラベルが貼られ、分離されているか |\n| アクションの明確さ | 読み手に求める行動が具体的か（「ご確認ください」ではなく「Xを判断してください」） |\n| 読み手の認知負荷 | この文書は読み手の負荷を下げているか、仕事を押し付けていないか |\n\n問題がある項目のみ body を修正してください。'
 
 input=$(cat)
 
@@ -67,8 +80,12 @@ ja_threshold=""
 
 lint_section=""
 if [[ -f "$TEXTLINT_CONFIG" ]] && printf '%s' "$body" | has_japanese $ja_threshold; then
-  # BSD mktemp only substitutes trailing X's, so make a temp dir and put the .md inside
-  tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/textlint-lint-XXXXXX")
+  # BSD mktemp only substitutes trailing X's, so make a temp dir and put the .md inside.
+  # The path removal below compares whole lines, and macOS hands over TMPDIR with a trailing
+  # slash, so a `//` left in this path would never match what textlint prints.
+  tmp_root="${TMPDIR:-/tmp}"
+  while [[ "$tmp_root" == */ ]]; do tmp_root="${tmp_root%/}"; done
+  tmpdir=$(mktemp -d "$tmp_root/textlint-lint-XXXXXX")
   tmpfile="$tmpdir/body.md"
   trap 'rm -rf "$tmpdir"' EXIT
   printf '%s\n' "$body" > "$tmpfile"
@@ -88,7 +105,7 @@ if [[ -f "$TEXTLINT_CONFIG" ]] && printf '%s' "$body" | has_japanese $ja_thresho
 
   if [[ -n "$lint_output" ]]; then
     lint_clean=$(printf '%s\n' "$lint_output" | grep -v "^$tmpfile$" | sed "s|$tmpfile|$target_label|g")
-    lint_section="## textlint 校正結果\n\n以下の指摘を確認し、必要に応じて $target_label テキストを修正してください。\n\n$lint_clean\n\n"
+    lint_section=$(printf '## textlint 校正結果\n\n以下の指摘を確認し、必要に応じて %s テキストを修正してください。\n\n%s\n\n' "$target_label" "$lint_clean")
   fi
 fi
 
@@ -97,7 +114,7 @@ if [[ "$mode" == "commit" ]]; then
   if [[ -z "$lint_section" ]]; then
     exit 0
   fi
-  jq -nc --arg r "textlint: commit message 校正" --arg c "$lint_section" '{"decision":"approve","reason":$r,"additionalContext":$c}'
+  advise "$lint_section"
 else
-  jq -nc --arg r "textlint: 日本語校正 + 構造レビュー" --arg c "${lint_section}${STRUCTURE_CHECKLIST}" '{"decision":"approve","reason":$r,"additionalContext":$c}'
+  advise "${lint_section}${STRUCTURE_CHECKLIST}"
 fi
