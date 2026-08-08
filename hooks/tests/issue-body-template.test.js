@@ -114,15 +114,20 @@ test("T-005 gh issue create 以外の Bash コマンドでは何も返さず素�
   }
 });
 
-test("T-006 タイトルに型プレフィックスが無い起票は理由を残して素通しする", () => {
+test("T-006 タイトルに型プレフィックスが無い起票は骨格を特定できず deny する", () => {
   withBodyFile(validBugBody, (bodyPath) => {
     const cmd = `gh issue create --title "Login fails for some users" --body-file ${bodyPath}`;
     const { out, stdout } = runHook(cmd);
     assert.ok(out, `stdout が JSON として parse できる (実際: ${JSON.stringify(stdout)})`);
-    assert.notEqual(
+    assert.equal(
       out?.hookSpecificOutput?.permissionDecision,
       "deny",
-      "型プレフィックスが無いだけでは deny しない",
+      `型が無いと骨格を選べないので deny を返す (実際: ${JSON.stringify(stdout)})`,
+    );
+    assert.equal(
+      out?.decision,
+      undefined,
+      `top-level decision は返さない (実際: ${JSON.stringify(stdout)})`,
     );
     assert.ok(
       stdout.includes("型プレフィックス"),
@@ -131,15 +136,20 @@ test("T-006 タイトルに型プレフィックスが無い起票は理由を�
   });
 });
 
-test("T-007 本文が --body でインライン指定された起票は理由を残して素通しする", () => {
+test("T-007 本文が --body でインライン指定された起票は deny する", () => {
   const cmd =
     'gh issue create --title "[Bug] Login fails for some users" --body "Login fails for some users."';
   const { out, stdout } = runHook(cmd);
   assert.ok(out, `stdout が JSON として parse できる (実際: ${JSON.stringify(stdout)})`);
-  assert.notEqual(
+  assert.equal(
     out?.hookSpecificOutput?.permissionDecision,
     "deny",
-    "--body のインライン指定だけでは deny しない",
+    `インライン本文は骨格と照合できないので deny を返す (実際: ${JSON.stringify(stdout)})`,
+  );
+  assert.equal(
+    out?.decision,
+    undefined,
+    `top-level decision は返さない (実際: ${JSON.stringify(stdout)})`,
   );
   assert.ok(
     stdout.includes("--body-file"),
@@ -293,6 +303,64 @@ test("T-015 コマンドを分割できないときは骨格に沿う本文で�
       stdout,
       /"permissionDecision":"deny"/,
       `分割できないときは deny を返す (実際: ${JSON.stringify(stdout)})`,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("T-016 骨格の無い型のタイトルは照合できないため deny する", () => {
+  const dir = mkdtempSync(join(tmpdir(), "issue-body-notemplate-"));
+  try {
+    // spike は .github/ISSUE_TEMPLATE/ にも skills/issue/templates/ にも骨格を持たない型。
+    const bodyPath = join(dir, "body.md");
+    writeFileSync(bodyPath, "## Nonsense\n\nx\n", "utf8");
+    const cmd = `cd ${dir} && gh issue create --title "[Spike] 骨格を持たない型" --body-file ${bodyPath}`;
+    const { out, stdout } = runHook(cmd);
+    assert.ok(out, `stdout が JSON として parse できる (実際: ${JSON.stringify(stdout)})`);
+    assert.equal(
+      out?.hookSpecificOutput?.permissionDecision,
+      "deny",
+      `骨格を持たない型の起票は deny を返す (実際: ${JSON.stringify(stdout)})`,
+    );
+    assert.ok(
+      stdout.includes("spike"),
+      `理由に骨格の無い型名が載る (実際: ${JSON.stringify(stdout)})`,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("T-017 validator を実行できないときは骨格に沿う本文でも deny する", () => {
+  const dir = mkdtempSync(join(tmpdir(), "issue-body-validator-"));
+  try {
+    // hook は自身の位置からの相対で骨格と validator を探す。複製を hooks/ に置き隣に骨格を
+    // 置くと、骨格の探索を通り抜けて validator の実行だけが失敗する状態になる。
+    const broken = join(dir, "hooks", "broken.sh");
+    const prepared = spawnSync("sh", [
+      "-c",
+      [
+        `mkdir -p ${join(dir, "hooks")} ${join(dir, "skills", "issue", "templates")}`,
+        `cp ${join(root, "skills", "issue", "templates", "bug.md")} ${join(dir, "skills", "issue", "templates")}/`,
+        `sed 's#^VALIDATOR=.*#VALIDATOR="/nonexistent/validate-issue-body.py"#' ${hook} > ${broken}`,
+        `chmod +x ${broken}`,
+      ].join(" && "),
+    ]);
+    assert.equal(prepared.status, 0, `複製の用意が成功する (実際: ${prepared.stderr})`);
+
+    const bodyPath = join(dir, "body.md");
+    writeFileSync(bodyPath, validBugBody, "utf8");
+    const command = `cd ${dir} && gh issue create --title "[Bug] Login fails for some users" --body-file ${bodyPath}`;
+    const res = spawnSync(broken, {
+      input: JSON.stringify({ tool_name: "Bash", tool_input: { command } }),
+      encoding: "utf8",
+    });
+    const stdout = res.stdout ?? "";
+    assert.match(
+      stdout,
+      /"permissionDecision":"deny"/,
+      `validator を実行できないときは deny を返す (実際: ${JSON.stringify(stdout)})`,
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });
