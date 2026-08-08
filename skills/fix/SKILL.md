@@ -61,7 +61,7 @@ Obvious skips both RCA and regression test generation, so it is limited to findi
 
 ## Non-obvious
 
-1. Run 5 Whys via `Skill("use-context-root-cause-analysis")`. If via Finding ID or Direct Finding Input, pass the finding's file:line and summary as the 5 Whys starting point. Output Symptom / Root cause / Pattern.
+1. Run 5 Whys via `Skill("use-context-root-cause-analysis")`. If via Finding ID or Direct Finding Input, pass the finding's file:line and summary as the 5 Whys starting point. Output Symptom / Root cause / Pattern. When an Issue Handoff body already names the cause down to a file:line, skip the 5 Whys, carry that cause as the Root cause, and judge only the Pattern.
 2. `Task(subagent_type: generator-test)` for the regression test. Pass symptom, repro steps, and the root cause from step 1
 3. Verify regression test is Red
 4. Apply fix

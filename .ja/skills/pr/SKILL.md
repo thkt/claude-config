@@ -22,7 +22,7 @@ argument-hint: "[issue reference or context]"
 commit なし、Git リポジトリでない、gh 認証失敗のいずれかを検出したら、エラーを報告して中止する。
 
 1. base ブランチを検出 (§ Base ブランチ検出)
-2. base ブランチを AskUserQuestion で選択する。選択肢は main/develop/検出済み
+2. base ブランチを AskUserQuestion で選択する。選択肢は main, develop, 検出結果。検出結果が main か develop と一致するときは選択肢が重複するので、聞かずに検出結果を使う
 3. § 分析ソースの各コマンドを並列実行する
 4. UI 変更を検出 (§ UI 変更検出)
 5. テンプレートを選ぶ (§ PR テンプレート)
