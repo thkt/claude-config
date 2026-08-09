@@ -32,13 +32,13 @@ Chosen option: "問いを強制発火させ、何を残すかは人間が選ぶ"
 
 - Good, because 想起に依存せず、訂正を残すかどうかの判断が毎セッション必ず 1 度は本人に届く
 - Good, because 問うだけなので hook の所要時間が数ミリ秒に収まり、旧実装で退行の原因だったレイテンシが構造的に発生しない。Stop で会話が継続するのは `decision: "block"` を返した場合に限られ、`systemMessage` と `additionalContext` はターンを増やさない
-- Good, because 答えの置き場所が `rules/` 配下なので、`InstructionsLoaded` の対象として毎セッション context に入る
+- Good, because 答えの置き場所が `.claude/rules/` 配下なので、`InstructionsLoaded` の対象としてこのリポジトリで作業するセッションの context に入る。他のリポジトリでは読まれない
 - Bad, because 答えを受けて規則に書く動作は文言で拘束するだけで、書くかどうかの裁量は残る
 - Bad, because ターンの区切りは作業の区切りとは限らず、作業途中で問われる回が出る
 
 ### Confirmation
 
-`hooks/lifecycle/reflection-ask.sh` が Stop hook に配線され、`systemMessage` に問いを載せて返すこと。同スクリプトが LLM を起動しないこと (`claude` を呼ぶ行を持たないこと) をコードレビューで確認する。debounce のタイムスタンプが更新され、同一 window 内の 2 回目以降が無出力で終わることをテストで確認する。
+`hooks/lifecycle/reflection-ask.sh` が Stop hook に配線され、`systemMessage` に問いを載せて返すこと。同スクリプトが LLM を起動しないこと (`claude` を呼ぶ行を持たないこと) をコードレビューで確認する。直前に尋ねた session_id が記録され、同一セッション内の 2 回目以降が無出力で終わることをテストで確認する。
 
 ## Pros and Cons of the Options
 
@@ -73,11 +73,11 @@ Stop hook が debounce つきで問いを出し、答えを受けて規則ファ
 
 ### Transition Plan
 
-`hooks/lifecycle/reflection-ask.sh` と規則ファイル `rules/CORRECTIONS.md` を追加し、`settings.json` の Stop へ配線する。配線は sandbox の書込拒否対象なので `update-config` skill が担う。旧実装の資材はリポジトリに残っていないため移行対象は無い。
+`hooks/lifecycle/reflection-ask.sh` と規則ファイル `.claude/rules/CORRECTIONS.md` を追加し、`settings.json` の Stop へ配線する。配線は sandbox の書込拒否対象なので `update-config` skill が担う。旧実装の資材はリポジトリに残っていないため移行対象は無い。
 
 ### Review Schedule
 
-配線から 1 か月後に `rules/CORRECTIONS.md` の追記件数を数える。ゼロなら問いが届いていないか、届いても答えが書かれていない。どちらであるかは transcript の問い出現回数と突き合わせて判別する。
+配線から 1 か月後に `.claude/rules/CORRECTIONS.md` の追記件数を数える。ゼロなら問いが届いていないか、届いても答えが書かれていない。どちらであるかは transcript の問い出現回数と突き合わせて判別する。
 
 ### Reassessment Triggers
 

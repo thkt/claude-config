@@ -24,7 +24,8 @@ history/
 
 # Claude
 /.analysis/
-/.claude/
+/.claude/*
+!/.claude/rules/
 /.credentials.json
 /agent-memory/
 /chrome/
