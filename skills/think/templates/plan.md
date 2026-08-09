@@ -21,7 +21,7 @@ reference_module: {kind + reason as an object (kind: module/no-module/new-shape)
 
 - path: {the one path that identifies the module to replicate (`src/foo/`); the files below sit under it}
 - instances: {how many existing features already share this shape; say "Nth instance" when 2 or more}
-- files: {each file to replicate, with its role (`src/foo/list.tsx` list screen)}
+- files: {path only, one per file (`src/foo/list.tsx`, `src/foo/detail.tsx`). Roles go in conventions. build's Revalidate checks each entry as a path, so a description mixed in stops the run as plan-drift}
 - conventions: {shared conventions later units must keep (composed components, where formatting lives, how state is passed)}
 
 ### Preconditions

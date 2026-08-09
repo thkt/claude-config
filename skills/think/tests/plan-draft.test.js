@@ -89,6 +89,18 @@ test("think SKILL.md の contract authoring 規則が選択 (引用ラダー) �
   assert.match(en, /SOURCING/, "en: SOURCING.md の規律参照");
 });
 
+test("各言語のテンプレートが reference module の files をパスのみと指示する", () => {
+  // build の Revalidate は files の各要素をそのままパスとして実在確認する
+  // (workflows/build.js の refModuleEntries)。役割の説明が混ざると plan-drift で止まる。
+  for (const [lang, path] of Object.entries(templates)) {
+    const line = read(path)
+      .split("\n")
+      .find((l) => l.startsWith("- files:") && l.includes("list.tsx"));
+    assert.ok(line, `${lang}: reference module の files 行がある`);
+    assert.match(line, /パスのみ|path only/, `${lang}: files 行がパスのみと指示する`);
+  }
+});
+
 test("各言語のテンプレートが reference_module を kind と理由の形で示す", () => {
   for (const [lang, path] of Object.entries(templates)) {
     const doc = read(path);
