@@ -1167,6 +1167,74 @@ test("code に commit: true / issue / untracked_baseline が渡り、戻り値 u
   assert.equal(result.unit_commits, 1, "戻り値 unit_commits に unit commit 件数が載る");
 });
 
+// 本番 runtime が未解決の名前に対して投げるメッセージ。sibling() の退避判定はこの
+// 文言に依存するので、stub 側も同じ形で投げる。
+const unknownWorkflowError = (name) =>
+  new Error(`workflow('${name}'): no workflow with that name. Available: code`);
+
+// 入れ子の失敗まで捨てて build: 名前空間へ退避すると、最後に残る失敗は退避先の名前解決
+// エラーになり、読み手は build.js が存在しない workflow を呼んでいると読む。
+test("入れ子 workflow が投げた内部エラーは build: 名前空間への退避に置き換わらない", async () => {
+  const names = [];
+  const stubs = {
+    ...makeStubs(),
+    workflow: (name) => {
+      names.push(name);
+      if (name === "code") throw new Error("code: StructuredOutput retry cap (5) exceeded");
+      throw unknownWorkflowError(name);
+    },
+  };
+  await assert.rejects(runWorkflow(buildJs, { args, stubs }), (err) => {
+    assert.match(err.message, /retry cap/, "内部エラーが失敗理由として残る");
+    assert.doesNotMatch(
+      err.message,
+      /no workflow with that name/,
+      "名前解決エラーに置き換わらない",
+    );
+    return true;
+  });
+  assert.deepEqual(names, ["code"], "内部エラーのあと build:code を呼ばない");
+});
+
+// 入れ子の失敗は子の stack を message に運ぶ。子が返した文字列に名前解決の文言が
+// 混じっても、呼んだ名前ごと照合していれば退避へ倒れない。
+test("内部エラーの message に名前解決の文言が混じっても退避しない", async () => {
+  const names = [];
+  const stubs = {
+    ...makeStubs(),
+    workflow: (name) => {
+      names.push(name);
+      if (name === "code")
+        throw new Error("code: agent answered `no workflow with that name` verbatim");
+      throw unknownWorkflowError(name);
+    },
+  };
+  await assert.rejects(runWorkflow(buildJs, { args, stubs }), /answered/);
+  assert.deepEqual(names, ["code"], "文言の混入では退避しない");
+});
+
+// plugin 配布では素の名前が解決しない。退避が働く経路は名前解決の失敗だけに残す。
+test("素の名前が解決しないときは build: 名前空間へ退避して完走する", async () => {
+  const names = [];
+  const stubs = {
+    ...makeStubs(),
+    workflow: (name) => {
+      names.push(name);
+      if (name !== "build:code") throw unknownWorkflowError(name);
+      return {
+        completed: ["U-001"],
+        anomalies: [],
+        commits: [{ unit: "U-001", subject: "feat: sample subject" }],
+        tests_pass: true,
+        gates_pass: true,
+      };
+    },
+  };
+  const { result } = await runWorkflow(buildJs, { args, stubs });
+  assert.deepEqual(names, ["code", "build:code"], "素の名前を先に試してから退避する");
+  assert.equal(result.stopped, undefined, "退避先が解決すれば build は完走する");
+});
+
 // 分岐点 sha を取れないまま unit commit を有効にすると、比較対象を失った Verify が
 // 無言で全 pass する。sha が使えないときは commit を止めて従来の HEAD 基準へ退避する。
 test("head が sha でないときは code の commit を false にし diff 基準を HEAD へ戻す", async () => {

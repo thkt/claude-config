@@ -59,11 +59,17 @@ const anchor = (p) =>
   `すべての git / ファイル / ビルドコマンドを ${repo} のリポジトリから実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`;
 const guard = ` この step で最初の commit / push / ブランチ変更を行う前に \`cd ${repo} && git rev-parse --show-toplevel\` を実行し、出力が ${repo} であることを確認する。異なる場合は git を変更せず中断し、不一致を報告する。`;
 // plugin 配布では sibling が build: 名前空間、bundled が ~/.claude/plugins を解決する。
-// どちらも素の dev tree 形を先に試すので、dev tree はそのまま動く。
+// どちらも素の dev tree 形を先に試すので、dev tree はそのまま動く。退避は名前が解決
+// しないときに限る。入れ子が投げたエラーはそれ自体が真の失敗で、捨てると退避先の
+// 名前解決エラーが最終的な失敗として残る。
 const sibling = async (name, a) => {
   try {
     return await workflow(name, a);
-  } catch {
+  } catch (e) {
+    // 呼んだ名前ごと照合する。入れ子の失敗は子の stack を message に運ぶので、文言だけ
+    // で照合すると子が返した文字列に同じ語が混じったときに退避へ倒れる。
+    const unresolved = `workflow('${name}'): no workflow with that name`;
+    if (!String(e?.message ?? "").includes(unresolved)) throw e;
     return await workflow(`build:${name}`, a);
   }
 };
