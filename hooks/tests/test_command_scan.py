@@ -35,6 +35,12 @@ class TestCommands(unittest.TestCase):
         text = "cat <<-END\nrm -rf /\nEND\necho done"
         self.assertEqual(self.names(text), ["cat", "echo"])
 
+    def test_marker_without_a_closing_line_is_not_a_heredoc(self):
+        """T-016 終端行の無い << は引用符の中の語なので、後続の行を落とさない"""
+        # 落としてしまうと、この後に続く削除がスキャンに届かず security hook が素通しする。
+        self.assertEqual(self.names("git commit -m 'see << EOF\nfor details'\nrm -rf x"), ["git", "rm"])
+        self.assertEqual(self.names("echo '<< END'\nrm -rf x"), ["echo", "rm"])
+
     def test_quotes_spanning_lines_hold_together(self):
         """T-015 引用符が行をまたいでも 1 トークンにまとめる"""
         # 複数行のコミットメッセージがこの形。行ごとに切ってから字句解析すると、

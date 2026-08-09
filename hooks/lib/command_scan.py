@@ -37,20 +37,30 @@ _HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1")
 def _without_heredocs(text):
     """Drop heredoc bodies, keeping the lines that are commands.
 
-    Newlines separate commands, so a heredoc body left in place turns each of its
-    lines into one. That is how a commit message written through `<< 'EOF'` came to
+    Newlines separate commands, so a body left in place turns each of its lines into a
+    command of its own. That is how a commit message written through `<< 'EOF'` came to
     be read as a filing.
+
+    The closing line has to be found before anything is dropped. Running before shlex
+    means quoting is still unresolved here, so `-m 'see << EOF'` looks the same as a real
+    marker; without a closing line it is quoted text, and dropping the rest of the input
+    for it would hide every command that follows.
     """
-    kept, closing = [], None
-    for line in text.split("\n"):
-        if closing is not None:
-            if line.strip() == closing:
-                closing = None
-            continue
+    lines = text.split("\n")
+    kept = []
+    index = 0
+    while index < len(lines):
+        line = lines[index]
         kept.append(line)
+        index += 1
         match = _HEREDOC.search(line)
-        if match:
-            closing = match.group(2)
+        if not match:
+            continue
+        closing = match.group(2)
+        for end in range(index, len(lines)):
+            if lines[end].strip() == closing:
+                index = end + 1
+                break
     return "\n".join(kept)
 
 
