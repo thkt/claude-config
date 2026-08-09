@@ -35,6 +35,13 @@ class TestCommands(unittest.TestCase):
         text = "cat <<-END\nrm -rf /\nEND\necho done"
         self.assertEqual(self.names(text), ["cat", "echo"])
 
+    def test_quotes_spanning_lines_hold_together(self):
+        """T-015 引用符が行をまたいでも 1 トークンにまとめる"""
+        # 複数行のコミットメッセージがこの形。行ごとに切ってから字句解析すると、
+        # どの行でも引用符が閉じず解析不能になる。
+        text = "git commit -m 'fix: 1 行目\n\ngh issue create を本文で説明する行'"
+        self.assertEqual(self.names(text), ["git"])
+
     def test_quoted_text_is_not_a_command(self):
         """T-005 引用符の内側にある語はコマンド位置に立たない"""
         self.assertEqual(self.names("git commit -m 'remove rm calls'"), ["git"])

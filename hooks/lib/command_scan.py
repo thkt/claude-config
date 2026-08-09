@@ -22,7 +22,14 @@ VALUED_WRAPPER_FLAGS = frozenset({"-u", "-g", "-p", "-n", "-P", "-I", "-d", "-s"
 # find runs whatever follows these, so the scan continues past them inside one command.
 EXEC_FLAGS = frozenset({"-exec", "-execdir", "-ok", "-okdir"})
 
-SEPARATORS = frozenset({";", "|", "||", "&&", "&"})
+SEPARATORS = frozenset({";", "|", "||", "&&", "&", "\n"})
+
+# shlex counts a newline as whitespace, which would join the lines on either side of it
+# into one command. Swapping it for a punctuation character keeps it a token of its own,
+# while a newline inside quotes stays part of its token, so a multi-line commit message
+# holds together instead of failing to close.
+_NEWLINE = "\x00"
+_PUNCTUATION = "();<>|&" + _NEWLINE
 
 _HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1")
 
@@ -47,10 +54,10 @@ def _without_heredocs(text):
     return "\n".join(kept)
 
 
-def _tokens(line):
-    lexer = shlex.shlex(line, posix=True, punctuation_chars=True)
+def _tokens(text):
+    lexer = shlex.shlex(text.replace("\n", _NEWLINE), posix=True, punctuation_chars=_PUNCTUATION)
     lexer.whitespace_split = True
-    return list(lexer)
+    return [token.replace(_NEWLINE, "\n") for token in lexer]
 
 
 def commands(text):
@@ -59,19 +66,16 @@ def commands(text):
     Raises ValueError on input shlex cannot close, which lets a fail-closed hook
     deny rather than guess.
     """
-    for line in _without_heredocs(text).split("\n"):
-        if not line.strip():
+    current = []
+    for token in _tokens(_without_heredocs(text)):
+        if token in SEPARATORS:
+            if current:
+                yield from _resolve(current)
+            current = []
             continue
-        current = []
-        for token in _tokens(line):
-            if token in SEPARATORS:
-                if current:
-                    yield from _resolve(current)
-                current = []
-                continue
-            current.append(token)
-        if current:
-            yield from _resolve(current)
+        current.append(token)
+    if current:
+        yield from _resolve(current)
 
 
 def _resolve(tokens):

@@ -287,7 +287,7 @@ test("T-015 コマンドを分割できないときは骨格に沿う本文で�
     const broken = join(dir, "broken.sh");
     const prepared = spawnSync("sh", [
       "-c",
-      `sed "s/| python3 -c/| nonexistent-python3 -c/" ${hook} > ${broken} && chmod +x ${broken}`,
+      `sed "s/python3 -c/nonexistent-python3 -c/" ${hook} > ${broken} && chmod +x ${broken}`,
     ]);
     assert.equal(prepared.status, 0, `複製の用意が成功する (実際: ${prepared.stderr})`);
 
@@ -307,6 +307,25 @@ test("T-015 コマンドを分割できないときは骨格に沿う本文で�
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("T-024 heredoc の本文に起票コマンドの語があっても deny しない", () => {
+  // コミットメッセージを heredoc で渡すと本文の各行がコマンド列として走査され、
+  // 行頭が gh issue create になる行を持つ git commit が止められていた。
+  const command = [
+    "cat > /tmp/claude/msg.txt << 'EOF'",
+    "fix(hooks): 何かを直す",
+    "",
+    "gh issue create --title x を本文で説明している行",
+    "EOF",
+    "git commit -F /tmp/claude/msg.txt",
+  ].join("\n");
+  const { stdout } = runHook(command);
+  assert.equal(
+    stdout.trim(),
+    "",
+    `heredoc 本文の起票語では何も返さない (実際: ${JSON.stringify(stdout)})`,
+  );
 });
 
 test("T-016 骨格の無い型のタイトルは照合できないため deny する", () => {
