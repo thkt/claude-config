@@ -52,6 +52,6 @@ The globals a script can read are the injected parameters `agent`, `workflow`, `
 
 `Workflow({name: "..."})` runs the script as it stood at session start. Editing `workflows/<name>.js` within that session leaves the pre-edit version running for every call made by name. To run the edited version, pass `Workflow({scriptPath: "<absolute path>"})`.
 
-Checking a workflow you just fixed by its name therefore returns the unfixed result. A fix that adds a field to the return value shows up as a missing field, while a fix that leaves the return shape unchanged leaves no trace that the old version ran. Verify within the editing session through scriptPath.
+Checking a workflow you just fixed by its name therefore returns the unfixed result, and a fix that leaves the return shape unchanged leaves no trace that the old version ran.
 
 scriptPath reaches the top-level call alone. A nested call inside a script (`build.js` calling code) resolves by name, so fixing `code.js` and checking it through build still runs the `code.js` from session start. Passing scriptPath on the nested side is rejected in a session where `CLAUDE_WORKFLOW_NAME_ONLY` is set. When the script you fixed runs nested, run that script directly from the top level through scriptPath.

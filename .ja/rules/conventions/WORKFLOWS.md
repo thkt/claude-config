@@ -52,6 +52,6 @@ script が読めるグローバルは注入引数 `agent`/`workflow`/`parallel`/
 
 `Workflow({name: "..."})` はセッション開始時点の script を実行する。同じセッションで `workflows/<name>.js` を編集しても、name で呼ぶ限り編集前の版が走る。編集後の版を走らせるには `Workflow({scriptPath: "<絶対パス>"})` を渡す。
 
-そのため、自分が直した workflow を name で確かめると、直っていない結果が返る。返り値に新しいフィールドを足す修正なら欠落から気づけるが、返り値の形を変えない修正では古い版が走った手がかりが残らない。編集した session 内での確認は scriptPath で行う。
+そのため、直した workflow を name で確かめると直っていない結果が返り、返り値の形を変えない修正では古い版が走った手がかりも残らない。
 
 ただし scriptPath が効くのは最上位の呼び出しに限る。script 内の入れ子呼び出し (`build.js` が code を呼ぶ形) は名前で解決するため、`code.js` を直して build 越しに確かめると、やはりセッション開始時点の `code.js` が走る。入れ子側で scriptPath を渡す形も `CLAUDE_WORKFLOW_NAME_ONLY` が立つセッションでは拒否される。入れ子で走る script を直したときは、その script を最上位から scriptPath で直接走らせて確かめる。
