@@ -6,8 +6,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/lib/japanese-detect.sh"
 
-# Resolved from this script's own location rather than $HOME/.claude: the tests run the
-# hook out of a checkout wherever CI places it, and a fixed path finds no config there.
+# Not $HOME/.claude, which names the installed harness alone: a checkout run from
+# anywhere else finds no config there.
 TEXTLINT_DIR="$SCRIPT_DIR/textlint"
 TEXTLINT_CONFIG="$TEXTLINT_DIR/.textlintrc.json"
 
