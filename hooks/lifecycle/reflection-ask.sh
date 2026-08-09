@@ -6,8 +6,7 @@
 # Stop can, and it fires once the agent already believes the work is done.
 #
 # Scoped by session, not by elapsed time: Stop fires on every turn, and a window in
-# minutes either repeats inside one long session or skips a short one entirely. A
-# 22-hour session on 2026-08-09 would have been asked six times under a 4-hour window.
+# minutes repeats inside a long session while skipping a short one entirely.
 #
 # Fail-open (advisory): never block the turn from finishing.
 set +e

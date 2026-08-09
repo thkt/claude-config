@@ -17,11 +17,10 @@ make_stop_json() {
   echo "{\"session_id\":\"${1:-test-session}\",\"hook_event_name\":\"Stop\",\"stop_hook_active\":false}"
 }
 
-# HOME is overridden per test to an empty temp dir, so the record of the last asked
-# session starts absent every time: no leakage from a real run, and no leakage
-# between tests in this file.
-# A `VAR=val cmd1 | cmd2` prefix scopes only to cmd1, not the rest of the
-# pipeline, so HOME must be exported for the whole subshell to reach $HOOK.
+# HOME is overridden per test so the record of the last asked session starts absent,
+# leaking neither from a real run nor between tests here.
+# A `VAR=val cmd1 | cmd2` prefix scopes to cmd1 alone, so HOME is exported for the whole
+# subshell to reach $HOOK.
 run_hook() {
   (export HOME="$FAKE_HOME"; make_stop_json "${1:-}" | "$HOOK") 2>/dev/null
 }
@@ -75,8 +74,8 @@ test_script_never_launches_claude() {
   local exists code
   exists=$([[ -s "$HOOK" ]] && echo yes || echo no)
   assert_eq "hook script exists" "yes" "$exists"
-  # Matched as invocation forms, not as the bare word: the file recording the last asked
-  # session is named claude-reflection-ask.session, so the word alone reports a false hit.
+  # Invocation forms, not the bare word: the session record is named
+  # claude-reflection-ask.session, which the word alone would hit.
   code=$(grep -v '^[[:space:]]*#' "$HOOK" 2>/dev/null || true)
   assert_not_contains "no bare claude invocation" "claude " "$code"
   assert_not_contains "no claude backtick substitution" '`claude' "$code"
