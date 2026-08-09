@@ -15,6 +15,8 @@ set +e
 
 cat >/dev/null
 
+command -v jq >/dev/null 2>&1 || exit 0
+
 # Throttle: skip if asked within the last WINDOW_MIN minutes (timestamp shared across sessions).
 WINDOW_MIN=240
 LAST="${HOME}/.cache/claude-reflection-ask.last"
