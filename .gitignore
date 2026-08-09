@@ -25,7 +25,6 @@ history/
 # Claude
 /.analysis/
 /.claude/*
-# Rules loaded only while working in this repository. The rest of .claude/ is local state.
 !/.claude/rules/
 /.credentials.json
 /agent-memory/
