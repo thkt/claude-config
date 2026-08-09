@@ -47,3 +47,11 @@ workflow script は注入引数を持つ 1 つの関数本体として評価さ�
 テストは通常の ES module として実行されるので、この制約が掛かるのは script 本体だけ。`workflows/_lib/run-workflow.js` のようにテストから import する共有ハーネスは置ける。テスト側は `vm.compileFunction` に `parsingContext` を渡して本番と同じグローバル集合を再現する。
 
 script が読めるグローバルは注入引数 `agent`/`workflow`/`parallel`/`pipeline`/`phase`/`log`/`args` と、本番が別途供給する `budget`/`console`/`setTimeout`/`clearTimeout` に限られる。`crypto`/`fetch`/`process`/`Buffer`/`require`/`structuredClone`/`TextEncoder`/`URL`/`queueMicrotask` は存在せず、参照すると `ReferenceError` になる。`Date.now()`、`Math.random()`、引数なし `new Date()` は resume を理由に挙げる Error に差し替わり、引数つき `new Date()` と `Math.floor` は影響を受けない。文字列からのコード生成 (`eval`、`new Function`) も無効で `EvalError` になる。ハーネスは `budget` を注入しないので、`budget` を読む script はテストだけが赤くなる。
+
+## script の解決タイミング
+
+`Workflow({name: "..."})` はセッション開始時点の script を実行する。同じセッションで `workflows/<name>.js` を編集しても、name で呼ぶ限り編集前の版が走る。編集後の版を走らせるには `Workflow({scriptPath: "<絶対パス>"})` を渡す。
+
+そのため、自分が直した workflow を name で確かめると、直っていない結果が返る。返り値に新しいフィールドを足す修正なら欠落から気づけるが、返り値の形を変えない修正では古い版が走った手がかりが残らない。編集した session 内での確認は scriptPath で行う。
+
+ただし scriptPath が効くのは最上位の呼び出しに限る。script 内の入れ子呼び出し (`build.js` が code を呼ぶ形) は名前で解決するため、`code.js` を直して build 越しに確かめると、やはりセッション開始時点の `code.js` が走る。入れ子側で scriptPath を渡す形も `CLAUDE_WORKFLOW_NAME_ONLY` が立つセッションでは拒否される。入れ子で走る script を直したときは、その script を最上位から scriptPath で直接走らせて確かめる。
