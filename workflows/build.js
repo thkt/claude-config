@@ -62,10 +62,15 @@ const anchor = (p) =>
 const guard = ` Before the first commit / push / branch change in this step, run \`cd ${repo} && git rev-parse --show-toplevel\` and confirm the output is ${repo}. If it differs, abort without mutating git and report the mismatch.`;
 // As a plugin, sibling resolves the build: namespace and bundled resolves
 // ~/.claude/plugins. Both try the bare dev-tree form first, so the dev tree keeps working.
+// Falling back on anything but an unresolved name discards the nested workflow's own failure
+// and leaves the fallback's name-resolution error as the only one left. A nested failure
+// carries the child's stack in its message, so match on the name, not on the wording.
 const sibling = async (name, a) => {
   try {
     return await workflow(name, a);
-  } catch {
+  } catch (e) {
+    const unresolved = `workflow('${name}'): no workflow with that name`;
+    if (!String(e?.message ?? "").includes(unresolved)) throw e;
     return await workflow(`build:${name}`, a);
   }
 };

@@ -1167,6 +1167,57 @@ test("code に commit: true / issue / untracked_baseline が渡り、戻り値 u
   assert.equal(result.unit_commits, 1, "戻り値 unit_commits に unit commit 件数が載る");
 });
 
+// sibling() の退避判定は本番 runtime の文言に依存するので、stub も同じ形で投げる。
+const unknownWorkflowError = (name) =>
+  new Error(`workflow('${name}'): no workflow with that name. Available: code`);
+
+test("入れ子 workflow が投げた内部エラーは build: 名前空間への退避に置き換わらない", async () => {
+  const names = [];
+  const stubs = {
+    ...makeStubs(),
+    workflow: (name) => {
+      names.push(name);
+      if (name === "code") throw new Error("code: StructuredOutput retry cap (5) exceeded");
+      throw unknownWorkflowError(name);
+    },
+  };
+  await assert.rejects(runWorkflow(buildJs, { args, stubs }), /retry cap/);
+  assert.deepEqual(names, ["code"], "内部エラーのあと build:code を呼ばない");
+});
+
+// 入れ子の失敗は子の stack を message に運ぶので、同じ語が混じることがある。
+test("内部エラーの message に名前解決の文言が混じっても退避しない", async () => {
+  const names = [];
+  const stubs = {
+    ...makeStubs(),
+    workflow: (name) => {
+      names.push(name);
+      if (name === "code")
+        throw new Error("code: agent answered `no workflow with that name` verbatim");
+      throw unknownWorkflowError(name);
+    },
+  };
+  await assert.rejects(runWorkflow(buildJs, { args, stubs }), /answered/);
+  assert.deepEqual(names, ["code"], "文言の混入では退避しない");
+});
+
+// plugin 配布では素の名前が解決しない。退避が働く経路は名前解決の失敗だけに残す。
+test("素の名前が解決しないときは build: 名前空間へ退避して完走する", async () => {
+  const names = [];
+  const base = makeStubs();
+  const stubs = {
+    ...base,
+    workflow: (name, a) => {
+      names.push(name);
+      if (name !== "build:code") throw unknownWorkflowError(name);
+      return base.workflow("code", a);
+    },
+  };
+  const { result } = await runWorkflow(buildJs, { args, stubs });
+  assert.deepEqual(names, ["code", "build:code"], "素の名前を先に試してから退避する");
+  assert.equal(result.stopped, undefined, "退避先が解決すれば build は完走する");
+});
+
 // 分岐点 sha を取れないまま unit commit を有効にすると、比較対象を失った Verify が
 // 無言で全 pass する。sha が使えないときは commit を止めて従来の HEAD 基準へ退避する。
 test("head が sha でないときは code の commit を false にし diff 基準を HEAD へ戻す", async () => {
