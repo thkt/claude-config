@@ -5,10 +5,8 @@
 # agent's own turn, so the reflection would never reach the transcript it describes.
 # Stop can, and it fires once the agent already believes the work is done.
 #
-# Throttled: because it fires on every Stop, asking every turn would repeat the same
-# question inside one work session. Reuse recall-index.sh's throttle structure (shared
-# timestamp file under ~/.cache, find -mmin window check) so it asks at most once per
-# WINDOW_MIN instead of once per turn.
+# Throttled: it fires on every Stop, and asking every turn would repeat the same question
+# inside one work session. The structure follows recall-index.sh.
 #
 # Fail-open (advisory): never block the turn from finishing.
 set +e
