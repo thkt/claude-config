@@ -8,10 +8,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/test-helpers.sh"
 HOOK="$SCRIPT_DIR/../textlint-lint.sh"
 
+# A body textlint always flags: it carries the redundant することができます and clears the
+# 50-character bar has_japanese sets. Raising either threshold moves both together.
+LINTED_BODY='この機能はユーザーが設定を変更することができます。この説明は日本語判定の五十文字閾値を超えるための追加の文章です。'
+
 test_issue_create_advisory() {
   echo "T-006: gh issue create with problematic body returns textlint findings"
   # ≥50 Japanese chars (has_japanese threshold) with a deterministic finding (redundant expression)
-  local body='この機能はユーザーが設定を変更することができます。この説明は日本語判定の五十文字閾値を超えるための追加の文章です。'
+  local body="$LINTED_BODY"
   local cmd="gh issue create --title \"test\" --body \"$body\""
   local json
   json=$(make_bash_json "$cmd")
@@ -43,7 +47,7 @@ test_tmpdir_trailing_slash() {
   echo "T-019: TMPDIR が末尾スラッシュ付きでも一時ファイルのパスが指摘に残らない"
   # macOS が渡す TMPDIR は末尾スラッシュ付き。走らせる環境の TMPDIR が既にその形の場合が
   # あるので 2 つ足し、剥ぎ取りが 1 つで止まらないことまで見る。
-  local body='この機能はユーザーが設定を変更することができます。この説明は日本語判定の五十文字閾値を超えるための追加の文章です。'
+  local body="$LINTED_BODY"
   local cmd="gh issue create --title \"test\" --body \"$body\""
   local json
   json=$(make_bash_json "$cmd")
@@ -63,7 +67,7 @@ test_non_gh_command_skipped() {
 
 test_pr_create_advisory() {
   echo "T-010: gh pr create with problematic body returns advisory"
-  local body='この機能はユーザーが設定を変更することができます。この説明は日本語判定の五十文字閾値を超えるための追加の文章です。'
+  local body="$LINTED_BODY"
   local cmd="gh pr create --title \"test\" --body \"$body\""
   local json
   json=$(make_bash_json "$cmd")
@@ -145,8 +149,78 @@ test_english_body_structure_only() {
   assert_contains "returns hookSpecificOutput" "additionalContext" "$output"
 }
 
+with_body_file() {
+  local dir body_path
+  dir=$(mktemp -d "${TMPDIR:-/tmp}/textlint-bodyfile-XXXXXX")
+  body_path="$dir/body.md"
+  printf '%s\n' "$LINTED_BODY" > "$body_path"
+  printf '%s' "$body_path"
+}
+
+test_issue_create_body_file() {
+  echo "T-020: gh issue create の --body-file が指す本文が校正される"
+  # /issue も /pr も --body-file で起票する。この経路を読まないと、実際に走る形の起票が
+  # 一度も校正されない。
+  local body_path
+  body_path=$(with_body_file)
+  local cmd="gh issue create --title \"test\" --body-file $body_path"
+  local json
+  json=$(make_bash_json "$cmd")
+  local output
+  output=$(echo "$json" | "$HOOK" 2>/dev/null) || true
+  assert_contains "has textlint findings" "textlint 校正結果" "$output"
+  assert_contains "has structure checklist" "構造レビュー" "$output"
+  rm -rf "$(dirname "$body_path")"
+}
+
+test_pr_create_body_file() {
+  echo "T-021: gh pr create の --body-file が指す本文が校正される"
+  local body_path
+  body_path=$(with_body_file)
+  local cmd="gh pr create --title \"test\" --body-file $body_path"
+  local json
+  json=$(make_bash_json "$cmd")
+  local output
+  output=$(echo "$json" | "$HOOK" 2>/dev/null) || true
+  assert_contains "has textlint findings" "textlint 校正結果" "$output"
+  rm -rf "$(dirname "$body_path")"
+}
+
+test_quoted_body_file() {
+  echo "T-023: 引用符で囲まれた --body-file のパスも読む"
+  # 空白を含むパスは引用符付きで渡される。抽出の分岐がその形を先に拾えないと、
+  # 塞がっていたときと同じ静かな素通しになる。
+  local root dir body_path
+  root=$(mktemp -d "${TMPDIR:-/tmp}/textlint-quoted-XXXXXX")
+  dir="$root/with space"
+  mkdir -p "$dir"
+  body_path="$dir/body.md"
+  printf '%s\n' "$LINTED_BODY" > "$body_path"
+  local json
+  json=$(make_bash_json "gh issue create --title \"test\" --body-file \"$body_path\"")
+  local output
+  output=$(echo "$json" | "$HOOK" 2>/dev/null) || true
+  assert_contains "has textlint findings" "textlint 校正結果" "$output"
+  rm -rf "$root"
+}
+
+test_relative_body_file_skipped() {
+  echo "T-022: --body-file が相対パスのときは校正しない"
+  # hook はコマンドが走る cwd を持たないので、相対パスの指す先を決められない。
+  # issue-body-template がリテラルの絶対パスを強制していて、そちらが実際に走る形になる。
+  local json
+  json=$(make_bash_json 'gh issue create --title "test" --body-file body.md')
+  local output
+  output=$(echo "$json" | "$HOOK" 2>/dev/null) || true
+  assert_empty "no output for a relative --body-file" "$output"
+}
+
 echo "=== textlint-lint.sh tests ==="
 test_issue_create_advisory
+test_issue_create_body_file
+test_pr_create_body_file
+test_quoted_body_file
+test_relative_body_file_skipped
 test_issue_create_clean
 test_tmpdir_trailing_slash
 test_non_gh_command_skipped
