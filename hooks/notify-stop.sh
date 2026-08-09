@@ -6,7 +6,8 @@
 set +e
 
 [[ -n "${CLAUDE_CODE_IS_SUBAGENT:-}" ]] && exit 0
-source "$HOME/.claude/hooks/lib/notify.sh"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/notify.sh"
 
 INPUT=$(cat)
 

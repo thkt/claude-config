@@ -1,0 +1,58 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # Nothing here pushes, and a token left in .git/config travels with an upload.
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+
+      # The tests exec the hooks directly and each opens with a zsh shebang. has_japanese
+      # greps under en_US.UTF-8, which this image does not generate.
+      - name: Install zsh and generate the locale
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh locales
+          sudo locale-gen en_US.UTF-8
+
+      # node_modules is not tracked; the lockfile is.
+      - name: Install textlint
+        working-directory: hooks/textlint
+        run: bun install --frozen-lockfile
+
+      - name: Node tests
+        run: >
+          node --test
+          "agents/**/tests/*.test.js"
+          "hooks/tests/*.test.js"
+          "skills/**/tests/*.test.js"
+          "workflows/**/tests/*.test.js"
+
+      # Not unittest discovery: it cannot recurse from the root, where the test
+      # directories are not packages.
+      - name: Python tests
+        run: find agents hooks skills workflows -name '*_test.py' -print0 | xargs -0 -r -n1 python3
+
+      - name: Shell tests
+        run: |
+          for suite in hooks/tests/test-*.sh; do
+            case "$suite" in */test-helpers.sh) continue ;; esac
+            echo "--- $suite"
+            bash "$suite"
+          done
