@@ -44,66 +44,49 @@ if [[ -z "$command_str" ]]; then
 fi
 
 # `gh issue create` names a filing only where it leads a command. The same words turn up
-# inside commit messages (e7db3385 in this repository carries them), and a message body can
-# put them at the start of one of its own lines, so a split that counts every separator
-# would drag an unrelated git commit through the validator. Telling which separators sit
-# outside quotes takes a scanner that carries state, which sed cannot express.
-if ! segments=$(printf '%s' "$command_str" | python3 -c '
+# inside commit messages (e7db3385 carries them) and inside the heredoc body one is
+# written through. The flags come out of the filing itself, since a `git commit` sharing
+# the line carries its own --title-looking text.
+if ! parsed=$(printf '%s' "$command_str" | LIB_DIR="$SCRIPT_DIR/lib" python3 -c '
+import json
+import os
 import sys
 
-# `&&` and `||` split as two single characters, which only leaves an empty segment
-# between them.
-command = sys.stdin.read()
-segments, current, quote, escaped = [], [], None, False
-for ch in command:
-    if escaped:
-        current.append(ch)
-        escaped = False
-    elif ch == "\\" and quote != "\x27":
-        current.append(ch)
-        escaped = True
-    elif quote:
-        current.append(ch)
-        if ch == quote:
-            quote = None
-    elif ch in "\x27\"":
-        current.append(ch)
-        quote = ch
-    elif ch in ";|&\n":
-        segments.append("".join(current))
-        current = []
-    else:
-        current.append(ch)
-segments.append("".join(current))
-sys.stdout.write("".join(segment + "\x00" for segment in segments))
+sys.path.insert(0, os.environ["LIB_DIR"])
+import command_scan
+
+try:
+    found = list(command_scan.commands(sys.stdin.read()))
+except ValueError:
+    sys.exit(1)  # quoting that does not close hides where the filing would begin
+
+filing = next((c for c in found if command_scan.starts_with(c, ["gh", "issue", "create"])), None)
+directory = next((c for c in found if c[0] == "cd" and len(c) > 1), None)
+print(json.dumps({
+    "filing": filing is not None,
+    "title": command_scan.flag_value(filing, "--title") if filing else None,
+    "body_file": command_scan.flag_value(filing, "--body-file") if filing else None,
+    "repo_dir": directory[1] if directory else None,
+}))
 ' 2>/dev/null); then
-  # Losing the split leaves no segment identified as the filing, so the body goes
-  # uninspected the same way an unreadable body file leaves it uninspected.
-  deny "issue-body-template: コマンドの分割に失敗し起票を照合できない。python3 が動くか確認する"
+  # Without the scan nothing identifies the filing, so the body goes uninspected the same
+  # way an unreadable body file leaves it uninspected.
+  deny "issue-body-template: コマンドを解析できず起票を照合できない。python3 が動くか、引用符が閉じているかを確認する"
   exit 0
 fi
 
-create_segment=""
-repo_segment=""
-while IFS= read -r -d '' segment; do
-  if [[ -z "$create_segment" ]] && [[ "$segment" =~ '^[[:space:]]*gh[[:space:]]+issue[[:space:]]+create([[:space:]]|$)' ]]; then
-    create_segment="$segment"
-  elif [[ -z "$repo_segment" ]] && [[ "$segment" =~ '^[[:space:]]*cd[[:space:]]' ]]; then
-    repo_segment="$segment"
-  fi
-done <<< "$segments"
+# `|| true` on each read: a value that is absent comes through as an empty line, and the
+# command substitution strips it along with the trailing newline, so the reads that follow
+# hit EOF and return 1, which would end the hook under `set -e`.
+{
+  read -r is_filing || true
+  read -r title || true
+  read -r body_file || true
+  read -r repo_dir || true
+} <<< "$(printf '%s' "$parsed" | jq -r '(.filing | tostring), (.title // ""), (.body_file // ""), (.repo_dir // "")')"
 
-if [[ -z "$create_segment" ]]; then
+if [[ "$is_filing" != "true" ]]; then
   exit 0
-fi
-
-# The flags are read out of the filing segment rather than the whole command, since a
-# `git commit` sharing the command line carries its own `--title`-looking text. `head -1`
-# guards a quoted argument holding a newline, where sed prints one match per line, and
-# `|| true` keeps the SIGPIPE that `head` sends from ending the hook under `set -o pipefail`.
-title=$(printf '%s\n' "$create_segment" | sed -nE 's/.*--title "(([^"\\]|\\.)*)".*/\1/p' | head -1) || true
-if [[ -z "$title" ]]; then
-  title=$(printf '%s\n' "$create_segment" | sed -nE "s/.*--title '([^']*)'.*/\1/p" | head -1) || true
 fi
 
 if [[ -z "$title" ]] || ! [[ "$title" =~ "^\[([A-Za-z]+)\]" ]]; then
@@ -115,12 +98,9 @@ issue_type="${match[1]:l}"
 # The repository's own template wins: that is what the web UI files against, and a CLI
 # filing that ignores it would leave two shapes of the same issue type in one tracker.
 # The command's own `cd` names the repository when there is one; otherwise this hook
-# already runs where the tool call would. A relative --body-file is read against the same
-# directory, so this has to be settled before the body file is resolved.
-repo_dir=$(printf '%s\n' "$repo_segment" | sed -nE 's/^[[:space:]]*cd[[:space:]]+([^ &;|]+).*/\1/p' | head -1) || true
+# already runs where the tool call would.
 [[ -z "$repo_dir" ]] && repo_dir="$PWD"
 
-body_file=$(printf '%s\n' "$create_segment" | sed -nE "s/.*--body-file[[:space:]]+('([^']*)'|\"([^\"]*)\"|([^ ]+)).*/\2\3\4/p" | head -1) || true
 if [[ -z "$body_file" ]]; then
   deny "issue-body-template: 本文が --body のインライン指定で骨格と照合できない。本文を一時ファイルへ書き --body-file にリテラルの絶対パスで渡す"
   exit 0
