@@ -5,26 +5,26 @@
 # agent's own turn, so the reflection would never reach the transcript it describes.
 # Stop can, and it fires once the agent already believes the work is done.
 #
-# Throttled: it fires on every Stop, and asking every turn would repeat the same question
-# inside one work session. The structure follows recall-index.sh.
+# Scoped by session, not by elapsed time: Stop fires on every turn, and a window in
+# minutes either repeats inside one long session or skips a short one entirely. A
+# 22-hour session on 2026-08-09 would have been asked six times under a 4-hour window.
 #
 # Fail-open (advisory): never block the turn from finishing.
 set +e
 
-cat >/dev/null
+INPUT=$(cat)
 
 command -v jq >/dev/null 2>&1 || exit 0
 
-# Throttle: skip if asked within the last WINDOW_MIN minutes (timestamp shared across sessions).
-WINDOW_MIN=240
-LAST="${HOME}/.cache/claude-reflection-ask.last"
-mkdir -p "${LAST:h}" 2>/dev/null
-if [[ -f "$LAST" && -n "$(find "$LAST" -mmin "-${WINDOW_MIN}" 2>/dev/null)" ]]; then
-  exit 0
-fi
-touch "$LAST"
+SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // ""' 2>/dev/null)
+[[ -z "$SESSION_ID" ]] && exit 0
 
-MSG="reflection-ask: このセッションで得た訂正・知見のうち、次回セッションに残す価値があるものを一つ言語化し、rules/CORRECTIONS.md に追記する形で答える。無ければ「残すものなし」とその判断も明示して答える。"
+LAST="${HOME}/.cache/claude-reflection-ask.session"
+mkdir -p "${LAST:h}" 2>/dev/null
+[[ -f "$LAST" && "$(cat "$LAST" 2>/dev/null)" == "$SESSION_ID" ]] && exit 0
+printf '%s' "$SESSION_ID" > "$LAST"
+
+MSG="reflection-ask: このセッションで得た訂正・知見のうち、次回セッションに残す価値があるものを一つ .claude/rules/CORRECTIONS.md に追記する。残すものが無ければ何も書かない。"
 
 jq -n --arg m "$MSG" '{
   systemMessage: $m,
