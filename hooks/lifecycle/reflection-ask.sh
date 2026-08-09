@@ -18,10 +18,14 @@ command -v jq >/dev/null 2>&1 || exit 0
 SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // ""' 2>/dev/null)
 [[ -z "$SESSION_ID" ]] && exit 0
 
-LAST="${HOME}/.cache/claude-reflection-ask.session"
-mkdir -p "${LAST:h}" 2>/dev/null
-[[ -f "$LAST" && "$(cat "$LAST" 2>/dev/null)" == "$SESSION_ID" ]] && exit 0
-printf '%s' "$SESSION_ID" > "$LAST"
+# One mark per session, not one shared record: the wiring lives in the global settings, so
+# every Claude Code process on this machine runs this hook and would overwrite the others.
+ASKED_DIR="${HOME}/.cache/claude-reflection-ask"
+MARK="$ASKED_DIR/$SESSION_ID"
+[[ -f "$MARK" ]] && exit 0
+mkdir -p "$ASKED_DIR" 2>/dev/null
+touch "$MARK"
+find "$ASKED_DIR" -type f -mtime +7 -delete 2>/dev/null
 
 MSG="reflection-ask: このセッションで得た訂正・知見のうち、次回セッションに残す価値があるものを一つ .claude/rules/CORRECTIONS.md に追記する。残すものが無ければ何も書かない。"
 
