@@ -10,9 +10,8 @@ import os
 import re
 import shlex
 
-# A wrapper hands execution to the command that follows it, so the caller wants that
-# one rather than the wrapper. Anything taking a subcommand of its own (git, npm) is
-# deliberately absent: there the first token is the command.
+# Anything taking a subcommand of its own (git, npm) stays out: there the first token
+# already is the command.
 WRAPPERS = frozenset({"sudo", "env", "time", "nice", "xargs", "command", "exec", "nohup"})
 
 # A wrapper flag that takes a value swallows the token after it, which would otherwise
@@ -24,10 +23,9 @@ EXEC_FLAGS = frozenset({"-exec", "-execdir", "-ok", "-okdir"})
 
 SEPARATORS = frozenset({";", "|", "||", "&&", "&", "\n"})
 
-# shlex counts a newline as whitespace, which would join the lines on either side of it
-# into one command. Swapping it for a punctuation character keeps it a token of its own,
-# while a newline inside quotes stays part of its token, so a multi-line commit message
-# holds together instead of failing to close.
+# Not left as whitespace, which shlex would drop and join the lines on either side into
+# one command. As punctuation the newline stays a token, while one inside quotes stays
+# part of its token, so a multi-line commit message holds together.
 _NEWLINE = "\x00"
 _PUNCTUATION = "();<>|&" + _NEWLINE
 
@@ -38,13 +36,11 @@ def _without_heredocs(text):
     """Drop heredoc bodies, keeping the lines that are commands.
 
     Newlines separate commands, so a body left in place turns each of its lines into a
-    command of its own. That is how a commit message written through `<< 'EOF'` came to
-    be read as a filing.
+    command of its own.
 
-    The closing line has to be found before anything is dropped. Running before shlex
-    means quoting is still unresolved here, so `-m 'see << EOF'` looks the same as a real
-    marker; without a closing line it is quoted text, and dropping the rest of the input
-    for it would hide every command that follows.
+    The closing line is found before anything is dropped. Quoting is still unresolved at
+    this point, so `-m 'see << EOF'` reads the same as a real marker; without a closing
+    line it is quoted text, and dropping the rest for it would hide the commands after it.
     """
     lines = text.split("\n")
     kept = []

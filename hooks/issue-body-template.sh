@@ -44,10 +44,9 @@ if [[ -z "$command_str" ]]; then
 fi
 
 # `gh issue create` names a filing only where it leads a command. The same words turn up
-# inside commit messages (e7db3385 in this repository carries them) and inside a heredoc
-# body a message is written through, so telling a filing from a mention takes a scan that
-# knows where a token sits. The flags come out of the filing itself, since a `git commit`
-# sharing the line carries its own --title-looking text.
+# inside commit messages (e7db3385 carries them) and inside the heredoc body one is
+# written through. The flags come out of the filing itself, since a `git commit` sharing
+# the line carries its own --title-looking text.
 if ! parsed=$(printf '%s' "$command_str" | LIB_DIR="$SCRIPT_DIR/lib" python3 -c '
 import json
 import os

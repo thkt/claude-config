@@ -33,9 +33,8 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 0
 fi
 
-# Whether a token deletes anything depends on where it sits, which a regex over the raw
-# string cannot tell: it read the word inside a sed script as a deletion and let a
-# wrapped one (sudo, xargs, find -exec) through.
+# Not a regex over the raw string: it cannot tell where a token sits, so the word inside
+# a sed script read as a deletion while a wrapped one (sudo, xargs, find -exec) did not.
 if printf '%s' "$COMMAND" | LIB_DIR="$SCRIPT_DIR/../lib" python3 -c '
 import os
 import sys

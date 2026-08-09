@@ -11,7 +11,7 @@ HOOK="$SCRIPT_DIR/../security/rm-to-trash.sh"
 # The value alone, so the assertion survives jq switching between -c and pretty output.
 DENY_MARK='"deny"'
 
-# The rows come from the matrix measured in #349, where the regex answered 4 of 11.
+# The rows come from the matrix measured in #349.
 assert_denied() {
   local name="$1" cmd="$2" output
   output=$(make_bash_json "$cmd" | "$HOOK" 2>/dev/null) || true
@@ -40,7 +40,6 @@ rm -rf x'
 
 test_wrapped_deletion() {
   echo "T-003: ラッパー語ごしの削除も止める"
-  # 現行の正規表現はこの 4 行をすべて通していた。1 語挟むだけでコマンド先頭でなくなる。
   assert_denied "sudo" 'sudo rm -rf /tmp/x'
   assert_denied "env" 'env rm /tmp/x'
   assert_denied "time" 'time rm -rf /tmp/x'
@@ -55,7 +54,6 @@ test_indirect_deletion() {
 
 test_quoted_text_is_not_a_deletion() {
   echo "T-005: 引用符の内側にある語は削除として扱わない"
-  # sed の置換パターンを削除と誤判定して、無関係な編集を止めていた。
   assert_allowed "sed script" "sed -i '' 's|rm -rf x|y|g' f"
   assert_allowed "commit message" "git commit -m 'remove rm calls from the test'"
   assert_allowed "echoed text" "echo 'rm -rf danger' > note.txt"
