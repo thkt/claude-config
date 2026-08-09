@@ -4,7 +4,8 @@
 set +e
 
 command -v jq &>/dev/null || exit 0
-source "$HOME/.claude/hooks/lib/notify.sh"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/notify.sh"
 
 play_sound "DHVMagellanHorn_Heavy.mp3"
 
