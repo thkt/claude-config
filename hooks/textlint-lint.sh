@@ -3,9 +3,6 @@
 # Returns the findings as additionalContext; checklist is issue/pr only
 set -euo pipefail
 
-TEXTLINT_DIR="$HOME/.claude/hooks/textlint"
-TEXTLINT_CONFIG="$TEXTLINT_DIR/.textlintrc.json"
-
 # Not a top-level decision / additionalContext pair: PreToolUse reads context only out of
 # hookSpecificOutput, so findings written at that level reach no one.
 advise() {
@@ -19,6 +16,11 @@ advise() {
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/lib/japanese-detect.sh"
+
+# Resolved from this script's own location rather than $HOME/.claude: the tests run the
+# hook out of a checkout wherever CI places it, and a fixed path finds no config there.
+TEXTLINT_DIR="$SCRIPT_DIR/textlint"
+TEXTLINT_CONFIG="$TEXTLINT_DIR/.textlintrc.json"
 
 # $'...', not '...': jq --arg passes the string through as written, so an unexpanded `\n`
 # arrives as two characters and collapses the table into one line.
