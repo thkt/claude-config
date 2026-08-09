@@ -24,7 +24,7 @@ if [[ -f "$LAST" && -n "$(find "$LAST" -mmin "-${WINDOW_MIN}" 2>/dev/null)" ]]; 
 fi
 touch "$LAST"
 
-MSG="reflection-ask: このセッションで得た訂正・知見のうち、次回セッションに残す価値があるものを一つ言語化して答える。無ければ「残すものなし」とその判断も明示して答える。"
+MSG="reflection-ask: このセッションで得た訂正・知見のうち、次回セッションに残す価値があるものを一つ言語化し、rules/CORRECTIONS.md に追記する形で答える。無ければ「残すものなし」とその判断も明示して答える。"
 
 jq -n --arg m "$MSG" '{
   systemMessage: $m,

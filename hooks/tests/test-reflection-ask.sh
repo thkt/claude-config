@@ -53,6 +53,21 @@ test_question_requires_answer_even_when_nothing_to_leave() {
   rm -rf "$FAKE_HOME"
 }
 
+test_additionalcontext_path_has_real_file() {
+  echo "T-005: additionalContext が指すパスに実ファイルがある"
+  local FAKE_HOME output message path_ref repo_root path_found file_exists
+  FAKE_HOME=$(mktemp -d "${TMPDIR:-/tmp}/reflection-ask-testXXXXXX")
+  output=$(run_hook) || true
+  message=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext // empty' 2>/dev/null) || true
+  path_ref=$(printf '%s' "$message" | grep -oE 'rules/[A-Za-z0-9_./-]+\.md' | head -n1) || true
+  path_found=$([[ -n "$path_ref" ]] && echo yes || echo no)
+  assert_eq "additionalContext names a rules/*.md path" "yes" "$path_found"
+  repo_root="$(cd "$SCRIPT_DIR/../.." && pwd)"
+  file_exists=$([[ -n "$path_ref" && -f "$repo_root/$path_ref" ]] && echo yes || echo no)
+  assert_eq "the named path exists as a real file" "yes" "$file_exists"
+  rm -rf "$FAKE_HOME"
+}
+
 test_script_never_launches_claude() {
   echo "T-004: スクリプトは claude を起動する行を持たない"
   local exists code
@@ -68,6 +83,7 @@ echo "=== reflection-ask.sh tests ==="
 test_second_call_within_window_is_silent
 test_call_past_window_returns_systemMessage
 test_question_requires_answer_even_when_nothing_to_leave
+test_additionalcontext_path_has_real_file
 test_script_never_launches_claude
 
 report_results
