@@ -59,9 +59,8 @@ if [[ "$mode" == "ghcreate" ]]; then
   if [[ -n "$body" ]]; then
     body=$(printf '%b' "$body")
   else
-    # A relative path stays unread. The hook holds none of the shell state that would
-    # resolve it, and issue-body-template denies a filing whose path is not literal and
-    # absolute, so that is the shape reaching this line.
+    # A relative path stays unread: the hook holds none of the shell state that would
+    # resolve it, and issue-body-template already forces a filing to write an absolute one.
     body_file=$(printf '%s\n' "$command_str" | sed -nE "s/.*--body-file[[:space:]]+('([^']*)'|\"([^\"]*)\"|([^ ]+)).*/\2\3\4/p" | head -1) || true
     if [[ "$body_file" == /* && -f "$body_file" ]]; then
       body=$(<"$body_file")
