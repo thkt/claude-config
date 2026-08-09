@@ -47,3 +47,11 @@ A workflow script is evaluated as one function body carrying injected parameters
 Tests run as ordinary ES modules, so the constraint binds the script body alone. A shared harness imported from tests, such as `workflows/_lib/run-workflow.js`, can be placed. The test side reproduces production's global set by passing a `parsingContext` to `vm.compileFunction`.
 
 The globals a script can read are the injected parameters `agent`, `workflow`, `parallel`, `pipeline`, `phase`, `log`, `args`, plus `budget`, `console`, `setTimeout`, and `clearTimeout`, which production supplies separately. `crypto`, `fetch`, `process`, `Buffer`, `require`, `structuredClone`, `TextEncoder`, `URL`, and `queueMicrotask` do not exist, and referencing any of them throws `ReferenceError`. `Date.now()`, `Math.random()`, and argument-less `new Date()` are replaced with an Error citing resume as the reason, while `new Date()` called with arguments and `Math.floor` are unaffected. Code generation from strings (`eval`, `new Function`) is disabled and raises `EvalError`. The harness does not inject `budget`, so a script that reads it goes red in tests alone.
+
+## Script resolution timing
+
+`Workflow({name: "..."})` runs the script as it stood at session start. Editing `workflows/<name>.js` within that session leaves the pre-edit version running for every call made by name. To run the edited version, pass `Workflow({scriptPath: "<absolute path>"})`.
+
+Checking a workflow you just fixed by its name therefore returns the unfixed result, and a fix that leaves the return shape unchanged leaves no trace that the old version ran.
+
+scriptPath reaches the top-level call alone. A nested call inside a script (`build.js` calling code) resolves by name, so fixing `code.js` and checking it through build still runs the `code.js` from session start. Passing scriptPath on the nested side is rejected in a session where `CLAUDE_WORKFLOW_NAME_ONLY` is set. When the script you fixed runs nested, run that script directly from the top level through scriptPath.
