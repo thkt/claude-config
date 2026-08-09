@@ -54,7 +54,7 @@ test_question_requires_answer_even_when_nothing_to_leave() {
 }
 
 test_additionalcontext_path_has_real_file() {
-  echo "T-004: additionalContext が指すパスに実ファイルがある"
+  echo "T-005: additionalContext が指すパスに実ファイルがある"
   local FAKE_HOME output message path_ref repo_root path_found file_exists
   FAKE_HOME=$(mktemp -d "${TMPDIR:-/tmp}/reflection-ask-testXXXXXX")
   output=$(run_hook) || true
@@ -69,7 +69,7 @@ test_additionalcontext_path_has_real_file() {
 }
 
 test_script_never_launches_claude() {
-  echo "T-005: スクリプトは claude を起動する行を持たない"
+  echo "T-004: スクリプトは claude を起動する行を持たない"
   local exists code
   exists=$([[ -s "$HOOK" ]] && echo yes || echo no)
   assert_eq "hook script exists" "yes" "$exists"
