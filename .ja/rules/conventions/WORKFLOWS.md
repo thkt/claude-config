@@ -46,7 +46,7 @@ workflow script は注入引数を持つ 1 つの関数本体として評価さ�
 
 テストは通常の ES module として実行されるので、この制約が掛かるのは script 本体だけ。`workflows/_lib/run-workflow.js` のようにテストから import する共有ハーネスは置ける。テスト側は `vm.compileFunction` に `parsingContext` を渡して本番と同じグローバル集合を再現する。
 
-script が読めるグローバルは注入引数 `agent`/`workflow`/`parallel`/`pipeline`/`phase`/`log`/`args` と、本番が別途供給する `budget`/`console`/`setTimeout`/`clearTimeout` に限られる。`crypto`/`fetch`/`process`/`Buffer`/`require`/`structuredClone`/`TextEncoder`/`URL`/`queueMicrotask` は存在せず、参照すると `ReferenceError` になる。`Date.now()`、`Math.random()`、引数なし `new Date()` は resume を理由に挙げる Error に差し替わり、引数つき `new Date()` と `Math.floor` は影響を受けない。文字列からのコード生成 (`eval`、`new Function`) も無効で `EvalError` になる。ハーネスは `budget` を注入しないので、`budget` を読む script はテストだけが赤くなる。
+script が読めるグローバルは注入引数 `agent`/`workflow`/`parallel`/`pipeline`/`phase`/`log`/`args` と、本番が別途供給する `budget`/`console`/`setTimeout`/`clearTimeout` に限られる。`crypto`/`fetch`/`process`/`Buffer`/`require`/`structuredClone`/`TextEncoder`/`URL`/`queueMicrotask` は存在せず、参照すると `ReferenceError` になる。`Date.now()`、`Math.random()`、引数なし `new Date()` は resume を理由に挙げる Error に差し替わり、引数つき `new Date()` と `Math.floor` は影響を受けない。文字列からのコード生成 (`eval`、`new Function`) も無効で `EvalError` になる。ハーネスは本番が別途供給する 4 つとも注入する。`budget` は target 未設定の実行と同じ状態 (`total` が null、`spent()` が 0、`remaining()` が Infinity) を返し、`console` の出力は `log()` と同じ logs へ届く。供給する名前は `workflows/_lib/run-workflow.js` の `PRODUCTION_GLOBALS` にあり、名前を足しても注入は増えないので、供給を書き足すまでテストが赤くなる。
 
 ## script の解決タイミング
 
