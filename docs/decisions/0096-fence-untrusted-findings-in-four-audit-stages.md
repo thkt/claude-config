@@ -42,7 +42,7 @@ Option A を採用する。Verify と Integrate は実害が薄いが、fence �
 
 ### Confirmation
 
-`workflows/audit.js` の Challenge/Verify/Integrate/Snapshot の 4 呼び出しが `fenced(...)` を経由していることをコードレビューで確認する。`node --test workflows/audit/tests/*.test.js` で、base marker と同じ文字列を `summary` に仕込んでも marker が伸びて payload のどこにも出現しないこと (T-001)、marker と衝突しない payload では run をまたいでも marker が base のまま変わらないこと (T-002)、1 つの fence の BEGIN と END が同じ marker を使うこと (T-003) を確認する。Snapshot 段の agent 起動が `generator-snapshot` を渡すこと (T-006) を確認する。
+`workflows/audit.js` の Challenge/Verify/Integrate/Snapshot の 4 呼び出しが `fenced(...)` を経由していることをコードレビューで確認する。`node --test workflows/audit/tests/*.test.js` で、base marker と同じ文字列を `summary` に仕込んでも marker が伸びて payload のどこにも出現しないこと (T-029)、marker と衝突しない payload では run をまたいでも marker が base のまま変わらないこと (T-030)、1 つの fence の BEGIN と END が同じ marker を使うこと (T-003) を確認する。Snapshot 段の agent 起動が `generator-snapshot` を渡すこと (T-006) を確認する。
 
 ## More Information
 

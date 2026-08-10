@@ -40,6 +40,10 @@ Sites that already keep loss granularity in a structured field (a return array o
 
 Each current degradation site is guarded by its own site-specific test. No cross-cutting test guarantees the whole degradation class (that every branch keeps loss granularity). When adding a new drop / default branch, verify the loss-granularity recording in that site's own test. Existing tests do not automatically guard a new site.
 
+## Test T-NNN numbering
+
+A T-NNN is unique within its file. A plan numbers its scenarios from T-001, but landing that plan's tests in a file renumbers them from one past the highest already in use there. Restarting at 1 per plan collides the moment the next plan's tests join the same file, and the reader can no longer trace a test name back to the plan it came from. Renumbering does not break build's Verify, which matches on the plan's statement rather than on the id.
+
 ## Script evaluation form
 
 A workflow script is evaluated as one function body carrying injected parameters. The script body therefore cannot carry an `import` statement, and no script under `workflows/` holds one. Splitting shared logic into a separate module is not available as a design, so confirm this constraint before factoring duplication out across scripts. Whether dynamic `import()` works is unmeasured; run one minimal workflow to find out at the point the split becomes necessary.

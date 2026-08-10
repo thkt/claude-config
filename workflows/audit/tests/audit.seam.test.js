@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { runWorkflow } from "../../_lib/run-workflow.js";
@@ -242,7 +242,7 @@ test("T-004 prompt を変えた後も snapshot payload の抽出が成立し、�
 // marker の算出と遮断コンテキストを同時に通す。run() は実 audit.js を vm context 内で
 // 評価するので、reviewer の呼び出しが calls.agent に残ったこと自体が、未定義グローバルの
 // 参照で途中終了しなかった証跡になる。
-test("T-008 遮断コンテキストで実 audit.js を走らせても未定義グローバルの参照で落ちず reviewer 起動まで進む", async () => {
+test("T-020 遮断コンテキストで実 audit.js を走らせても未定義グローバルの参照で落ちず reviewer 起動まで進む", async () => {
   const { calls } = await run([{ path: "sample.js", churn: 0 }], {});
   assert.ok(
     calls.agent.some((c) => c.opts && c.opts.phase === "Review"),
@@ -360,4 +360,18 @@ test("assert が非 main の base で起動されたとき、audit の解決も�
   const resolution = await resolutionFor(auditArgs, null);
   assert.equal(resolution.kind, "branch");
   assert.equal(resolution.command, "git diff --name-only develop...HEAD");
+});
+
+// plan ごとに T-NNN を 1 から振り直すと、同じファイルへ次の plan のテストが足された時点で
+// 番号が重なり、テスト名から出所の plan を辿れなくなる。
+test("T-021 audit のテストファイルは同じ T-NNN を 2 度名乗らない", () => {
+  // 正規表現リテラルとして書くと、この行自身が走査対象の宣言形と同じ並びを持つ。行頭
+  // アンカーで自己マッチは避けられるが、組み立てておけば並び自体が残らない。
+  const DECL_RE = new RegExp('^test\\("(T-\\d{3})', "gm");
+  for (const file of readdirSync(here).filter((f) => f.endsWith(".test.js"))) {
+    const ids = [...readFileSync(join(here, file), "utf8").matchAll(DECL_RE)].map((m) => m[1]);
+    const seen = new Set();
+    const duplicated = [...new Set(ids.filter((id) => seen.size === seen.add(id).size))];
+    assert.deepEqual(duplicated, [], `${file} が同じ T-NNN を 2 度使っている`);
+  }
 });
