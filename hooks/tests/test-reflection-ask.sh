@@ -13,8 +13,10 @@ trap 'rm -rf "$TEST_TMPDIR"' EXIT
 
 fresh_home() { mktemp -d "$TEST_TMPDIR/homeXXXXXX"; }
 
+# cwd defaults to this test directory, a subdirectory of the repository, so the default
+# path already exercises the root resolution rather than a lucky top-level run.
 make_stop_json() {
-  echo "{\"session_id\":\"${1:-test-session}\",\"hook_event_name\":\"Stop\",\"stop_hook_active\":false}"
+  echo "{\"session_id\":\"${1:-test-session}\",\"cwd\":\"${2:-$SCRIPT_DIR}\",\"transcript_path\":\"$TEST_TMPDIR/transcript.jsonl\",\"hook_event_name\":\"Stop\",\"stop_hook_active\":false}"
 }
 
 # HOME is overridden per test so the record of the last asked session starts absent,
@@ -22,7 +24,7 @@ make_stop_json() {
 # A `VAR=val cmd1 | cmd2` prefix scopes to cmd1 alone, so HOME is exported for the whole
 # subshell to reach $HOOK.
 run_hook() {
-  (export HOME="$FAKE_HOME"; make_stop_json "${1:-}" | "$HOOK") 2>/dev/null
+  (export HOME="$FAKE_HOME"; make_stop_json "${1:-}" "${2:-}" | "$HOOK") 2>/dev/null
 }
 
 test_second_call_in_same_session_is_silent() {
@@ -57,16 +59,49 @@ test_question_leaves_nothing_when_there_is_nothing() {
 
 test_additionalcontext_path_has_real_file() {
   echo "T-005: additionalContext が指すパスに実ファイルがある"
-  local FAKE_HOME output message path_ref repo_root path_found file_exists
+  local FAKE_HOME output message path_ref path_found file_exists
   FAKE_HOME=$(fresh_home)
   output=$(run_hook) || true
   message=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext // empty' 2>/dev/null) || true
-  path_ref=$(printf '%s' "$message" | grep -oE '\.claude/rules/[A-Za-z0-9_./-]+\.md' | head -n1) || true
+  path_ref=$(printf '%s' "$message" | grep -oE '/[A-Za-z0-9_./-]+/\.claude/rules/CORRECTIONS\.md' | head -n1) || true
   path_found=$([[ -n "$path_ref" ]] && echo yes || echo no)
-  assert_eq "additionalContext names a .claude/rules path" "yes" "$path_found"
-  repo_root="$(cd "$SCRIPT_DIR/../.." && pwd)"
-  file_exists=$([[ -n "$path_ref" && -f "$repo_root/$path_ref" ]] && echo yes || echo no)
+  assert_eq "additionalContext names an absolute .claude/rules path" "yes" "$path_found"
+  file_exists=$([[ -n "$path_ref" && -f "$path_ref" ]] && echo yes || echo no)
   assert_eq "the named path exists as a real file" "yes" "$file_exists"
+}
+
+# The unresolved relative path is what put a Rust project's entry in the global tree.
+test_subdirectory_resolves_to_repository_root() {
+  echo "T-006: サブディレクトリの cwd でもリポジトリルートを指す"
+  local FAKE_HOME output message repo_root
+  FAKE_HOME=$(fresh_home)
+  repo_root="$(cd "$SCRIPT_DIR/../.." && pwd)"
+  output=$(run_hook session-subdir "$SCRIPT_DIR") || true
+  message=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext // empty' 2>/dev/null) || true
+  assert_contains "names the repository root" "$repo_root/.claude/rules/CORRECTIONS.md" "$message"
+}
+
+test_outside_a_repository_is_silent() {
+  echo "T-007: リポジトリ外の cwd では何も返さない"
+  local FAKE_HOME outside output
+  FAKE_HOME=$(fresh_home)
+  outside=$(mktemp -d "$TEST_TMPDIR/outsideXXXXXX")
+  output=$(run_hook session-outside "$outside") || true
+  assert_empty "no message outside a repository" "$output"
+}
+
+test_write_is_delegated_to_a_subagent() {
+  echo "T-008: 追記を subagent へ委ね、呼ばれた側は自分で書かない"
+  local FAKE_HOME output message
+  FAKE_HOME=$(fresh_home)
+  output=$(run_hook) || true
+  message=$(printf '%s' "$output" | jq -r '.hookSpecificOutput.additionalContext // empty' 2>/dev/null) || true
+  assert_contains "hands the write to a subagent" "subagent" "$message"
+  assert_contains "keeps the caller from writing" "あなた自身は追記しない" "$message"
+  assert_contains "passes the transcript path" "$TEST_TMPDIR/transcript.jsonl" "$message"
+  # scout had no .claude/rules at all, so naming the file alone leaves the creation of the
+  # directory to the subagent's judgment.
+  assert_contains "asks for the missing directories too" "途中のディレクトリごと無ければ作り" "$message"
 }
 
 test_script_never_launches_claude() {
@@ -87,6 +122,9 @@ test_second_call_in_same_session_is_silent
 test_new_session_returns_systemMessage
 test_question_leaves_nothing_when_there_is_nothing
 test_additionalcontext_path_has_real_file
+test_subdirectory_resolves_to_repository_root
+test_outside_a_repository_is_silent
+test_write_is_delegated_to_a_subagent
 test_script_never_launches_claude
 
 report_results
