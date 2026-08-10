@@ -14,6 +14,11 @@
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
+// The globals production supplies on top of the injected parameters, listed in
+// rules/conventions/WORKFLOWS.md § Script evaluation form. Adding a name here does not
+// create the injection, so the suite goes red until the supply below is written too.
+export const PRODUCTION_GLOBALS = ["budget", "console", "setTimeout", "clearTimeout"];
+
 // Errors thrown while executing inside the vm context belong to that context's own
 // realm, so `err instanceof Error` (and subclasses like ReferenceError) fails for
 // host-side callers even though err.message is correct. Rebuild the error with the
@@ -93,6 +98,15 @@ const SANDBOX_SETUP_SOURCE = `
 })();
 `;
 
+const partToString = (part) => {
+  if (typeof part === "string") return part;
+  try {
+    return JSON.stringify(part);
+  } catch {
+    return `[${typeof part}]`;
+  }
+};
+
 // runWorkflow(scriptPath, { args, stubs }) -> { result, calls, logs }
 // stubs.agent / stubs.workflow receive (prompt|name, opts|args) and return the stub result.
 // stubs.pipeline receives (items, ...stages) and replaces the default pipeline implementation.
@@ -141,7 +155,29 @@ export async function runWorkflow(scriptPath, { args = {}, stubs = {} } = {}) {
     logs.push(rehome(message));
   };
 
-  const context = vm.createContext({}, { codeGeneration: { strings: false, wasm: false } });
+  // The supply side of PRODUCTION_GLOBALS. budget holds the state of a run with no token
+  // target, production's default, so a script branching on budget.total takes the same path
+  // here. console lands in logs the way log() does, because a console writing anywhere else
+  // lets a script log through a run where nothing it wrote is observable.
+  const consoleWrite =
+    (prefix) =>
+    (...parts) =>
+      logs.push(prefix + parts.map(partToString).join(" "));
+  const context = vm.createContext(
+    {
+      budget: { total: null, spent: () => 0, remaining: () => Infinity },
+      console: {
+        log: consoleWrite(""),
+        info: consoleWrite(""),
+        debug: consoleWrite(""),
+        warn: consoleWrite("[warn] "),
+        error: consoleWrite("[error] "),
+      },
+      setTimeout,
+      clearTimeout,
+    },
+    { codeGeneration: { strings: false, wasm: false } },
+  );
   vm.runInContext(SANDBOX_SETUP_SOURCE, context, { filename: "sandbox-setup.js" });
 
   // vm.compileFunction produces an ordinary function, which cannot hold the top-level

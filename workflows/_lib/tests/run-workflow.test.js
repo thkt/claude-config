@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { runWorkflow } from "../run-workflow.js";
+import { PRODUCTION_GLOBALS, runWorkflow } from "../run-workflow.js";
 
 // runWorkflow はファイルパスからソースを読む契約 (readFileSync) なので、script 本文を
 // 一時ファイルへ書き出してから渡す。テストごとに専用の一時ディレクトリを使い、他テストの
@@ -95,6 +95,54 @@ test("T-008 返り値に置いた Map と Set と Date と RegExp は、本番�
       assert.deepEqual(result.re, {}, "RegExp は本番と同じく空オブジェクトで届く");
       assert.deepEqual(result.plain, { a: 1 }, "plain object は中身を保ったまま届く");
       assert.deepEqual(result.arr, [1, 2], "array は中身を保ったまま届く");
+    },
+  );
+});
+
+// 一覧に名前を足しても注入は増えないので、供給を書き足すまでここが赤くなる。console だけ
+// は ambient な vm の値として object を返すため空回りし、その実質は T-011 が守る。
+test("T-009 本番が供給するグローバルは harness からも参照できる", async () => {
+  for (const name of PRODUCTION_GLOBALS) {
+    await withScript(`return typeof ${name};`, async (path) => {
+      const { result } = await runWorkflow(path, {});
+      assert.notEqual(result, "undefined", `${name} が供給される`);
+    });
+  }
+});
+
+// budget.total を見て分岐する script が、テストでだけ別の枝へ入ることを防ぐ。
+test("T-010 budget は target 未設定の状態を返す", async () => {
+  await withScript(
+    "return { total: budget.total, spent: budget.spent(), remaining: budget.remaining() };",
+    async (path) => {
+      const { result } = await runWorkflow(path, {});
+      assert.equal(result.total, null, "target 未設定なので total は null");
+      assert.equal(result.spent, 0, "消費はまだ無い");
+      assert.equal(result.remaining, Infinity, "total が null のとき remaining は Infinity");
+    },
+  );
+});
+
+// ambient な vm の console のままだと、出力がどこにも現れないままテストが通る。
+test("T-011 console の出力は logs に届き、warn と error は接頭辞を持つ", async () => {
+  await withScript(
+    "console.log('plain', { a: 1 }); console.warn('careful'); console.error('broken'); return 1;",
+    async (path) => {
+      const { logs } = await runWorkflow(path, {});
+      assert.deepEqual(logs, ['plain {"a":1}', "[warn] careful", "[error] broken"]);
+    },
+  );
+});
+
+test("T-012 setTimeout は待ったあと再開し、clearTimeout はその再開を取り消す", async () => {
+  await withScript(
+    "const fired = await new Promise((r) => { setTimeout(() => r('fired'), 0); });" +
+      "const canceled = await new Promise((r) => { const id = setTimeout(() => r('fired'), 0); clearTimeout(id); setTimeout(() => r('canceled'), 0); });" +
+      "return { fired, canceled };",
+    async (path) => {
+      const { result } = await runWorkflow(path, {});
+      assert.equal(result.fired, "fired", "setTimeout のコールバックが走る");
+      assert.equal(result.canceled, "canceled", "clearTimeout したコールバックは走らない");
     },
   );
 });
