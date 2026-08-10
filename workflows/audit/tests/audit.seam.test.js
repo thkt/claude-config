@@ -367,7 +367,9 @@ test("assert が非 main の base で起動されたとき、audit の解決も�
 test("T-021 audit のテストファイルは同じ T-NNN を 2 度名乗らない", () => {
   // 正規表現リテラルとして書くと、この行自身が走査対象の宣言形と同じ並びを持つ。行頭
   // アンカーで自己マッチは避けられるが、組み立てておけば並び自体が残らない。
-  const DECL_RE = new RegExp('^test\\("(T-\\d{3})', "gm");
+  // 末尾の 1 文字は polish が使う T-002b 形式を id の一部として拾う。数字 3 桁で切ると
+  // T-002 と T-002b を同じ id と読み、重複していない 2 件を重複として報告する。
+  const DECL_RE = new RegExp('^test\\("(T-\\d{3}[a-z]?)', "gm");
   for (const file of readdirSync(here).filter((f) => f.endsWith(".test.js"))) {
     const ids = [...readFileSync(join(here, file), "utf8").matchAll(DECL_RE)].map((m) => m[1]);
     const seen = new Set();
