@@ -100,8 +100,7 @@ test("T-008 返り値に置いた Map と Set と Date と RegExp は、本番�
 });
 
 // 一覧に名前を足しても注入は増えないので、供給を書き足すまでここが赤くなる。console だけ
-// は注入前から ambient な vm の値として object を返すため、ここでは空回りする。console の
-// 実質 (出力が logs へ届くこと) は T-011 が守る。
+// は ambient な vm の値として object を返すため空回りし、その実質は T-011 が守る。
 test("T-009 本番が供給するグローバルは harness からも参照できる", async () => {
   for (const name of PRODUCTION_GLOBALS) {
     await withScript(`return typeof ${name};`, async (path) => {
@@ -111,8 +110,7 @@ test("T-009 本番が供給するグローバルは harness からも参照で�
   }
 });
 
-// target 未設定の実行と同じ状態を返す。budget.total を見て分岐する script が、テスト
-// でだけ別の枝へ入ることを防ぐ。
+// budget.total を見て分岐する script が、テストでだけ別の枝へ入ることを防ぐ。
 test("T-010 budget は target 未設定の状態を返す", async () => {
   await withScript(
     "return { total: budget.total, spent: budget.spent(), remaining: budget.remaining() };",
@@ -125,8 +123,7 @@ test("T-010 budget は target 未設定の状態を返す", async () => {
   );
 });
 
-// 本番は console を workflow の log へ流す。ambient な vm の console のままだと、
-// 出力がどこにも現れないままテストが通る。
+// ambient な vm の console のままだと、出力がどこにも現れないままテストが通る。
 test("T-011 console の出力は logs に届き、warn と error は接頭辞を持つ", async () => {
   await withScript(
     "console.log('plain', { a: 1 }); console.warn('careful'); console.error('broken'); return 1;",

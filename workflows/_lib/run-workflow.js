@@ -155,13 +155,10 @@ export async function runWorkflow(scriptPath, { args = {}, stubs = {} } = {}) {
     logs.push(rehome(message));
   };
 
-  // The supply side of PRODUCTION_GLOBALS. budget carries the state of a run started without
-  // a token target, which is what production hands a script when the turn holds no "+500k"
-  // directive, so a script branching on budget.total takes the same path in both. Timers are
-  // the host's own, so a script that waits on one resumes.
-  // Production stringifies a non-string console argument as JSON, prefixes warn / error, and
-  // routes the line to the same channel as log(). A console writing anywhere else would let
-  // a script log through a run where nothing it wrote is observable.
+  // The supply side of PRODUCTION_GLOBALS. budget holds the state of a run with no token
+  // target, production's default, so a script branching on budget.total takes the same path
+  // here. console lands in logs the way log() does, because a console writing anywhere else
+  // lets a script log through a run where nothing it wrote is observable.
   const consoleWrite =
     (prefix) =>
     (...parts) =>
