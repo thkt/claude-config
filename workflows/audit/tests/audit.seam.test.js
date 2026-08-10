@@ -362,18 +362,16 @@ test("assert が非 main の base で起動されたとき、audit の解決も�
   assert.equal(resolution.command, "git diff --name-only develop...HEAD");
 });
 
-// plan ごとに T-NNN を 1 から振り直すと、同じファイルへ次の plan のテストが足された時点で
-// 番号が重なり、テスト名から出所の plan を辿れなくなる。
+// plan ごとに 1 から振り直すと番号が重なり、テスト名から出所の plan を辿れなくなる。
 test("T-021 audit のテストファイルは同じ T-NNN を 2 度名乗らない", () => {
-  // 正規表現リテラルとして書くと、この行自身が走査対象の宣言形と同じ並びを持つ。行頭
-  // アンカーで自己マッチは避けられるが、組み立てておけば並び自体が残らない。
-  // 末尾の 1 文字は polish が使う T-002b 形式を id の一部として拾う。数字 3 桁で切ると
-  // T-002 と T-002b を同じ id と読み、重複していない 2 件を重複として報告する。
+  // リテラルで書くとこの行自身が走査対象の宣言形と同じ並びを持つので、組み立てる。
+  // 末尾 1 文字まで拾うのは、T-002 と T-002b を同じ id と読んで偽陽性を出さないため。
   const DECL_RE = new RegExp('^test\\("(T-\\d{3}[a-z]?)', "gm");
   for (const file of readdirSync(here).filter((f) => f.endsWith(".test.js"))) {
     const ids = [...readFileSync(join(here, file), "utf8").matchAll(DECL_RE)].map((m) => m[1]);
-    const seen = new Set();
-    const duplicated = [...new Set(ids.filter((id) => seen.size === seen.add(id).size))];
+    const counts = new Map();
+    for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1);
+    const duplicated = [...counts].filter(([, n]) => n > 1).map(([id]) => id);
     assert.deepEqual(duplicated, [], `${file} が同じ T-NNN を 2 度使っている`);
   }
 });

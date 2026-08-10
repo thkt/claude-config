@@ -44,7 +44,7 @@ Option A を採用する。Verify と Integrate は実害が薄いが、fence �
 
 `workflows/audit.js` の Challenge/Verify/Integrate/Snapshot の 4 呼び出しが `fenced(...)` を経由していることをコードレビューで確認する。
 
-`node --test workflows/audit/tests/audit.degradation.test.js workflows/audit/tests/audit.effort.test.js` を走らせ、下表の 4 件が緑であることを確認する。T-NNN が一意なのはファイル単位までなので、対象を 2 ファイルへ絞ると出力の id が 1 件に定まる。`audit.effort.test.js` は id を持たない運用なので、テスト名で指す。
+`node --test workflows/audit/tests/audit.degradation.test.js workflows/audit/tests/audit.effort.test.js` を走らせ、下表の 4 件が緑であることを確認する。T-NNN が一意なのはファイル単位までなので、対象を 2 ファイルへ絞ると出力の id が 1 件に定まる。
 
 | ファイル                    | テスト                                                                                           |
 | --------------------------- | ------------------------------------------------------------------------------------------------ |
