@@ -362,11 +362,13 @@ test("assert が非 main の base で起動されたとき、audit の解決も�
   assert.equal(resolution.command, "git diff --name-only develop...HEAD");
 });
 
-// plan ごとに 1 から振り直すと番号が重なり、テスト名から出所の plan を辿れなくなる。
-test("T-021 audit のテストファイルは同じ T-NNN を 2 度名乗らない", () => {
+// plan 全体の一意性は同じファイル内までは届かないので、番号が重なるとテスト名から
+// 出所の plan を辿れなくなる。
+test("T-021 audit のテストファイルは同じ id を 2 度名乗らない", () => {
   // リテラルで書くとこの行自身が走査対象の宣言形と同じ並びを持つので、組み立てる。
-  // 末尾 1 文字まで拾うのは、T-002 と T-002b を同じ id と読んで偽陽性を出さないため。
-  const DECL_RE = new RegExp('^test\\("(T-\\d{3}[a-z]?)', "gm");
+  // 接頭辞つき (T-SK077) と枝番つき (T-002b) を id の一部として拾う。数字 3 桁で切ると
+  // 別の id を同じものと読み、重複していない 2 件を重複として報告する。
+  const DECL_RE = new RegExp('^test\\("(T-[A-Z]*\\d+[a-z]?)', "gm");
   for (const file of readdirSync(here).filter((f) => f.endsWith(".test.js"))) {
     const ids = [...readFileSync(join(here, file), "utf8").matchAll(DECL_RE)].map((m) => m[1]);
     const counts = new Map();
