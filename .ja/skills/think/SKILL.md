@@ -33,7 +33,7 @@ argument-hint: "[task description]"
 
 承認された設計を、独立して実装可能な成果の束 (unit) に実装順で分解する。分解の結果は PLAN_SCHEMA 相当の JSON `{ test_command, reference_module, units: [{ id, goal, contract, files: string[], tests: [{ id, name }], seam }] }` に直列化する。分解はテスト先行で構成し、unit の大きさはテストの束から機械的に決める。設計全体から受け入れテスト候補を列挙し、成果のまとまりごとの束へ分け、各束が触るファイルを割り当てて unit にする。束の大きさは non-seam unit の上限に収め、超える束はさらに分ける。検証可能な振る舞いの無い成果 (docs/設定) からは受け入れテスト候補が出ないので、束とは別に unit を立てる。
 
-1. id は U-001/T-001 形式の連番で、T-NNN は plan 全体で一意にする。対象 repo のテストが接頭辞つきの id を使っているなら、その規約に合わせて T-SK077 のように採番し、同じ接頭辞の repo 全体での最大番号の次から振る。plan だけ接頭辞なしにすると、実装時の改番に頼ることになる
+1. id は U-001/T-001 形式の連番で、T-NNN は plan 全体で一意にする。対象 repo のテストが接頭辞つきの id を使っているなら、その規約に合わせて T-SK077 のように採番し、同じ接頭辞の repo 全体での最大番号の次から振る。plan だけ接頭辞なしにすると、実装時の改番に頼ることになる。接頭辞なしの repo では plan 全体の一意性が同じファイル内までは届かないので、テストを書き込むファイルで既に使われている番号を避けて振る
 2. tests[].name は条件 + 期待結果の 1 行言明。code workflow がテスト名として逐語使用し、build が固定文字列で照合する
 3. 検証可能な振る舞いが無い unit (docs/設定) は tests を空配列にする。build はその unit を Red-Green ではなく直接実装の 1 ステップとして進める
 4. 各 unit のテストは自分の境界をテストダブルへ置き換えるので、tests を持つ unit が 2 つ以上になったら seam unit をちょうど 1 つ最後に置き `seam: true` を付ける。その tests は unit 間の境界を跨いで実モジュールを動かし、テストダブルへ置き換えるのはシステム外部との I/O に限り、unit どうしをつなぐ接続を assert する。seam unit が無い plan は build の `validate()` が reject する

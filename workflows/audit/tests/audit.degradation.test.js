@@ -295,7 +295,7 @@ const snapshotFence = ({ calls }) => {
   return fence;
 };
 
-test("T-001 base marker と同じ文字列を summary に仕込むと marker が伸びて payload のどこにも出現しない", async () => {
+test("T-029 base marker と同じ文字列を summary に仕込むと marker が伸びて payload のどこにも出現しない", async () => {
   // 攻撃者は base marker の値を知らなくても、marker 自体を推測して仕込んでくる。その想定を
   // 再現するため、衝突しない run から base marker を先に観測する。
   const baseMarker = snapshotFence(await run({})).nonce;
@@ -332,7 +332,7 @@ test("T-011 base marker とその詰め物違いを並べて仕込んでも、ma
   );
 });
 
-test("T-002 marker と衝突しない payload では marker が base のまま変わらない", async () => {
+test("T-030 marker と衝突しない payload では marker が base のまま変わらない", async () => {
   const firstNonce = snapshotFence(await run({})).nonce;
   const secondNonce = snapshotFence(await runWithSummary("unrelated summary text")).nonce;
   assert.equal(
@@ -358,7 +358,7 @@ test("T-003 1つの fence の BEGIN と END が同じ marker を使う", async (
 // 文言だけを見る。
 const MEMBERSHIP_SENTENCE = "Membership is already decided";
 
-test("T-001 challenge が verdict を返した run の Integrate prompt には membership 確定の一文が入る", async () => {
+test("T-031 challenge が verdict を返した run の Integrate prompt には membership 確定の一文が入る", async () => {
   const { calls } = await run({ challenge: BOTH_CONFIRMED, integrate: INTEGRATED });
   const call = callOf(calls, "integrate");
   assert.ok(call, "integrate agent が起動する");
@@ -368,7 +368,7 @@ test("T-001 challenge が verdict を返した run の Integrate prompt には m
   );
 });
 
-test("T-002 challenge が結果を返さない run の Integrate prompt には membership 確定の一文が入らない", async () => {
+test("T-032 challenge が結果を返さない run の Integrate prompt には membership 確定の一文が入らない", async () => {
   const { calls } = await run({ challenge: undefined, integrate: INTEGRATED });
   const call = callOf(calls, "integrate");
   assert.ok(call, "integrate agent が起動する");
@@ -378,7 +378,7 @@ test("T-002 challenge が結果を返さない run の Integrate prompt には m
   );
 });
 
-test("T-003 challenge が空の verdicts を返した run も、結果を返さない run と同じ扱いになる", async () => {
+test("T-033 challenge が空の verdicts を返した run も、結果を返さない run と同じ扱いになる", async () => {
   const { calls } = await run({ challenge: { verdicts: [] }, integrate: INTEGRATED });
   const call = callOf(calls, "integrate");
   assert.ok(call, "integrate agent が起動する");
@@ -404,7 +404,7 @@ test("T-010 challenge が結果を返さない run の Integrate prompt には v
 // scope 省略時の解決は git status --porcelain の結果に依る。その agent が応答を返さないと
 // 未コミット変更の有無が分からないまま HEAD diff へ落ちるので、何が確かめられなかったかを
 // 返り値と log の両方に残す (WORKFLOWS.md § Degradation recording の fail-open の行)。
-test("T-011 scope 解決の status agent が応答を返さない run が、未確定であることを返り値と log に残す", async () => {
+test("T-034 scope 解決の status agent が応答を返さない run が、未確定であることを返り値と log に残す", async () => {
   const { result, logs } = await runWorkflow(auditJs, {
     args: { skipPreflight: true },
     stubs: {
