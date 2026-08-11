@@ -751,6 +751,8 @@ const STRUCTURE_SCHEMA = obj(["reference_checked", "findings"], {
   },
   findings: {
     type: "array",
+    description:
+      "1 要素につき逸脱 1 件。別の reference や location を持つ指摘は、detail の 2 文目でなく別の finding にする",
     items: obj(["category", "location", "reference", "detail"], {
       category: {
         type: "string",
@@ -766,7 +768,7 @@ const STRUCTURE_SCHEMA = obj(["reference_checked", "findings"], {
       detail: {
         type: "string",
         description:
-          "レビュアーが逸脱を判断できるよう、参照モジュールと何が違うかを 2 文以内で書く。根拠の所在は location と reference が持つ",
+          "レビュアーが判断できるよう、この finding が指す 1 件の逸脱を 3 文以内、1 文 1 主張で書く。根拠の所在は location と reference が持つ",
       },
     }),
   },
@@ -779,6 +781,8 @@ const CONFORMANCE_SCHEMA = obj(["spec_found", "findings"], {
   },
   findings: {
     type: "array",
+    description:
+      "1 要素につき逸脱 1 件。別の spec_line や location を持つ指摘は、detail の 2 文目でなく別の finding にする",
     items: obj(["category", "severity", "spec_line", "location", "detail"], {
       category: {
         type: "string",
@@ -802,7 +806,7 @@ const CONFORMANCE_SCHEMA = obj(["spec_found", "findings"], {
       detail: {
         type: "string",
         description:
-          "レビュアーが逸脱を判断できるよう、何が spec と食い違うかを 2 文以内で書く。根拠の所在は location と spec_line が持つ",
+          "レビュアーが判断できるよう、この finding が指す 1 件の逸脱を 3 文以内、1 文 1 主張で書く。根拠の所在は location と spec_line が持つ",
       },
     }),
   },
@@ -860,7 +864,8 @@ const [diff, testPresence, conformance, structure] = await parallel([
         `起点 issue に対する conformance review。spec は GitHub issue #${issueNumber} で、` +
           `\`gh issue view ${issueNumber}\` で読む。レビュー対象は、分岐点 ${diffBase} 以降にこの build が生んだ変更 ` +
           `すべて (commit 済みも未 commit も含む) なので、\`git diff ${diffBase}\` と \`git status --porcelain\` が示す ` +
-          `未追跡ファイルを使う。main...HEAD は使わない。`,
+          `未追跡ファイルを使う。main...HEAD は使わない。` +
+          `finding 1 件につき逸脱は 1 件。別の spec_line や location を持つ指摘は、detail の 2 文目でなく別の finding にする。`,
       ),
       {
         label: "conformance",

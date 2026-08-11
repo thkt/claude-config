@@ -781,6 +781,8 @@ const STRUCTURE_SCHEMA = obj(["reference_checked", "findings"], {
   },
   findings: {
     type: "array",
+    description:
+      "One deviation per element. An observation with its own reference or location is a separate finding, not a second sentence inside detail",
     items: obj(["category", "location", "reference", "detail"], {
       category: {
         type: "string",
@@ -796,7 +798,7 @@ const STRUCTURE_SCHEMA = obj(["reference_checked", "findings"], {
       detail: {
         type: "string",
         description:
-          "what differs from the reference module, in at most 2 sentences, so a reviewer can judge the deviation. location / reference carry where the evidence lives",
+          "the single deviation this finding is about, in at most 3 sentences with one claim each, so a reviewer can judge it. location / reference carry where the evidence lives",
       },
     }),
   },
@@ -809,6 +811,8 @@ const CONFORMANCE_SCHEMA = obj(["spec_found", "findings"], {
   },
   findings: {
     type: "array",
+    description:
+      "One deviation per element. An observation with its own spec_line or location is a separate finding, not a second sentence inside detail",
     items: obj(["category", "severity", "spec_line", "location", "detail"], {
       category: {
         type: "string",
@@ -832,7 +836,7 @@ const CONFORMANCE_SCHEMA = obj(["spec_found", "findings"], {
       detail: {
         type: "string",
         description:
-          "what diverges from the spec, in at most 2 sentences, so a reviewer can judge the deviation. location / spec_line carry where the evidence lives",
+          "the single deviation this finding is about, in at most 3 sentences with one claim each, so a reviewer can judge it. location / spec_line carry where the evidence lives",
       },
     }),
   },
@@ -890,7 +894,8 @@ const [diff, testPresence, conformance, structure] = await parallel([
         `Conformance review against the originating issue. The spec is GitHub issue #${issueNumber}: ` +
           `read it with \`gh issue view ${issueNumber}\`. The implementation to review is everything this build ` +
           `produced since its branch point ${diffBase}, committed and uncommitted alike, so use \`git diff ${diffBase}\` ` +
-          `plus the untracked files shown by \`git status --porcelain\`; do not use main...HEAD.`,
+          `plus the untracked files shown by \`git status --porcelain\`; do not use main...HEAD. ` +
+          `Report one deviation per finding: an observation with its own spec_line or location is a separate finding, not a second sentence in detail.`,
       ),
       {
         label: "conformance",
