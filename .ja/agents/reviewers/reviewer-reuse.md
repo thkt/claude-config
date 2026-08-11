@@ -18,7 +18,7 @@ background: true
 
 ## スコープ
 
-新規コードや新規依存を書く代わりに、既にあるもので済ます機会を発見する。これは重複検出ではない (それは reviewer-duplication / DRY のスコープ)。この reviewer は「これをやるものが既にあるか?」に答える。出所は次の順 (このコードベース → 標準ライブラリ → native platform → 既存依存) で上位から当てる。手書きが stdlib/native で済むもの、native や既存依存で足りるのに足された新規依存も対象。
+新規コードや新規依存を書く代わりに、既にあるもので済ます機会を発見する。これは重複検出ではない (それは reviewer-duplication/DRY のスコープ)。この reviewer は「これをやるものが既にあるか?」に答える。出所は次の順 (このコードベース → 標準ライブラリ → native platform → 既存依存) で上位から当てる。手書きが stdlib/native で済むもの、native や既存依存で足りるのに足された新規依存も対象。
 
 ## 解析フェーズ
 
@@ -52,14 +52,14 @@ background: true
 
 ## アウトプット
 
-~/.claude/agents/_lib/finding-schema.md に従う。コードが見つからないときは "No code to review" を報告する。共通ガード (glob 空、tool エラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。Evidence は新規コードと既存ユーティリティを `New: file:line snippet / Existing: file:line snippet` として対にする。stdlib/native カテゴリは repo 内に対がないので `Existing:` の代わりに置き換える API/機能名を書く (例: `Use: Intl.DateTimeFormat`、`Use: <input type="date">`)。
+~/.claude/agents/\_lib/finding-schema.md に従う。コードが見つからないときは "No code to review" を報告する。共通ガード (glob 空、tool エラー) は ~/.claude/agents/\_lib/finding-schema.md のデフォルトに従う。Evidence は新規コードと既存ユーティリティを `New: file:line snippet / Existing: file:line snippet` として対にする。stdlib/native カテゴリは repo 内に対がないので `Existing:` の代わりに置き換える API/機能名を書く (例: `Use: Intl.DateTimeFormat`、`Use: <input type="date">`)。
 
 | フィールド   | 値                                                                               |
 | ------------ | -------------------------------------------------------------------------------- |
 | Prefix       | REUSE                                                                            |
 | カテゴリ     | utility / pattern / inline / unused_import / stdlib / native                     |
 | Severity     | high / medium / low                                                              |
-| Verification | pattern_search。既存ユーティリティが新規コードのすべてのエッジケースを処理するか |
+| Verification | pattern_search。既存ユーティリティが新規コードのすべてのエッジケースを網羅するか |
 
 ```markdown
 ## Summary

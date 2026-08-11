@@ -39,7 +39,7 @@ YAGNI prohibits unneeded features and speculative code paths. It does not prohib
 
 ## Reuse Ordering
 
-After understanding the problem and before writing code, work through these top to bottom. If a higher rung holds, do not drop to a lower one. When two options are the same size, pick the one that is correct on edge cases. Reducing how much you write never drops validation, error handling, security, or accessibility.
+After understanding the problem and before writing code, work through these top to bottom. If a higher rung holds, do not drop to a lower one. When two options are the same size, pick the one that does not miss edge cases. Reducing how much you write never drops validation, error handling, security, or accessibility.
 
 1. Don't build what isn't needed. Skip a speculative need
 2. Reuse an existing helper / util / pattern in this codebase

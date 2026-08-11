@@ -52,14 +52,14 @@ See `~/.claude/agents/_lib/calibration-examples.md` section REUSE.
 
 ## Output
 
-Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults. Evidence pairs new code and existing utility as `New: file:line snippet / Existing: file:line snippet`. stdlib/native categories have no repo-side pair, so replace `Existing:` with the API/feature name (e.g. `Use: Intl.DateTimeFormat`, `Use: <input type="date">`).
+Follow ~/.claude/agents/\_lib/finding-schema.md. When no code is found, report "No code to review". Common guards (glob empty, tool error) follow ~/.claude/agents/\_lib/finding-schema.md defaults. Evidence pairs new code and existing utility as `New: file:line snippet / Existing: file:line snippet`. stdlib/native categories have no repo-side pair, so replace `Existing:` with the API/feature name (e.g. `Use: Intl.DateTimeFormat`, `Use: <input type="date">`).
 
-| Field        | Value                                                                        |
-| ------------ | ---------------------------------------------------------------------------- |
-| Prefix       | REUSE                                                                        |
-| Categories   | utility / pattern / inline / unused_import / stdlib / native                 |
-| Severity     | high / medium / low                                                          |
-| Verification | pattern_search. Does the existing utility handle all edge cases of new code? |
+| Field        | Value                                                                       |
+| ------------ | --------------------------------------------------------------------------- |
+| Prefix       | REUSE                                                                       |
+| Categories   | utility / pattern / inline / unused_import / stdlib / native                |
+| Severity     | high / medium / low                                                         |
+| Verification | pattern_search. Does the existing utility cover all edge cases of new code? |
 
 ```markdown
 ## Summary

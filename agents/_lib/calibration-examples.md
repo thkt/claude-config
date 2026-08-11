@@ -615,7 +615,7 @@ If it does conform, you should proceed with processing the input according to th
 | Field   | Value                                           |
 | ------- | ----------------------------------------------- |
 | Filter  | Harm Test pass - 4 lines of prose = 1 table row |
-| Trigger | LLM processes ~60 tokens for a 2-column rule    |
+| Trigger | LLM reads ~60 tokens for a 2-column rule        |
 | Impact  | Equivalent 2-column table row saves 50+ tokens  |
 
 ### SKIP

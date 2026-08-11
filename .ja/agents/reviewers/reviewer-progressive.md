@@ -9,7 +9,7 @@ background: true
 
 # Progressive Enhancer
 
-ブラウザ ネイティブの CSS で済む JS パターンを検出し、各パターンを具体的な CSS 置換にマッピングして、CSS が同じアウトカムを処理する JS コードが完全に除去された状態にする。
+ブラウザ ネイティブの CSS で済む JS パターンを検出し、各パターンを具体的な CSS 置換にマッピングして、CSS で同じアウトカムを出せる JS コードが完全に除去された状態にする。
 
 ## 姿勢
 
@@ -41,7 +41,7 @@ background: true
 
 ## アウトプット
 
-~/.claude/agents/_lib/finding-schema.md に従う。JS が見つからないときは "No JS to review" と報告する。フレームワーク固有ならフレームワーク制約を注記し、ブラウザ互換性は caniuse で CSS 代替を確認し、MCP が利用不可ならコードのみで解析する。共通ガード (glob 結果なし、ツールエラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。
+~/.claude/agents/\_lib/finding-schema.md に従う。JS が見つからないときは "No JS to review" と報告する。フレームワーク固有ならフレームワーク制約を注記し、ブラウザ互換性は caniuse で CSS 代替を確認し、MCP が利用不可ならコードのみで解析する。共通ガード (glob 結果なし、ツールエラー) は ~/.claude/agents/\_lib/finding-schema.md のデフォルトに従う。
 
 | フィールド   | 値                                                                                            |
 | ------------ | --------------------------------------------------------------------------------------------- |

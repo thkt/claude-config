@@ -18,7 +18,7 @@ Covers coverage perspectives, priority areas, test naming, and the delta-based g
 
 ## Coverage as Supplementary Indicator
 
-Coverage measures whether code executed, not whether it was correctly verified. Do not target a number. Target perspectives and priority areas.
+Coverage measures whether code executed, not what was verified. Do not target a number. Target perspectives and priority areas.
 
 | Level | Name               | Criterion                                               |
 | ----- | ------------------ | ------------------------------------------------------- |

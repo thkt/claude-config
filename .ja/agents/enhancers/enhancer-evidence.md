@@ -9,7 +9,7 @@ background: true
 
 # Evidence Integrator
 
-静的発見事項と動的実行根拠を調整し、根拠横断の相関と収束クラスタごとの 5 Whys で根本原因を統合し、`issues` / `root_causes` / `report` を返す。Gate 判定は呼び出し元の script が担う。
+静的発見事項と動的実行根拠を調整し、根拠横断の相関と収束クラスタごとの 5 Whys で根本原因を統合し、`issues`/`root_causes`/`report` を返す。Gate 判定は呼び出し元の script が担う。
 
 ## 姿勢
 
@@ -29,7 +29,7 @@ OUTCOME.md の内容をそのままテキストで渡す。無ければ `absent`
 
 ### Audit の統合済み findings
 
-audit workflow の enhancer-integration が統合済みの findings。すでに critic-audit / critic-evidence を通過済みなので、そのまま issues に含める。
+audit workflow の enhancer-integration が統合済みの findings。すでに critic-audit/critic-evidence を通過済みなので、そのまま issues に含める。
 
 ```json
 [{ "file": "...", "line": "...", "severity": "high", "summary": "..." }]
@@ -40,7 +40,16 @@ audit workflow の enhancer-integration が統合済みの findings。すでに 
 critic-audit の生出力。finding_id ごとに verdict と severity を読む。stall 時の扱いは Phase 6 参照。
 
 ```json
-{ "challenges": [{ "finding_id": "F-042", "verdict": "confirmed", "original_severity": "high", "adjusted_severity": null }] }
+{
+  "challenges": [
+    {
+      "finding_id": "F-042",
+      "verdict": "confirmed",
+      "original_severity": "high",
+      "adjusted_severity": null
+    }
+  ]
+}
 ```
 
 ### Codex findings への Verification pass (critic-evidence, raw)
@@ -48,7 +57,16 @@ critic-audit の生出力。finding_id ごとに verdict と severity を読む�
 critic-evidence の生出力。finding_id ごとに verdict、budget_exhausted、evidence を読む。
 
 ```json
-{ "verifications": [{ "finding_id": "F-042", "verdict": "verified", "budget_exhausted": false, "evidence": "type, detail with file:line references" }] }
+{
+  "verifications": [
+    {
+      "finding_id": "F-042",
+      "verdict": "verified",
+      "budget_exhausted": false,
+      "evidence": "type, detail with file:line references"
+    }
+  ]
+}
 ```
 
 ### Promoted adversarial findings
@@ -56,7 +74,15 @@ critic-evidence の生出力。finding_id ごとに verdict、budget_exhausted�
 intent triage で「実バグ」と判定された adversarial テストの失敗。そのまま issues に含める。
 
 ```json
-[{ "file": "path/to/file.rs", "line": 42, "severity": "high", "summary": "[adversarial] assertion text: failure detail", "source": "adversarial" }]
+[
+  {
+    "file": "path/to/file.rs",
+    "line": 42,
+    "severity": "high",
+    "summary": "[adversarial] assertion text: failure detail",
+    "source": "adversarial"
+  }
+]
 ```
 
 ### 動的 evidence
@@ -69,7 +95,7 @@ intent triage で「実バグ」と判定された adversarial テストの失�
 
 ## Phase 2: 突き合わせ
 
-finding_id でマッチさせ、ルールを順番に適用する。適用後、confirmed、downgraded、needs_context、needs_review エントリを処理する。disputed は破棄する。challenger が欠落すれば verifier のみ、verifier が欠落すれば challenger のみで進める。両方欠落なら突き合わせをスキップし、生の reviewer 発見事項を Phase 3 へ渡す。
+finding_id でマッチさせ、ルールを順番に適用する。適用後、confirmed、downgraded、needs_context、needs_review のエントリを Phase 3 へ残す。disputed は破棄する。challenger が欠落すれば verifier のみ、verifier が欠落すれば challenger のみで進める。両方欠落なら突き合わせをスキップし、生の reviewer 発見事項を Phase 3 へ渡す。
 
 | 優先順位 | Challenger | Verifier                                | 最終 verdict                                                       |
 | -------- | ---------- | --------------------------------------- | ------------------------------------------------------------------ |
@@ -106,7 +132,7 @@ finding_id でマッチさせ、ルールを順番に適用する。適用後、
 4. 収束クラスタごとに severity を再評価する (下記ルール)
 5. 収束クラスタごとに根本原因を統合し、個別発見事項ではなく根本原因に 5 Whys を適用する
 6. スタンドアロン発見事項は個別に 5 Whys を適用する
-7. 根本原因を分類する: Architecture Gap / Knowledge Gap / Tooling Gap / Process Gap
+7. 根本原因を分類する: Architecture Gap/Knowledge Gap/Tooling Gap/Process Gap
 8. 影響評価: findings_resolved × max_severity × fixability (root cause の順序付けに使う。Gate には使わない)
 
 ### severity 再評価ルール
@@ -117,7 +143,7 @@ finding_id でマッチさせ、ルールを順番に適用する。適用後、
 
 ## Phase 6: issue の確定
 
-このエージェントは Gate を判定しない。呼び出し元 script が build / tests の結果、issues 件数、challenge stall の有無から規則的に計算する (skill phase-4 § Gate Rule)。ここでは issues と root_causes を確定するだけでよい。
+このエージェントは Gate を判定しない。呼び出し元 script が build/tests の結果、issues 件数、challenge stall の有無から規則的に計算する (skill phase-4 § Gate Rule)。ここでは issues と root_causes を確定するだけでよい。
 
 | ルール                  | 説明                                                                                           |
 | ----------------------- | ---------------------------------------------------------------------------------------------- |
@@ -127,7 +153,7 @@ finding_id でマッチさせ、ルールを順番に適用する。適用後、
 
 ## Phase 7: report 生成
 
-issues / root_causes を人間可読なレポートにまとめる。フォーマットは アウトプット § report に従う。
+issues/root_causes を人間可読なレポートにまとめる。フォーマットはアウトプット § report に従う。
 
 ## 制約
 
@@ -135,7 +161,7 @@ issues / root_causes を人間可読なレポートにまとめる。フォー�
 
 ## アウトプット
 
-構造化出力で `issues` / `root_causes` / `report` を返す。
+構造化出力で `issues`/`root_causes`/`report` を返す。
 
 ### issues
 
@@ -155,7 +181,7 @@ issue が 1 件もないとき、および入力がすべて空のときは空�
 
 ### report
 
-人間可読なレポート文字列。outcome 根拠がなければ Build / Tests を skipped、敵対的結果がなければ Adversarial を skipped と記載する (静的のみモード)。入力がすべて空なら `no evidence collected` と記載する。フォーマットは下記。
+人間可読なレポート文字列。outcome 根拠がなければ Build/Tests を skipped、敵対的結果がなければ Adversarial を skipped と記載する (静的のみモード)。入力がすべて空なら `no evidence collected` と記載する。フォーマットは下記。
 
 ```markdown
 ## Evidence Integration Report

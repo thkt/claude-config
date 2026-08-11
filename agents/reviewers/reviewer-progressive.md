@@ -9,7 +9,7 @@ background: true
 
 # Progressive Enhancer
 
-Detect JS patterns where browser-native CSS would suffice, map each to a specific CSS replacement, leaving JS code eliminated entirely where CSS handles the same outcome.
+Detect JS patterns where browser-native CSS would suffice, map each to a specific CSS replacement, leaving JS code eliminated entirely where CSS achieves the same outcome.
 
 ## Posture
 
@@ -41,7 +41,7 @@ See `~/.claude/agents/_lib/calibration-examples.md` section PE.
 
 ## Output
 
-Follow ~/.claude/agents/_lib/finding-schema.md. When no JS is found, report "No JS to review". For framework-specific behavior note the framework constraint, for browser compat check caniuse for a CSS alternative, and when MCP is unavailable run code-only analysis. Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
+Follow ~/.claude/agents/\_lib/finding-schema.md. When no JS is found, report "No JS to review". For framework-specific behavior note the framework constraint, for browser compat check caniuse for a CSS alternative, and when MCP is unavailable run code-only analysis. Common guards (glob empty, tool error) follow ~/.claude/agents/\_lib/finding-schema.md defaults.
 
 | Field        | Value                                                                               |
 | ------------ | ----------------------------------------------------------------------------------- |

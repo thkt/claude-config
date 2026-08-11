@@ -86,7 +86,7 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 
 ## Phase 3: Plan 移設
 
-/think の plan 下書きがあるときだけ実施し、無ければ節ごと省略する。`.claude/workspace/planning/` から issue のタイトルに一致する最新の `*.plan.md` を Read し、`## Plan` と `## Backlog candidates` の両節をそのまま本文へ移設する。書式と検証は `/think` の書き出し時と build の Load validate が担い、移設した内容には手を入れない。
+/think の plan 下書きがあるときだけ実施し、無ければ節ごと省略する。`.claude/workspace/planning/` の `*.plan.md` のうち issue のタイトルに一致するものを取り、その中で更新時刻が最も新しい 1 件を Read し、`## Plan` と `## Backlog candidates` の両節をそのまま本文へ移設する。書式と検証は `/think` の書き出し時と build の Load validate が担い、移設した内容には手を入れない。
 
 ## Phase 4: 起票
 

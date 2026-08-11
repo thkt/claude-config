@@ -11,7 +11,7 @@ argument-hint: "[bug or issue description]"
 
 ## Input
 
-`$ARGUMENTS` holds one of four forms: a bug description, a finding ID from a `/audit` snapshot in `${CLAUDE_SKILL_DIR}/../../history/` (e.g., `RC-001`, `SEC-003`), a finding returned by a standalone audit workflow run, or the number of a filed issue. Scope is limited to small, well-understood issues of 1-3 files. When Direct Finding Input carries multiple findings, handle them one at a time in descending severity order. When the impact spans 4+ files, check the multi-file trigger in § Escalation first.
+`$ARGUMENTS` holds one of four forms: a bug description, a finding ID from a `/audit` snapshot in `${CLAUDE_SKILL_DIR}/../../history/` (e.g., `RC-001`, `SEC-003`), a finding returned by a standalone audit workflow run, or the number of a filed issue. Scope is limited to small, well-understood issues of 1-3 files. When Direct Finding Input carries multiple findings, fix them one at a time in descending severity order. When the impact spans 4+ files, check the multi-file trigger in § Escalation first.
 
 | Pattern                                       | Mode                  | Action                                                                                                                                                                                                                                  |
 | --------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

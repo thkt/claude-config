@@ -111,7 +111,7 @@ Rules:
 
 - The canonical syntax must appear in help.
 - Shorthand may exist for backward compatibility.
-- Do not require shorthand knowledge to use the tool correctly.
+- Do not require shorthand knowledge to use the tool.
 - Do not let shorthand make parsing ambiguous.
 
 Current example:

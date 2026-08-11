@@ -86,7 +86,7 @@ When two or more criteria are each independently implementable, ask via AskUserQ
 
 ## Phase 3: Plan Transfer
 
-Run this phase only when a /think plan draft exists; otherwise omit the section entirely. Read the newest `*.plan.md` under `.claude/workspace/planning/` matching the issue title, and transfer both the `## Plan` and `## Backlog candidates` sections into the body as-is. Format and verification are owned by /think at write-out time and by build's Load validate; do not touch the transferred content.
+Run this phase only when a /think plan draft exists; otherwise omit the section entirely. Among the `*.plan.md` files under `.claude/workspace/planning/` matching the issue title, read the one with the newest modification time, and transfer both the `## Plan` and `## Backlog candidates` sections into the body as-is. Format and verification are owned by /think at write-out time and by build's Load validate; do not touch the transferred content.
 
 ## Phase 4: Publishing
 
