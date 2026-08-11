@@ -51,7 +51,7 @@ Top-priority rules. Prevent AI runaway and keep users informed.
 
 **Why this design:**
 
-- `rm` prohibited; `mv ~/.Trash/` leverages macOS Trash recovery
+- `rm` prohibited; `mv ~/.Trash/` lets macOS Trash restore the file
 - Rationalization counters prevent model self-exemption from scope checks
 - Decomposition thresholds (Files ≥5, Features ≥3) prevent scope creep
 

@@ -1,6 +1,6 @@
 ---
 name: reviewer-coverage
-description: Test coverage quality review. Behavioral gaps and test robustness.
+description: Test coverage quality review. Behavioral gaps and tests that pass even when the implementation breaks.
 tools: Read, LS, Bash(git:*), Bash(ugrep:*), Bash(bfs:*)
 model: opus
 skills: [use-workflow-tdd-cycle]
@@ -62,7 +62,7 @@ See `~/.claude/agents/_lib/calibration-examples.md` section TC.
 
 ## Output
 
-Follow ~/.claude/agents/_lib/finding-schema.md. When no tests are found, report "No tests to review". Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
+Follow ~/.claude/agents/\_lib/finding-schema.md. When no tests are found, report "No tests to review". Common guards (glob empty, tool error) follow ~/.claude/agents/\_lib/finding-schema.md defaults.
 
 | Field        | Value                                                                                                   |
 | ------------ | ------------------------------------------------------------------------------------------------------- |

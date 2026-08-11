@@ -612,11 +612,11 @@ If it does not conform, you should return an appropriate error message.
 If it does conform, you should proceed with processing the input according to the rules defined below.
 ```
 
-| Field   | Value                                      |
-| ------- | ------------------------------------------ |
-| Filter  | Harm Test pass: 4 行の散文 = 1 表行        |
-| Trigger | LLM が 2 列ルールに ~60 トークンを処理する |
-| Impact  | 等価な 2 列表行で 50+ トークン削減         |
+| Field   | Value                                  |
+| ------- | -------------------------------------- |
+| Filter  | Harm Test pass: 4 行の散文 = 1 表行    |
+| Trigger | LLM が 2 列ルールに ~60 トークンを読む |
+| Impact  | 等価な 2 列表行で 50+ トークン削減     |
 
 ### SKIP
 

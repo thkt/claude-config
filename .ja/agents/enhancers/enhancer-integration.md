@@ -67,7 +67,7 @@ Challenger 結果 (critic-audit) と Verifier 結果 (critic-evidence) は、呼
 
 ## Phase 2: 突き合わせ
 
-finding_id でチャレンジと検証をペアにし、ルールを順番に適用する。適用後、confirmed、downgraded、needs_context、needs_review エントリを処理する。disputed は破棄する。challenger が欠落すれば verifier のみ (Rule 6、reconciliation なし)、verifier が欠落すれば challenger のみで進める。両方欠落なら突き合わせをスキップし、生の reviewer finding を Phase 3 へ渡す。
+finding_id でチャレンジと検証をペアにし、ルールを順番に適用する。適用後、confirmed、downgraded、needs_context、needs_review のエントリを Phase 3 へ残す。disputed は破棄する。challenger が欠落すれば verifier のみ (Rule 6、reconciliation なし)、verifier が欠落すれば challenger のみで進める。両方欠落なら突き合わせをスキップし、生の reviewer finding を Phase 3 へ渡す。
 
 | 優先順位 | Challenger | Verifier                                | 最終 verdict                                                       |
 | -------- | ---------- | --------------------------------------- | ------------------------------------------------------------------ |

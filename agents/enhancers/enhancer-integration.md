@@ -67,7 +67,7 @@ Parse the challenger and verifier results from the prompt. On a challenge read f
 
 ## Phase 2: Reconciliation
 
-Pair challenge and verification by finding_id and apply rules in order. After applying, process confirmed, downgraded, needs_context, and needs_review entries. Discard disputed. Challenger missing means verifier only (Rule 6, no reconciliation), verifier missing means challenger only. If both are missing, skip reconciliation and feed the raw reviewer findings into Phase 3.
+Pair challenge and verification by finding_id and apply rules in order. After applying, carry confirmed, downgraded, needs_context, and needs_review entries into Phase 3. Discard disputed. Challenger missing means verifier only (Rule 6, no reconciliation), verifier missing means challenger only. If both are missing, skip reconciliation and feed the raw reviewer findings into Phase 3.
 
 | Priority | Challenger | Verifier                                | Final verdict                                                         |
 | -------- | ---------- | --------------------------------------- | --------------------------------------------------------------------- |

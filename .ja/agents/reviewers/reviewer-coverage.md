@@ -1,6 +1,6 @@
 ---
 name: reviewer-coverage
-description: テストカバレッジ品質レビュー。振る舞いの欠落とテストの堅牢性を見る。
+description: テストカバレッジ品質レビュー。振る舞いの欠落と、実装を壊してもテストが落ちないケースを見る。
 tools: Read, LS, Bash(git:*), Bash(ugrep:*), Bash(bfs:*)
 model: opus
 skills: [use-workflow-tdd-cycle]
@@ -62,7 +62,7 @@ background: true
 
 ## アウトプット
 
-~/.claude/agents/_lib/finding-schema.md に従う。テストが見つからないときは "No tests to review" を報告する。共通ガード (glob 結果なし、ツールエラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。
+~/.claude/agents/\_lib/finding-schema.md に従う。テストが見つからないときは "No tests to review" を報告する。共通ガード (glob 結果なし、ツールエラー) は ~/.claude/agents/\_lib/finding-schema.md のデフォルトに従う。
 
 | フィールド   | 値                                                                                              |
 | ------------ | ----------------------------------------------------------------------------------------------- |

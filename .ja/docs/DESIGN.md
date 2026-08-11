@@ -51,7 +51,7 @@ graph TD
 
 設計理由:
 
-- `rm` を禁止し、`mv ~/.Trash/` で macOS のごみ箱回復を活用
+- `rm` を禁止し、`mv ~/.Trash/` で macOS のごみ箱から戻せるようにする
 - Rationalization counter がモデルによる scope check の自己除外を防ぐ
 - 分割閾値 (Files ≥5, Features ≥3) がスコープ膨張を防ぐ
 
