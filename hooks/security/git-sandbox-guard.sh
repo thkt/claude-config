@@ -1,5 +1,6 @@
 #!/bin/zsh
-# PreToolUse hook: stop tree-rewriting git commands from running sandboxed in ~/.claude.
+# PreToolUse hook: stop tree-rewriting git commands from running sandboxed in the Claude
+# config directory.
 #
 # The sandbox denies Bash writes under agents/ rules/ skills/ hooks/ commands/ workflows/
 # even when settings.json lists them in sandbox.filesystem.allowWrite. git moves HEAD
@@ -37,9 +38,13 @@ read -r ESCAPED CWD < <(printf '%s' "$INPUT" | jq -r '[(.tool_input.dangerouslyD
 # The caller already turned the sandbox off, so the writes this guard protects will land.
 [[ "$ESCAPED" == "true" ]] && exit 0
 
+# The config directory is what the sandbox protects, and CLAUDE_CONFIG_DIR relocates it.
+# Compared as a physical path because rev-parse reports one.
+GUARDED_ROOT=$(cd "${CLAUDE_CONFIG_DIR:-$HOME/.claude}" 2>/dev/null && pwd -P) || exit 0
+
 # A repository checked out anywhere else writes freely, so only this one needs the guard.
 TOPLEVEL=$(git -C "${CWD:-$PWD}" rev-parse --show-toplevel 2>/dev/null || true)
-[[ "$TOPLEVEL" == "$HOME/.claude" ]] || exit 0
+[[ "$TOPLEVEL" == "$GUARDED_ROOT" ]] || exit 0
 
 if ! command -v python3 >/dev/null 2>&1; then
   deny "git-sandbox-guard: python3 が無くコマンドを解析できず、作業ツリーを書き換える git かどうかを判定できない。python3 を用意する。"

@@ -11,9 +11,24 @@ HOOK="$SCRIPT_DIR/../security/git-sandbox-guard.sh"
 # The value alone, so the assertion survives jq switching between -c and pretty output.
 DENY_MARK='"deny"'
 
-GUARDED_CWD="$HOME/.claude"
-# Not a git repository, so the toplevel lookup finds no match and the guard stands down.
-UNGUARDED_CWD="${TMPDIR:-/tmp}"
+TEST_TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/git-sandbox-guard-tests-XXXXXX")
+trap 'rm -rf "$TEST_TMPDIR"' EXIT
+
+# The guard reads the config directory from CLAUDE_CONFIG_DIR, so a fixture repository
+# stands in for it and the suite passes wherever the checkout lives. pwd -P because
+# rev-parse reports a physical path and macOS hands out a symlinked TMPDIR.
+fixture_repo() {
+  local dir="$TEST_TMPDIR/$1"
+  mkdir -p "$dir"
+  git init -q "$dir"
+  (cd "$dir" && pwd -P)
+}
+
+GUARDED_CWD=$(fixture_repo config)
+# A second repository, to show the guard keys on which repository it is rather than on
+# whether the path is a repository at all.
+UNGUARDED_CWD=$(fixture_repo other)
+export CLAUDE_CONFIG_DIR="$GUARDED_CWD"
 
 # The shared helper carries no cwd or sandbox flag, both of which this hook branches on.
 make_guard_json() {
@@ -75,7 +90,7 @@ test_escaped_call_passes() {
 
 test_other_repository_passes() {
   echo "T-004: 別のリポジトリは対象外"
-  assert_allowed "pull outside the guarded repo" 'git pull' "$UNGUARDED_CWD"
+  assert_allowed "pull in another repository" 'git pull' "$UNGUARDED_CWD"
 }
 
 test_quoted_text_is_not_a_call() {
