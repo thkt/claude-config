@@ -13,17 +13,17 @@ The Rust binaries are also distributed as sentinels plugins, but plugin registra
 
 ## Event Map
 
-| Event              | Matcher                | Hooks                                                                                |
-| ------------------ | ---------------------- | ------------------------------------------------------------------------------------ |
-| PreToolUse         | Bash                   | auto-package-manager, security/npm-safe-install, security/rm-to-trash, textlint-lint |
-| PreToolUse         | Write/Edit/MultiEdit   | rust-pre-edit, guardrails                                                            |
-| PreToolUse         | EnterPlanMode          | deny (planning is routed to /think)                                                  |
-| PostToolUse        | Write/Edit/MultiEdit   | rust-post-edit, textlint-fix, assay, formatter, gates                                |
-| PostToolUse        | Bash                   | gates post-bash                                                                      |
-| SessionStart       | \*                     | lifecycle/recall-index, herdr-agent-state                                            |
-| Stop / StopFailure | -                      | notify-stop / notify-stop-failure                                                    |
-| Notification       | permission_prompt etc. | Notification sound (afplay)                                                          |
-| statusLine         | -                      | lifecycle/statusline                                                                 |
+| Event              | Matcher                | Hooks                                                                                                                                 |
+| ------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| PreToolUse         | Bash                   | auto-package-manager, security/npm-safe-install, security/rm-to-trash, security/git-sandbox-guard, textlint-lint, issue-body-template |
+| PreToolUse         | Write/Edit/MultiEdit   | rust-pre-edit, guardrails                                                                                                             |
+| PreToolUse         | EnterPlanMode          | deny (planning is routed to /think)                                                                                                   |
+| PostToolUse        | Write/Edit/MultiEdit   | rust-post-edit, textlint-fix, assay, formatter, gates                                                                                 |
+| PostToolUse        | Bash                   | gates post-bash                                                                                                                       |
+| SessionStart       | \*                     | lifecycle/recall-index, herdr-agent-state                                                                                             |
+| Stop / StopFailure | -                      | notify-stop / notify-stop-failure                                                                                                     |
+| Notification       | permission_prompt etc. | Notification sound (afplay)                                                                                                           |
+| statusLine         | -                      | lifecycle/statusline                                                                                                                  |
 
 ## Shell Hooks
 
@@ -41,10 +41,11 @@ The Rust binaries are also distributed as sentinels plugins, but plugin registra
 
 ### security/
 
-| Hook                | Event            | Failure Mode | Purpose                                       |
-| ------------------- | ---------------- | ------------ | --------------------------------------------- |
-| npm-safe-install.sh | PreToolUse(Bash) | fail-closed  | Block package installs without ignore-scripts |
-| rm-to-trash.sh      | PreToolUse(Bash) | fail-closed  | Route rm/rmdir/unlink/shred to `mv ~/.Trash/` |
+| Hook                 | Event            | Failure Mode | Purpose                                                     |
+| -------------------- | ---------------- | ------------ | ----------------------------------------------------------- |
+| npm-safe-install.sh  | PreToolUse(Bash) | fail-closed  | Block package installs without ignore-scripts               |
+| rm-to-trash.sh       | PreToolUse(Bash) | fail-closed  | Route rm/rmdir/unlink/shred to `mv ~/.Trash/`               |
+| git-sandbox-guard.sh | PreToolUse(Bash) | fail-closed  | Stop tree-rewriting git from running sandboxed in ~/.claude |
 
 ### lifecycle/
 

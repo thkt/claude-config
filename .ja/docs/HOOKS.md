@@ -13,17 +13,17 @@ Rust バイナリは sentinels プラグインとしても配布するが、現�
 
 ## イベント マップ
 
-| イベント           | Matcher              | フック                                                                               |
-| ------------------ | -------------------- | ------------------------------------------------------------------------------------ |
-| PreToolUse         | Bash                 | auto-package-manager, security/npm-safe-install, security/rm-to-trash, textlint-lint |
-| PreToolUse         | Write/Edit/MultiEdit | rust-pre-edit, guardrails                                                            |
-| PreToolUse         | EnterPlanMode        | deny (計画は /think へ誘導)                                                          |
-| PostToolUse        | Write/Edit/MultiEdit | rust-post-edit, textlint-fix, assay, formatter, gates                                |
-| PostToolUse        | Bash                 | gates post-bash                                                                      |
-| SessionStart       | \*                   | lifecycle/recall-index, herdr-agent-state                                            |
-| Stop / StopFailure | -                    | notify-stop / notify-stop-failure                                                    |
-| Notification       | permission_prompt 等 | 通知サウンド (afplay)                                                                |
-| statusLine         | -                    | lifecycle/statusline                                                                 |
+| イベント           | Matcher              | フック                                                                                                                                |
+| ------------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| PreToolUse         | Bash                 | auto-package-manager, security/npm-safe-install, security/rm-to-trash, security/git-sandbox-guard, textlint-lint, issue-body-template |
+| PreToolUse         | Write/Edit/MultiEdit | rust-pre-edit, guardrails                                                                                                             |
+| PreToolUse         | EnterPlanMode        | deny (計画は /think へ誘導)                                                                                                           |
+| PostToolUse        | Write/Edit/MultiEdit | rust-post-edit, textlint-fix, assay, formatter, gates                                                                                 |
+| PostToolUse        | Bash                 | gates post-bash                                                                                                                       |
+| SessionStart       | \*                   | lifecycle/recall-index, herdr-agent-state                                                                                             |
+| Stop / StopFailure | -                    | notify-stop / notify-stop-failure                                                                                                     |
+| Notification       | permission_prompt 等 | 通知サウンド (afplay)                                                                                                                 |
+| statusLine         | -                    | lifecycle/statusline                                                                                                                  |
 
 ## シェル hooks
 
@@ -41,10 +41,11 @@ Rust バイナリは sentinels プラグインとしても配布するが、現�
 
 ### security/
 
-| Hook                | イベント         | 失敗モード  | 用途                                                   |
-| ------------------- | ---------------- | ----------- | ------------------------------------------------------ |
-| npm-safe-install.sh | PreToolUse(Bash) | fail-closed | ignore-scripts なしのパッケージ インストールをブロック |
-| rm-to-trash.sh      | PreToolUse(Bash) | fail-closed | rm/rmdir/unlink/shred を `mv ~/.Trash/` へ誘導         |
+| Hook                 | イベント         | 失敗モード  | 用途                                                         |
+| -------------------- | ---------------- | ----------- | ------------------------------------------------------------ |
+| npm-safe-install.sh  | PreToolUse(Bash) | fail-closed | ignore-scripts なしのパッケージ インストールをブロック       |
+| rm-to-trash.sh       | PreToolUse(Bash) | fail-closed | rm/rmdir/unlink/shred を `mv ~/.Trash/` へ誘導               |
+| git-sandbox-guard.sh | PreToolUse(Bash) | fail-closed | ~/.claude で作業ツリーを書き換える git を sandbox 内で止める |
 
 ### lifecycle/
 
