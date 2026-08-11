@@ -53,7 +53,7 @@ Skills は「ナレッジ モジュール」。AI がタスク実行時にドメ
 | -------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------- |
 | Workflow       | use-workflow-tdd-cycle, use-workflow-pageshot                                                             | 多段ワークフロー定義                  |
 | Context        | use-context-reviewer-\*, use-context-root-cause-analysis                                                  | エージェント向けドメイン知識          |
-| CLI ラッパー   | use-cli-codegraph, use-cli-recall, use-cli-scout, use-cli-gcloud, use-cli-herdr                           | CLI ツール統合                        |
+| CLI ラッパー   | use-cli-codegraph, use-cli-recall, use-cli-scout, use-cli-gcloud                                          | CLI ツール統合                        |
 | User-invocable | census, challenge, checkout, commit, dr, fix, issue, outcome, pr, preview, research, scribe, slice, think | スラッシュ コマンド エントリ ポイント |
 
 ### ロード機構
