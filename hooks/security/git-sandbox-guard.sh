@@ -4,11 +4,10 @@
 # The sandbox denies Bash writes under agents/ rules/ skills/ hooks/ commands/ workflows/
 # even when settings.json lists them in sandbox.filesystem.allowWrite. git moves HEAD
 # anyway, so the tree is left with HEAD on one commit and those directories on another,
-# and the next pull refuses to run because the tree reads as dirty. Recovering takes a
-# reset plus a per-file checkout, which is why this is worth blocking up front.
+# and the next pull refuses to run because the tree reads as dirty.
 #
-# Failure mode: fail-closed. A command line shlex cannot close hides where its git call
-# sits, so it is not cleared.
+# Failure mode: fail-closed. A line shlex cannot tokenize hides where its git call sits,
+# so it is not cleared.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -38,22 +37,19 @@ read -r ESCAPED CWD < <(printf '%s' "$INPUT" | jq -r '[(.tool_input.dangerouslyD
 # The caller already turned the sandbox off, so the writes this guard protects will land.
 [[ "$ESCAPED" == "true" ]] && exit 0
 
-# Only the repository whose files the sandbox protects. Another repository checked out
-# under a different path writes freely and needs no guard.
+# A repository checked out anywhere else writes freely, so only this one needs the guard.
 TOPLEVEL=$(git -C "${CWD:-$PWD}" rev-parse --show-toplevel 2>/dev/null || true)
 [[ "$TOPLEVEL" == "$HOME/.claude" ]] || exit 0
-
-COMMAND=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""')
-
-RETRY='dangerouslyDisableSandbox: true を付けて同じコマンドを実行し直す。それも拒否されたら、ユーザーに `! <コマンド>` での実行を依頼する。'
 
 if ! command -v python3 >/dev/null 2>&1; then
   deny "git-sandbox-guard: python3 が無くコマンドを解析できず、作業ツリーを書き換える git かどうかを判定できない。python3 を用意する。"
   exit 0
 fi
 
+COMMAND=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""')
+
 # Not a regex over the raw string: it cannot tell where a token sits, so `git pull` inside
-# a commit message would read as a pull, and `git -C other/repo pull` would read as one here.
+# a commit message would read as a pull.
 if printf '%s' "$COMMAND" | LIB_DIR="$SCRIPT_DIR/../lib" python3 -c '
 import os
 import sys
@@ -68,10 +64,12 @@ REWRITES = frozenset({
 })
 
 # git own options that swallow the token after them, which would otherwise read as the
-# subcommand.
+# subcommand. -C names another repository, which this guard still denies rather than
+# resolve: the escape hatch is one flag away and the miss would be silent.
 VALUED_GIT_FLAGS = frozenset({"-C", "-c", "--git-dir", "--work-tree", "--namespace"})
 
-# Creating a branch leaves every file where it is.
+# checkout takes -b / -B and switch takes -c / -C. Creating a branch leaves every file
+# where it is.
 BRANCH_CREATE = frozenset({"-b", "-B", "-c", "-C"})
 
 # soft and mixed stop at the index. Only these three carry the change into the tree.
@@ -91,12 +89,12 @@ def rewrites_tree(tokens):
     subcommand, rest = args[index], args[index + 1 :]
     if subcommand not in REWRITES:
         return False
-    if subcommand in ("checkout", "switch") and any(a in BRANCH_CREATE for a in rest):
-        return False
-    if subcommand == "reset" and not any(a in RESET_WRITES for a in rest):
-        return False
-    if subcommand == "stash" and rest and rest[0] in STASH_READS:
-        return False
+    if subcommand in ("checkout", "switch"):
+        return not any(a in BRANCH_CREATE for a in rest)
+    if subcommand == "reset":
+        return any(a in RESET_WRITES for a in rest)
+    if subcommand == "stash":
+        return not (rest and rest[0] in STASH_READS)
     return True
 
 
@@ -106,5 +104,5 @@ except ValueError:
     hit = True
 sys.exit(0 if hit else 1)
 '; then
-  deny "git-sandbox-guard: このリポジトリで作業ツリーを書き換える git は sandbox 内で走らせない。agents/ rules/ skills/ hooks/ commands/ workflows/ への書き込みが拒否され、HEAD だけ進んで作業ツリーと食い違う。${RETRY}"
+  deny "git-sandbox-guard: このリポジトリで作業ツリーを書き換える git は sandbox 内で走らせない。agents/ rules/ skills/ hooks/ commands/ workflows/ への書き込みが拒否され、HEAD だけ進んで作業ツリーと食い違う。dangerouslyDisableSandbox: true を付けて同じコマンドを実行し直す。それも拒否されたら、ユーザーに \`! <コマンド>\` での実行を依頼する。"
 fi

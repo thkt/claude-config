@@ -22,16 +22,20 @@ make_guard_json() {
     '{"tool_name":"Bash","cwd":$cwd,"tool_input":{"command":$cmd,"dangerouslyDisableSandbox":$escaped}}'
 }
 
+run_hook() {
+  make_guard_json "$@" | "$HOOK" 2>/dev/null || true
+}
+
 assert_denied() {
-  local name="$1" cmd="$2" output
-  output=$(make_guard_json "$cmd" | "$HOOK" 2>/dev/null) || true
-  assert_contains "$name" "$DENY_MARK" "$output"
+  local name="$1"
+  shift
+  assert_contains "$name" "$DENY_MARK" "$(run_hook "$@")"
 }
 
 assert_allowed() {
-  local name="$1" cmd="$2" output
-  output=$(make_guard_json "$cmd" | "$HOOK" 2>/dev/null) || true
-  assert_not_contains "$name" "$DENY_MARK" "$output"
+  local name="$1"
+  shift
+  assert_not_contains "$name" "$DENY_MARK" "$(run_hook "$@")"
 }
 
 test_tree_rewriting_is_denied() {
@@ -66,16 +70,12 @@ test_index_only_and_branch_create_pass() {
 
 test_escaped_call_passes() {
   echo "T-003: sandbox を外した呼び出しは通す"
-  local output
-  output=$(make_guard_json 'git pull' "$GUARDED_CWD" true | "$HOOK" 2>/dev/null) || true
-  assert_not_contains "escaped pull" "$DENY_MARK" "$output"
+  assert_allowed "escaped pull" 'git pull' "$GUARDED_CWD" true
 }
 
 test_other_repository_passes() {
   echo "T-004: 別のリポジトリは対象外"
-  local output
-  output=$(make_guard_json 'git pull' "$UNGUARDED_CWD" | "$HOOK" 2>/dev/null) || true
-  assert_not_contains "pull outside the guarded repo" "$DENY_MARK" "$output"
+  assert_allowed "pull outside the guarded repo" 'git pull' "$UNGUARDED_CWD"
 }
 
 test_quoted_text_is_not_a_call() {
