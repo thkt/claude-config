@@ -183,7 +183,7 @@ def render(payload):
                 f"<details><summary>{L['verify_output']}</summary>\n\n{fence}\n{body}\n{fence}\n\n</details>"
             )
 
-    def section(label, items, render_item):
+    def section(label, items, render_item, fold=None):
         items = _list(items)
         if not items:
             return
@@ -203,7 +203,16 @@ def render(payload):
             if not parts:
                 continue
             lines.append("- " + parts[0])
-            lines.extend("  " + p for p in parts[1:])
+            if fold and len(parts) > 1:
+                # Indent 2 keeps these inside the list item; the blank lines around
+                # <details> are what let GitHub render the markdown inside it.
+                lines.append(f"  <details><summary>{fold.format(n=len(parts) - 1)}</summary>")
+                lines.append("")
+                lines.extend("  - " + p for p in parts[1:])
+                lines.append("")
+                lines.append("  </details>")
+            else:
+                lines.extend("  " + p for p in parts[1:])
         folded.append(f"**{label}**\n" + "\n".join(lines))
 
     # Rendered as task-list items so the reviewer can tick them off on the PR.
@@ -230,40 +239,18 @@ def render(payload):
             _evidence(f.get("location"), "ref", f.get("reference")),
         ],
     )
-    def anomalies(label, items):
-        """An anomaly's conclusion and its evidence read at different grains. The
-        evidence is verbatim command output whose line count buries the conclusion,
-        so it folds into a nested <details> and shows only when opened. Translation
-        skips it (being verbatim is what makes it evidence), so the renderer is the
-        only place it can be shortened."""
-        items = _list(items)
-        if not items:
-            return
-        lines = []
-        for a in items:
-            try:
-                head = f"{a.get('unit', '?')} ({a.get('kind', '?')}): {a.get('notes', '')}".rstrip()
-                evidence = _list(a.get("evidence"))
-            except (AttributeError, TypeError, KeyError):
-                head, evidence = str(a), []
-            head = " ".join(head.split("\n"))
-            if not head.strip():
-                continue
-            lines.append("- " + head)
-            evidence = [" ".join(str(e).split("\n")) for e in evidence if str(e).strip()]
-            if not evidence:
-                continue
-            # Indent 2 keeps these inside the list item. The blank lines around
-            # <details> close the HTML block, so GitHub keeps rendering the markdown.
-            lines.append(f"  <details><summary>{L['evidence'].format(n=len(evidence))}</summary>")
-            lines.append("")
-            lines.extend("  - " + e for e in evidence)
-            lines.append("")
-            lines.append("  </details>")
-        if lines:
-            folded.append(f"**{label}**\n" + "\n".join(lines))
-
-    anomalies(L["anomalies"], payload.get("code_anomalies"))
+    # The evidence is verbatim command output whose line count buries the conclusion.
+    # Being verbatim is what makes it evidence, so translation cannot shrink it and the
+    # renderer is the only place it can be shortened.
+    section(
+        L["anomalies"],
+        payload.get("code_anomalies"),
+        lambda a: [
+            f"{a.get('unit', '?')} ({a.get('kind', '?')}): {a.get('notes', '')}".rstrip(),
+            *(str(e) for e in _list(a.get("evidence"))),
+        ],
+        fold=L["evidence"],
+    )
 
     # Blank lines around the folded content keep GitHub rendering the markdown
     # inside the HTML <details> block. Only a run with something to fold gets a

@@ -172,7 +172,7 @@ def render(payload):
                 f"<details><summary>{L['verify_output']}</summary>\n\n{fence}\n{body}\n{fence}\n\n</details>"
             )
 
-    def section(label, items, render_item):
+    def section(label, items, render_item, fold=None):
         items = _list(items)
         if not items:
             return
@@ -192,7 +192,15 @@ def render(payload):
             if not parts:
                 continue
             lines.append("- " + parts[0])
-            lines.extend("  " + p for p in parts[1:])
+            if fold and len(parts) > 1:
+                # インデント 2 が list item 内に収め、前後の空行が中の markdown を描画させる。
+                lines.append(f"  <details><summary>{fold.format(n=len(parts) - 1)}</summary>")
+                lines.append("")
+                lines.extend("  - " + p for p in parts[1:])
+                lines.append("")
+                lines.append("  </details>")
+            else:
+                lines.extend("  " + p for p in parts[1:])
         folded.append(f"**{label}**\n" + "\n".join(lines))
 
     # レビュアーが PR 上でチェックを付けられるよう task-list item として描画する。
@@ -219,38 +227,17 @@ def render(payload):
             _evidence(f.get("location"), "ref", f.get("reference")),
         ],
     )
-    def anomalies(label, items):
-        """anomaly は結論と根拠で読む単位が違う。根拠は逐語のコマンド出力で、行数が
-        結論を押し潰すので入れ子の <details> へ畳み、開いたときだけ出す。翻訳の対象外
-        (逐語であることが証跡の価値) なので、短くできるのは描画側だけ。"""
-        items = _list(items)
-        if not items:
-            return
-        lines = []
-        for a in items:
-            try:
-                head = f"{a.get('unit', '?')} ({a.get('kind', '?')}): {a.get('notes', '')}".rstrip()
-                evidence = _list(a.get("evidence"))
-            except (AttributeError, TypeError, KeyError):
-                head, evidence = str(a), []
-            head = " ".join(head.split("\n"))
-            if not head.strip():
-                continue
-            lines.append("- " + head)
-            evidence = [" ".join(str(e).split("\n")) for e in evidence if str(e).strip()]
-            if not evidence:
-                continue
-            # list item の継続行なのでインデントは 2。<details> の前後の空行が HTML
-            # block を閉じ、GitHub は中の markdown を描画し続ける。
-            lines.append(f"  <details><summary>{L['evidence'].format(n=len(evidence))}</summary>")
-            lines.append("")
-            lines.extend("  - " + e for e in evidence)
-            lines.append("")
-            lines.append("  </details>")
-        if lines:
-            folded.append(f"**{label}**\n" + "\n".join(lines))
-
-    anomalies(L["anomalies"], payload.get("code_anomalies"))
+    # 根拠は逐語のコマンド出力で、行数が結論を押し潰す。逐語であることが証跡の価値なので
+    # 翻訳では縮まず、短くできるのは描画側だけ。
+    section(
+        L["anomalies"],
+        payload.get("code_anomalies"),
+        lambda a: [
+            f"{a.get('unit', '?')} ({a.get('kind', '?')}): {a.get('notes', '')}".rstrip(),
+            *(str(e) for e in _list(a.get("evidence"))),
+        ],
+        fold=L["evidence"],
+    )
 
     # 折りたたみ内容の前後に空行を置くことで、GitHub は HTML <details> ブロック内の
     # markdown を描画し続ける。<details> を作るのは畳む対象がある run だけ。開いても

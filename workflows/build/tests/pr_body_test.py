@@ -161,10 +161,9 @@ class RenderTest(unittest.TestCase):
         )
 
     def test_anomaly_folds_its_evidence_into_a_nested_details(self):
-        # code.js splits the no-red report into a one-sentence conclusion and an evidence
-        # list of verbatim command output. That list runs long enough to bury the
-        # conclusions of the other anomalies, so it opens only on demand while the
-        # summary keeps its line count visible.
+        # code.js splits the no-red report into a conclusion and an evidence list of
+        # verbatim command output. That list buries the other anomalies' conclusions,
+        # so it opens on demand while the summary keeps its line count visible.
         body = pr_body.render(
             {
                 **CLEAN,
