@@ -1,6 +1,6 @@
 # Prose Review
 
-Write for a teammate who shares context and can open the linked docs. The issue carries the delta; links carry the background. Do not write a line whose removal would not mislead the reader. Lexical empty phrasing is out of scope here and checked separately via the phrases files.
+Write for a teammate who shares context and can open the linked docs. The issue carries the delta; links carry the background. Do not write a line whose removal would not mislead the reader. Lexical empty phrasing is out of scope here and checked separately via the phrases files. Apply `~/.claude/rules/conventions/PROSE.md § Mark What Is Central` alongside this file for sentence shape.
 
 ## Structure
 

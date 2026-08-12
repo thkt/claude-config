@@ -1,6 +1,6 @@
 # Prose Review
 
-Write for a teammate who shares the context and can open the links. A PR carries the intent of the diff and the review path; the code's what is carried by the diff itself. Do not write a line whose removal would not mislead the reader. Lexical empty phrases are not handled here; check them against the empty-phrase file matching the body language.
+Write for a teammate who shares the context and can open the links. A PR carries the intent of the diff and the review path; the code's what is carried by the diff itself. Do not write a line whose removal would not mislead the reader. Lexical empty phrases are not handled here; check them against the empty-phrase file matching the body language. Apply `~/.claude/rules/conventions/PROSE.md § Mark What Is Central` alongside this file for sentence shape.
 
 ## Structure
 
