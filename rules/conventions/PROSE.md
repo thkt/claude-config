@@ -43,6 +43,21 @@ Models do not generalize an instruction from one item to another, nor do they in
 
 The longer a sentence runs, the smaller the share of it a reader understands. Cap a sentence at 25 words; when it goes over, split at subject-predicate pairs. Cap a paragraph at 150 words; when it goes over, split it or turn it into a table or list.
 
+## Mark What Is Central
+
+Do the extraction the reader would otherwise have to do. Put the central claim in a fixed position, and keep peripheral information from competing with it. Write so the reader can move forward without holding earlier content in memory.
+
+| Rule                            | Directive                                                                                                                  |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Lead with the center            | Put the section's most important claim in its first sentence. Do not make the reader extract the point                     |
+| Emphasize only the center       | Emphasize the central claim alone. Emphasizing several places leaves the reader unable to tell which one is central        |
+| No forward references           | Do not write "as described below" or "see below for details". Write it in place, or move it behind a link                  |
+| Split condition from conclusion | Do not put a condition and a conclusion in one sentence. Write the conclusion first and the condition in the next sentence |
+| No nesting, no double negatives | Do not nest clauses or write double negatives. Split into short affirmative sentences                                      |
+| One name per referent           | Do not give one referent several names. Receive it with a demonstrative or repeat the same word                            |
+| One action per step line        | Write each step as one sentence, and start each line with a verb                                                           |
+| No return trips to the body     | Do not write a table whose rows require going back to the body text to read                                                |
+
 ## Predictable Prose
 
 Write so the reader can predict the next sentence's role from the previous one. Do not leave the relation between sentences to the reader's guess; show it at the head and the end of each sentence.
@@ -72,17 +87,18 @@ A reader judges difficulty from a document's appearance before reading it, and c
 
 ## Delete Document-Updating Sentences
 
-Judge each sentence by what it updates: the situation or the document. The situation is facts about the subject, judgments, and confidence; the document is how it itself looks and proceeds. Delete a sentence that only updates the document. Typical forms that slip into AI-generated bodies are the three below (not limited to these).
+Judge each sentence by what it updates: the situation or the document. The situation is facts about the subject, judgments, and confidence; the document is how it itself looks and proceeds. Delete a sentence that only updates the document. Typical forms that slip into AI-generated bodies are the four below (not limited to these).
 
 | Form                   | Description                                                  |
 | ---------------------- | ------------------------------------------------------------ |
 | Progress narration     | Announcing in place what the document is about to say or do  |
 | Self-characterization  | Declaring the document's own scope or nature                 |
 | Stance-free disclaimer | Adding a supplement without naming the misreading it rejects |
+| Revision narration     | Stating the earlier wording or the overturned premise        |
 
 ## Delete Redundant Sentences
 
-Delete a sentence a reader can already read off the adjacent code, table, or heading.
+Delete a sentence a reader can already read off the adjacent code, table, or heading. Conditions, exceptions, and failure behavior are not redundancy, so do not drop them to make the text shorter.
 
 | Form                   | Description                                                                                      |
 | ---------------------- | ------------------------------------------------------------------------------------------------ |
