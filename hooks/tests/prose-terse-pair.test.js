@@ -1,13 +1,14 @@
-// rules/conventions/PROSE.md と output-styles/terse.md は同じ 2 節を持つ。重複ではなく対で、
-// 例示が出力言語に縛られるため両方が要る (PROSE.md は in contrast / therefore、terse.md は
-// 一方で / そのため)。MIRROR.md の output-styles ミラー例外がその理由を持つ。
+// rules/conventions/PROSE.md and output-styles/terse.md carry the same two sections. They are
+// a pair rather than a duplicate: the examples are bound to the output language, so both are
+// needed (PROSE.md gives in contrast / therefore, terse.md gives 一方で / そのため). The
+// output-styles mirror exception in MIRROR.md holds that reason.
 //
-// 対を守る仕組みが無いと、PROSE.md にだけ行が増えて会話の応答がその規則を失う。db4035c1 が
-// 「予測可能な散文」を PROSE.md にだけ作り、terse.md は後追いで揃えた経緯がある。
+// With nothing holding the pair together, a row lands in PROSE.md alone and the conversational
+// reply loses that rule.
 //
-// hook のテストではないため hooks/<subdir>/tests/ のどれにも属さず、hooks/tests/ に残す。
-// .github/workflows/test.yml の node --test は hooks/**/tests/*.test.js で拾い、この ** は
-// ゼロ階層にも一致する。
+// This is not a hook test, so it belongs to none of the hooks/<subdir>/tests/ directories and
+// stays in hooks/tests/. The node --test glob in .github/workflows/test.yml is
+// hooks/**/tests/*.test.js, and that ** matches zero levels too.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -20,11 +21,11 @@ const root = join(here, "..", "..");
 const prose = readFileSync(join(root, "rules", "conventions", "PROSE.md"), "utf8");
 const terse = readFileSync(join(root, "output-styles", "terse.md"), "utf8");
 
-// 見出し行そのものと区切り行 (| --- |) を除いた本文行だけを数える。
+// Counts the body rows alone, dropping the heading row and the separator (| --- |).
 const rowsUnder = (text, heading) => {
   const lines = text.split("\n");
   const start = lines.indexOf(`## ${heading}`);
-  assert.notEqual(start, -1, `見出し「${heading}」が見つからない`);
+  assert.notEqual(start, -1, `heading "${heading}" not found`);
   const rest = lines.slice(start + 1);
   const end = rest.findIndex((line) => line.startsWith("## "));
   const section = end === -1 ? rest : rest.slice(0, end);
@@ -39,14 +40,14 @@ const pairs = [
 ];
 
 for (const pair of pairs) {
-  test(`${pair.prose} と ${pair.terse} の行数が一致する`, () => {
+  test(`${pair.prose} and ${pair.terse} hold the same number of rows`, () => {
     const left = rowsUnder(prose, pair.prose);
     const right = rowsUnder(terse, pair.terse);
-    assert.ok(left > 0, `${pair.prose} の行が 0`);
+    assert.ok(left > 0, `${pair.prose} holds no rows`);
     assert.equal(
       right,
       left,
-      `PROSE.md の ${pair.prose} が ${left} 行、terse.md の ${pair.terse} が ${right} 行。片方だけに行を足したときは同じコミットで両方を更新する`,
+      `${pair.prose} in PROSE.md holds ${left} rows, ${pair.terse} in terse.md holds ${right}. A row added to one side is added to the other in the same commit`,
     );
   });
 }

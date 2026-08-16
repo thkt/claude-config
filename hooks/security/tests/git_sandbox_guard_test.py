@@ -13,6 +13,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import ClassVar, override
 
 HOOK = Path(__file__).resolve().parents[1] / "git_sandbox_guard.py"
 
@@ -21,8 +22,15 @@ DENY_MARK = '"deny"'
 
 
 class TestGitSandboxGuard(unittest.TestCase):
+    # ClassVar rather than a bare annotation: setUpClass fills these, and a bare annotation
+    # reads as an instance variable that no __init__ ever assigns.
+    tmpdir: ClassVar[tempfile.TemporaryDirectory[str]]
+    guarded: ClassVar[Path]
+    unguarded: ClassVar[Path]
+
     @classmethod
-    def setUpClass(cls):
+    @override
+    def setUpClass(cls) -> None:
         cls.tmpdir = tempfile.TemporaryDirectory(prefix="git-sandbox-guard-tests-")
         cls.guarded = cls.fixture_repo(Path(cls.tmpdir.name) / "config")
         # A second repository, to show the guard keys on which repository it is rather than on
@@ -30,18 +38,19 @@ class TestGitSandboxGuard(unittest.TestCase):
         cls.unguarded = cls.fixture_repo(Path(cls.tmpdir.name) / "other")
 
     @classmethod
-    def tearDownClass(cls):
+    @override
+    def tearDownClass(cls) -> None:
         cls.tmpdir.cleanup()
 
     @staticmethod
-    def fixture_repo(path):
+    def fixture_repo(path: Path) -> Path:
         path.mkdir(parents=True)
-        subprocess.run(["git", "init", "-q", str(path)], check=True, capture_output=True)
+        _ = subprocess.run(["git", "init", "-q", str(path)], check=True, capture_output=True)
         # resolve() because rev-parse reports a physical path and macOS hands out a
         # symlinked TMPDIR.
         return path.resolve()
 
-    def run_hook(self, command, cwd=None, escaped=False):
+    def run_hook(self, command: str, cwd: Path | None = None, escaped: bool = False) -> str:
         payload = json.dumps(
             {
                 "tool_name": "Bash",
@@ -59,16 +68,18 @@ class TestGitSandboxGuard(unittest.TestCase):
         )
         return result.stdout
 
-    def assert_denied(self, command, **kwargs):
+    # cwd and escaped spelled out rather than **kwargs: a checker cannot see through **kwargs
+    # to the signature of run_hook, and every call site reads as untyped.
+    def assert_denied(self, command: str, cwd: Path | None = None, escaped: bool = False) -> None:
         with self.subTest(command=command):
-            self.assertIn(DENY_MARK, self.run_hook(command, **kwargs), "deny を返さない")
+            self.assertIn(DENY_MARK, self.run_hook(command, cwd, escaped), "does not deny")
 
-    def assert_allowed(self, command, **kwargs):
+    def assert_allowed(self, command: str, cwd: Path | None = None, escaped: bool = False) -> None:
         with self.subTest(command=command):
-            self.assertNotIn(DENY_MARK, self.run_hook(command, **kwargs), "deny を返す")
+            self.assertNotIn(DENY_MARK, self.run_hook(command, cwd, escaped), "denies")
 
-    def test_tree_rewriting_is_denied(self):
-        """T-001 作業ツリーを書き換える git は止める"""
+    def test_tree_rewriting_is_denied(self) -> None:
+        """T-001 A git that rewrites the working tree is denied"""
         for command in (
             "git checkout main",
             "git checkout -- agents/x.md",
@@ -86,9 +97,9 @@ class TestGitSandboxGuard(unittest.TestCase):
         ):
             self.assert_denied(command)
 
-    def test_file_moving_subcommands_are_denied(self):
-        """T-008 追跡ファイルを消す / 動かす git も止める"""
-        # index だけ進んで作業ツリーが取り残される形は checkout と同じ。
+    def test_file_moving_subcommands_are_denied(self) -> None:
+        """T-008 A git that removes or moves a tracked file is denied too"""
+        # The index moving on while the working tree stays behind is the checkout shape.
         for command in (
             "git rm agents/x.md",
             "git mv agents/x.md agents/y.md",
@@ -97,8 +108,8 @@ class TestGitSandboxGuard(unittest.TestCase):
         ):
             self.assert_denied(command)
 
-    def test_index_only_variants_of_those_pass(self):
-        """T-009 同じ subcommand でも作業ツリーを触らない形は通す"""
+    def test_index_only_variants_of_those_pass(self) -> None:
+        """T-009 The same subcommand passes in a form that leaves the tree alone"""
         for command in (
             "git rm --cached agents/x.md",
             "git rm -n agents/x.md",
@@ -106,8 +117,8 @@ class TestGitSandboxGuard(unittest.TestCase):
         ):
             self.assert_allowed(command)
 
-    def test_index_only_and_branch_create_pass(self):
-        """T-002 ファイルを書かない git は通す"""
+    def test_index_only_and_branch_create_pass(self) -> None:
+        """T-002 A git that writes no file passes"""
         for command in (
             "git checkout -b docs/foo",
             "git switch -c docs/foo",
@@ -121,30 +132,30 @@ class TestGitSandboxGuard(unittest.TestCase):
         ):
             self.assert_allowed(command)
 
-    def test_escaped_call_passes(self):
-        """T-003 sandbox を外した呼び出しは通す"""
+    def test_escaped_call_passes(self) -> None:
+        """T-003 A call with the sandbox lifted passes"""
         self.assert_allowed("git pull", escaped=True)
 
-    def test_other_repository_passes(self):
-        """T-004 別のリポジトリは対象外"""
+    def test_other_repository_passes(self) -> None:
+        """T-004 Another repository is out of scope"""
         self.assert_allowed("git pull", cwd=self.unguarded)
 
-    def test_quoted_text_is_not_a_call(self):
-        """T-005 引用符の中の git はコマンドではない"""
+    def test_quoted_text_is_not_a_call(self) -> None:
+        """T-005 A git inside quotes is not a command"""
         self.assert_allowed('git commit -m "git pull を追加"')
         self.assert_allowed('echo "run git checkout main"')
 
-    def test_unparsable_is_denied(self):
-        """T-006 閉じられない行は fail-closed"""
+    def test_unparsable_is_denied(self) -> None:
+        """T-006 A line that cannot be closed is fail-closed"""
         self.assert_denied('git commit -m "unclosed')
 
-    def test_non_git_passes(self):
-        """T-007 git 以外は素通り"""
+    def test_non_git_passes(self) -> None:
+        """T-007 Anything but git passes straight through"""
         self.assert_allowed("ls -la")
         self.assert_allowed("gh pr list")
 
-    def test_help_is_not_a_rewrite(self):
-        """T-010 --help は木を書き換えないので通す"""
+    def test_help_is_not_a_rewrite(self) -> None:
+        """T-010 --help rewrites no tree, so it passes"""
         for command in (
             "git checkout --help",
             "git stash --help",
@@ -153,48 +164,48 @@ class TestGitSandboxGuard(unittest.TestCase):
         ):
             self.assert_allowed(command)
 
-    def test_clean_dry_run_is_allowed(self):
-        """T-011 対象を一覧するだけの git clean は通す"""
-        # rm-to-trash と同じ判定。一覧だけなら木は変わらない。
+    def test_clean_dry_run_is_allowed(self) -> None:
+        """T-011 A git clean that only lists its targets passes"""
+        # The same call rm-to-trash makes: a listing alone leaves the tree unchanged.
         self.assert_allowed("git clean -n")
         self.assert_allowed("git clean --dry-run")
         self.assert_allowed("git clean -nd")
         self.assert_denied("git clean -fd")
 
-    def test_apply_inspection_is_allowed(self):
-        """T-012 patch を検査するだけの git apply は通す"""
+    def test_apply_inspection_is_allowed(self) -> None:
+        """T-012 A git apply that only inspects the patch passes"""
         self.assert_allowed("git apply --check x.patch")
         self.assert_allowed("git apply --stat x.patch")
         self.assert_denied("git apply x.patch")
 
-    def test_mv_dry_run_is_allowed(self):
-        """T-013 移動先を表示するだけの git mv は通す"""
-        # git rm と同じ綴りを同じ意味で受ける。
+    def test_mv_dry_run_is_allowed(self) -> None:
+        """T-013 A git mv that only prints the destination passes"""
+        # Takes the same spelling as git rm, with the same meaning.
         self.assert_allowed("git mv -n agents/a.md agents/b.md")
         self.assert_allowed("git mv --dry-run agents/a.md agents/b.md")
         self.assert_denied("git mv agents/a.md agents/b.md")
 
-    def test_restore_staged_is_allowed(self):
-        """T-014 index だけを戻す git restore は通す"""
+    def test_restore_staged_is_allowed(self) -> None:
+        """T-014 A git restore that only rewinds the index passes"""
         self.assert_allowed("git restore --staged agents/x.md")
-        # --worktree を併せると木へ届くので、--staged があっても止める。
+        # Paired with --worktree it reaches the tree, so --staged does not save it.
         self.assert_denied("git restore --staged --worktree agents/x.md")
         self.assert_denied("git restore agents/x.md")
 
-    def test_rebase_inspection_is_allowed(self):
-        """T-015 patch を表示するだけの git rebase は通す"""
+    def test_rebase_inspection_is_allowed(self) -> None:
+        """T-015 A git rebase that only prints the patch passes"""
         self.assert_allowed("git rebase --show-current-patch")
         self.assert_denied("git rebase --abort")
 
-    def test_path_after_the_separator_is_not_a_flag(self):
-        """T-016 -- の後はパスなのでフラグとして読まない"""
-        # -h という名前のファイルはヘルプ表示のフラグと綴りが同じで、フラグとして読むと素通りする。
+    def test_path_after_the_separator_is_not_a_flag(self) -> None:
+        """T-016 What follows -- is a path, not a flag"""
+        # A file named -h is spelled like the help flag, and reading it as one lets it through.
         self.assert_denied("git rm -- -h")
         self.assert_denied("git checkout -- --help")
 
-    def test_bisect_moves_head(self):
-        """T-017 HEAD を動かす git bisect は止める"""
-        # start と good/bad は checkout を伴うので、この hook が防ぐ食い違いをそのまま起こす。
+    def test_bisect_moves_head(self) -> None:
+        """T-017 A git bisect that moves HEAD is denied"""
+        # start and good/bad carry a checkout, causing the very mismatch this hook prevents.
         for command in (
             "git bisect start",
             "git bisect good",
@@ -203,8 +214,8 @@ class TestGitSandboxGuard(unittest.TestCase):
         ):
             self.assert_denied(command)
 
-    def test_bisect_inspection_is_allowed(self):
-        """T-018 記録を見るだけの git bisect は通す"""
+    def test_bisect_inspection_is_allowed(self) -> None:
+        """T-018 A git bisect that only reads the record passes"""
         for command in (
             "git bisect log",
             "git bisect view",
@@ -213,23 +224,23 @@ class TestGitSandboxGuard(unittest.TestCase):
         ):
             self.assert_allowed(command)
 
-    def test_plumbing_that_writes_the_tree(self):
-        """T-019 index から作業ツリーへ書く plumbing は止める"""
-        # porcelain でないので名前で見分けが付かないが、木の中身は checkout と同じだけ動く。
+    def test_plumbing_that_writes_the_tree(self) -> None:
+        """T-019 Plumbing writing from the index into the tree is denied"""
+        # Not porcelain, so the name gives nothing away, but the tree moves as much as under checkout.
         self.assert_denied("git checkout-index -a -f")
         self.assert_denied("git read-tree -u --reset HEAD~1")
 
-    def test_plumbing_that_stops_at_the_index(self):
-        """T-020 index で止まる plumbing は通す"""
+    def test_plumbing_that_stops_at_the_index(self) -> None:
+        """T-020 Plumbing that stops at the index passes"""
         self.assert_allowed("git read-tree HEAD~1")
         self.assert_allowed("git write-tree")
         self.assert_allowed("git update-index --refresh")
 
-    def test_filter_branch_rewrites_the_tree(self):
-        """T-021 履歴を書き換える git filter-branch は止める"""
-        # --tree-filter が各コミットを checkout して回るので、作業ツリーが総取り替えになる。
+    def test_filter_branch_rewrites_the_tree(self) -> None:
+        """T-021 A git filter-branch that rewrites history is denied"""
+        # --tree-filter checks out every commit in turn, replacing the working tree wholesale.
         self.assert_denied("git filter-branch --force --tree-filter true HEAD")
 
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    _ = unittest.main(verbosity=2)

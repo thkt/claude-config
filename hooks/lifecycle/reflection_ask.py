@@ -67,7 +67,7 @@ def _claim(session_id: str) -> bool:
     """One mark per session, not one shared record: the wiring lives in the global settings,
     so every Claude Code process on this machine runs this hook and would overwrite the
     others. False when this session was already asked."""
-    marks = Path.home() / ".cache" / "claude-reflection-ask"
+    marks = Path.home() / ".cache" / "claude-reflection_ask"
     mark = marks / session_id
     if mark.is_file():
         return False

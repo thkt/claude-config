@@ -15,7 +15,6 @@ is not cleared.
 # `X | None` at import time. Deferred annotations keep this file loadable there.
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
@@ -24,7 +23,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 import command_scan
-from hook_payload import field, parse
+from hook_payload import deny, field, parse
 
 # Subcommands that reach the working tree. Most move the index and leave the file behind
 # under the sandbox; checkout-index and read-tree go the other way, writing the tree from an
@@ -77,21 +76,6 @@ REASON = (
     "それも拒否されたら、ユーザーに `! <コマンド>` での実行を依頼する。"
 )
 
-
-def deny(reason: str) -> None:
-    """Refuse the call, naming the way to run it with the sandbox off."""
-    print(
-        json.dumps(
-            {
-                "hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
-                    "permissionDecision": "deny",
-                    "permissionDecisionReason": reason,
-                }
-            },
-            ensure_ascii=False,
-        )
-    )
 
 
 def _clean_only_lists(rest: list[str]) -> bool:

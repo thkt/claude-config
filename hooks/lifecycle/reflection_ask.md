@@ -1,12 +1,12 @@
-# reflection-ask
+# reflection_ask
 
-`reflection-ask.py` が Stop hook の additionalContext として送る指示。送るのは `## ask` と `## backlog` の 2 節で、見出しより前のこの説明は送らない。節の中の行頭へ `##` を置くと、`_prompt` がそこから先を読まなくなる。
+`reflection_ask.py` が Stop hook の additionalContext として送る指示。送るのは `## ask` と `## backlog` の 2 節で、見出しより前のこの説明は送らない。節の中の行頭へ `##` を置くと、`_prompt` がそこから先を読まなくなる。
 
 送信時に置き換えるのは `{transcript}` `{corrections}` `{rule_file}` `{count}` の 4 つ。渡す値は節ごとに分かれている。`## ask` は transcript と corrections を受け取り、`## backlog` は corrections と rule_file と count を受け取る。節をまたいで移すと hook が KeyError で止まり、その失敗は会話にも `git diff` にも出ない。
 
 ## ask
 
-reflection-ask: このセッションで踏んだ事象のうち、次のセッションが必ず踏むものを 1 つ書き残す。同じ経路を通るかどうかで判定する。迷ったら書かない。1 件も書かない回があってよい。
+reflection_ask: このセッションで踏んだ事象のうち、次のセッションが必ず踏むものを 1 つ書き残す。同じ経路を通るかどうかで判定する。迷ったら書かない。1 件も書かない回があってよい。
 
 ### 書かないもの
 

@@ -36,7 +36,7 @@ WINDOW_MINUTES = 180
 def _stamp() -> Path:
     """Read at call time, not at import: the tests swap HOME to keep this machine's own
     stamp out of the run."""
-    return Path.home() / ".cache" / "claude-recall-index.last"
+    return Path.home() / ".cache" / "claude-recall_index.last"
 
 
 def _recently_indexed(stamp: Path) -> bool:

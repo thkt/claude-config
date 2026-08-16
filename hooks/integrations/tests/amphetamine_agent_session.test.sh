@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Integration tests for integrations/amphetamine-agent-session.py (UserPromptSubmit / PostToolUse / Stop hook)
+# Integration tests for integrations/amphetamine_agent_session.py (UserPromptSubmit / PostToolUse / Stop hook)
 # osascript is replaced by a stub on PATH, so the assertions read the commands the hook
 # sent to Amphetamine rather than the state of a real Mac.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/../../tests/helpers.sh"
-HOOK="$SCRIPT_DIR/../amphetamine-agent-session.py"
+HOOK="$SCRIPT_DIR/../amphetamine_agent_session.py"
 
 TEST_TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/amphetamine-testXXXXXX")
 trap 'rm -rf "$TEST_TMPDIR"' EXIT
@@ -20,6 +20,7 @@ cat > "$STUB_BIN/osascript" <<'STUB'
 printf '%s\n' "$*" >> "$OSASCRIPT_LOG"
 case "$*" in
   *"session time remaining"*) printf '%s\n' "${STUB_REMAINING:--3}" ;;
+  *"session is active"*) printf '%s\n' "${STUB_SESSION_ACTIVE:-true}" ;;
 esac
 exit 0
 STUB
@@ -55,6 +56,7 @@ run_hook_payload() {
     export PATH="$STUB_BIN:$PATH"
     export OSASCRIPT_LOG="$LOG"
     export STUB_REMAINING="$remaining"
+    export STUB_SESSION_ACTIVE="${STUB_SESSION_ACTIVE:-true}"
     export CLAUDE_AMPHETAMINE_STATE_DIR="$STATE_DIR"
     export CLAUDE_AMPHETAMINE_APP="$app"
     "$HOOK" "$action"
@@ -76,7 +78,7 @@ setup() {
 }
 
 test_acquire_starts_a_session() {
-  echo "T-001: セッションが無ければ start new session を送り、マーカーを残す"
+  echo "T-001: With no session it sends start new session and leaves a marker"
   local STATE_DIR LOG
   setup
   run_hook acquire session-a -3
@@ -84,11 +86,25 @@ test_acquire_starts_a_session() {
   # The finite duration is the dead-man's switch: a killed process leaves no Stop hook,
   # and an infinite session would then keep the Mac awake until someone notices.
   assert_contains "asks for a finite duration" "duration:60, interval:minutes" "$(cat "$LOG")"
+  assert_contains "holds the display awake" "displaySleepAllowed:false" "$(cat "$LOG")"
+  # The options record has no field for it, so it is sent as its own command.
+  assert_contains "keeps a closed lid awake" "enable closed display mode" "$(cat "$LOG")"
   assert_eq "one marker written" "1" "$(marker_count)"
 }
 
+test_closed_display_mode_waits_for_a_running_session() {
+  echo "T-020: With no session running after the start, it sends no closed-display command"
+  local STATE_DIR LOG
+  setup
+  # Sent with no session running, the command writes the machine-wide preference instead of
+  # the session's, and that write outlives every Claude Code process.
+  STUB_SESSION_ACTIVE=false run_hook acquire session-a -3
+  assert_contains "sends start new session" "start new session" "$(cat "$LOG")"
+  assert_not_contains "no closed-display command" "closed display mode" "$(cat "$LOG")"
+}
+
 test_acquire_leaves_a_foreign_session_alone() {
-  echo "T-002: 手動セッションが動いていれば何も送らない"
+  echo "T-002: A manual session already running draws nothing"
   local STATE_DIR LOG
   setup
   # 0 is Amphetamine's code for an infinite session, which only a person starts by hand.
@@ -98,7 +114,7 @@ test_acquire_leaves_a_foreign_session_alone() {
 }
 
 test_acquire_refreshes_a_session_it_owns() {
-  echo "T-003: 自分のマーカーがあれば、残り時間があっても発行し直す"
+  echo "T-003: With its own marker it reissues, even with time remaining"
   local STATE_DIR LOG
   setup
   run_hook acquire session-a -3
@@ -109,7 +125,7 @@ test_acquire_refreshes_a_session_it_owns() {
 }
 
 test_release_ends_the_last_session() {
-  echo "T-004: 最後の 1 本が閉じたら end session を送る"
+  echo "T-004: The last one closing sends end session"
   local STATE_DIR LOG
   setup
   run_hook acquire session-a -3
@@ -120,7 +136,7 @@ test_release_ends_the_last_session() {
 }
 
 test_release_keeps_another_process_awake() {
-  echo "T-005: 他プロセスがターン中なら end session を送らない"
+  echo "T-005: Another process mid-turn holds back end session"
   local STATE_DIR LOG
   setup
   run_hook acquire session-a -3
@@ -132,9 +148,9 @@ test_release_keeps_another_process_awake() {
 }
 
 test_a_second_process_joins_the_count() {
-  echo "T-018: 先行プロセスのセッション中に始まったターンも参照に数える"
-  # 実機では 1 本目が start した直後から remaining が正の値を返すので、2 本目の acquire は
-  # 必ずこの経路に入る。ここで数えそこねると、1 本目の release が最後の 1 本と誤認する。
+  echo "T-018: A turn starting during an earlier process session counts as a reference"
+  # On a real machine remaining turns positive the moment the first one starts, so the second
+  # acquire always takes this path. Miscounting here reads the first release as the last one.
   local STATE_DIR LOG
   setup
   run_hook acquire session-a -3
@@ -146,7 +162,7 @@ test_a_second_process_joins_the_count() {
 }
 
 test_a_manual_session_is_still_left_alone() {
-  echo "T-019: マーカーが 1 つも無い状態のセッションは手動とみなして触らない"
+  echo "T-019: A session with no marker at all counts as manual and is left alone"
   local STATE_DIR LOG
   setup
   : > "$LOG"
@@ -156,7 +172,7 @@ test_a_manual_session_is_still_left_alone() {
 }
 
 test_release_leaves_an_infinite_session_alone() {
-  echo "T-006: 途中で手動の無期限セッションへ変わっていたら閉じない"
+  echo "T-006: A switch to a manual infinite session partway through holds it open"
   local STATE_DIR LOG
   setup
   run_hook acquire session-a -3
@@ -166,7 +182,7 @@ test_release_leaves_an_infinite_session_alone() {
 }
 
 test_release_leaves_a_longer_session_alone() {
-  echo "T-007: 自分の発行した長さを越える残り時間なら閉じない"
+  echo "T-007: Time remaining past what it issued holds it open"
   local STATE_DIR LOG
   setup
   run_hook acquire session-a -3
@@ -177,7 +193,7 @@ test_release_leaves_a_longer_session_alone() {
 }
 
 test_subagent_payload_is_ignored() {
-  echo "T-008: subagent 由来の呼び出しは何も送らない"
+  echo "T-008: A call originating in a subagent sends nothing"
   local STATE_DIR LOG
   setup
   run_hook acquire session-a -3 agent-1
@@ -186,7 +202,7 @@ test_subagent_payload_is_ignored() {
 }
 
 test_missing_app_is_silent() {
-  echo "T-009: Amphetamine が無ければ黙って抜ける"
+  echo "T-009: With Amphetamine absent it exits without a word"
   local STATE_DIR LOG output
   setup
   output=$(run_hook acquire session-a -3 "" "$TEST_TMPDIR/absent.app")
@@ -195,7 +211,7 @@ test_missing_app_is_silent() {
 }
 
 test_stale_marker_is_swept() {
-  echo "T-010: 8 時間を越えたマーカーは捨てられ、参照数を止めない"
+  echo "T-010: A marker past 8 hours is dropped and does not hold the reference count"
   local STATE_DIR LOG stale exists
   setup
   run_hook acquire session-a -3
@@ -213,7 +229,7 @@ test_stale_marker_is_swept() {
 }
 
 test_unknown_action_is_silent() {
-  echo "T-011: acquire/release 以外の引数では何も送らない"
+  echo "T-011: An argument other than acquire/release sends nothing"
   local STATE_DIR LOG
   setup
   run_hook status session-a -3
@@ -221,7 +237,7 @@ test_unknown_action_is_silent() {
 }
 
 test_background_from_a_subagent_keeps_the_mac_awake() {
-  echo "T-012: subagent 由来の tool 呼び出しはセッションを発行し直し、bg マーカーを残す"
+  echo "T-012: A tool call from a subagent reissues the session and leaves a bg marker"
   local STATE_DIR LOG
   setup
   run_hook_payload background "$(jq -nc '{session_id:"session-a",agent_id:"agent-1",tool_name:"Bash"}')" -3
@@ -230,7 +246,7 @@ test_background_from_a_subagent_keeps_the_mac_awake() {
 }
 
 test_background_from_a_workflow_launch() {
-  echo "T-013: 本体ターンの Workflow 起動も bg マーカーを残す"
+  echo "T-013: A Workflow launched from the main turn leaves a bg marker too"
   local STATE_DIR LOG
   setup
   run_hook_payload background "$(jq -nc '{session_id:"session-a",tool_name:"Workflow"}')" -3
@@ -239,7 +255,7 @@ test_background_from_a_workflow_launch() {
 }
 
 test_background_ignores_a_quoted_agent_id() {
-  echo "T-014: agent_id という文字列を含むだけの本体呼び出しは捨てる"
+  echo "T-014: A main-turn call merely carrying the string agent_id is dropped"
   local STATE_DIR LOG
   setup
   # An empty agent_id passes the shell substring filter, so this payload is the one that
@@ -255,7 +271,7 @@ test_background_ignores_a_quoted_agent_id() {
 }
 
 test_background_throttles_repeat_calls() {
-  echo "T-015: 直近に発行済みなら osascript を呼ばない"
+  echo "T-015: Issued recently, it does not call osascript"
   local STATE_DIR LOG
   setup
   run_hook_payload background "$(jq -nc '{session_id:"session-a",agent_id:"agent-1"}')" -3
@@ -266,7 +282,7 @@ test_background_throttles_repeat_calls() {
 }
 
 test_background_leaves_a_foreign_session_alone() {
-  echo "T-016: 手動セッションが動いていれば bg マーカーを作らない"
+  echo "T-016: A manual session already running draws no bg marker"
   local STATE_DIR LOG
   setup
   run_hook_payload background "$(jq -nc '{session_id:"session-a",agent_id:"agent-1"}')" 0
@@ -275,7 +291,7 @@ test_background_leaves_a_foreign_session_alone() {
 }
 
 test_release_extends_while_a_workflow_runs() {
-  echo "T-017: bg マーカーが新しければ end session でなくセッションを発行し直す"
+  echo "T-017: A fresh bg marker reissues the session rather than ending it"
   local STATE_DIR LOG
   setup
   run_hook acquire session-a -3
@@ -288,7 +304,7 @@ test_release_extends_while_a_workflow_runs() {
 }
 
 test_release_closes_when_the_bg_marker_went_stale() {
-  echo "T-018: bg マーカーが古びていれば end session を送り、マーカーを消す"
+  echo "T-018: A stale bg marker sends end session and clears the marker"
   local STATE_DIR LOG stamp
   setup
   run_hook acquire session-a -3
@@ -303,7 +319,7 @@ test_release_closes_when_the_bg_marker_went_stale() {
   assert_eq "the bg marker is gone" "0" "$(bg_marker_count)"
 }
 
-echo "=== amphetamine-agent-session.sh tests ==="
+echo "=== amphetamine_agent_session.sh tests ==="
 test_acquire_starts_a_session
 test_acquire_leaves_a_foreign_session_alone
 test_acquire_refreshes_a_session_it_owns
@@ -324,5 +340,6 @@ test_background_throttles_repeat_calls
 test_background_leaves_a_foreign_session_alone
 test_release_extends_while_a_workflow_runs
 test_release_closes_when_the_bg_marker_went_stale
+test_closed_display_mode_waits_for_a_running_session
 
 report_results

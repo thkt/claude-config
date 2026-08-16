@@ -52,11 +52,6 @@ assert_empty() {
   fi
 }
 
-make_bash_json() {
-  local cmd="$1"
-  jq -nc --arg cmd "$cmd" '{"tool_name":"Bash","tool_input":{"command":$cmd}}'
-}
-
 make_tool_json() {
   local tool="$1" file_path="$2"
   jq -nc --arg t "$tool" --arg f "$file_path" '{"tool_name":$t,"tool_input":{"file_path":$f}}'

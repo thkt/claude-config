@@ -117,7 +117,7 @@ def check(path: str) -> str | None:
     count = sum(1 for line in lines if line.strip())
     label = "本文" if Path(path).suffix == ".md" else "コメント / docstring"
     return (
-        f"ja-prose-guard: .ja/ は canonical で prose は日本語 (MIRROR.md)。"
+        f"mirror_prose_guard: .ja/ は canonical で prose は日本語 (MIRROR.md)。"
         f"{path} の{label} {count} 行に日本語が 1 文字もない。"
         f"英語で書き直していないか確認する。"
         f'過去訳は git log --oneline -- "{path}" から取れる。'

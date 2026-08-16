@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Integration tests for edit/rust-pre-edit.py, edit/rust-post-edit.py and lib/rust_target.py.
+# Integration tests for edit/rust_pre_edit.py, edit/rust_post_edit.py and lib/rust_target.py.
 # cargo is replaced by a stub on PATH: the assertions read what the hooks do with clippy's
 # output rather than compiling a real crate.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/../../tests/helpers.sh"
-PRE="$SCRIPT_DIR/../rust-pre-edit.py"
-POST="$SCRIPT_DIR/../rust-post-edit.py"
+PRE="$SCRIPT_DIR/../rust_pre_edit.py"
+POST="$SCRIPT_DIR/../rust_post_edit.py"
 
 # Template under $TMPDIR: macOS mktemp without a template ignores TMPDIR
 TEST_TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/rust-edit-tests-XXXXXX")
@@ -44,54 +44,54 @@ run_hook() {
 reset_calls() { : > "$TEST_TMPDIR/calls"; }
 
 test_a_non_rust_edit_never_starts_cargo() {
-  echo "T-001: .rs 以外の編集では cargo を起動しない"
+  echo "T-001: An edit to anything but .rs does not launch cargo"
   reset_calls
   assert_empty "markdown" "$(run_hook "$PRE" "$REPO/README.md")"
-  assert_empty "cargo 未起動" "$(cat "$TEST_TMPDIR/calls")"
+  assert_empty "cargo not launched" "$(cat "$TEST_TMPDIR/calls")"
 }
 
 test_a_rust_file_outside_a_repo_is_skipped() {
-  echo "T-002: git 管理外の .rs は対象外"
+  echo "T-002: A .rs outside git control is out of scope"
   reset_calls
   : > "$TEST_TMPDIR/loose.rs"
   assert_empty "outside a repo" "$(run_hook "$PRE" "$TEST_TMPDIR/loose.rs")"
-  assert_empty "cargo 未起動" "$(cat "$TEST_TMPDIR/calls")"
+  assert_empty "cargo not launched" "$(cat "$TEST_TMPDIR/calls")"
 }
 
 test_the_edited_file_findings_come_first() {
-  echo "T-003: 編集したファイルの指摘を先頭に並べる"
-  # clippy はワークスペース全体を見るので、切り詰めると対象ファイルが落ちうる。
+  echo "T-003: Findings for the edited file lead the list"
+  # clippy reads the whole workspace, so trimming can drop the file that was edited.
   local out first
   out=$(run_hook "$PRE" "$REPO/src/lib.rs")
   first=$(printf '%s' "$out" | jq -r '.hookSpecificOutput.additionalContext' | head -1)
-  assert_contains "先頭が編集ファイル" "src/lib.rs" "$first"
+  assert_contains "the edited file leads" "src/lib.rs" "$first"
 }
 
 test_pre_edit_declares_its_event() {
-  echo "T-004: PreToolUse として返す"
+  echo "T-004: It returns as a PreToolUse"
   local out
   out=$(run_hook "$PRE" "$REPO/src/lib.rs")
   assert_eq "hookEventName" "PreToolUse" "$(printf '%s' "$out" | jq -r '.hookSpecificOutput.hookEventName')"
 }
 
 test_post_edit_formats_then_lints() {
-  echo "T-005: 編集後は fmt を走らせてから clippy を返す"
+  echo "T-005: After an edit, fmt runs and then clippy returns"
   reset_calls
   local out
   out=$(run_hook "$POST" "$REPO/src/lib.rs")
-  assert_eq "cargo の呼び出し順" "fmt clippy" "$(tr '\n' ' ' < "$TEST_TMPDIR/calls" | sed 's/ $//')"
+  assert_eq "the order cargo is called in" "fmt clippy" "$(tr '\n' ' ' < "$TEST_TMPDIR/calls" | sed 's/ $//')"
   assert_eq "hookEventName" "PostToolUse" "$(printf '%s' "$out" | jq -r '.hookSpecificOutput.hookEventName')"
 }
 
 test_a_clean_clippy_says_nothing() {
-  echo "T-006: 指摘が無ければ何も返さない"
-  # 空の additionalContext を注入しても読み手に渡すものが無い。
+  echo "T-006: With no finding it returns nothing"
+  # Injecting an empty additionalContext hands the reader nothing.
   local out
   out=$(make_tool_json Edit "$REPO/src/lib.rs" | CARGO_CALLS="$TEST_TMPDIR/calls" CARGO_SILENT=1 PATH="$STUB_BIN:$PATH" "$PRE" 2>/dev/null || true)
   assert_empty "clean clippy" "$out"
 }
 
-echo "=== rust-pre-edit.sh / rust-post-edit.sh tests ==="
+echo "=== rust_pre_edit.sh / rust_post_edit.sh tests ==="
 test_a_non_rust_edit_never_starts_cargo
 test_a_rust_file_outside_a_repo_is_skipped
 test_the_edited_file_findings_come_first

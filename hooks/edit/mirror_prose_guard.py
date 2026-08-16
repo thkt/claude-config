@@ -4,7 +4,7 @@
 Warns, never blocks: a file whose comments are legitimately all identifiers or proper nouns
 has no Japanese to find, and that is not a defect.
 
-settings.json narrows this to .ja/ paths with an `if` condition. ja_prose.is_target repeats
+settings.json narrows this to .ja/ paths with an `if` condition. mirror_prose.is_target repeats
 that check for the sweep test, which calls it without going through settings.json.
 """
 
@@ -13,6 +13,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
-import ja_prose
+import mirror_prose
 
-ja_prose.emit(sys.stdin.read())
+mirror_prose.emit(sys.stdin.read())

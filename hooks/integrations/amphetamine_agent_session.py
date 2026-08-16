@@ -24,8 +24,11 @@ from pathlib import Path
 # How long a session runs. Should the Stop hook never fire, it lapses on its own. release
 # reads it as the upper bound of what it recognizes as its own, so nothing longer is issued.
 SESSION_MINUTES = 60
-# Only the machine and the network stay up.
-DISPLAY_SLEEP_ALLOWED = "true"
+# The display stays lit as well, not just the machine and the network.
+DISPLAY_SLEEP_ALLOWED = "false"
+# osascript can sit on a modal Amphetamine raises. This hook fires on every tool call, so a
+# blocked call would wedge the turn.
+AMPH_TIMEOUT_SECONDS = 5
 # background returns without calling osascript until this long after the last issue.
 BG_REFRESH_MINUTES = 5
 # How fresh a bg marker has to be for release to read it as work still running.
@@ -44,12 +47,16 @@ NO_SESSION = -3
 def _amph(app_command: str) -> str:
     import subprocess
 
-    result = subprocess.run(
-        ["osascript", "-e", f'tell application "Amphetamine" to {app_command}'],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    try:
+        result = subprocess.run(
+            ["osascript", "-e", f'tell application "Amphetamine" to {app_command}'],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=AMPH_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return ""
     return result.stdout.strip() if result.returncode == 0 else ""
 
 
@@ -60,6 +67,11 @@ def start_session() -> None:
         + f"displaySleepAllowed:{DISPLAY_SLEEP_ALLOWED}"
     )
     _ = _amph(f"start new session with options {{{options}}}")
+    # The options record carries no closed-display flag, so it is set on the running session.
+    # Sent with no session running, the same command writes the machine-wide preference, which
+    # would outlive every Claude Code process.
+    if _amph("session is active") == "true":
+        _ = _amph("enable closed display mode")
 
 
 def remaining() -> int | None:

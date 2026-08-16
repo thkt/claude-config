@@ -12,19 +12,18 @@ Failure mode: fail-closed (security enforcement).
 # `X | None` at import time. Deferred annotations keep this file loadable there.
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 import command_scan
-from hook_payload import field, parse
+from hook_payload import deny, field, parse
 
 MANAGERS = frozenset({"npm", "pnpm", "yarn", "bun"})
 INSTALLS = frozenset({"install", "i", "ci", "add", "update", "up", "upgrade"})
 
-# What auto_package_manager.py rewrites the managers into, so the same gate has to cover them
+# What package_manager_rewrite.py rewrites the managers into, so the same gate has to cover them
 # or the rewrite becomes the way around this one.
 NI_INSTALLS = frozenset({"ni", "nci", "nup"})
 
@@ -66,21 +65,6 @@ REASONS = {
     ),
 }
 
-
-def deny(reason: str) -> None:
-    """Refuse the call, naming what has to change before the install can run."""
-    print(
-        json.dumps(
-            {
-                "hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
-                    "permissionDecision": "deny",
-                    "permissionDecisionReason": reason,
-                }
-            },
-            ensure_ascii=False,
-        )
-    )
 
 
 def _installs(tokens: list[str]) -> bool:

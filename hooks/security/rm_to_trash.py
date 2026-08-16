@@ -18,14 +18,13 @@ Failure mode: fail-closed (security enforcement).
 # `X | None` at import time. Deferred annotations keep this file loadable there.
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 import command_scan
-from hook_payload import field, parse
+from hook_payload import deny, field, parse
 
 VERBS = frozenset({"rm", "rmdir", "unlink", "shred"})
 
@@ -52,21 +51,6 @@ REASONS = {
     ),
 }
 
-
-def deny(reason: str) -> None:
-    """Refuse the call, naming the replacement for the form that was stopped."""
-    print(
-        json.dumps(
-            {
-                "hookSpecificOutput": {
-                    "hookEventName": "PreToolUse",
-                    "permissionDecision": "deny",
-                    "permissionDecisionReason": reason,
-                }
-            },
-            ensure_ascii=False,
-        )
-    )
 
 
 def _only_lists(rest: list[str]) -> bool:

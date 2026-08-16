@@ -1,6 +1,6 @@
 """Japanese detection shared by the hooks that treat Japanese prose differently.
 
-Callers pick the threshold: ja-prose-guard asks whether a single character survives,
+Callers pick the threshold: mirror_prose_guard asks whether a single character survives,
 textlint asks whether the text is Japanese enough for Japanese-only rules to apply.
 """
 
