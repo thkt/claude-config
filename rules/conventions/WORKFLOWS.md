@@ -9,6 +9,43 @@ paths:
 
 Conventions for workflow scripts (headless deterministic pipelines) under `workflows/`.
 
+## Naming and file placement
+
+Discovery reads `workflows/` flat and registers only the `.js` files directly under it. A `.js` placed in a subdirectory is not registered.
+
+| Target            | Rule                                                                                         |
+| ----------------- | -------------------------------------------------------------------------------------------- |
+| Script filename   | `workflows/<name>.js`. That `<name>` is the name `Workflow({name})` resolves                 |
+| Shape of the name | One English word. Generic names like helper, utils, tools are not allowed                    |
+| Helper script     | Place under `workflows/<name>/`. A `.js` directly under `workflows/` registers as a workflow |
+| Shared harness    | Place under `workflows/_lib/`. Limited to the use imported from tests                        |
+
+A script body carries no line ceiling. The 200 lines for a skill and a subagent does not carry over as is. The prompt strings inside a script are read by an LLM, so those follow the sentence-length conventions in PROSE.md.
+
+## Reference notation
+
+Write a path to a bundled asset in the form that resolves in both the dev tree (`~/.claude`) and a plugin distribution (under `~/.claude/plugins/`). In an environment installed as a plugin, the dev-tree path holds nothing.
+
+| Target referenced                                                   | How to write it                              | Reason                                                               |
+| ------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------- |
+| A bundled script or template                                        | Define and call `bundled(rel)` in the script | Tries the dev tree first, then finds the target under plugins        |
+| A file on the running side (`settings.json`, the `history/` output) | Bare `$HOME/.claude/<path>`                  | Not a distributed asset, so the same path holds under a plugin too   |
+| Another module                                                      | Cannot be loaded                             | The script is evaluated as one function body and carries no `import` |
+
+The `bundled` search excludes `.ja/`. A plugin distribution carries the `.ja/` side too, and the search order does not guarantee the English copy comes last, so without the exclusion the Japanese copy of the asset runs.
+
+The `bundled` definition cannot be shared through import, so each script that uses it carries its own copy of the same definition. When the definition changes, change every script holding it in the same commit.
+
+## Taking arguments and prompts
+
+A script accepts `args` as either a string or an object. The string is shorthand, and each script decides what it names (scope for most; adrift reads an id list as focus and anything else as dir).
+
+| Target                 | Convention                                                                                                                                                                                                                                                            |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reading args           | Use an object as it stands. Parse a string as JSON only when it starts with `{`, and read it as shorthand when that fails                                                                                                                                             |
+| String options         | Confirm the type with `typeof`, and fall to the default when `trim()` is empty. The `base` naming a diff comparison defaults to `main`                                                                                                                                |
+| A script taking `repo` | Define `anchor(p)` and pass every prompt bound for an agent through it. anchor prepends one sentence asking for `cd <repo> &&`. A script where repo is optional returns the prompt untouched when repo is empty, and a script where repo is mandatory always prepends |
+
 ## Degradation recording
 
 Degradation is a branch that drops or defaults a failed or missing sub-result without recording it at loss granularity in either a structured field or `log()`. Loss granularity is the information that lets a reader reconstruct what / how many / why was lost (count, id, target name, reason).

@@ -26,17 +26,19 @@ const isIdList = (s) => {
 };
 
 const parseArgs = () => {
-  if (typeof args === "string") {
+  if (typeof args === "object" && args) return args;
+  if (typeof args !== "string") return {};
+  const s = args.trim();
+  if (s.startsWith("{")) {
     try {
-      const parsed = JSON.parse(args);
+      const parsed = JSON.parse(s);
       if (parsed && typeof parsed === "object") return parsed;
     } catch {
-      // JSON でない文字列は短縮記法。"0061" や "DR-0061, 0073" のような
-      // id 列は focus、それ以外は dir と解釈する
+      // 壊れた JSON は下の短縮記法へ落ちる
     }
-    return isIdList(args) ? { focus: args } : { dir: args };
   }
-  return args && typeof args === "object" ? args : {};
+  // "0061" や "DR-0061, 0073" のような id 列は focus、それ以外は dir と解釈する
+  return isIdList(args) ? { focus: args } : { dir: args };
 };
 const opts = parseArgs();
 const dir = typeof opts.dir === "string" ? opts.dir.trim() : "";

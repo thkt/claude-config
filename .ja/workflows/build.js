@@ -72,7 +72,7 @@ const sibling = async (name, a) => {
   }
 };
 const bundled = (rel) =>
-  `"$(P="$HOME/.claude/${rel}"; [ -f "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
+  `"$(P="$HOME/.claude/${rel}"; [ -e "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" -not -path "*/.ja/*" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
 
 // 閉じた object に統一し、LLM 出力の余分なフィールドと欠落を schema 層で reject する。
 const obj = (required, properties) => ({
