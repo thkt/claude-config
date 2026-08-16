@@ -2,7 +2,7 @@
 name: research
 description: Probe project and technical questions. Findings are positions to be challenged with explicit sources, not conclusions. Phase 6 advisor pass argues against the synthesis before it lands. Do NOT use for design planning or plan generation (use /think instead).
 when_to_use: 調査して, 調べて, リサーチ, investigate, 分析して, issueやろう, issue見て, 横並びチェック, 類似パターン検出, refactor 横展開
-allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Task AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) Bash($HOME/.claude/skills/research/scripts/*)
+allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Agent AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) Bash($HOME/.claude/skills/research/scripts/*)
 model: opus
 context: fork
 background: false
@@ -47,7 +47,7 @@ Launch Explore / ugrep / bfs / Read in parallel. Append each command and its raw
 
 State the source for each finding in place. Facts are `file:line` or command output, inferences `inferred from X`, unverified `unknown, requires X`. This is the source notation the later Phases and the report template refer to; no other form is accepted.
 
-For Feature planning or Bug investigation intent, also invoke `Task(subagent_type: explorer-feature, run_in_background: false)`. Take the result as a single JSON object `{ findings: [{ statement: string, source: string }] }`. When that trigger fires, or when a `.codegraph/` index exists, read `${CLAUDE_SKILL_DIR}/references/tactics.md` and apply the tactics whose trigger matches. At the close, read `${CLAUDE_SKILL_DIR}/references/verification.md` and apply the verification matching the finding's kind.
+For Feature planning or Bug investigation intent, also invoke `Agent(subagent_type: explorer-feature)`. The spawn runs in the background, so keep the other searches going while its completion notification is pending. Take the result as a single JSON object `{ findings: [{ statement: string, source: string }] }`, and do not move to the next Phase before it arrives. When that trigger fires, or when a `.codegraph/` index exists, read `${CLAUDE_SKILL_DIR}/references/tactics.md` and apply the tactics whose trigger matches. At the close, read `${CLAUDE_SKILL_DIR}/references/verification.md` and apply the verification matching the finding's kind.
 
 ### Domain scoping
 

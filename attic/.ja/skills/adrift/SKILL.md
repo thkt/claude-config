@@ -42,12 +42,12 @@ argument-hint: "[adr-directory]"
 
 マニフェストファイルでリポジトリ言語を判定し、対応する reviewer subagent を Task で起動。subagent には候補 `file:line` リストと ADR の Decision Outcome 本文を渡す。clippy や grep で拾えない意味的ギャップを判定させる。
 
-| マニフェスト              | 起動する reviewer subagent                   |
-| ------------------------- | -------------------------------------------- |
-| Cargo.toml                | reviewer-rust + reviewer-design              |
-| package.json              | reviewer-design                              |
-| package.json with `*.tsx` | reviewer-react-pattern + reviewer-design     |
-| その他 / 不明             | reviewer-design                              |
+| マニフェスト              | 起動する reviewer subagent               |
+| ------------------------- | ---------------------------------------- |
+| Cargo.toml                | reviewer-rust + reviewer-design          |
+| package.json              | reviewer-design                          |
+| package.json with `*.tsx` | reviewer-react-pattern + reviewer-design |
+| その他 / 不明             | reviewer-design                          |
 
 ## Phase 6: 修正方向
 

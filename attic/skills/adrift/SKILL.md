@@ -42,12 +42,12 @@ Run `python3 ${CLAUDE_SKILL_DIR}/../_lib/external-adr-refs.py --adr-dir <adr-dir
 
 Detect repo language by manifest file and run the matching reviewer subagents via Task tool. Subagents receive the candidate `file:line` list plus the ADR Decision Outcome text. They flag semantic gaps clippy or grep cannot detect.
 
-| Manifest                  | Reviewer subagents to spawn                  |
-| ------------------------- | -------------------------------------------- |
-| Cargo.toml                | reviewer-rust + reviewer-design              |
-| package.json              | reviewer-design                              |
-| package.json with `*.tsx` | reviewer-react-pattern + reviewer-design     |
-| Other / Unknown           | reviewer-design                              |
+| Manifest                  | Reviewer subagents to spawn              |
+| ------------------------- | ---------------------------------------- |
+| Cargo.toml                | reviewer-rust + reviewer-design          |
+| package.json              | reviewer-design                          |
+| package.json with `*.tsx` | reviewer-react-pattern + reviewer-design |
+| Other / Unknown           | reviewer-design                          |
 
 ## Phase 6: Modification Direction
 

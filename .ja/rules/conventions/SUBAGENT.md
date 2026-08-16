@@ -24,21 +24,32 @@ paths:
 
 ## YAML Frontmatter
 
-エージェントは Task ツール経由で起動され、自動ロードされない。AskUserQuestion / EnterPlanMode / ScheduleWakeup などはエージェント内で動作せず `tools` に列挙しても無効。一方で Agent は動作し、メインループを深さ 0 として深さ 3 のエージェントまでネスト起動できる。
+エージェントは Agent ツール経由で起動され、自動ロードされない。AskUserQuestion/EnterPlanMode/ScheduleWakeup などはエージェント内で動作せず `tools` に列挙しても無効。Agent ツール自体はエージェント内でも動作し、メインループを深さ 0 として深さ 3 のエージェントまでネスト起動できる。
 
-| フィールド                      | 必須 | 備考                                                                                           |
-| ------------------------------- | ---- | ---------------------------------------------------------------------------------------------- |
-| name                            | Yes  | 小文字 + ハイフン。ファイル名と一致不要。同一スコープ内で一意 (重複は片方が警告なく破棄)       |
-| description                     | Yes  | いつ委譲すべきかを書く。委譲先の振り分けに使用                                                 |
-| tools, disallowedTools          | No   | カンマまたは空白区切り文字列。省略時は全ツール継承。Bash matcher 構文 (`Bash(git log:*)`) も可 |
-| model                           | No   | sonnet / opus / haiku / fable / inherit / full-id。デフォルトは `inherit`                      |
-| permissionMode, maxTurns        | No   | 必要に応じて                                                                                   |
-| skills                          | No   | 起動時にスキル内容を注入。plugin form は `<plugin>:<skill>`                                    |
-| mcpServers, hooks               | No   | 必要に応じて                                                                                   |
-| memory                          | No   | `user` / `project` / `local`。有効化で Read / Write / Edit を自動付与                          |
-| background                      | No   | Boolean。デフォルトは `false`                                                                  |
-| effort                          | No   | low / medium / high / xhigh / max                                                              |
-| isolation, color, initialPrompt | No   | 必要に応じて                                                                                   |
+| フィールド                      | 必須 | 備考                                                                                                            |
+| ------------------------------- | ---- | --------------------------------------------------------------------------------------------------------------- |
+| name                            | Yes  | 小文字 + ハイフン。ファイル名と一致不要。同一スコープ内で一意 (重複は片方が警告なく破棄)                        |
+| description                     | Yes  | いつ委譲すべきかを書く。委譲先の振り分けに使用                                                                  |
+| tools, disallowedTools          | No   | カンマまたは空白区切り文字列。省略時は全ツール継承。Bash matcher 構文 (`Bash(git log:*)`) も可                  |
+| model                           | No   | sonnet / opus / haiku / fable / inherit / full-id。デフォルトは `inherit`                                       |
+| permissionMode, maxTurns        | No   | 必要に応じて                                                                                                    |
+| skills                          | No   | 起動時にスキル内容を注入。plugin form は `<plugin>:<skill>`                                                     |
+| mcpServers, hooks               | No   | 必要に応じて                                                                                                    |
+| memory                          | No   | `user` / `project` / `local`。有効化で Read / Write / Edit を自動付与                                           |
+| background                      | No   | Boolean。対話セッションでの起動は `false` を書いてもバックグラウンドで走る。workflow と headless はこの既定の外 |
+| effort                          | No   | low / medium / high / xhigh / max                                                                               |
+| isolation, color, initialPrompt | No   | 必要に応じて                                                                                                    |
+
+## fork の判定
+
+`subagent_type` は 1 つの値しか取らない。`"fork"` と `agents/` の型名は排他で、fork を選ぶとエージェント定義は読み込まれない。fork は自分自身の複製であって、別のエージェントではない。critic- と reviewer- は親の結論を攻撃する役なので、fork すると役が成立しなくなる。
+
+判定は起動が `agents/` の型を名指ししているかで決まる。
+
+| 起動                                 | fork | 理由                                                                                                         |
+| ------------------------------------ | ---- | ------------------------------------------------------------------------------------------------------------ |
+| `agents/` の型を名指しする           | 不適 | model 指定、tools 制限、独立性、戻り値の形が同時に消える                                                     |
+| 型を省略する、または組み込み型を渡す | 可   | 親の会話が仕事の対象そのものなら、文脈を prompt へ書き写す手間が消える。入力トークンは会話の大きさだけ増える |
 
 ## モデル選択基準
 
@@ -70,7 +81,7 @@ memory を付与する必須条件は以下のとおり。付与後、project �
 
 ## 指摘の重要度
 
-reviewer- 系は `~/.claude/agents/_lib/finding-schema.md` の Severity (critical / high / medium / low) に従う。独自のゲート判定を返すエージェント (critic- 系の confirmed / disputed など) は自分の方式に従う。
+reviewer- 系は `~/.claude/agents/_lib/finding-schema.md` の Severity (critical/high/medium/low) に従う。独自のゲート判定を返すエージェント (critic- 系の confirmed/disputed など) は自分の方式に従う。
 
 ## 参照記法
 

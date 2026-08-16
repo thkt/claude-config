@@ -26,7 +26,7 @@ skills: [use-workflow-tdd-cycle]
 
 ## 入力
 
-Task spawn プロンプト経由で symptom、repro、root_cause、test_paths を受け取る。symptom または repro が渡されない場合は `No repro provided` を返す。
+Agent spawn プロンプト経由で symptom、repro、root_cause、test_paths を受け取る。symptom または repro が渡されない場合は `No repro provided` を返す。
 
 | フィールド | 型     | 例                                  |
 | ---------- | ------ | ----------------------------------- |
@@ -57,7 +57,7 @@ Task spawn プロンプト経由で symptom、repro、root_cause、test_paths �
 
 ## アウトプット
 
-Task 完了時に以下のフィールドを返す。テストの実行 (Red 確認) は呼び出し元が行う。
+エージェントの完了時に以下のフィールドを返す。返り値は呼び出し元へ完了通知として届き、テストの実行 (Red 確認) は呼び出し元が行う。
 
 | Field       | Type   | Value                                                                             |
 | ----------- | ------ | --------------------------------------------------------------------------------- |

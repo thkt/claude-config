@@ -4,7 +4,7 @@ Task (background) で 3 つを並列に起動する。すべて完了したら P
 
 | Task            | 実行者             | アクション                                                          |
 | --------------- | ------------------ | ------------------------------------------------------------------- |
-| Codex review    | Codex CLI (Bash)   | 変更 / 対象コードの静的レビュー                                       |
+| Codex review    | Codex CLI (Bash)   | 変更 / 対象コードの静的レビュー                                     |
 | Audit reviewers | Claude Code agents | ドメイン特化の静的解析                                              |
 | Test execution  | Codex CLI (Bash)   | worktree 内で test コマンド実行 (build は bootstrap smoke を再利用) |
 

@@ -17,7 +17,7 @@ Analyze a codebase feature by tracing execution paths from entry points through 
 
 ## Input
 
-Receive subject, domain, and feature_scope via the Task spawn prompt. If feature_scope is not provided, explore from the project root discovered via bfs and LS.
+Receive subject, domain, and feature_scope via the Agent spawn prompt. If feature_scope is not provided, explore from the project root discovered via bfs and LS.
 
 | Field         | Type     | Example                                          |
 | ------------- | -------- | ------------------------------------------------ |
@@ -48,7 +48,7 @@ Discover project structure and entry points with bfs and LS. Search for key expo
 
 ## Output
 
-Return the following fields on Task completion. Each finding carries a source (a file:line citation, or "inferred from X").
+Return the following fields when the agent completes. Each finding carries a source (a file:line citation, or "inferred from X").
 
 | Field                 | Type   | Value                                                                                          |
 | --------------------- | ------ | ---------------------------------------------------------------------------------------------- |
