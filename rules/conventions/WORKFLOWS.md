@@ -11,7 +11,7 @@ Conventions for workflow scripts (headless deterministic pipelines) under `workf
 
 ## Naming and file placement
 
-Discovery reads `workflows/` flat and registers only the `.js` files directly under it. A `.js` placed in a subdirectory is not registered.
+Discovery reads `workflows/` flat and registers only the `.js` files directly under it.
 
 | Target            | Rule                                                                                         |
 | ----------------- | -------------------------------------------------------------------------------------------- |
@@ -34,17 +34,19 @@ Write a path to a bundled asset in the form that resolves in both the dev tree (
 
 The `bundled` search excludes `.ja/`. A plugin distribution carries the `.ja/` side too, and the search order does not guarantee the English copy comes last, so without the exclusion the Japanese copy of the asset runs.
 
-The `bundled` definition cannot be shared through import, so each script that uses it carries its own copy of the same definition. When the definition changes, change every script holding it in the same commit.
+The `bundled` definition is duplicated per script. When the definition changes, change every script holding it in the same commit.
 
 ## Taking arguments and prompts
 
-A script accepts `args` as either a string or an object. The string is shorthand, and each script decides what it names (scope for most; adrift reads an id list as focus and anything else as dir).
+A script accepts `args` as either a string or an object. The string is shorthand, and each script decides what it names.
 
-| Target                 | Convention                                                                                                                                                                                                                                                            |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Reading args           | Use an object as it stands. Parse a string as JSON only when it starts with `{`, and read it as shorthand when that fails                                                                                                                                             |
-| String options         | Confirm the type with `typeof`, and fall to the default when `trim()` is empty. The `base` naming a diff comparison defaults to `main`                                                                                                                                |
-| A script taking `repo` | Define `anchor(p)` and pass every prompt bound for an agent through it. anchor prepends one sentence asking for `cd <repo> &&`. A script where repo is optional returns the prompt untouched when repo is empty, and a script where repo is mandatory always prepends |
+| Target                 | Convention                                                                                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Reading args           | Use an object as it stands. Parse a string as JSON only when it starts with `{`, and read it as shorthand when that fails              |
+| String options         | Confirm the type with `typeof`, and fall to the default when `trim()` is empty. The `base` naming a diff comparison defaults to `main` |
+| A script taking `repo` | Define `anchor(p)` and pass every prompt bound for an agent through it. anchor prepends one sentence asking for `cd <repo> &&`         |
+
+A script where repo is optional returns the prompt untouched when repo is empty. A script where repo is mandatory always prepends.
 
 ## Degradation recording
 

@@ -31,20 +31,18 @@ jobs:
           sudo apt-get install -y zsh locales
           sudo locale-gen en_US.UTF-8
 
-      # node_modules is not tracked; the lockfiles are. The root install is what puts
-      # oxlint on PATH for the static-gate tests, which reach for it through npx.
+      # node_modules is not tracked; the lockfile is. The root install is what puts
+      # oxlint on PATH for the static-gate tests, which reach for it through npx. The
+      # textlint hook runs from this same root, where .textlintrc.json sits beside
+      # node_modules.
       - name: Install
-        run: npm ci
-
-      - name: Install textlint
-        working-directory: hooks/textlint
         run: bun install --frozen-lockfile
 
       - name: Node tests
         run: >
           node --test
           "agents/**/tests/*.test.js"
-          "hooks/tests/*.test.js"
+          "hooks/**/tests/*.test.js"
           "skills/**/tests/*.test.js"
           "workflows/**/tests/*.test.js"
 
@@ -53,10 +51,7 @@ jobs:
       - name: Python tests
         run: find agents hooks skills workflows -name '*_test.py' -print0 | xargs -0 -r -n1 python3
 
+      # glob でなく find なのは、bash 3.2 に globstar が無く ** の階層解釈が版で割れるため。
+      # Python tests と同じ形で、階層が増えても suite を落とさない。-t が実行行を stderr へ出す。
       - name: Shell tests
-        run: |
-          for suite in hooks/tests/test-*.sh; do
-            case "$suite" in */test-helpers.sh) continue ;; esac
-            echo "--- $suite"
-            bash "$suite"
-          done
+        run: find hooks -name '*.test.sh' -print0 | xargs -0 -r -n1 -t bash
