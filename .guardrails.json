@@ -1,4 +1,5 @@
 {
+  "_why": "sqliConcat off: use-context-reviewer-security の意図的な脆弱 fixture 3 本を Write できなくなるため。パス単位の除外は guardrails に存在しない",
   "diffAware": true,
   "rules": {
     "sqliConcat": false

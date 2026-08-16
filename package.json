@@ -2,9 +2,18 @@
   "name": "dotclaude",
   "version": "0.0.0",
   "private": true,
-  "description": "Harness config repo. oxlint/oxfmt pinned so the Zed oxc extension uses these local binaries instead of fetching latest (blocked by min-release-age).",
+  "description": "Claude Code harness config: hooks, skills, agents, workflows, rules.",
+  "type": "module",
   "devDependencies": {
-    "oxfmt": "0.56.0",
-    "oxlint": "1.71.0"
+    "@textlint-ja/textlint-rule-preset-ai-writing": "^1.7.0",
+    "hucre": "^1.0.0",
+    "oxfmt": "0.63.0",
+    "oxlint": "1.78.0",
+    "textlint": "^15.8.0",
+    "textlint-rule-ja-no-redundant-expression": "^4.0.1",
+    "textlint-rule-ja-no-weak-phrase": "^2.0.0",
+    "textlint-rule-no-mix-dearu-desumasu": "^6.0.4",
+    "textlint-rule-preset-ja-spacing": "^3.0.3",
+    "textlint-rule-preset-ja-technical-writing": "^12.0.2"
   }
 }

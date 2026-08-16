@@ -29,6 +29,7 @@ history/
 /.credentials.json
 /agent-memory/
 /chrome/
+/herdr-auto-title/
 /ide/
 /projects/
 /settings.json
@@ -42,7 +43,6 @@ history/
 
 # Session history
 file-history/
-history.jsonl
 *.jsonl
 
 # Private / local config
@@ -85,16 +85,13 @@ __pycache__/
 .ruff_cache/
 
 # Cache
-cache/
 stats-cache.json
-*cache
+# ディレクトリに限る。末尾が cache のソースファイルまで飲まないため
+*cache/
 
 # Runtime
 logs/
 plans/
-# but the veto test fixtures live in a dir named "plans" — keep them tracked
-!hooks/veto/tests/fixtures/plans/
-!.ja/hooks/veto/tests/fixtures/plans/
 session-env/
 sessions/
 

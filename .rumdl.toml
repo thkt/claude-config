@@ -1,9 +1,3 @@
-# rumdl configuration
-# textlint が日本語 prose を、rumdl が Markdown 構造を見る分担
-
 [global]
-# MD013: 行長は PROSE.md の「一文 60 字」で別途統制しており、80 字の機械制限とは基準が違う
-# MD014: ドキュメント内の `> /fix ...` は Claude Code への入力記号で、シェルの $ プレフィックスではない
 disable = ["MD013", "MD014"]
-
-exclude = ["node_modules", "projects", "plugins/cache", "backups", "attic", ".git"]
+exclude = ["attic"]
