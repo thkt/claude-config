@@ -24,8 +24,9 @@ const asserts = {
 // The script is an identical copy on both sides, so one path covers the pair.
 const script = join(root, "skills", "outcome", "scripts", "validate-outcome.py");
 
-// 生成した OUTCOME.md の見出しは assert の bootstrap と challenge が digest 対象として名指しする。
-// 綴りが揺れると digest が空で返り、下流は outcome 不在として扱う。
+// assert's bootstrap and challenge name the headings of a generated OUTCOME.md as their digest
+// targets. A wobbling spelling returns an empty digest and downstream treats the outcome as
+// absent.
 const HEADINGS = [
   /^## Outcome state$/m,
   /^### Behavior$/m,
@@ -34,41 +35,42 @@ const HEADINGS = [
   /^## Constraints$/m,
 ];
 
-test("テンプレートの見出しが両言語で英語のまま揃う", () => {
+test("the template headings stay English and match across both languages", () => {
   for (const [lang, path] of Object.entries(templates)) {
-    assert.ok(existsSync(path), `${path} が存在する`);
+    assert.ok(existsSync(path), `${path} exists`);
     const doc = readFileSync(path, "utf8");
     for (const heading of HEADINGS) {
-      assert.match(doc, heading, `${lang}: ${heading} がテンプレートにある`);
+      assert.match(doc, heading, `${lang}: the template carries ${heading}`);
     }
   }
 });
 
-// Indicators の 3 行は rules/core/OUTCOME.md § 中身 が定める分類。行が減ると
-// テンプレートから消えた分類を書き手が思い出せない。
-test("Indicators の分類がテンプレートと rules で一致する", () => {
+// The three Indicators rows are the categories rules/core/OUTCOME.md § Content defines. A dropped
+// row leaves the writer unable to recall the category that vanished from the template.
+test("the Indicators categories match between the template and the rules", () => {
   for (const [lang, path] of Object.entries(rules)) {
     const doc = readFileSync(path, "utf8");
     assert.ok(
       doc.includes("Time / Error rate / Value"),
-      `${lang}: rules が Time / Error rate / Value を並べる`,
+      `${lang}: the rules list Time, Error rate, and Value`,
     );
   }
   for (const [lang, path] of Object.entries(templates)) {
     const doc = readFileSync(path, "utf8");
-    assert.match(doc, /^\| Time {2,}\|/m, `${lang}: Time 行`);
-    assert.match(doc, /^\| Error rate \|/m, `${lang}: Error rate 行`);
-    assert.match(doc, /^\| Value {2,}\|/m, `${lang}: Value 行`);
+    assert.match(doc, /^\| Time {2,}\|/m, `${lang}: the Time row`);
+    assert.match(doc, /^\| Error rate \|/m, `${lang}: the Error rate row`);
+    assert.match(doc, /^\| Value {2,}\|/m, `${lang}: the Value row`);
   }
 });
 
-// 空判定の語。書き手はテンプレートの指示に従って TBD を書き、script がその語で空を判定し、
-// SKILL.md の分岐表が判定結果を説明する。1 つだけ言い換えると、埋まっていない OUTCOME.md を
-// 生成フローが更新フローへ流す。
-test("空判定の語がテンプレート、SKILL.md、script で TBD に揃う", () => {
+// The word for the emptiness check. The writer writes TBD per the template's instruction, the
+// script decides emptiness by that word, and SKILL.md's branch table explains the result.
+// Rephrasing just one of them sends an unfilled OUTCOME.md from the generate flow into the update
+// flow.
+test("the emptiness word is TBD across the template, SKILL.md, and the script", () => {
   for (const [lang, path] of Object.entries(templates)) {
     const doc = readFileSync(path, "utf8");
-    assert.match(doc, /TBD/, `${lang}: テンプレートが TBD の書き方を指示する`);
+    assert.match(doc, /TBD/, `${lang}: the template instructs how to write TBD`);
   }
   const branchRow = {
     ja: /Behavior が空、または TBD のみ\s*\|/,
@@ -76,105 +78,111 @@ test("空判定の語がテンプレート、SKILL.md、script で TBD に揃う
   };
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
-    assert.match(doc, branchRow[lang], `${lang}: 分岐表の行が TBD で生成へ振る`);
+    assert.match(doc, branchRow[lang], `${lang}: the branch table row routes TBD to generate`);
   }
   assert.match(
     readFileSync(script, "utf8"),
     /content\.upper\(\) == "TBD"/,
-    "script が TBD を空として扱う",
+    "the script treats TBD as empty",
   );
 });
 
-// assert の空判定を script に委ねた配線。prompt が自前で TBD を目視する形に戻ると、
-// /outcome の判定基準と assert の判定基準が分かれる。
-test("assert.js が validate-outcome.py の state で outcome の有無を決める", () => {
+// The wiring that leaves assert's emptiness check to the script. Reverting the prompt to eyeing
+// TBD itself would split /outcome's criteria from assert's.
+test("assert.js decides whether an outcome exists from validate-outcome.py's state", () => {
   for (const [lang, path] of Object.entries(asserts)) {
     const src = readFileSync(path, "utf8");
+    // It is assembled through bundled(), so the match runs on the relative path argument rather
+    // than a literal path. Resolving under both the dev tree and a plugin distribution is
+    // bundled's responsibility.
     assert.match(
       src,
-      /OUTCOME_VALIDATOR = "\$HOME\/\.claude\/skills\/outcome\/scripts\/validate-outcome\.py"/,
-      `${lang}: script のパスを持つ`,
+      /OUTCOME_VALIDATOR = bundled\("skills\/outcome\/scripts\/validate-outcome\.py"\)/,
+      `${lang}: it carries the script path`,
     );
-    assert.match(src, /\$\{OUTCOME_VALIDATOR\}/, `${lang}: bootstrap prompt が script を実行する`);
-    assert.doesNotMatch(src, /all items are TBD|全項 TBD/, `${lang}: TBD の目視判定が残っていない`);
+    assert.match(src, /\$\{OUTCOME_VALIDATOR\}/, `${lang}: the bootstrap prompt runs the script`);
+    assert.doesNotMatch(src, /all items are TBD|全項 TBD/, `${lang}: no eyeball check for TBD remains`);
   }
 });
 
-// digest 対象の語。assert.js、challenge、validate-outcome.py の必須セクションが同じ 3 つを
-// 指す。1 つが Outcome state のような親セクション名に戻ると、冒頭文の理想表現が digest に混ざる。
-test("digest 対象が Behavior / Non-goals / Constraints に揃う", () => {
+// The words naming the digest targets. assert.js, challenge, and validate-outcome.py's required
+// sections all name the same three. Reverting one to a parent section name such as Outcome state
+// mixes the opening sentence's aspirational wording into the digest.
+test("the digest targets are Behavior, Non-goals, and Constraints everywhere", () => {
   const challenge = {
     ja: join(root, ".ja", "skills", "challenge", "SKILL.md"),
     en: join(root, "skills", "challenge", "SKILL.md"),
   };
   for (const [lang, path] of Object.entries(asserts)) {
     const src = readFileSync(path, "utf8");
-    assert.match(src, /Behavior \/ Non-goals \/ Constraints/, `${lang}: assert.js の digest 語`);
+    assert.match(src, /Behavior \/ Non-goals \/ Constraints/, `${lang}: assert.js's digest wording`);
   }
   for (const [lang, path] of Object.entries(challenge)) {
     const doc = readFileSync(path, "utf8");
-    assert.match(doc, /Behavior \/ Non-goals \/ Constraints/, `${lang}: challenge の outcome_ref`);
+    assert.match(doc, /Behavior \/ Non-goals \/ Constraints/, `${lang}: challenge's outcome_ref`);
     assert.doesNotMatch(
       doc,
       /Outcome state \/ Non-goals/,
-      `${lang}: 親セクション名を digest 対象にしない`,
+      `${lang}: a parent section name is not made a digest target`,
     );
   }
   assert.match(
     readFileSync(script, "utf8"),
     /FILLED_SECTIONS = \("Behavior", "Non-goals", "Constraints"\)/,
-    "script の充填判定が同じ 3 セクションを見る",
+    "the script's fill check looks at the same three sections",
   );
 });
 
-// 分岐を script に委ねた配線。SKILL.md が script を呼ばなくなると、判定が目視に戻る。
-test("SKILL.md が validate-outcome.py で分岐し、検証まで回す", () => {
+// The wiring that leaves the branching to the script. Once SKILL.md stops calling it, the
+// decision returns to eyeballing.
+test("SKILL.md branches on validate-outcome.py and runs it through the validation too", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
     assert.match(
       doc,
       /\$\{CLAUDE_SKILL_DIR\}\/scripts\/validate-outcome\.py \.claude\/OUTCOME\.md/,
-      `${lang}: 分岐で script を実行する`,
+      `${lang}: the branch runs the script`,
     );
-    assert.match(doc, /^\| absent \|/m, `${lang}: state absent の行`);
-    assert.match(doc, /^\| empty {2}\|/m, `${lang}: state empty の行`);
-    assert.match(doc, /^\| ok {5}\|/m, `${lang}: state ok の行`);
+    assert.match(doc, /^\| absent \|/m, `${lang}: the state absent row`);
+    assert.match(doc, /^\| empty {2}\|/m, `${lang}: the state empty row`);
+    assert.match(doc, /^\| ok {5}\|/m, `${lang}: the state ok row`);
     assert.match(
       doc,
       /Bash\(\$HOME\/\.claude\/skills\/outcome\/scripts\/\*\)/,
-      `${lang}: allowed-tools が script の実行を許可する`,
+      `${lang}: allowed-tools grants running the script`,
     );
     const validateSteps = doc.match(/validate-outcome\.py/g) || [];
     assert.ok(
       validateSteps.length >= 3,
-      `${lang}: 分岐、生成、更新の 3 箇所で script を回す (実際は ${validateSteps.length})`,
+      `${lang}: the script runs in all three places: branch, generate, update (actual ${validateSteps.length})`,
     );
   }
 });
 
-// 収集しない任意ブロックを落とす指示と、落とし損ねた {...} を弾く side。指示だけだと
-// プレースホルダが .claude/OUTCOME.md に残り、assert の digest がそれを Behavior として読む。
-test("生成手順が任意ブロックを落とし、残ったプレースホルダを script が弾く", () => {
+// The instruction to drop an optional block that was never collected, paired with the side that
+// rejects a {...} left behind. With the instruction alone, a placeholder stays in
+// .claude/OUTCOME.md and assert's digest reads it as Behavior.
+test("the generate steps drop the optional block and the script rejects a leftover placeholder", () => {
   assert.match(
     readFileSync(skills.ja, "utf8"),
     /Indicators はセクションごと落とす/,
-    "ja: Indicators を落とす指示",
+    "ja: the instruction to drop Indicators",
   );
   assert.match(
     readFileSync(skills.en, "utf8"),
     /drop Indicators with its heading/,
-    "en: Indicators を落とす指示",
+    "en: the instruction to drop Indicators",
   );
   for (const [lang, path] of Object.entries(skills)) {
     assert.match(
       readFileSync(path, "utf8"),
       /placeholder_left/,
-      `${lang}: 生成手順が script の placeholder_left を名指しする`,
+      `${lang}: the generate steps name the script's placeholder_left`,
     );
   }
   assert.match(
     readFileSync(script, "utf8"),
     /placeholder_left:/,
-    "script が placeholder_left を errors に積む",
+    "the script pushes placeholder_left into errors",
   );
 });

@@ -1,7 +1,7 @@
-// /research の結合はすべてファイル間にある。Phase 番号はテンプレートが SKILL.md の見出しを
-// 引用し、triage の「記録のみ」は /think が plan スコープの判定に読み、検証手順は SKILL.md が
-// verification.md の見出しを名前で指す。いずれも片側を変えても実行時には何も落ちないので、
-// この静的照合が同一コミットでの追従を強制する。
+// Every coupling in /research runs between files. The template cites SKILL.md's headings for the
+// Phase numbers, /think reads triage's "record only" when deciding the plan scope, and SKILL.md
+// names verification.md's headings for the verification steps. Changing one side of any of them
+// drops nothing at run time, so this static match forces both to follow in the same commit.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
@@ -24,103 +24,106 @@ for (const lang of LANGS) {
 }
 
 function read(path) {
-  assert.ok(existsSync(path), `${path} が存在する`);
+  assert.ok(existsSync(path), `${path} exists`);
   return readFileSync(path, "utf8");
 }
 
-test("テンプレートが引用する Phase 番号がすべて SKILL.md の見出しに存在する", () => {
+test("every Phase number the template cites exists as a heading in SKILL.md", () => {
   for (const lang of LANGS) {
     const headings = new Set(
       [...read(skills[lang]).matchAll(/^## Phase (\d+)/gm)].map((m) => m[1]),
     );
-    assert.ok(headings.size >= 5, `${lang}: SKILL.md が Phase 見出しを 5 つ以上持つ`);
+    assert.ok(headings.size >= 5, `${lang}: SKILL.md carries five or more Phase headings`);
     const cited = new Set([...read(templates[lang]).matchAll(/Phase (\d+)/g)].map((m) => m[1]));
-    assert.ok(cited.size >= 5, `${lang}: テンプレートが Phase を 5 つ以上引用する`);
+    assert.ok(cited.size >= 5, `${lang}: the template cites five or more Phases`);
     for (const n of [...cited].sort()) {
-      assert.ok(headings.has(n), `${lang}: テンプレートが引用する Phase ${n} が SKILL.md にある`);
+      assert.ok(headings.has(n), `${lang}: Phase ${n}, cited by the template, exists in SKILL.md`);
     }
   }
 });
 
-// /think は「次のアクションが記録のみ」の finding を plan スコープから外す。語が 3 ファイルで
-// 揃っていないと、research が記録のみと書いた finding を think が拾い、スコープが膨らむ。
+// /think drops a finding whose next action is "record only" from the plan scope. Without the same
+// wording across all three files, think picks up a finding research marked record-only and the
+// scope swells.
 const TRIAGE_LITERAL = { ja: "記録のみ", en: "record only" };
 
-test("triage の記録のみ literal が research SKILL / テンプレート / think SKILL で一致する", () => {
+test("triage's record-only literal matches across research SKILL, the template, and think SKILL", () => {
   for (const lang of LANGS) {
     const needle = TRIAGE_LITERAL[lang];
     const sites = [
       ["research SKILL.md", skills[lang]],
-      ["research テンプレート", templates[lang]],
+      ["the research template", templates[lang]],
       ["think SKILL.md", thinkSkills[lang]],
     ];
     for (const [name, path] of sites) {
-      assert.ok(read(path).includes(needle), `${lang}: ${name} が ${needle} を書いている`);
+      assert.ok(read(path).includes(needle), `${lang}: ${name} writes ${needle}`);
     }
   }
 });
 
-// SKILL.md は検証手順を verification.md の見出し名で指す。見出しを改名すると参照が空を指す。
+// SKILL.md names the verification steps by verification.md's heading names. Renaming a heading
+// leaves the reference pointing at nothing.
 const VERIFICATION_HEADINGS = {
   ja: ["Cross-method 検証", "一次ソース検証", "Same-origin sweep"],
   en: ["Cross-method verification", "Primary-source verification", "Same-origin sweep"],
 };
 
-test("SKILL.md が名前で指す verification.md の見出しが実在する", () => {
+test("every verification.md heading SKILL.md names exists", () => {
   for (const lang of LANGS) {
     const ver = read(verifications[lang]);
     const skill = read(skills[lang]);
     for (const heading of VERIFICATION_HEADINGS[lang]) {
       assert.ok(
         ver.includes(`## ${heading}`),
-        `${lang}: verification.md に ${heading} 見出しがある`,
+        `${lang}: verification.md carries the ${heading} heading`,
       );
-      assert.ok(skill.includes(heading), `${lang}: SKILL.md が ${heading} を名前で指す`);
+      assert.ok(skill.includes(heading), `${lang}: SKILL.md names ${heading}`);
     }
   }
 });
 
-// Phase 2 が代わりにスクリプトを呼ぶ (.ja/skills/outcome/SKILL.md の呼び出し形に倣う)。
-// 名指しされたスクリプトが実在せず実行もできなければ、Phase 2 の指示は絵に描いた餅になる。
+// Phase 2 calls the script instead, following the invocation shape in
+// .ja/skills/outcome/SKILL.md. A named script that neither exists nor runs leaves Phase 2's
+// instruction with nothing behind it.
 function extractPhase(skillText, n) {
   const re = new RegExp(`^## Phase ${n}[\\s\\S]*?(?=^## Phase ${n + 1})`, "m");
   return skillText.match(re)?.[0] ?? "";
 }
 
-test("SKILL.md の Phase 2 が名指しするスクリプトが実在し実行して JSON を返す", () => {
+test("the script SKILL.md's Phase 2 names exists, runs, and returns JSON", () => {
   for (const lang of LANGS) {
     const skill = read(skills[lang]);
     const phase2 = extractPhase(skill, 2);
-    assert.ok(phase2.length > 0, `${lang}: Phase 2 セクションが存在する`);
+    assert.ok(phase2.length > 0, `${lang}: the Phase 2 section exists`);
     const scriptMatch = phase2.match(/\$\{CLAUDE_SKILL_DIR\}\/scripts\/([\w.-]+\.py)/);
     assert.ok(
       scriptMatch,
-      `${lang}: Phase 2 が \${CLAUDE_SKILL_DIR}/scripts/ 配下のスクリプトを名指しする`,
+      `${lang}: Phase 2 names a script under \${CLAUDE_SKILL_DIR}/scripts/`,
     );
     const scriptPath = join(dirname(skills[lang]), "scripts", scriptMatch[1]);
-    assert.ok(existsSync(scriptPath), `${lang}: 名指しされたスクリプト ${scriptPath} が実在する`);
+    assert.ok(existsSync(scriptPath), `${lang}: the named script ${scriptPath} exists`);
     const result = spawnSync(
       "python3",
       [scriptPath, "dummy-slug", join(root, "does-not-exist-dir")],
       { encoding: "utf8" },
     );
-    assert.strictEqual(result.status, 0, `${lang}: スクリプトが exit 0 で終了する`);
+    assert.strictEqual(result.status, 0, `${lang}: the script exits 0`);
     let parsed = null;
     assert.doesNotThrow(() => {
       parsed = JSON.parse(result.stdout);
-    }, `${lang}: スクリプトの標準出力が JSON としてパースできる`);
-    assert.ok(parsed && typeof parsed === "object", `${lang}: JSON が object を返す`);
+    }, `${lang}: the script's stdout parses as JSON`);
+    assert.ok(parsed && typeof parsed === "object", `${lang}: the JSON is an object`);
   }
 });
 
-test("allowed-tools が research の scripts 配下の実行を許可する", () => {
+test("allowed-tools grants running the scripts under research", () => {
   for (const lang of LANGS) {
     const skill = read(skills[lang]);
     const frontmatter = skill.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? "";
     const allowedToolsLine = frontmatter.match(/^allowed-tools:\s*(.+)$/m)?.[1] ?? "";
     assert.ok(
       /Bash\(\$HOME\/\.claude\/skills\/research\/scripts\/\*\)/.test(allowedToolsLine),
-      `${lang}: allowed-tools が Bash($HOME/.claude/skills/research/scripts/*) を許可する`,
+      `${lang}: allowed-tools grants Bash($HOME/.claude/skills/research/scripts/*)`,
     );
   }
 });
@@ -130,20 +133,20 @@ const SHARED_ONE_KEYWORDS = {
   en: { landing: "References", exclusion: "excluded" },
 };
 
-test("SKILL.md の Phase 2 が共有 1 件のヒットを Constraints 引き継ぎ表の対象外と定める", () => {
+test("SKILL.md's Phase 2 puts a hit sharing one word outside the Constraints carry-over table", () => {
   for (const lang of LANGS) {
     const skill = read(skills[lang]);
     const phase2 = extractPhase(skill, 2);
-    assert.ok(phase2.length > 0, `${lang}: Phase 2 セクションが存在する`);
+    assert.ok(phase2.length > 0, `${lang}: the Phase 2 section exists`);
     assert.ok(
       /shared["']?\s*(:|=|==)?\s*1\b/.test(phase2),
-      `${lang}: Phase 2 が shared 1 件のケースに言及する`,
+      `${lang}: Phase 2 mentions the shared-1 case`,
     );
     const { landing, exclusion } = SHARED_ONE_KEYWORDS[lang];
     assert.ok(
       phase2.includes(exclusion),
-      `${lang}: Phase 2 が Constraints 引き継ぎ表の対象外である旨を定める`,
+      `${lang}: Phase 2 states it falls outside the Constraints carry-over table`,
     );
-    assert.ok(phase2.includes(landing), `${lang}: Phase 2 が References を着地先として名指しする`);
+    assert.ok(phase2.includes(landing), `${lang}: Phase 2 names References as the landing place`);
   }
 });

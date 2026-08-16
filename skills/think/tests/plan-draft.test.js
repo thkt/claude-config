@@ -15,52 +15,52 @@ const skills = {
 };
 
 function read(path) {
-  assert.ok(existsSync(path), `${path} が存在する`);
+  assert.ok(existsSync(path), `${path} exists`);
   return readFileSync(path, "utf8");
 }
 
-test("plan テンプレートが骨格 (id 記法・実装順・前提小節・1 行言明テスト・test_command・Backlog candidates) と行数規則を定義している", () => {
+test("the plan template defines the skeleton (id notation, implementation order, the preconditions subsection, one-line statement tests, test_command, Backlog candidates) and the line-count rule", () => {
   for (const [lang, path] of Object.entries(templates)) {
     const doc = read(path);
-    assert.match(doc, /### U-/, `${lang}: ### U- 記法`);
-    assert.match(doc, /T-NNN/, `${lang}: T-NNN 記法`);
+    assert.match(doc, /### U-/, `${lang}: the ### U- notation`);
+    assert.match(doc, /T-NNN/, `${lang}: the T-NNN notation`);
     if (lang === "ja") {
-      assert.match(doc, /^### 前提/m, "ja: 前提小節");
-      assert.match(doc, /unit は実装順に並べる/, "ja: 並び順 = 実装順");
-      assert.match(doc, /条件と期待結果を 1 行で言い切る/, "ja: テストは 1 行言明");
-      assert.match(doc, /上限は骨格に示した行数/, "ja: 行数規則");
-      assert.match(doc, /分割.{0,40}で解消/, "ja: 超過は分割で解消");
+      assert.match(doc, /^### 前提/m, "ja: the preconditions subsection");
+      assert.match(doc, /unit は実装順に並べる/, "ja: the order is the implementation order");
+      assert.match(doc, /条件と期待結果を 1 行で言い切る/, "ja: a test is a one-line statement");
+      assert.match(doc, /上限は骨格に示した行数/, "ja: the line-count rule");
+      assert.match(doc, /分割.{0,40}で解消/, "ja: an overflow is resolved by splitting");
     } else {
-      assert.match(doc, /^### Preconditions/m, "en: Preconditions 小節");
-      assert.match(doc, /List units in implementation order/, "en: 並び順 = 実装順");
-      assert.match(doc, /condition \+ expected result/, "en: テストは 1 行言明");
-      assert.match(doc, /cap is the line count shown in the skeleton/, "en: 行数規則");
-      assert.match(doc, /splitting/i, "en: 超過は分割で解消");
+      assert.match(doc, /^### Preconditions/m, "en: the Preconditions subsection");
+      assert.match(doc, /List units in implementation order/, "en: the order is the implementation order");
+      assert.match(doc, /condition \+ expected result/, "en: a test is a one-line statement");
+      assert.match(doc, /cap is the line count shown in the skeleton/, "en: the line-count rule");
+      assert.match(doc, /splitting/i, "en: an overflow is resolved by splitting");
     }
-    assert.ok(!/given/i.test(doc), `${lang}: given/when/then の詳述形式が残っていない`);
-    assert.ok(!doc.includes("depends_on"), `${lang}: depends_on が残っていない`);
-    assert.match(doc, /test_command/, `${lang}: test_command の置き場`);
+    assert.ok(!/given/i.test(doc), `${lang}: no given/when/then long form remains`);
+    assert.ok(!doc.includes("depends_on"), `${lang}: no depends_on remains`);
+    assert.match(doc, /test_command/, `${lang}: where test_command goes`);
     assert.match(doc, /^## Backlog candidates/m, `${lang}: ## Backlog candidates`);
     if (lang === "ja") {
-      assert.match(doc, /引用 1 行 \+ やりたいこと 1 行/, "ja: contract の行数形式");
+      assert.match(doc, /引用 1 行 \+ やりたいこと 1 行/, "ja: the contract line format");
     } else {
-      assert.match(doc, /one citation line \+ one intent line/i, "en: contract の行数形式");
+      assert.match(doc, /one citation line \+ one intent line/i, "en: the contract line format");
     }
-    assert.match(doc, /EXTRACT_SCHEMA/, `${lang}: schema の所有者は build.js と明記`);
-    assert.match(doc, /クロスチェック|cross-check/, `${lang}: 決定論クロスチェックへの言及`);
-    assert.ok(!doc.includes("build-plan:v1"), `${lang}: build-plan:v1 残骸なし`);
-    assert.ok(!doc.includes("<details>"), `${lang}: <details> 残骸なし`);
-    assert.ok(!doc.includes("```json"), `${lang}: json fence 指定なし`);
+    assert.match(doc, /EXTRACT_SCHEMA/, `${lang}: it states build.js owns the schema`);
+    assert.match(doc, /クロスチェック|cross-check/, `${lang}: the mention of the deterministic cross-check`);
+    assert.ok(!doc.includes("build-plan:v1"), `${lang}: no build-plan:v1 remnant`);
+    assert.ok(!doc.includes("<details>"), `${lang}: no <details> remnant`);
+    assert.ok(!doc.includes("```json"), `${lang}: no json fence is specified`);
   }
 });
 
-test("テンプレートの root_cause 見出し語が build.js の検査対象フィールド名と一致する", () => {
+test("the template's root_cause heading word matches the field name build.js checks", () => {
   const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
-  // validate() が Bug の plan で実際に読むキーを起点にする。schema の description に
-  // 当てると、英文言を書き換えただけでフィールドを見失い、検出したいトークンのずれと
-  // 無関係な理由でこの seam テストが壊れる。
+  // This starts from the key validate() actually reads on a Bug plan. Matching against the
+  // schema's description would lose the field on an English rewording alone and break this seam
+  // test for a reason unrelated to the token drift it is meant to catch.
   const fieldMatch = buildJs.match(/isBug\s*&&\s*!String\(plan\.(\w+)\s*\|\|/);
-  assert.ok(fieldMatch, "build.js の validate から Bug 限定必須フィールドの名前を読める");
+  assert.ok(fieldMatch, "the name of the Bug-only required field is readable from build.js's validate");
   const fieldName = fieldMatch[1];
   const headingToken = new RegExp(`^${fieldName}:`, "m");
   for (const [lang, path] of Object.entries(templates)) {
@@ -68,121 +68,122 @@ test("テンプレートの root_cause 見出し語が build.js の検査対象�
     assert.match(
       doc,
       headingToken,
-      `${lang}: root_cause 見出し語 ${fieldName} が build.js の検査対象フィールド名と一致する`,
+      `${lang}: the root_cause heading word ${fieldName} matches the field name build.js checks`,
     );
   }
 });
 
-test("think SKILL.md の contract authoring 規則が選択 (引用ラダー) を強制している", () => {
+test("think SKILL.md's contract authoring rule enforces selection through the citation ladder", () => {
   const ja = read(skills.ja);
-  assert.match(ja, /生成でなく選択/, "ja: 選択 > 生成の原則");
-  assert.match(ja, /コード片を新造/, "ja: コード片の新造禁止");
-  assert.match(ja, /docs\/wiki/, "ja: wiki 引用");
-  assert.match(ja, /公式 docs/, "ja: 公式 docs 引用");
-  assert.match(ja, /SOURCING/, "ja: SOURCING.md の規律参照");
+  assert.match(ja, /生成でなく選択/, "ja: the selection-over-generation principle");
+  assert.match(ja, /コード片を新造/, "ja: the ban on inventing a code fragment");
+  assert.match(ja, /docs\/wiki/, "ja: citing the wiki");
+  assert.match(ja, /公式 docs/, "ja: citing the official docs");
+  assert.match(ja, /SOURCING/, "ja: the reference to SOURCING.md's discipline");
 
   const en = read(skills.en);
   assert.match(en, /Select, do not generate/, "en: selection over generation");
   assert.match(en, /invent new code fragments/i, "en: no invented code fragments");
-  assert.match(en, /docs\/wiki/, "en: wiki 引用");
-  assert.match(en, /official docs/i, "en: 公式 docs 引用");
-  assert.match(en, /SOURCING/, "en: SOURCING.md の規律参照");
+  assert.match(en, /docs\/wiki/, "en: citing the wiki");
+  assert.match(en, /official docs/i, "en: citing the official docs");
+  assert.match(en, /SOURCING/, "en: the reference to SOURCING.md's discipline");
 });
 
-test("各言語のテンプレートが reference module の files をパスのみと指示する", () => {
-  // build の Revalidate は files の各要素をそのままパスとして実在確認する
-  // (workflows/build.js の refModuleEntries)。役割の説明が混ざると plan-drift で止まる。
+test("each language's template instructs that a reference module's files carry paths only", () => {
+  // build's Revalidate checks each element of files for existence as a path exactly as written
+  // (refModuleEntries in workflows/build.js). Mixing in a description of its role stops the run at
+  // plan-drift.
   for (const [lang, path] of Object.entries(templates)) {
     const line = read(path)
       .split("\n")
       .find((l) => l.startsWith("- files:") && l.includes("list.tsx"));
-    assert.ok(line, `${lang}: reference module の files 行がある`);
-    assert.match(line, /パスのみ|path only/, `${lang}: files 行がパスのみと指示する`);
+    assert.ok(line, `${lang}: the reference module files row is present`);
+    assert.match(line, /パスのみ|path only/, `${lang}: the files row instructs paths only`);
   }
 });
 
-test("各言語のテンプレートが reference_module を kind と理由の形で示す", () => {
+test("each language's template presents reference_module in the kind-plus-reason form", () => {
   for (const [lang, path] of Object.entries(templates)) {
     const doc = read(path);
-    assert.match(doc, /reference_module: \{kind/, `${lang}: reference_module 行が kind から始まる`);
+    assert.match(doc, /reference_module: \{kind/, `${lang}: the reference_module row starts with kind`);
     assert.match(
       doc,
       /module\/no-module\/new-shape/,
-      `${lang}: kind enum が build.js の (module/no-module/new-shape) と揃う`,
+      `${lang}: the kind enum matches build.js's (module/no-module/new-shape)`,
     );
   }
 });
 
-// 骨格が落としたフィールドは、そのとおり書いた plan が Load で invalid-plan として
-// 止まってから初めて分かる。フィールド名を骨格側から書き写すと、validate が要求を
-// 変えたときにこの突合が追随しないので、build.js の validate を起点にする。
-test("kind が module のとき build.js が必須にするフィールドが骨格の参照モジュール小節にある", () => {
+// A field the skeleton dropped shows only once a plan written to it stops at Load as
+// invalid-plan. Copying the field name from the skeleton side would leave this match unable to
+// follow when validate changes what it demands, so it starts from build.js's validate.
+test("the field build.js requires when kind is module exists in the skeleton's reference module subsection", () => {
   const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
   const fieldMatch = buildJs.match(
     /refModule\.kind === "module"[\s\S]{0,200}?String\(refModule\.(\w+)\s*\|\|/,
   );
-  assert.ok(fieldMatch, "build.js の validate から kind module 限定必須フィールドの名前を読める");
+  assert.ok(fieldMatch, "the name of the kind-module-only required field is readable from build.js's validate");
   const fieldName = fieldMatch[1];
   const headings = { ja: "### 参照モジュール", en: "### Reference module" };
   for (const [lang, path] of Object.entries(templates)) {
     const doc = read(path);
     const heading = headings[lang];
     const start = doc.indexOf(heading);
-    assert.ok(start !== -1, `${lang}: ${heading} 見出しが存在する`);
+    assert.ok(start !== -1, `${lang}: the ${heading} heading exists`);
     const rest = doc.slice(start + heading.length);
     const nextHeading = rest.search(/^#{2,3}[ \t]/m);
-    assert.notStrictEqual(nextHeading, -1, `${lang}: 参照モジュール見出しの後に別の見出しが続く`);
+    assert.notStrictEqual(nextHeading, -1, `${lang}: another heading follows the reference module heading`);
     assert.match(
       rest.slice(0, nextHeading),
       new RegExp(`^- ${fieldName}:`, "m"),
-      `${lang}: 参照モジュール小節が ${fieldName} 行を持つ`,
+      `${lang}: the reference module subsection carries a ${fieldName} row`,
     );
   }
 });
 
-test("各言語のテンプレートが Bug タスク用の root_cause 行を持つ", () => {
+test("each language's template carries a root_cause row for a Bug task", () => {
   for (const [lang, path] of Object.entries(templates)) {
     const doc = read(path);
     assert.match(
       doc,
       /^Outcome:.*\n^root_cause:/m,
-      `${lang}: root_cause が Outcome の直後に置かれている`,
+      `${lang}: root_cause sits immediately after Outcome`,
     );
-    assert.match(doc, /Bug/, `${lang}: root_cause が Bug タスク限定と説明されている`);
+    assert.match(doc, /Bug/, `${lang}: root_cause is described as Bug-task only`);
   }
 });
 
-test("think SKILL.md の precondition 規則と書き出し前検証が stable anchor と実在検証を含む", () => {
+test("think SKILL.md's precondition rule and pre-writeout verification carry the stable anchor and the existence check", () => {
   const ja = read(skills.ja);
-  assert.match(ja, /既存.{0,10}依存先のみ/, "ja: 既存依存先のみ");
-  assert.match(ja, /新しく作るファイル.{0,20}載せない/, "ja: unit が新しく作るファイルは載せない");
+  assert.match(ja, /既存.{0,10}依存先のみ/, "ja: existing dependencies only");
+  assert.match(ja, /新しく作るファイル.{0,20}載せない/, "ja: a file the unit newly creates is not listed");
   assert.match(ja, /stable anchor/, "ja: stable anchor");
-  assert.match(ja, /公開シンボル/, "ja: 公開シンボル名");
+  assert.match(ja, /公開シンボル/, "ja: an exported symbol name");
   assert.match(
     ja,
     /安定.{0,10}シンボルが無ければ.{0,10}path のみ/,
-    "ja: 安定シンボルが無ければ path のみ",
+    "ja: with no stable symbol, the path alone",
   );
-  assert.match(ja, /test -f/, "ja: test -f 実在検証");
-  assert.match(ja, /ugrep -F/, "ja: ugrep -F 実在検証");
-  assert.match(ja, /^### 書き出し前検証/m, "ja: 書き出し前検証の節");
+  assert.match(ja, /test -f/, "ja: the test -f existence check");
+  assert.match(ja, /ugrep -F/, "ja: the ugrep -F existence check");
+  assert.match(ja, /^### 書き出し前検証/m, "ja: the pre-writeout verification section");
 
   const en = read(skills.en);
-  assert.match(en, /existing dependenc/i, "en: 既存依存先のみ");
-  assert.match(en, /newly created/i, "en: 新規作成ファイルは載せない");
+  assert.match(en, /existing dependenc/i, "en: existing dependencies only");
+  assert.match(en, /newly created/i, "en: a newly created file is not listed");
   assert.match(en, /stable anchor/i, "en: stable anchor");
-  assert.match(en, /exported/i, "en: 公開シンボル名");
-  assert.match(en, /path only/i, "en: path のみフォールバック");
-  assert.match(en, /test -f/, "en: test -f 実在検証");
-  assert.match(en, /ugrep -F/, "en: ugrep -F 実在検証");
-  assert.match(en, /^### Pre-writeout verification/m, "en: 書き出し前検証の節");
+  assert.match(en, /exported/i, "en: an exported symbol name");
+  assert.match(en, /path only/i, "en: the path-only fallback");
+  assert.match(en, /test -f/, "en: the test -f existence check");
+  assert.match(en, /ugrep -F/, "en: the ugrep -F existence check");
+  assert.match(en, /^### Pre-writeout verification/m, "en: the pre-writeout verification section");
 });
 
-test("各言語の SKILL.md が Bug タスクで原因と根拠を問う規則を持つ", () => {
+test("each language's SKILL.md carries the rule of asking for the cause and its grounds on a Bug task", () => {
   const ja = read(skills.ja);
-  assert.match(ja, /Bug/, "ja: Bug タスクへの言及");
-  assert.match(ja, /Bug[\s\S]{0,150}原因/, "ja: Bug 文脈で原因を問う");
-  assert.match(ja, /原因[\s\S]{0,60}根拠|根拠[\s\S]{0,60}原因/, "ja: 原因と根拠がセットで問われる");
+  assert.match(ja, /Bug/, "ja: the mention of a Bug task");
+  assert.match(ja, /Bug[\s\S]{0,150}原因/, "ja: it asks for the cause in the Bug context");
+  assert.match(ja, /原因[\s\S]{0,60}根拠|根拠[\s\S]{0,60}原因/, "ja: the cause and its grounds are asked for together");
 
   const en = read(skills.en);
   assert.match(en, /Bug/, "en: Bug task mention");
@@ -194,13 +195,13 @@ test("各言語の SKILL.md が Bug タスクで原因と根拠を問う規則�
   );
 });
 
-test("各言語の SKILL.md が原因未確定の Bug を research へ回す分岐を持つ", () => {
+test("each language's SKILL.md carries a branch sending a Bug with an unsettled cause to research", () => {
   const ja = read(skills.ja);
-  assert.match(ja, /原因.{0,20}(未確定|不明)/, "ja: 原因未確定の判定条件");
+  assert.match(ja, /原因.{0,20}(未確定|不明)/, "ja: the condition for an unsettled cause");
   assert.match(
     ja,
     /(未確定|不明)[\s\S]{0,150}\/research|\/research[\s\S]{0,150}(未確定|不明)/,
-    "ja: 原因未確定を /research へ回す分岐",
+    "ja: the branch sending an unsettled cause to /research",
   );
 
   const en = read(skills.en);
@@ -216,18 +217,18 @@ test("各言語の SKILL.md が原因未確定の Bug を research へ回す分�
   );
 });
 
-test("各言語の SKILL.md が reference_module の探索を設計の承認より前に置く", () => {
+test("each language's SKILL.md puts the reference_module search before the design is approved", () => {
   const ja = read(skills.ja);
   const jaPhase2Start = ja.indexOf("## Phase 2");
   const jaCriticLaunch = ja.indexOf("`critic-design` を起動する");
   assert.ok(
     jaPhase2Start !== -1 && jaCriticLaunch !== -1,
-    "ja: Phase 2 と critic-design 起動行が存在する",
+    "ja: both Phase 2 and the critic-design launch line exist",
   );
   const jaRefSearch = ja.indexOf("reference_module", jaPhase2Start);
   assert.ok(
     jaRefSearch !== -1 && jaRefSearch < jaCriticLaunch,
-    "ja: reference_module の探索が critic-design 起動より前に書かれている",
+    "ja: the reference_module search is written before the critic-design launch",
   );
 
   const en = read(skills.en);
@@ -244,14 +245,14 @@ test("各言語の SKILL.md が reference_module の探索を設計の承認よ�
   );
 });
 
-test("各言語の SKILL.md が探索結果を kind と理由で記録する規則を持つ", () => {
+test("each language's SKILL.md carries the rule of recording the search result as a kind plus a reason", () => {
   const ja = read(skills.ja);
-  assert.match(ja, /kind/, "ja: kind による記録");
-  assert.match(ja, /module\/no-module\/new-shape/, "ja: kind enum が module/no-module/new-shape");
+  assert.match(ja, /kind/, "ja: recording through kind");
+  assert.match(ja, /module\/no-module\/new-shape/, "ja: the kind enum is module/no-module/new-shape");
   assert.match(
     ja,
     /kind[\s\S]{0,80}理由|理由[\s\S]{0,80}kind/,
-    "ja: kind と理由がセットで記録される",
+    "ja: the kind and the reason are recorded together",
   );
 
   const en = read(skills.en);
@@ -268,29 +269,29 @@ test("各言語の SKILL.md が探索結果を kind と理由で記録する規�
   );
 });
 
-test("各言語のテンプレートに実機確認見出しが Backlog candidates の直前に存在する", () => {
+test("each language's template carries the manual verification heading immediately before Backlog candidates", () => {
   for (const [lang, path] of Object.entries(templates)) {
     const doc = read(path);
     const headingToken = lang === "ja" ? "### 実機確認" : "### Manual verification";
     const headingMatch = doc.match(new RegExp(`^${headingToken}.*$`, "m"));
-    assert.ok(headingMatch, `${lang}: ${headingToken} 見出しが存在する`);
+    assert.ok(headingMatch, `${lang}: the ${headingToken} heading exists`);
     const afterHeading = doc.slice(headingMatch.index + headingMatch[0].length);
     const nextHeadingMatch = afterHeading.match(/^#{2,3}[ \t].*$/m);
-    assert.ok(nextHeadingMatch, `${lang}: 実機確認見出しの後に別の見出しが続く`);
+    assert.ok(nextHeadingMatch, `${lang}: another heading follows the manual verification heading`);
     assert.strictEqual(
       nextHeadingMatch[0].trim(),
       "## Backlog candidates",
-      `${lang}: 実機確認見出しの直後の見出しが Backlog candidates`,
+      `${lang}: the heading right after manual verification is Backlog candidates`,
     );
   }
 });
 
-test("受け入れテストの bullet は T-NNN のみで実機確認の bullet と混ざらない旨がガイドラインに存在する", () => {
+test("the guidelines state that an acceptance test bullet carries T-NNN alone and never mixes with a manual verification bullet", () => {
   const ja = read(templates.ja);
   assert.match(
     ja,
     /T-NNN[\s\S]{0,150}実機確認[\s\S]{0,60}混ざら|実機確認[\s\S]{0,150}T-NNN[\s\S]{0,60}混ざら/,
-    "ja: 受け入れテストの bullet が T-NNN のみで実機確認の bullet と混ざらない旨のガイドライン",
+    "ja: the guideline that an acceptance test bullet carries T-NNN alone and never mixes with a manual verification bullet",
   );
 
   const en = read(templates.en);
@@ -301,17 +302,17 @@ test("受け入れテストの bullet は T-NNN のみで実機確認の bullet 
   );
 });
 
-test("各言語の SKILL.md に test_command で実行できない基準の実機確認委譲規則が存在する", () => {
+test("each language's SKILL.md carries the rule of delegating a criterion test_command cannot run to manual verification", () => {
   const ja = read(skills.ja);
   const jaPhase3 = ja.slice(ja.indexOf("## Phase 3"), ja.indexOf("## 出力"));
   assert.match(
     jaPhase3,
     /test_command[\s\S]{0,120}実行できない[\s\S]{0,150}実機確認|実機確認[\s\S]{0,150}test_command[\s\S]{0,120}実行できない/,
-    "ja: test_command で実行できない基準を実機確認へ委譲する規則",
+    "ja: the rule delegating a criterion test_command cannot run to manual verification",
   );
-  assert.match(jaPhase3, /実機確認[\s\S]{0,40}(委譲|送る)/, "ja: 実機確認への委譲先の明記");
+  assert.match(jaPhase3, /実機確認[\s\S]{0,40}(委譲|送る)/, "ja: it names manual verification as where it is delegated");
   const jaVerification = jaPhase3.slice(jaPhase3.indexOf("### 書き出し前検証"));
-  assert.match(jaVerification, /実機確認/, "ja: 書き出し前検証に実機確認への対応項目がある");
+  assert.match(jaVerification, /実機確認/, "ja: the pre-writeout verification carries an item for manual verification");
 
   const en = read(skills.en);
   const enPhase3 = en.slice(en.indexOf("## Phase 3"), en.indexOf("## Output"));
@@ -333,18 +334,18 @@ test("各言語の SKILL.md に test_command で実行できない基準の実�
   );
 });
 
-test("各言語の SKILL.md にフィールド描画 unit の T-NNN フィールド列挙規則が存在する", () => {
+test("each language's SKILL.md carries the rule of enumerating the fields in T-NNN for a field-rendering unit", () => {
   const ja = read(skills.ja);
   const jaPhase3 = ja.slice(ja.indexOf("## Phase 3"), ja.indexOf("## 出力"));
   assert.match(
     jaPhase3,
     /ドメイン.{0,10}フィールド[\s\S]{0,20}描画/,
-    "ja: ドメインフィールドを描画する unit への言及",
+    "ja: the mention of a unit rendering domain fields",
   );
   assert.match(
     jaPhase3,
     /(表示フィールド|描画)[\s\S]{0,80}T-NNN|T-NNN[\s\S]{0,80}(表示フィールド|描画)/,
-    "ja: 表示フィールドを T-NNN に列挙する規則",
+    "ja: the rule of enumerating the displayed fields in T-NNN",
   );
 
   const en = read(skills.en);
@@ -361,13 +362,14 @@ test("各言語の SKILL.md にフィールド描画 unit の T-NNN フィール
   );
 });
 
-test("テンプレートの実機確認見出しが build.js の抽出正規表現に一致する", () => {
+test("the template's manual verification heading matches build.js's extraction regex", () => {
   const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
-  // reconstruct でなく、build.js が実行時に使う正規表現そのものを走らせる。手元で
-  // トークンだけ再現すると (\b の非 ASCII 挙動など) 実行時の差分を見落とすため、この
-  // seam テストは production の正規表現リテラルをそのまま RegExp 化してテンプレートへ当てる。
+  // This runs the very regex build.js uses at run time rather than reconstructing one.
+  // Reproducing the tokens by hand would miss a run-time difference (\b's non-ASCII behavior, for
+  // one), so this seam test turns the production regex literal into a RegExp as it stands and
+  // applies it to the template.
   const regexLineMatch = buildJs.match(/manualHeading\s*=\s*body\.match\((\/.+\/m)\)/);
-  assert.ok(regexLineMatch, "build.js から実機確認見出しの抽出正規表現行を読める");
+  assert.ok(regexLineMatch, "the manual verification heading extraction regex line is readable from build.js");
   const literal = regexLineMatch[1];
   const lastSlash = literal.lastIndexOf("/");
   const extractionRegex = new RegExp(literal.slice(1, lastSlash), literal.slice(lastSlash + 1));
@@ -375,18 +377,19 @@ test("テンプレートの実機確認見出しが build.js の抽出正規表�
   assert.match(
     read(templates.ja),
     extractionRegex,
-    "ja: テンプレートの見出しが build.js の抽出正規表現 (実行時オブジェクト) に一致する",
+    "ja: the template heading matches build.js's extraction regex as a run-time object",
   );
   assert.match(
     read(templates.en),
     extractionRegex,
-    "en: テンプレートの見出しが build.js の抽出正規表現 (実行時オブジェクト) に一致する",
+    "en: the template heading matches build.js's extraction regex as a run-time object",
   );
 });
 
-// 委譲先を書かせないと、基準が実機確認へ移った時点で「どの機構が引き取るか」が失われ、
-// merge 前チェックリストは操作だけが並んで検証手段を持たない。
-test("各言語が委譲した基準に引き取る機構を添えると定める", () => {
+// Without naming where it goes, which mechanism takes the criterion over is lost the moment it
+// moves to manual verification, and the pre-merge checklist lists operations with no means of
+// verification.
+test("each language requires naming the mechanism that takes over a delegated criterion", () => {
   const expected = {
     ja: { skill: /引き取る機構/, template: /この基準を引き取る機構/ },
     en: {
@@ -395,39 +398,40 @@ test("各言語が委譲した基準に引き取る機構を添えると定め�
     },
   };
   for (const [lang, re] of Object.entries(expected)) {
-    assert.match(read(skills[lang]), re.skill, `${lang}: SKILL.md が機構を添える規則を持つ`);
-    assert.match(read(templates[lang]), re.template, `${lang}: テンプレートが機構を求める`);
+    assert.match(read(skills[lang]), re.skill, `${lang}: SKILL.md carries the rule of naming the mechanism`);
+    assert.match(read(templates[lang]), re.template, `${lang}: the template asks for the mechanism`);
   }
 });
 
-// 抽出正規表現は英語側 build.js だけを読んでいるので、.ja 側が取り残されても上の seam
-// テストは通る。MIRROR.md は .ja を canonical とするため、両者の一致をここで固定する。
-test("両言語の build.js が同じ実機確認抽出正規表現を持つ", () => {
+// The extraction regex is read from the English build.js alone, so the seam test above passes even
+// when the .ja side is left behind. MIRROR.md makes .ja canonical, so their agreement is pinned
+// here.
+test("both languages' build.js carry the same manual verification extraction regex", () => {
   const literalOf = (path) => {
     const m = read(path).match(/manualHeading\s*=\s*body\.match\((\/.+\/m)\)/);
-    assert.ok(m, `${path} から抽出正規表現行を読める`);
+    assert.ok(m, `the extraction regex line is readable from ${path}`);
     return m[1];
   };
   assert.equal(
     literalOf(join(root, ".ja", "workflows", "build.js")),
     literalOf(join(root, "workflows", "build.js")),
-    "ja と en の build.js が同じ正規表現リテラルを持つ",
+    "the ja and en build.js carry the same regex literal",
   );
 });
 
-test("SKILL.md とテンプレートが同じ見出し語を使う", () => {
+test("SKILL.md and the template use the same heading word", () => {
   const headingTokens = { ja: "実機確認", en: "Manual verification" };
   for (const [lang, token] of Object.entries(headingTokens)) {
     const templateDoc = read(templates[lang]);
     assert.ok(
       templateDoc.includes(`### ${token}`),
-      `${lang}: テンプレートに ### ${token} 見出しが存在する`,
+      `${lang}: the template carries a ### ${token} heading`,
     );
 
     const skillDoc = read(skills[lang]);
     assert.ok(
       skillDoc.includes(`\`### ${token}\``),
-      `${lang}: SKILL.md がテンプレートと同じ見出し語をバッククォート付きで参照する`,
+      `${lang}: SKILL.md references the same heading word as the template, in backticks`,
     );
   }
 });

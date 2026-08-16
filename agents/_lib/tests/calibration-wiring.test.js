@@ -16,7 +16,8 @@ const sides = {
   },
 };
 
-// "## CHX (reviewer-resilience)" 形の見出しから、セクション記号と所有 reviewer を取る。
+// Takes the section symbol and the owning reviewer from a heading of the form
+// "## CHX (reviewer-resilience)".
 const sectionsOf = (calPath) =>
   new Map(
     [...readFileSync(calPath, "utf8").matchAll(/^## ([A-Z0-9]+) \((reviewer-[a-z-]+)\)$/gm)].map(
@@ -24,12 +25,13 @@ const sectionsOf = (calPath) =>
     ),
   );
 
-// reviewer 定義が参照するセクション記号。Calibration 節を持たない reviewer は null。
+// The section symbol a reviewer definition references. A reviewer with no Calibration section is
+// null.
 const refsOf = (revDir) => {
   const out = new Map();
   for (const file of readdirSync(revDir).filter((f) => f.endsWith(".md"))) {
     const doc = readFileSync(join(revDir, file), "utf8");
-    // en は "section SEC"、ja は "の SEC セクション" で記号の位置が逆になる。
+    // The symbol sits on opposite sides: "section SEC" in en and "の SEC セクション" in ja.
     const m =
       doc.match(/calibration-examples\.md[^\n]*?section ([A-Z0-9]+)/) ||
       doc.match(/calibration-examples\.md[^\n]*?の ([A-Z0-9]+) セクション/);
@@ -38,52 +40,53 @@ const refsOf = (revDir) => {
   return out;
 };
 
-// 参照先が消えても reviewer は黙って較正なしで走る。実行時に気づけないので突き合わせる。
-test("reviewer が参照するセクションが実在する", () => {
+// A reviewer whose target disappeared runs silently without calibration. Nothing shows at run
+// time, so the two sides are matched here.
+test("every section a reviewer references exists", () => {
   for (const [lang, { cal, rev }] of Object.entries(sides)) {
     const sections = sectionsOf(cal);
     for (const [reviewer, ref] of refsOf(rev)) {
       if (ref === null || sections.has(ref)) continue;
-      // 不在を許すのは、reviewer 側が較正なしの振る舞いを決めているときだけ。
+      // Absence is allowed only when the reviewer itself defines the uncalibrated behavior.
       const doc = readFileSync(join(rev, `${reviewer}.md`), "utf8");
       assert.match(
         doc,
         /pending_calibration/,
-        `${lang}: ${reviewer} が参照する ${ref} が無く、フォールバックの指定も無い`,
+        `${lang}: ${reviewer} references a missing ${ref} and names no fallback`,
       );
     }
   }
 });
 
-// セクションを書いても reviewer 側に Calibration 節が無ければ読まれない。CHX が
-// この状態で放置されていた。
-test("すべてのセクションに読み手がいる", () => {
+// A section stays unread when the reviewer side carries no Calibration section. CHX sat in that
+// state.
+test("every section has a reader", () => {
   for (const [lang, { cal, rev }] of Object.entries(sides)) {
     const used = new Set([...refsOf(rev).values()].filter(Boolean));
     for (const [symbol, owner] of sectionsOf(cal)) {
-      assert.ok(used.has(symbol), `${lang}: ${symbol} (${owner}) を読む reviewer がいない`);
+      assert.ok(used.has(symbol), `${lang}: no reviewer reads ${symbol} (${owner})`);
     }
   }
 });
 
-// 例の中の見出しが code fence の外に出ると、トップレベル見出しとして浮く。DOC
-// セクションはこの壊れ方をしていて、セクション自体が検出できなくなっていた。
-test("トップレベル見出しがセクション見出しだけである", () => {
+// A heading inside an example that escapes its code fence floats as a top-level heading. The DOC
+// section broke this way and the section itself stopped being detectable.
+test("every top-level heading is a section heading", () => {
   for (const [lang, { cal }] of Object.entries(sides)) {
     const doc = readFileSync(cal, "utf8").replace(/^```[a-z]*\n.*?^```/gms, "");
     const strays = [...doc.matchAll(/^## (.+)$/gm)]
       .map((m) => m[1])
       .filter((h) => !/^[A-Z0-9]+ \(reviewer-[a-z-]+\)$/.test(h));
-    assert.deepEqual(strays, [], `${lang}: セクション見出し以外が浮いている`);
+    assert.deepEqual(strays, [], `${lang}: something other than a section heading floats`);
   }
 });
 
-// コード例は翻訳対象外。ja と en で内容が割れると、同じ較正を与えたつもりで別の
-// コードを見せることになる。
-test("コード例が ja と en で一致する", () => {
+// Code examples are not translated. Diverging content between ja and en would show different code
+// while claiming to give the same calibration.
+test("the code examples match between ja and en", () => {
   const blocks = (p) => readFileSync(p, "utf8").match(/^```[a-z]*\n[\s\S]*?^```/gm) || [];
   const ja = blocks(sides.ja.cal);
   const en = blocks(sides.en.cal);
-  assert.equal(ja.length, en.length, "コードブロックの個数が一致する");
-  ja.forEach((block, i) => assert.equal(block, en[i], `${i + 1} 番目のコードブロックが一致する`));
+  assert.equal(ja.length, en.length, "the code block counts match");
+  ja.forEach((block, i) => assert.equal(block, en[i], `code block ${i + 1} matches`));
 });

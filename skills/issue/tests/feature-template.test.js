@@ -19,101 +19,103 @@ const builds = {
   en: join(root, "workflows", "build.js"),
 };
 
-// Phase 2 の本文だけを対象にするための抽出。skills/qualify/tests/contract.test.js と同じ切り出し方。
+// Extraction that narrows the target to Phase 2's body alone.
 function extractPhase2(doc) {
   return doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
 }
 
-// 仮マークは issue が本文に書き、build の extract agent が assumptions として集め、ship が
-// draft PR の veto 対象として出す。マーカーは build の抽出キーワードなので本文言語を問わず
-// 英語で、SKILL.md L20 の「抽出キーワードは英語のまま」に従う。語が揃わないと仮置きが
-// 黙って PR から消える。
-test("仮マークが両言語で tentative に揃い、build の extract prompt もそれを名指しする", () => {
+// issue writes the tentative marker into the body, build's extract agent collects it as an
+// assumption, and ship surfaces it on the draft PR as something to veto. The marker is build's
+// extraction keyword, so it stays English whatever the body's language, following SKILL.md L20's
+// "extraction keywords stay English". Without matching wording, a tentative note vanishes from the
+// PR silently.
+test("the tentative marker is tentative in both languages and build's extract prompt names it too", () => {
   for (const [lang, path] of Object.entries(skills)) {
-    assert.ok(existsSync(path), `${path} が存在する`);
+    assert.ok(existsSync(path), `${path} exists`);
     const doc = readFileSync(path, "utf8");
-    assert.ok(doc.includes("(tentative:"), `${lang}: SKILL.md が (tentative: を書いている`);
-    assert.ok(!doc.includes("(仮:"), `${lang}: SKILL.md に日本語マーカーが残っていない`);
-    assert.match(doc, /Premises/, `${lang}: SKILL.md が Premises 節に触れている`);
+    assert.ok(doc.includes("(tentative:"), `${lang}: SKILL.md writes (tentative:`);
+    assert.ok(!doc.includes("(仮:"), `${lang}: no Japanese marker remains in SKILL.md`);
+    assert.match(doc, /Premises/, `${lang}: SKILL.md mentions the Premises section`);
   }
   for (const [lang, path] of Object.entries(builds)) {
-    assert.ok(existsSync(path), `${path} が存在する`);
+    assert.ok(existsSync(path), `${path} exists`);
     const src = readFileSync(path, "utf8");
     assert.ok(
       src.includes("(tentative: ...)"),
-      `${lang}: build.js の extract prompt が (tentative: ...) を名指しする`,
+      `${lang}: build.js's extract prompt names (tentative: ...)`,
     );
-    assert.match(src, /Premises/, `${lang}: build.js の extract prompt が Premises 節を名指しする`);
+    assert.match(src, /Premises/, `${lang}: build.js's extract prompt names the Premises section`);
   }
   for (const [lang, path] of Object.entries(targets)) {
-    assert.ok(!readFileSync(path, "utf8").includes("(仮:"), `${lang}: テンプレートも tentative`);
+    assert.ok(!readFileSync(path, "utf8").includes("(仮:"), `${lang}: the template says tentative too`);
   }
 });
 
-// qualify の needs-plan と build の no-plan は「/think で plan を作り /issue で転記」を指す。
-// /issue は起票しかできないので、既存 issue モードが無いとその指示は実行できないまま残る。
+// qualify's needs-plan and build's no-plan both point at "draft the plan with /think and transfer
+// it with /issue". /issue can only file a new issue, so without an existing-issue mode that
+// instruction stays unexecutable.
 const qualifies = {
   ja: join(root, ".ja", "skills", "qualify", "SKILL.md"),
   en: join(root, "skills", "qualify", "SKILL.md"),
 };
 
-test("既存 issue への Plan 転記が両言語にあり、qualify の needs-plan がそこを指す", () => {
+test("transferring a Plan into an existing issue exists in both languages and qualify's needs-plan points at it", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
     assert.match(
       doc,
       lang === "ja" ? /issue 番号か URL だけを受け取ったとき/ : /only an issue number or URL/,
-      `${lang}: 番号だけを受け取る分岐がある`,
+      `${lang}: a branch taking a bare number is present`,
     );
-    assert.match(doc, /gh issue edit <ref> --body-file/, `${lang}: 本文へ書き戻す手順がある`);
+    assert.match(doc, /gh issue edit <ref> --body-file/, `${lang}: a step writing back into the body is present`);
   }
   for (const [lang, path] of Object.entries(qualifies)) {
     const doc = readFileSync(path, "utf8");
     assert.match(
       doc,
       lang === "ja" ? /`\/issue <番号>`/ : /`\/issue <number>`/,
-      `${lang}: needs-plan が番号を渡す形を指す`,
+      `${lang}: needs-plan points at the form passing a number`,
     );
   }
 });
 
-// chore と docs は Premises 節を持たない。テンプレートが仮マークに触れないと、SKILL.md が
-// この 2 種に割り当てたインライン限定の書き方が生成時に届かない。
+// chore and docs carry no Premises section. Without the template mentioning the tentative marker,
+// the inline-only style SKILL.md assigned to those two never reaches generation time.
 const TEMPLATE_TYPES = ["feature", "bug", "chore", "docs"];
 
-test("4 種のテンプレートが仮マークの書式と基準の在り処を持つ", () => {
+test("all four templates carry the tentative marker format and where its criteria live", () => {
   for (const lang of ["ja", "en"]) {
     for (const type of TEMPLATE_TYPES) {
       const dir = lang === "ja" ? [root, ".ja"] : [root];
       const doc = readFileSync(join(...dir, "skills", "issue", "templates", `${type}.md`), "utf8");
-      assert.match(doc, /\(tentative: <[^>]+>\)/, `${lang}/${type}: 仮マークの書式`);
+      assert.match(doc, /\(tentative: <[^>]+>\)/, `${lang}/${type}: the tentative marker format`);
       assert.match(
         doc,
         lang === "ja" ? /SKILL\.md § 確信度マーキング/ : /SKILL\.md § Confidence marking/,
-        `${lang}/${type}: 基準の在り処`,
+        `${lang}/${type}: where the criteria live`,
       );
       if (type === "chore" || type === "docs") {
         assert.match(
           doc,
           lang === "ja" ? /Premises 節を持たないので/ : /no Premises section here/,
-          `${lang}/${type}: インライン限定の断り`,
+          `${lang}/${type}: the inline-only note`,
         );
       }
     }
   }
 });
 
-test("feature テンプレートが UI に触れる issue 限定の任意 Accessibility 節を持つ", () => {
+test("the feature template carries an optional Accessibility section scoped to UI-touching issues", () => {
   for (const [lang, path] of Object.entries(targets)) {
-    assert.ok(existsSync(path), `${path} が存在する`);
+    assert.ok(existsSync(path), `${path} exists`);
     const doc = readFileSync(path, "utf8");
-    assert.match(doc, /^## Accessibility \((optional|任意)\)/m, `${lang}: 任意節`);
+    assert.match(doc, /^## Accessibility \((optional|任意)\)/m, `${lang}: the optional section`);
     if (lang === "ja") {
-      assert.match(doc, /UI に触れる issue のみ/, "ja: UI 限定の条件");
-      assert.match(doc, /操作系と満たす基準/, "ja: 操作系 + 基準の意図");
+      assert.match(doc, /UI に触れる issue のみ/, "ja: the UI-only condition");
+      assert.match(doc, /操作系と満たす基準/, "ja: the intent of input modes plus criteria");
     } else {
-      assert.match(doc, /UI-touching issues only/, "en: UI 限定の条件");
-      assert.match(doc, /input modes and the criteria/, "en: 操作系 + 基準の意図");
+      assert.match(doc, /UI-touching issues only/, "en: the UI-only condition");
+      assert.match(doc, /input modes and the criteria/, "en: the intent of input modes plus criteria");
     }
   }
 });
@@ -123,10 +125,11 @@ const matchRefs = {
   en: join(root, "skills", "issue", "references", "duplication-match.md"),
 };
 
-// 判定基準を書かないと、独立に変わりうる記述まで参照に潰れる。
-test("各言語の duplication-match.md が、照合対象を同じ知識の重複と定義する", () => {
+// Without stating the criteria, even descriptions that can change independently collapse into a
+// reference.
+test("each language's duplication-match.md defines the match target as a duplication of the same knowledge", () => {
   for (const [lang, path] of Object.entries(matchRefs)) {
-    assert.ok(existsSync(path), `${path} が存在する`);
+    assert.ok(existsSync(path), `${path} exists`);
     const matchRef = readFileSync(path, "utf8");
     const [target, criterion, independent] =
       lang === "ja"
@@ -136,14 +139,15 @@ test("各言語の duplication-match.md が、照合対象を同じ知識の重�
             /editing one forces the other to change/i,
             /change independently/i,
           ];
-    assert.match(matchRef, target, `${lang}: 同じ知識の重複が対象`);
-    assert.match(matchRef, criterion, `${lang}: 同じ知識の判定基準`);
-    assert.match(matchRef, independent, `${lang}: 独立に変わるものは両方に残す`);
+    assert.match(matchRef, target, `${lang}: the target is a duplication of the same knowledge`);
+    assert.match(matchRef, criterion, `${lang}: the criteria for the same knowledge`);
+    assert.match(matchRef, independent, `${lang}: what changes independently stays in both`);
   }
 });
 
-// 表が対象の広さを持つ。行が欠けると照合が実装方針だけに戻る。Acceptance Criteria は
-// Plan の Outcome と重なるので、例外の一文を落とすと人間の受け入れ判断が参照に潰れる。
+// The table carries the breadth of the target. A missing row narrows the match back to the
+// implementation approach alone. Acceptance Criteria overlaps the Plan's Outcome, so dropping the
+// exception sentence collapses the human acceptance decision into a reference.
 const COUNTERPARTS = {
   ja: [
     ["Approach", "unit の contract"],
@@ -159,14 +163,14 @@ const COUNTERPARTS = {
   ],
 };
 
-test("各言語の duplication-match.md が、重なる 4 組と Acceptance Criteria の例外を並べる", () => {
+test("each language's duplication-match.md lists the four overlapping pairs and the Acceptance Criteria exception", () => {
   for (const [lang, path] of Object.entries(matchRefs)) {
     const matchRef = readFileSync(path, "utf8");
     for (const [section, counterpart] of COUNTERPARTS[lang]) {
       assert.match(
         matchRef,
         new RegExp(`${section}[^\\n]*${counterpart}`),
-        `${lang}: ${section} は ${counterpart} と重なる`,
+        `${lang}: ${section} overlaps ${counterpart}`,
       );
     }
     const [overlap, why] =
@@ -176,28 +180,28 @@ test("各言語の duplication-match.md が、重なる 4 組と Acceptance Crit
             /Acceptance Criteria overlaps Outcome/i,
             /drives the human merge call and never reaches build/i,
           ];
-    assert.match(matchRef, overlap, `${lang}: Acceptance Criteria も重なる`);
-    assert.match(matchRef, why, `${lang}: それでも本文に残す理由`);
+    assert.match(matchRef, overlap, `${lang}: Acceptance Criteria overlaps too`);
+    assert.match(matchRef, why, `${lang}: the reason it stays in the body regardless`);
   }
 });
 
-test("各言語の duplication-match.md が、参照を本文から Plan へ向けると書く", () => {
+test("each language's duplication-match.md states the reference runs from the body to the Plan", () => {
   for (const [lang, path] of Object.entries(matchRefs)) {
     const matchRef = readFileSync(path, "utf8");
     if (lang === "ja") {
-      assert.match(matchRef, /参照は本文から `## Plan` へ向ける/, "ja: 参照の向き");
-      assert.match(matchRef, /本文の節はそのあとに生まれる/, "ja: 向きが決まる理由");
+      assert.match(matchRef, /参照は本文から `## Plan` へ向ける/, "ja: the direction of the reference");
+      assert.match(matchRef, /本文の節はそのあとに生まれる/, "ja: why the direction is fixed");
     } else {
-      assert.match(matchRef, /reference runs from the body to `## Plan`/i, "en: 参照の向き");
-      assert.match(matchRef, /sections come into existence after it/i, "en: 向きが決まる理由");
+      assert.match(matchRef, /reference runs from the body to `## Plan`/i, "en: the direction of the reference");
+      assert.match(matchRef, /sections come into existence after it/i, "en: why the direction is fixed");
     }
   }
 });
 
-// 照合より後ろに本文を書き換える手順が来ると、そこで足された散文は照合を通らず重複が生え直す。
-// challenge 折り込みとの前後だけを見ると、項目を末尾に足す変更が素通りするので、最後の項目
-// そのものを照合だと固定する。
-test("各言語の SKILL.md で照合が Phase 2 の最後の手順に置かれる", () => {
+// A step rewriting the body after the match lets the prose it adds skip the match and the
+// duplication grows back. Watching only its order against the challenge fold-in would let a change
+// appending an item slip through, so the last item itself is pinned as the match.
+test("in each language's SKILL.md the match sits as Phase 2's last step", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const phase2 = extractPhase2(readFileSync(path, "utf8"));
     const [challenge, matching] =
@@ -205,65 +209,65 @@ test("各言語の SKILL.md で照合が Phase 2 の最後の手順に置かれ�
         ? [/challenge の verdict/, /plan 下書きがあれば/]
         : [/challenge verdict/, /When a plan draft exists/];
     const items = [...phase2.matchAll(/^\d+\. .*/gm)].map((m) => m[0]);
-    assert.ok(items.length >= 2, `${lang}: Phase 2 が番号付きの手順を持つ`);
+    assert.ok(items.length >= 2, `${lang}: Phase 2 carries numbered steps`);
     assert.ok(
       items.some((item) => challenge.test(item)),
-      `${lang}: challenge 折り込みの手順がある`,
+      `${lang}: the challenge fold-in step is present`,
     );
-    assert.match(items.at(-1), matching, `${lang}: 最後の手順が照合`);
+    assert.match(items.at(-1), matching, `${lang}: the last step is the match`);
   }
 });
 
-test("各言語の duplication-match.md が、重複した本文側を `## Plan` への参照に置き換えると書く", () => {
+test("each language's duplication-match.md states the duplicated body side is replaced with a reference to `## Plan`", () => {
   for (const [lang, path] of Object.entries(matchRefs)) {
     const matchRef = readFileSync(path, "utf8");
     if (lang === "ja") {
-      assert.match(matchRef, /## Plan[\s\S]{0,20}参照/, "ja: Plan への参照置き換え");
+      assert.match(matchRef, /## Plan[\s\S]{0,20}参照/, "ja: replacement with a reference to the Plan");
       assert.match(
         matchRef,
         /見出しが何をする変更かを述べる 1 行/,
-        "ja: 見出しごとに 1 行残す規定",
+        "ja: the rule of leaving one line per heading",
       );
     } else {
       assert.match(matchRef, /## Plan[\s\S]{0,20}reference/i, "en: reference to Plan");
-      assert.match(matchRef, /one line that states what change/i, "en: 見出しごとに 1 行残す規定");
+      assert.match(matchRef, /one line that states what change/i, "en: the rule of leaving one line per heading");
     }
   }
 });
 
-test("各言語の duplication-match.md が、食い違うときは plan を正として本文を直すと書く", () => {
+test("each language's duplication-match.md states that on a conflict the plan is authoritative and the body is fixed", () => {
   for (const [lang, path] of Object.entries(matchRefs)) {
     const matchRef = readFileSync(path, "utf8");
     if (lang === "ja") {
-      assert.match(matchRef, /食い違う/, "ja: 食い違いへの言及");
-      assert.match(matchRef, /plan を正として/, "ja: plan を正とする方針");
+      assert.match(matchRef, /食い違う/, "ja: the mention of a conflict");
+      assert.match(matchRef, /plan を正として/, "ja: the policy of taking the plan as authoritative");
     } else {
-      assert.match(matchRef, /conflict/i, "en: conflict への言及");
+      assert.match(matchRef, /conflict/i, "en: the mention of a conflict");
       assert.match(
         matchRef,
         /plan[\s\S]{0,20}(is authoritative|as authoritative|as the source of truth)/i,
-        "en: plan authoritative への言及",
+        "en: the mention of plan authoritative",
       );
     }
   }
 });
 
-test("plan 下書きが無いときは照合を省く旨が各言語の SKILL.md にある", () => {
+test("each language's SKILL.md states the match is skipped when there is no plan draft", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const phase2 = extractPhase2(readFileSync(path, "utf8"));
     if (lang === "ja") {
-      assert.match(phase2, /plan 下書きが無ければ/, "ja: plan 下書きが無い場合の言及");
-      assert.match(phase2, /照合を省く/, "ja: 照合省略の言及");
+      assert.match(phase2, /plan 下書きが無ければ/, "ja: the mention of having no plan draft");
+      assert.match(phase2, /照合を省く/, "ja: the mention of skipping the match");
     } else {
       assert.match(
         phase2,
         /no plan draft|plan draft[\s\S]{0,10}absent|without a plan draft/i,
-        "en: no plan draft の言及",
+        "en: the mention of no plan draft",
       );
       assert.match(
         phase2,
         /skip[\s\S]{0,20}match|omit[\s\S]{0,20}match/i,
-        "en: skip matching の言及",
+        "en: the mention of skipping the match",
       );
     }
   }
