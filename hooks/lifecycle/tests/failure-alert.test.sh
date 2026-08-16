@@ -22,9 +22,13 @@ if [[ ! -f "$SOUND_FILE" ]]; then
   PLACEHOLDER_SOUND="$SOUND_FILE"
 fi
 
+# A trailing `[[ ]] &&` would make the function return non-zero whenever the guard is false, and
+# a trap on EXIT hands that status to the script. An `if` keeps the exit code the body's.
 cleanup() {
   rm -rf "$TEST_TMPDIR"
-  [[ -n "$PLACEHOLDER_SOUND" ]] && rm -f "$PLACEHOLDER_SOUND"
+  if [[ -n "$PLACEHOLDER_SOUND" ]]; then
+    rm -f "$PLACEHOLDER_SOUND"
+  fi
 }
 trap cleanup EXIT
 
