@@ -1,3 +1,2 @@
 [global]
 disable = ["MD013", "MD014"]
-exclude = ["attic"]
