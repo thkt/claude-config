@@ -1,5 +1,5 @@
-// effort の配分は実行結果に現れないので、値を変えてもここ以外のテストは落ちない。
-// per-stage の値を固定して drift を可視にする。
+// The effort assignment never shows up in a run result, so changing a value breaks no test
+// but this one. Pinning the per-stage values makes the drift visible.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -9,9 +9,9 @@ import { runWorkflow } from "../../_lib/run-workflow.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const polishJs = join(here, "..", "..", "polish.js");
 
-// Review -> Challenge -> Fix -> Rejudge -> Cleanup まで到達させる最小 stub (mode: full)。
-// severity を P1、challenge の verdict を confirmed にしないと triage が survivors を
-// 空にして Fix 以降へ進まない。simplify / enhancer は戻り値を消費しないので undefined でよい。
+// The shortest stub reaching Review -> Challenge -> Fix -> Rejudge -> Cleanup (mode: full).
+// Without severity P1 and a confirmed challenge verdict, triage empties survivors and the run
+// never advances past Fix. simplify / enhancer results are unread, so undefined is enough.
 const agentStub = (prompt, opts) => {
   const label = opts && opts.label;
   if (label === "codex") {
@@ -39,19 +39,19 @@ const runToFix = () =>
     stubs: { agent: agentStub },
   });
 
-test("fix agent の effort が high である", async () => {
+test("the fix agent runs at effort high", async () => {
   const { calls } = await runToFix();
   const fixCalls = calls.agent.filter((c) => c.opts && c.opts.label === "fix");
-  assert.equal(fixCalls.length, 1, "fix agent (general-purpose) が 1 回呼ばれる");
-  assert.equal(fixCalls[0].opts.effort, "high", "fix agent の effort が high である");
+  assert.equal(fixCalls.length, 1, "the fix agent (general-purpose) ran once");
+  assert.equal(fixCalls[0].opts.effort, "high", "the fix agent runs at effort high");
 });
 
-test("challenge / rejudge agent の effort が xhigh である", async () => {
+test("the challenge and rejudge agents run at effort xhigh", async () => {
   const { calls } = await runToFix();
   const challengeCalls = calls.agent.filter((c) => c.opts && c.opts.label === "challenge");
   const rejudgeCalls = calls.agent.filter((c) => c.opts && c.opts.label === "rejudge");
-  assert.equal(challengeCalls.length, 1, "challenge agent (critic-audit) が 1 回呼ばれる");
-  assert.equal(rejudgeCalls.length, 1, "rejudge agent (critic-audit) が 1 回呼ばれる");
-  assert.equal(challengeCalls[0].opts.effort, "xhigh", "challenge agent の effort が xhigh");
-  assert.equal(rejudgeCalls[0].opts.effort, "xhigh", "rejudge agent の effort が xhigh");
+  assert.equal(challengeCalls.length, 1, "the challenge agent (critic-audit) ran once");
+  assert.equal(rejudgeCalls.length, 1, "the rejudge agent (critic-audit) ran once");
+  assert.equal(challengeCalls[0].opts.effort, "xhigh", "the challenge agent runs at effort xhigh");
+  assert.equal(rejudgeCalls[0].opts.effort, "xhigh", "the rejudge agent runs at effort xhigh");
 });

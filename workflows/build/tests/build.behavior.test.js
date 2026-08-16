@@ -1,7 +1,5 @@
-// build.js が Load (fetch -> Plan 節必須 -> 決定論 id 収集 -> extract -> validate +
-// id cross-check) / Revalidate / Branch / Code (sonnet) / Verify (決定論スコープ + T-NNN 照合 ∥
-// conformance) / Polish (cleanup のみ) / Ship の実行ループになることの行動検証。
-// audit fan-out / fix loop の不在・fail-close 分岐・phase 順・stopped 値 snapshot を自動検証する。
+// Behavior checks on build.js's run loop. They pin the absence of an audit fan-out and a fix
+// loop, the fail-close branches, the phase order, and a snapshot of the stopped values.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -12,26 +10,26 @@ import { runWorkflow } from "../../_lib/run-workflow.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const buildJs = join(here, "..", "..", "build.js");
 
-// build.js の no-repo gate を通す共有 args。repo は anchor / guard の文字列組み立てに
-// しか使われないので、絶対 path 形の固定値 1 つで全テストを賄える。
+// The shared args clearing build.js's no-repo gate. repo is used only to assemble the anchor
+// and guard strings, so one fixed absolute path covers every test.
 const repo = "/abs/target-repo";
 const args = { issue: "123", repo };
 
-// Plan 節付き issue body。unitIds / testIds は決定論 id 収集の対象になるリテラル。
+// An issue body carrying a Plan section. unitIds and testIds are the literals the deterministic id collection targets.
 const bodyFor = (unitIds, testIds) =>
   [
-    "Issue の背景説明。",
+    "Background on the issue.",
     "",
     "## Plan",
     "",
-    ...unitIds.map((u) => `### ${u}: unit の見出し`),
+    ...unitIds.map((u) => `### ${u}: unit heading`),
     ...testIds.map((t) => `- ${t}: test scenario`),
     "",
     "test_command: echo test",
     "",
   ].join("\n");
 
-// build の validate() + content 非空検査を通る抽出済み plan。
+// An extracted plan clearing build's validate() and its non-empty content check.
 const makePlan = (overrides = {}) => ({
   outcome: "sample outcome",
   decisions: [],
@@ -47,17 +45,17 @@ const makePlan = (overrides = {}) => ({
   ],
   test_command: "echo test",
   preconditions: [{ path: "sample.js", pattern: "sampleSymbol" }],
-  // validate() が reference_module の欠落を止めるので、共有 fixture は通る最小形
-  // (複製するモジュールが無い + 理由) を持つ。
+  // validate() stops on a missing reference_module, so the shared fixture carries the smallest
+  // passing form (no module to duplicate, plus the reason).
   reference_module: { kind: "no-module", reason: "sample reason" },
   backlog_candidates: [],
   ...overrides,
 });
 
-// agent 呼び出しを schema の形で分類する。label 文字列への結合を避け、
-// FETCH_SCHEMA {found, body} / EXTRACT_SCHEMA (units) / REVALIDATE_SCHEMA (results の
-// items が path) / TEST_PRESENCE_SCHEMA (results の items が name) / DIFF_SCHEMA {files} /
-// CONFORMANCE {spec_found} / TRANSLATION {translations} / SHIP {pr_url} を判別する。
+// Classifies an agent call by the shape of its schema. It avoids coupling to the label string
+// and tells apart FETCH_SCHEMA {found, body}, EXTRACT_SCHEMA (units), REVALIDATE_SCHEMA
+// (results whose items carry path), TEST_PRESENCE_SCHEMA (results whose items carry name),
+// DIFF_SCHEMA {files}, CONFORMANCE {spec_found}, TRANSLATION {translations}, SHIP {pr_url}.
 const kindOf = (opts) => {
   const p = (opts && opts.schema && opts.schema.properties) || null;
   if (!p) return "plain";
@@ -77,8 +75,8 @@ const kindOf = (opts) => {
   return "plain";
 };
 
-// happy path stub 一式。body / plan / revalidate / diff / presence / conformance で
-// happy path の戻り値を差し替える。diff / presence は値でも関数 (prompt を受ける) でもよい。
+// The full set of happy-path stubs. body / plan / revalidate / diff / presence / conformance
+// swap the happy-path return values. diff and presence take a value or a prompt-receiving function.
 const makeStubs = ({
   body,
   title,
@@ -96,12 +94,12 @@ const makeStubs = ({
     const kind = kindOf(opts);
     switch (kind) {
       case "translate":
-        // 既定は fail-open (translations 無し) で英語原文を維持。翻訳の反映を検証する
-        // テストだけが translate stub を渡す。
+        // The default fails open (no translations) and keeps the English originals. Only the
+        // test verifying that translations land passes a translate stub.
         return translate ? translate(prompt) : { notes: "no-translations" };
       case "fetch":
-        // title は既定で省略する (extract が key を落とした状態を再現する)。Bug 判定を
-        // 検証するテストだけが title override を渡す。
+        // title is omitted by default, reproducing extract having dropped the key. Only the
+        // test verifying the Bug decision passes a title override.
         return { found: true, title, body: body ?? bodyFor(["U-001"], ["T-001"]) };
       case "extract":
         return plan ?? makePlan();
@@ -119,13 +117,13 @@ const makeStubs = ({
           }
         );
       case "diff":
-        // 既定は plan の files と同一の diff (スコープ逸脱なし)。null override で
-        // fail-open 経路を踏める。
+        // The default diff matches the plan's files (no scope escape). A null override takes
+        // the fail-open route.
         if (diff !== undefined) return typeof diff === "function" ? diff(prompt) : diff;
         return { files: ["sample.js"] };
       case "presence": {
-        // 既定は prompt 末尾の checks JSON を読み、全 name を found: true で返す
-        // (verify-tests.py の happy relay と同型)。
+        // The default reads the checks JSON at the tail of the prompt and returns every name
+        // as found: true, the same shape as verify-tests.py's happy relay.
         if (presence !== undefined)
           return typeof presence === "function" ? presence(prompt) : presence;
         const checks = JSON.parse(prompt.trim().split("\n").pop());
@@ -134,8 +132,9 @@ const makeStubs = ({
         };
       }
       case "branch":
-        // head は分岐点 sha。既定で返すことで happy path は本番と同じ per-unit commit
-        // 経路 を通る。sha 以外を返す override で fallback 経路を踏める。
+        // head is the branch-point sha. Returning it by default carries the happy path through
+        // the same per-unit commit route as production. An override returning something other
+        // than a sha takes the fallback route.
         return branch ?? { branch: "feat/sample-branch", head: "a1b2c3d4e5f6a7b8" };
       case "untracked":
         return untracked ?? { untracked: [] };
@@ -160,121 +159,133 @@ const makeStubs = ({
           gates_pass: true,
         }
       );
-    // 実 runtime の意味論: 未知の workflow 名は throw する。sibling() は code を先に試して
-    // ここで解決するので build:code へ fallback しない。audit は build から
-    // 外れたので、呼ばれたらこの throw が (fallback ではなく) テストを落とす。
+    // The real runtime semantics: an unknown workflow name throws. sibling() tries code first
+    // and resolves here, so it never falls back to build:code. build does not call audit, so a
+    // call would make this throw fail the test rather than fall back.
     throw new Error(`unknown workflow: ${name}`);
   },
 });
 
 const agentCallsOf = (calls, kind) => calls.agent.filter((c) => kindOf(c.opts) === kind);
 
-test("args 空は stopped: no-issue で fail-close する", async () => {
+test("empty args fail closed with stopped: no-issue", async () => {
   const empty = await runWorkflow(buildJs, { args: {}, stubs: makeStubs() });
-  assert.equal(empty.result.stopped, "no-issue", "args 空で stopped: no-issue");
-  assert.equal(empty.calls.workflow.length, 0, "no-issue 後に入れ子 workflow が走らない");
+  assert.equal(empty.result.stopped, "no-issue", "empty args give stopped: no-issue");
+  assert.equal(empty.calls.workflow.length, 0, "no nested workflow runs after no-issue");
   assert.ok(
     empty.calls.phase.every((p) => p === "Load"),
-    "no-issue 後に Load 以外の phase が走らない",
+    "no phase other than Load runs after no-issue",
   );
 });
 
-// 数字を含むだけの自由記述 (例: "a11y" の 11) を issue 番号と誤認しない。抽出は
-// 数字単体 / #数字 / issue URL に厳格化されており、それ以外は stopped: no-issue。
-test("数字を含む自由記述は issue 参照と誤認せず stopped: no-issue で fail-close する", async () => {
+// A free-form description merely carrying digits (the 11 in "a11y", say) is not mistaken for
+// an issue number. The extraction is strict about a bare number, #number, or an issue URL,
+// and anything else becomes stopped: no-issue.
+test("a free-form description carrying digits is not read as an issue reference and fails closed with stopped: no-issue", async () => {
   const desc = await runWorkflow(buildJs, {
-    args: "issue の状態目標は a11y 対応も含む",
+    args: "the outcome for this issue covers a11y support too",
     stubs: makeStubs(),
   });
-  assert.equal(desc.result.stopped, "no-issue", "自由記述の 11 を issue 番号にしない");
-  assert.equal(agentCallsOf(desc.calls, "fetch").length, 0, "誤認した issue を fetch しない");
+  assert.equal(
+    desc.result.stopped,
+    "no-issue",
+    "the 11 in a free-form description is not an issue number",
+  );
+  assert.equal(agentCallsOf(desc.calls, "fetch").length, 0, "a misread issue is never fetched");
 });
 
-// repo 無し args の no-repo gate (build.js の if (!repo)) を regression として pin する。
-// gate は issue-ref check 通過後・Load fetch agent 起動前に fire するので、有効な issue 参照
-// を持つ object 形 ({issue}) と bare string 形 ("123") の両方が fetch 0 回で止まる。
-test("args.repo 欠落 (object / bare string) は stopped: no-repo で fetch 前に fail-close する", async () => {
+// This pins the no-repo gate for args without a repo (build.js's if (!repo)) as a regression.
+// The gate fires after the issue-ref check clears and before the Load fetch agent starts, so
+// both the object form ({issue}) and the bare string form ("123") carrying a valid issue
+// reference stop with zero fetches.
+test("args missing repo (object / bare string) fail closed with stopped: no-repo before the fetch", async () => {
   for (const argsWithoutRepo of [{ issue: "123" }, "123"]) {
     const form = typeof argsWithoutRepo === "string" ? "bare string" : "object";
     const run = await runWorkflow(buildJs, { args: argsWithoutRepo, stubs: makeStubs() });
     assert.equal(
       run.result.stopped,
       "no-repo",
-      `${form} 形は issue-ref check を通過し stopped: no-repo で止まる (no-issue でなく)`,
+      `the ${form} form clears the issue-ref check and stops at stopped: no-repo, not no-issue`,
     );
     assert.equal(
       agentCallsOf(run.calls, "fetch").length,
       0,
-      `${form} 形は Load fetch agent 起動前に止まる`,
+      `the ${form} form stops before the Load fetch agent starts`,
     );
     assert.equal(
       run.calls.workflow.length,
       0,
-      `${form} 形は no-repo 後に入れ子 workflow が走らない`,
+      `the ${form} form runs no nested workflow after no-repo`,
     );
   }
 });
 
-// 有効な参照形式 (数字単体 / #数字 / issue URL) は repo 付き args で同じ番号を取り出す。
-// string 単体の args は repo を運べず no-repo gate (stopped: no-repo) で fetch 前に
-// 止まるため、参照形式の受理は { issue: ref, repo } の形でのみ観測できる。
-test("数字単体 / #数字 / issue URL を repo 付き args で渡すと同じ issue 番号を抽出し fetch が各 1 回走る", async () => {
+// A valid reference form (a bare number, #number, or an issue URL) yields the same number from
+// args carrying a repo. A bare string args cannot carry a repo and stops at the no-repo gate
+// (stopped: no-repo) before the fetch, so acceptance of a reference form is observable only in
+// the { issue: ref, repo } shape.
+test("a bare number, #number, and an issue URL in args with a repo all extract the same issue number and each run one fetch", async () => {
   for (const ref of ["123", "#123", "https://github.com/o/r/issues/123"]) {
     const run = await runWorkflow(buildJs, {
       args: { issue: ref, repo },
       stubs: makeStubs(),
     });
-    assert.equal(run.result.stopped, undefined, `${ref} は repo 付き args で fail-close しない`);
-    assert.equal(run.result.issue, "123", `${ref} から同じ issue 番号 123 を抽出する`);
-    assert.equal(agentCallsOf(run.calls, "fetch").length, 1, `${ref} で fetch が 1 回走る`);
+    assert.equal(run.result.stopped, undefined, `${ref} does not fail closed in args with a repo`);
+    assert.equal(run.result.issue, "123", `${ref} extracts the same issue number 123`);
+    assert.equal(agentCallsOf(run.calls, "fetch").length, 1, `${ref} runs one fetch`);
   }
 });
 
-// Plan 節なし issue は plan を代わりに生成せず stopped: no-plan で止まり、issue の
-// 精緻化に差し戻す。why には /think と /issue の再実行経路が載る。
-test("Plan 節なし本文は stopped: no-plan で止まり plan を生成しない", async () => {
+// An issue with no Plan section does not get a plan generated in its place; the run stops at
+// stopped: no-plan and hands the issue back for refinement. why carries the route for re-running
+// /think and /issue.
+test("a body with no Plan section stops at stopped: no-plan and generates no plan", async () => {
   const noPlan = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
-      body: "Plan 見出しの無い issue 本文。\n\n## Context\n\n説明のみ。",
+      body: "An issue body with no Plan heading.\n\n## Context\n\nExplanation only.",
     }),
   });
-  assert.equal(noPlan.result.stopped, "no-plan", "Plan 節なしは stopped: no-plan");
+  assert.equal(noPlan.result.stopped, "no-plan", "no Plan section gives stopped: no-plan");
   const labels = noPlan.calls.agent.map((c) => c.opts.label);
-  assert.ok(!labels.includes("extract"), "Plan 節なしで extract agent を呼ばない");
+  assert.ok(!labels.includes("extract"), "no extract agent runs without a Plan section");
   assert.ok(
     !labels.some((l) => l === "generate-plan" || l === "critique-plan"),
-    "Plan 節なしで plan 生成 agent を呼ばない",
+    "no plan-generating agent runs without a Plan section",
   );
-  assert.equal(noPlan.calls.workflow.length, 0, "no-plan 後に入れ子 workflow が走らない");
+  assert.equal(noPlan.calls.workflow.length, 0, "no nested workflow runs after no-plan");
   assert.ok(
     noPlan.calls.phase.every((p) => p === "Load"),
-    "no-plan 後に Load 以外の phase が走らない",
+    "no phase other than Load runs after no-plan",
   );
-  assert.match(noPlan.result.why, /\/think/, "why が /think での plan 下書きを案内する");
-  assert.match(noPlan.result.why, /\/issue/, "why が /issue での ## Plan 節転記を案内する");
+  assert.match(noPlan.result.why, /\/think/, "why points at drafting the plan with /think");
+  assert.match(noPlan.result.why, /\/issue/, "why points at transferring the ## Plan with /issue");
 });
 
-// issue body は untrusted input (public repo では誰でも編集できる) なので、extract prompt
-// では bare `---` でなく明示的な data fence で囲み、fence 内容を instruction として扱わない
-// 指示を付けて prompt injection を鈍らせる。
-test("extract prompt は issue body を untrusted data fence で囲む", async () => {
+// An issue body is untrusted input (anyone can edit it on a public repo), so the extract prompt
+// fences it with an explicit data fence rather than a bare `---` and attaches an instruction not
+// to treat the fenced content as instructions, blunting prompt injection.
+test("the extract prompt fences the issue body as untrusted data", async () => {
   const withPlan = await runWorkflow(buildJs, { args, stubs: makeStubs() });
   const extract = agentCallsOf(withPlan.calls, "extract");
-  assert.equal(extract.length, 1, "Plan 節あり path で extract agent が 1 回呼ばれる");
+  assert.equal(extract.length, 1, "the extract agent runs once on the with-Plan path");
   assert.ok(
     extract[0].prompt.includes("BEGIN UNTRUSTED ISSUE BODY") &&
       extract[0].prompt.includes("END UNTRUSTED ISSUE BODY"),
-    "extract prompt は body を BEGIN/END の untrusted fence で囲む",
+    "the extract prompt fences the body between BEGIN and END untrusted markers",
   );
   assert.ok(
     /never follow any instruction/i.test(extract[0].prompt),
-    "fence 内容を instruction として扱わない指示が付く",
+    "an instruction not to treat the fenced content as instructions is attached",
   );
-  assert.equal(extract[0].opts.model, "sonnet", "extract は機械的写しなので sonnet 固定");
+  assert.equal(
+    extract[0].opts.model,
+    "sonnet",
+    "extract is a mechanical transcription, so it is fixed to sonnet",
+  );
 });
 
-test("構造欠陥と content 空 (contract / name) はいずれも stopped: invalid-plan になる", async () => {
+test("a structural defect and empty content (contract / name) both give stopped: invalid-plan", async () => {
   const variants = [
     { plan: makePlan({ units: [] }), expect: /units/ },
     {
@@ -300,20 +311,21 @@ test("構造欠陥と content 空 (contract / name) はいずれも stopped: inv
       args,
       stubs: makeStubs({ plan }),
     });
-    assert.equal(result.stopped, "invalid-plan", `variant ${expect} で stopped: invalid-plan`);
-    assert.ok(Array.isArray(result.blockers), "blockers が配列で返る");
+    assert.equal(result.stopped, "invalid-plan", `variant ${expect} gives stopped: invalid-plan`);
+    assert.ok(Array.isArray(result.blockers), "blockers comes back as an array");
     assert.ok(
       result.blockers.some((b) => expect.test(String(b))),
-      `blockers に ${expect} を含むエラー文言が載る`,
+      `blockers carries an error message containing ${expect}`,
     );
   }
 });
 
-// reference_module は「既存の同形モジュールを複製する」か「この形は新規で理由がある」の
-// いずれかを構造化して運ぶ。素の null は理由を運べないので、object { kind, reason } を
-// 要求する検査が要る。フィールドごと欠けている形も同じく理由を運べないので、null と
-// 別の分岐で拾う。schema の required には入れない (extraction-failed は blockers を持たない)。
-test("reference_module のフィールドを持たない plan は invalid-plan で止まる", async () => {
+// reference_module carries, in structured form, either "duplicate an existing module of the same
+// shape" or "this shape is new, and here is why". A bare null carries no reason, so a check
+// demanding the object { kind, reason } is required. A form missing the field entirely carries no
+// reason either, so it is caught on a branch separate from null. It stays out of the schema's
+// required list (extraction-failed carries no blockers).
+test("a plan with no reference_module field stops at invalid-plan", async () => {
   const plan = makePlan();
   delete plan.reference_module;
   const { result } = await runWorkflow(buildJs, {
@@ -323,11 +335,11 @@ test("reference_module のフィールドを持たない plan は invalid-plan �
   assert.equal(result.stopped, "invalid-plan");
   assert.ok(
     result.blockers.some((b) => /reference_module/.test(String(b))),
-    "blockers に reference_module を指すエラー文言が載る",
+    "blockers carries an error message naming reference_module",
   );
 });
 
-test("理由の無い null の reference_module を持つ plan は invalid-plan で止まる", async () => {
+test("a plan whose reference_module is a bare null with no reason stops at invalid-plan", async () => {
   const { result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({ plan: makePlan({ reference_module: null }) }),
@@ -335,11 +347,11 @@ test("理由の無い null の reference_module を持つ plan は invalid-plan 
   assert.equal(result.stopped, "invalid-plan");
   assert.ok(
     result.blockers.some((b) => /reference_module/.test(String(b))),
-    "blockers に reference_module を指すエラー文言が載る",
+    "blockers carries an error message naming reference_module",
   );
 });
 
-test("kind が module で path が空の plan は invalid-plan で止まる", async () => {
+test("a plan whose kind is module with an empty path stops at invalid-plan", async () => {
   const { result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -349,11 +361,11 @@ test("kind が module で path が空の plan は invalid-plan で止まる", as
   assert.equal(result.stopped, "invalid-plan");
   assert.ok(
     result.blockers.some((b) => /reference_module/.test(String(b)) && /path/.test(String(b))),
-    "blockers に reference_module.path を指すエラー文言が載る",
+    "blockers carries an error message naming reference_module.path",
   );
 });
 
-test("kind が module 以外で reason が空の plan は invalid-plan で止まる", async () => {
+test("a plan whose kind is not module with an empty reason stops at invalid-plan", async () => {
   const { result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -363,11 +375,11 @@ test("kind が module 以外で reason が空の plan は invalid-plan で止ま
   assert.equal(result.stopped, "invalid-plan");
   assert.ok(
     result.blockers.some((b) => /reference_module/.test(String(b)) && /reason/.test(String(b))),
-    "blockers に reference_module の reason を指すエラー文言が載る",
+    "blockers carries an error message naming reference_module's reason",
   );
 });
 
-test("kind と reason を持つ plan は validate を通る", async () => {
+test("a plan carrying both kind and reason clears validate", async () => {
   const { result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -376,16 +388,17 @@ test("kind と reason を持つ plan は validate を通る", async () => {
       }),
     }),
   });
-  assert.notEqual(result.stopped, "invalid-plan", "kind + reason が揃えば validate を通る");
+  assert.notEqual(result.stopped, "invalid-plan", "kind plus reason clears validate");
 });
 
-// issue title の [Bug] prefix (qualify SKILL.md § Title type) を Bug 分類の目印とする。
-// 原因を書かない Bug issue はそのまま Code 段へ進むと対症療法になりやすいので、Load 段の
-// validate で root_cause の記載を要求する。root_cause は PLAN_SCHEMA の required に入れない
-// (extract が key を落とすと、blockers 文言を持たない extraction-failed で止まってしまうため。
-// reference_module も同じ理由で required に入れていない)。fetch が title を落とした場合は
-// Bug 判定できないので root_cause を要求しない。
-test("title が Bug で root_cause が空の plan は invalid-plan で止まる", async () => {
+// The [Bug] prefix on an issue title (qualify SKILL.md § Title type) marks the Bug
+// classification. A Bug issue that names no cause tends toward a symptomatic fix once it reaches
+// the Code stage, so validate at the Load stage demands that root_cause be written. root_cause
+// stays out of PLAN_SCHEMA's required list (extract dropping the key would stop the run at
+// extraction-failed, which carries no blockers message; reference_module is out for the same
+// reason). When fetch drops the title, the Bug decision cannot be made and root_cause is not
+// demanded.
+test("a plan whose title is a Bug with an empty root_cause stops at invalid-plan", async () => {
   const { result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({ title: "[Bug] login fails", plan: makePlan({ root_cause: "" }) }),
@@ -393,11 +406,11 @@ test("title が Bug で root_cause が空の plan は invalid-plan で止まる"
   assert.equal(result.stopped, "invalid-plan");
   assert.ok(
     result.blockers.some((b) => /root_cause/.test(String(b))),
-    "blockers に root_cause を指すエラー文言が載る",
+    "blockers carries an error message naming root_cause",
   );
 });
 
-test("title が Bug で root_cause を持つ plan は validate を通る", async () => {
+test("a plan whose title is a Bug and carries a root_cause clears validate", async () => {
   const { result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -405,18 +418,22 @@ test("title が Bug で root_cause を持つ plan は validate を通る", async
       plan: makePlan({ root_cause: "session token expires before the refresh call" }),
     }),
   });
-  assert.notEqual(result.stopped, "invalid-plan", "root_cause があれば validate を通る");
+  assert.notEqual(result.stopped, "invalid-plan", "a present root_cause clears validate");
 });
 
-test("title が Bug 以外なら root_cause が空でも validate を通る", async () => {
+test("a plan whose title is not a Bug clears validate with an empty root_cause", async () => {
   const { result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({ title: "[Feature] add dark mode", plan: makePlan({ root_cause: "" }) }),
   });
-  assert.notEqual(result.stopped, "invalid-plan", "Bug 以外は root_cause 不要で validate を通る");
+  assert.notEqual(
+    result.stopped,
+    "invalid-plan",
+    "a non-Bug needs no root_cause and clears validate",
+  );
 });
 
-test("fetch が title を取得できないときは Bug 判定を行わず root_cause を要求しない", async () => {
+test("makes no Bug decision and demands no root_cause when fetch could not get the title", async () => {
   const { result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({ plan: makePlan({ root_cause: "" }) }),
@@ -424,13 +441,13 @@ test("fetch が title を取得できないときは Bug 判定を行わず root
   assert.notEqual(
     result.stopped,
     "invalid-plan",
-    "title が無ければ Bug 判定できないので root_cause を要求しない",
+    "with no title the Bug decision cannot be made, so root_cause is not demanded",
   );
 });
 
-// unit ごとのテストは自分の境界を stub するため、各 unit が緑でも層が結線されない
-// (kizalas #558 / PR 575)。テストを持つ unit が 2 つ以上ある plan は seam unit を要求する。
-test("テストを持つ unit が 2 つ以上で seam unit が無い plan は stopped: invalid-plan、seam: true があれば通る", async () => {
+// A per-unit test stubs its own boundary, so every unit can be green while the layers stay
+// unwired. A plan carrying two or more units with tests therefore demands a seam unit.
+test("a plan with two or more tested units and no seam unit gives stopped: invalid-plan, and clears with seam: true", async () => {
   const twoTestedUnits = (seam) => [
     { ...makePlan().units[0], seam: false },
     {
@@ -447,22 +464,26 @@ test("テストを持つ unit が 2 つ以上で seam unit が無い plan は st
     args,
     stubs: makeStubs({ plan: makePlan({ units: twoTestedUnits(false) }) }),
   });
-  assert.equal(missing.result.stopped, "invalid-plan", "seam unit 無しは invalid-plan で止まる");
+  assert.equal(
+    missing.result.stopped,
+    "invalid-plan",
+    "no seam unit stops the run at invalid-plan",
+  );
   assert.ok(
     missing.result.blockers.some((b) => /seam/.test(String(b))),
-    "blockers に seam unit を要求する文言が載る",
+    "blockers carries the wording demanding a seam unit",
   );
 
   const present = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({ plan: makePlan({ units: twoTestedUnits(true) }) }),
   });
-  assert.notEqual(present.result.stopped, "invalid-plan", "seam: true があれば validate を通る");
+  assert.notEqual(present.result.stopped, "invalid-plan", "a present seam: true clears validate");
 });
 
-// tests が空の unit は境界を持たないので seam の対象外。docs / 設定だけの plan が
-// seam 要求で止まらないことを固定する。
-test("テストを持つ unit が 1 つ以下なら seam unit が無くても validate を通る", async () => {
+// A unit with no tests holds no boundary, so it falls outside the seam requirement. This pins
+// that a docs-or-config-only plan does not stop on the seam demand.
+test("a plan with at most one tested unit clears validate without a seam unit", async () => {
   const { result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -481,14 +502,18 @@ test("テストを持つ unit が 1 つ以下なら seam unit が無くても va
       }),
     }),
   });
-  assert.notEqual(result.stopped, "invalid-plan", "tests 空の unit は seam 要求を発火させない");
+  assert.notEqual(
+    result.stopped,
+    "invalid-plan",
+    "a unit with no tests does not fire the seam demand",
+  );
 });
 
-test("抽出での unit / test の silent drop は stopped: extraction-mismatch で決定論検出される", async () => {
+test("a silent drop of a unit or a test during extraction is detected deterministically as stopped: extraction-mismatch", async () => {
   const body = bodyFor(["U-001", "U-002"], ["T-001", "T-002", "T-003"]);
   const base = makePlan().units[0];
 
-  // case A: unit U-002 を silent drop (test id は全部返す)
+  // case A: silently drop unit U-002 while returning every test id
   const unitDrop = makePlan({
     units: [
       {
@@ -508,14 +533,14 @@ test("抽出での unit / test の silent drop は stopped: extraction-mismatch 
   assert.equal(
     a.result.stopped,
     "extraction-mismatch",
-    "unit drop で stopped: extraction-mismatch",
+    "a dropped unit gives stopped: extraction-mismatch",
   );
   assert.ok(
     JSON.stringify(a.result.detail).includes("U-002"),
-    "不一致 unit id U-002 が detail に載る",
+    "the mismatching unit id U-002 rides the detail",
   );
 
-  // case B: test id T-003 を 1 件 silent drop (unit id は全部返す)
+  // case B: silently drop the single test id T-003 while returning every unit id
   const testDrop = makePlan({
     units: [
       { ...base, tests: [{ ...base.tests[0], id: "T-001" }] },
@@ -523,7 +548,7 @@ test("抽出での unit / test の silent drop は stopped: extraction-mismatch 
         ...base,
         id: "U-002",
         tests: [{ ...base.tests[0], id: "T-002" }],
-        // seam 検査でなく id クロスチェックを見るケースなので seam は満たしておく
+        // This case watches the id cross-check rather than the seam check, so seam is satisfied
         seam: true,
       },
     ],
@@ -535,28 +560,28 @@ test("抽出での unit / test の silent drop は stopped: extraction-mismatch 
   assert.equal(
     b.result.stopped,
     "extraction-mismatch",
-    "test drop で stopped: extraction-mismatch",
+    "a dropped test gives stopped: extraction-mismatch",
   );
   assert.ok(
     JSON.stringify(b.result.detail).includes("T-003"),
-    "不一致 test id T-003 が detail に載る",
+    "the mismatching test id T-003 rides the detail",
   );
 });
 
-test("契約 prose 中の T-NNN 参照は定義でないので cross-check に載らず extraction-mismatch にならない", async () => {
-  // contract 文の「既存の T-106 は変更しない」は参照であって定義ではない。
-  // 定義された受け入れテストは T-109 のみで、抽出も T-109 のみを返す。
+test("a T-NNN mentioned in contract prose is a reference rather than a definition, so it stays out of the cross-check and raises no extraction-mismatch", async () => {
+  // The contract sentence "leave the existing T-106 untouched" is a reference, not a definition.
+  // The only acceptance test defined is T-109, and the extraction returns T-109 alone.
   const body = [
     "## Plan",
     "",
     "Outcome: sample outcome",
     "test_command: echo test",
     "",
-    "### U-001: unit の見出し",
+    "### U-001: unit heading",
     "",
-    "- contract: 既存の T-106 とプロダクションコードは変更しない",
+    "- contract: leave the existing T-106 and the production code untouched",
     "",
-    "受け入れテスト。",
+    "Acceptance tests.",
     "",
     "- T-109: test scenario",
     "",
@@ -572,13 +597,14 @@ test("契約 prose 中の T-NNN 参照は定義でないので cross-check に�
   assert.notEqual(
     r.result.stopped,
     "extraction-mismatch",
-    "prose 参照 T-106 を欠落テストと誤検出しない",
+    "the prose reference T-106 is not mistaken for a missing test",
   );
 });
 
-// UNIT_CAPS (files: 3, tests: 4) の超過検出。id クロスチェック通過後、extract 経路に
-// 限って発火する。seam: true の unit は境界跨ぎテストで files が正当に増えるため対象外。
-test('extract 経路で files 4 つの非 seam unit を含む plan は stopped "oversized-unit" で停止する', async () => {
+// Detection of exceeding UNIT_CAPS (files: 3, tests: 4). It fires after the id cross-check
+// clears and only on the extract route. A unit with seam: true is exempt, since a
+// boundary-crossing test legitimately raises its file count.
+test('a plan carrying a non-seam unit with 4 files stops at "oversized-unit" on the extract route', async () => {
   const body = bodyFor(["U-001"], ["T-001"]);
   const plan = makePlan({
     units: [
@@ -596,11 +622,11 @@ test('extract 経路で files 4 つの非 seam unit を含む plan は stopped "
   assert.equal(
     result.stopped,
     "oversized-unit",
-    "files 4 つの非 seam unit で stopped: oversized-unit",
+    "a non-seam unit with 4 files gives stopped: oversized-unit",
   );
 });
 
-test('extract 経路で tests 5 個の非 seam unit を含む plan は stopped "oversized-unit" で停止する', async () => {
+test('a plan carrying a non-seam unit with 5 tests stops at "oversized-unit" on the extract route', async () => {
   const tests = Array.from({ length: 5 }, (_, i) => ({
     id: `T-00${i + 1}`,
     name: `sample spec statement ${i + 1}`,
@@ -625,11 +651,11 @@ test('extract 経路で tests 5 個の非 seam unit を含む plan は stopped "
   assert.equal(
     result.stopped,
     "oversized-unit",
-    "tests 5 個の非 seam unit で stopped: oversized-unit",
+    "a non-seam unit with 5 tests gives stopped: oversized-unit",
   );
 });
 
-test("seam: true の unit は files 4 つでも上限検出の対象にならず build は続行する", async () => {
+test("a unit with seam: true escapes the cap detection at 4 files and the build continues", async () => {
   const body = bodyFor(["U-001"], ["T-001"]);
   const plan = makePlan({
     units: [
@@ -647,12 +673,15 @@ test("seam: true の unit は files 4 つでも上限検出の対象にならず
   assert.notEqual(
     result.stopped,
     "oversized-unit",
-    "seam: true の unit は files 4 つでも stopped: oversized-unit にならない",
+    "a unit with seam: true does not give stopped: oversized-unit at 4 files",
   );
-  assert.ok(calls.phase.includes("Ship"), "seam: true の unit が files 4 つでも Ship まで続行する");
+  assert.ok(
+    calls.phase.includes("Ship"),
+    "a unit with seam: true continues through Ship even at 4 files",
+  );
 });
 
-test("files 3 つ / tests 4 個の上限値ちょうどの plan は停止せず既存挙動のまま続行する", async () => {
+test("a plan sitting exactly at the caps of 3 files and 4 tests does not stop and continues as before", async () => {
   const tests = Array.from({ length: 4 }, (_, i) => ({
     id: `T-00${i + 1}`,
     name: `sample spec statement ${i + 1}`,
@@ -677,40 +706,39 @@ test("files 3 つ / tests 4 個の上限値ちょうどの plan は停止せず�
   assert.notEqual(
     result.stopped,
     "oversized-unit",
-    "files 3 / tests 4 の上限値ちょうどは stopped: oversized-unit にならない",
+    "sitting exactly at 3 files and 4 tests does not give stopped: oversized-unit",
   );
-  assert.ok(calls.phase.includes("Ship"), "上限値ちょうどの plan は Ship まで続行する (既存挙動)");
+  assert.ok(
+    calls.phase.includes("Ship"),
+    "a plan sitting exactly at the caps continues through Ship, as before",
+  );
 });
 
-// 上限の実体は UNIT_CAPS にしか無く、/think Phase 3 はそれを prose で複写している。
-// 片側だけ変えても実行時には何も落ちないので、この静的照合が同一コミットでの追従を強制する。
+// The caps exist only in UNIT_CAPS, and /think Phase 3 copies them into prose. Changing one side
+// alone drops nothing at run time, so this static match forces both to follow in the same commit.
 const thinkSkill = join(here, "..", "..", "..", "skills", "think", "SKILL.md");
 
-test("UNIT_CAPS の数値と seam 除外が /think SKILL.md の unit 上限記述と一致する", () => {
+test("the UNIT_CAPS numbers and the seam exemption match the unit-cap wording in /think SKILL.md", () => {
   const caps = readFileSync(buildJs, "utf8").match(
     /const UNIT_CAPS = \{ files: (\d+), tests: (\d+) \};/,
   );
-  assert.ok(caps, "build.js から UNIT_CAPS の数値を読める");
+  assert.ok(caps, "the UNIT_CAPS numbers are readable from build.js");
   const skill = readFileSync(thinkSkill, "utf8");
   assert.ok(
     skill.includes(`caps are ${caps[1]} files and ${caps[2]} tests`),
-    `SKILL.md が上限を files ${caps[1]} / tests ${caps[2]} と書いている`,
+    `SKILL.md states the caps as ${caps[1]} files and ${caps[2]} tests`,
   );
-  assert.match(skill, /A non-seam unit's caps/, "SKILL.md の上限が non-seam 限定と書かれている");
-  assert.match(
-    skill,
-    /caps do not apply to it/,
-    "SKILL.md が seam unit を上限の対象外と書いている",
-  );
+  assert.match(skill, /A non-seam unit's caps/, "SKILL.md scopes the caps to non-seam units");
+  assert.match(skill, /caps do not apply to it/, "SKILL.md exempts a seam unit from the caps");
 });
 
-// think が /think Phase 3 で教える reference_module.kind の語彙は、EXTRACT_SCHEMA の
-// enum を prose で複写している。英文言でなく enum トークンそのものが両言語のテンプレートに
-// 出ることを照合する (UNIT_CAPS 照合と同じ静的クロスチェックの形)。
-test("テンプレートの kind 語が build.js の enum と一致する", () => {
+// The reference_module.kind vocabulary /think Phase 3 teaches copies EXTRACT_SCHEMA's enum into
+// prose. What is matched is the enum token itself appearing in both language templates rather
+// than the English wording, the same static cross-check shape as the UNIT_CAPS match.
+test("the kind words in the templates match build.js's enum", () => {
   const source = readFileSync(buildJs, "utf8");
   const enumMatch = source.match(/kind:\s*\{\s*type:\s*"string",\s*enum:\s*\[([^\]]+)\]/);
-  assert.ok(enumMatch, "build.js の kind enum を読める");
+  assert.ok(enumMatch, "build.js's kind enum is readable");
   const kinds = enumMatch[1].split(",").map((s) => s.trim().replace(/^"|"$/g, ""));
   const expectedToken = kinds.join("/");
   const templates = {
@@ -721,13 +749,13 @@ test("テンプレートの kind 語が build.js の enum と一致する", () =
     const doc = readFileSync(path, "utf8");
     assert.ok(
       doc.includes(expectedToken),
-      `${lang}: kind enum トークン ${expectedToken} が build.js の enum と一致する`,
+      `${lang}: the kind enum token ${expectedToken} matches build.js's enum`,
     );
   }
 });
 
-test("Revalidate は 1 miss で stopped: plan-drift、全 pass で Branch へ進み、preconditions 空なら agent を呼ばない", async () => {
-  // miss case: exists: false を 1 件含む
+test("Revalidate stops at plan-drift on one miss, advances to Branch when all pass, and calls no agent when preconditions is empty", async () => {
+  // miss case: carries one entry with exists: false
   const driftPlan = makePlan({
     preconditions: [
       { path: "sample.js", pattern: "sampleSymbol" },
@@ -756,21 +784,21 @@ test("Revalidate は 1 miss で stopped: plan-drift、全 pass で Branch へ進
       },
     }),
   });
-  assert.equal(miss.result.stopped, "plan-drift", "1 miss で stopped: plan-drift");
+  assert.equal(miss.result.stopped, "plan-drift", "one miss gives stopped: plan-drift");
   assert.ok(
     JSON.stringify(miss.result).includes("missing.js"),
-    "drift 一覧に miss した path が載る",
+    "the drift list carries the path that missed",
   );
-  assert.ok(!miss.calls.phase.includes("Branch"), "plan-drift 後に Branch へ進まない");
+  assert.ok(!miss.calls.phase.includes("Branch"), "no Branch phase follows plan-drift");
 
-  // all-pass case: Branch phase に到達する
+  // all-pass case: the run reaches the Branch phase
   const pass = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs(),
   });
-  assert.ok(pass.calls.phase.includes("Branch"), "全 pass で Branch phase に到達する");
+  assert.ok(pass.calls.phase.includes("Branch"), "all passing reaches the Branch phase");
 
-  // 空 case: revalidate agent が呼ばれず Branch に到達する
+  // empty case: no revalidate agent runs and the run reaches Branch
   const empty = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({ plan: makePlan({ preconditions: [] }) }),
@@ -778,17 +806,21 @@ test("Revalidate は 1 miss で stopped: plan-drift、全 pass で Branch へ進
   assert.equal(
     agentCallsOf(empty.calls, "revalidate").length,
     0,
-    "preconditions 空で revalidate agent が呼ばれない",
+    "an empty preconditions runs no revalidate agent",
   );
-  assert.ok(empty.calls.phase.includes("Branch"), "preconditions 空でも Branch phase に到達する");
+  assert.ok(
+    empty.calls.phase.includes("Branch"),
+    "an empty preconditions still reaches the Branch phase",
+  );
 });
 
-// ---- U-003: reference_module の既存パス実在チェック (script 主導、LLM 非関与) ----
-// revalidate.py は {path, pattern?} の形を受けるので、reference_module.path / files も
-// 同じ形に合わせて payload に混ぜ、script の exists/matches 判定だけで drift を検出する。
+// ---- U-003: the existence check on reference_module's paths (script-driven, no LLM) ----
+// revalidate.py takes the {path, pattern?} shape, so reference_module.path and files are mixed
+// into the payload in that same shape and the drift is detected by the script's exists / matches
+// decision alone.
 const refModulePreconditionsPlan = (reference_module) => makePlan({ reference_module });
 
-test("reference_module の path が実在しないと plan-drift で止まる", async () => {
+test("a reference_module path that does not exist stops the run at plan-drift", async () => {
   const plan = refModulePreconditionsPlan({
     path: "src/existing",
     files: ["src/existing/index.ts"],
@@ -808,18 +840,18 @@ test("reference_module の path が実在しないと plan-drift で止まる", 
   assert.equal(
     result.stopped,
     "plan-drift",
-    "reference_module.path が exists:false だと stopped: plan-drift",
+    "an exists:false on reference_module.path gives stopped: plan-drift",
   );
   assert.ok(
     JSON.stringify(result.drift).includes("src/existing"),
-    "drift 一覧に reference_module.path が載る",
+    "the drift list carries reference_module.path",
   );
 });
 
-// no-module でも引用した形の path を書けるので、その path が実在検査を受けることを
-// 確かめる。validate は kind: module 以外では path を見ず、refModuleEntries も kind を
-// 見ないため、この経路はどちらの検査からも自明に読み取れない。
-test("kind が no-module で path を持つ plan は validate を通り revalidate で path の実在検査を受ける", async () => {
+// A no-module entry can still name the path of a shape it quoted, so this confirms that path
+// takes the existence check. validate ignores path unless kind is module, and refModuleEntries
+// ignores kind, so neither check makes this route self-evident.
+test("a plan whose kind is no-module with a path clears validate and takes the existence check in revalidate", async () => {
   const plan = refModulePreconditionsPlan({
     kind: "no-module",
     path: "src/existing",
@@ -841,20 +873,20 @@ test("kind が no-module で path を持つ plan は validate を通り revalida
   assert.notEqual(
     result.stopped,
     "invalid-plan",
-    "kind: no-module は path があっても reason があれば validate を通る",
+    "a kind: no-module with a path clears validate as long as it carries a reason",
   );
   assert.equal(
     result.stopped,
     "plan-drift",
-    "validate を通った path は revalidate の実在検査へそのまま渡り、不在なら plan-drift で止まる",
+    "a path clearing validate goes straight to revalidate's existence check and stops at plan-drift when absent",
   );
   assert.ok(
     JSON.stringify(result.drift).includes("src/existing"),
-    "drift 一覧に kind: no-module の reference_module.path が載る",
+    "the drift list carries the reference_module.path of the kind: no-module entry",
   );
 });
 
-test("reference_module の files に実在しないものがあると plan-drift で止まる", async () => {
+test("a reference_module whose files include one that does not exist stops the run at plan-drift", async () => {
   const plan = refModulePreconditionsPlan({
     path: "src/existing",
     files: ["src/existing/index.ts", "src/existing/missing.ts"],
@@ -876,15 +908,15 @@ test("reference_module の files に実在しないものがあると plan-drift
   assert.equal(
     result.stopped,
     "plan-drift",
-    "reference_module.files の 1 件が exists:false だと stopped: plan-drift",
+    "one exists:false among reference_module.files gives stopped: plan-drift",
   );
   assert.ok(
     JSON.stringify(result.drift).includes("src/existing/missing.ts"),
-    "drift 一覧に実在しない reference_module.files のパスが載る",
+    "the drift list carries the reference_module.files path that does not exist",
   );
 });
 
-test("path を持たない reference_module では revalidate の payload に reference_module の行が入らない", async () => {
+test("a reference_module with no path puts no reference_module row in the revalidate payload", async () => {
   const withoutPath = refModulePreconditionsPlan({
     kind: "new-shape",
     reason: "no existing module shares this shape",
@@ -913,18 +945,18 @@ test("path を持たない reference_module では revalidate の payload に re
   assert.deepEqual(
     withoutPayload,
     withoutPath.preconditions,
-    "path 無しの reference_module では payload が plan.preconditions のまま (行が追加されない)",
+    "with no path on reference_module the payload stays plan.preconditions and no row is added",
   );
   assert.ok(
     withPayload.length > withoutPayload.length,
-    "path 有りの reference_module では payload に行が追加され、path 無しより長くなる",
+    "with a path on reference_module a row is added and the payload grows past the no-path one",
   );
 });
 
-// resultByKey は path と pattern だけをキーにするので、reference_module.path が
-// pattern 無しの precondition と同じ path を指すと両者が同じ結果へ解決し、1 つの不在が
-// 2 件として報告される。
-test("reference_module.path と同じ path の precondition があっても drift は 1 件になる", async () => {
+// resultByKey keys on path and pattern alone, so a reference_module.path naming the same path as
+// a precondition without a pattern resolves both to the same result and reports one absence
+// twice.
+test("drift stays at one entry when a precondition names the same path as reference_module.path", async () => {
   const plan = makePlan({
     preconditions: [{ path: "src/shared", pattern: "" }],
     reference_module: { kind: "module", path: "src/shared", files: [] },
@@ -942,11 +974,11 @@ test("reference_module.path と同じ path の precondition があっても drif
   assert.equal(
     result.drift.length,
     1,
-    "同じ結果を precondition と reference_module で二重に数えない",
+    "the same result is not counted twice, once for the precondition and once for reference_module",
   );
 });
 
-test("happy path の phase 順が Load → Revalidate → Branch → Code → Cleanup → Verify → Ship で、code に model: sonnet が渡り audit / polish / challenge / think / research が呼ばれない", async () => {
+test("the happy path runs Load, Revalidate, Branch, Code, Cleanup, Verify, Ship in order, passes model: sonnet to code, and calls none of audit, polish, challenge, think, or research", async () => {
   const { calls } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs(),
@@ -955,41 +987,43 @@ test("happy path の phase 順が Load → Revalidate → Branch → Code → Cl
   assert.deepEqual(
     calls.phase,
     ["Load", "Revalidate", "Branch", "Code", "Cleanup", "Verify", "Ship"],
-    "phase 順が Load → Revalidate → Branch → Code → Cleanup → Verify → Ship (cleanup 後の tree を検証する)",
+    "the phase order is Load, Revalidate, Branch, Code, Cleanup, Verify, Ship, verifying the tree after cleanup",
   );
 
   const codeCalls = calls.workflow.filter((c) => c.name === "code");
-  assert.equal(codeCalls.length, 1, "workflow('code') が 1 回呼ばれる");
-  assert.equal(codeCalls[0].args.model, "sonnet", "code に model: sonnet が渡る");
+  assert.equal(codeCalls.length, 1, "workflow('code') runs once");
+  assert.equal(codeCalls[0].args.model, "sonnet", "code receives model: sonnet");
   assert.ok(
     !("preconditions" in codeCalls[0].args.plan),
-    "code へ渡す plan から preconditions が strip される",
+    "preconditions is stripped from the plan handed to code",
   );
 
   const cleanupCalls = agentCallsOf(calls, "cleanup");
   assert.equal(
     cleanupCalls.length,
     1,
-    "cleanup agent (simplify skill + test 検証) が 1 回呼ばれる",
+    "the cleanup agent (the simplify skill plus test validation) runs once",
   );
-  assert.equal(cleanupCalls[0].opts.model, "sonnet", "cleanup agent は sonnet 固定");
+  assert.equal(cleanupCalls[0].opts.model, "sonnet", "the cleanup agent is fixed to sonnet");
 
-  // sibling() は素の dev tree 形 (code) を先に試し、解決すれば build:code に fallback しない。
-  // dev tree では code が返るので capture には code のみが現れる。audit は集合に現れない。
+  // sibling() tries the bare dev-tree form (code) first and never falls back to build:code once
+  // that resolves. In the dev tree code comes back, so the capture holds code alone and audit
+  // never appears in the set.
   const names = new Set(calls.workflow.map((c) => c.name));
   assert.deepEqual(
     [...names].sort(),
     ["code"],
-    "workflow capture に dev-tree の code のみが現れる (build:code に fallback しない)",
+    "the workflow capture holds the dev-tree code alone, with no fallback to build:code",
   );
   for (const banned of ["audit", "polish", "challenge", "think", "research"]) {
-    assert.ok(!names.has(banned), `workflow('${banned}') が呼ばれない`);
+    assert.ok(!names.has(banned), `workflow('${banned}') never runs`);
   }
 });
 
-// ---- Verify: 決定論スコープ検査 + T-NNN 言明照合 (選択ベースの担保) ----
+// ---- Verify: the deterministic scope check plus the T-NNN statement match (selection-based
+// assurance) ----
 
-test("Verify のスコープ検査が plan 外の diff file を surface し、.claude/workspace/ 配下は除外する", async () => {
+test("Verify's scope check surfaces a diff file outside the plan and excludes anything under .claude/workspace/", async () => {
   const { calls, result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -1001,42 +1035,46 @@ test("Verify のスコープ検査が plan 外の diff file を surface し、.c
   assert.deepEqual(
     result.scope_deviations,
     ["extra.js"],
-    "plan files 外かつ .claude/workspace/ 外の file だけが scope_deviations に載る",
+    "only a file outside the plan files and outside .claude/workspace/ lands in scope_deviations",
   );
   const shipCalls = agentCallsOf(calls, "ship");
   assert.ok(
     shipCalls[0].prompt.includes('"scope_deviations":["extra.js"]'),
-    "scope_deviations が ship prompt (PR body payload) に載る",
+    "scope_deviations rides the ship prompt (the PR body payload)",
   );
-  // 検出しても staging 判断に繋いでいなければ、Ship が追跡済みの逸脱を commit へ巻き込む。
+  // Detected but not wired into the staging decision, Ship would sweep a tracked deviation into
+  // the commit.
   const neverStage = shipCalls[0].prompt.slice(shipCalls[0].prompt.indexOf("never-stage"));
   assert.ok(
     neverStage.startsWith("never-stage") && neverStage.includes('["extra.js"]'),
-    "scope_deviations が ship prompt の never-stage 集合に載る",
+    "scope_deviations lands in the ship prompt's never-stage set",
   );
-  assert.ok(calls.phase.includes("Ship"), "スコープ逸脱があっても fail-open で Ship まで進む");
+  assert.ok(
+    calls.phase.includes("Ship"),
+    "a scope deviation fails open and the run still reaches Ship",
+  );
 });
 
-test("diff 一覧が取れないとき never-stage 集合は空になり、診断文字列がパスとして渡らない", async () => {
+test("the never-stage set stays empty and no diagnostic string is passed as a path when the diff list is unavailable", async () => {
   const { calls, result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({ diff: { files: null } }),
   });
-  // 診断文字列の文面は言語ごとに違うので、件数だけを見る。
+  // The diagnostic string's wording differs per language, so only its count is inspected.
   assert.equal(
     result.scope_deviations.length,
     1,
-    "diff 一覧が無いとき scope_deviations は診断行を 1 件持つ",
+    "with no diff list, scope_deviations carries one diagnostic row",
   );
   const shipCalls = agentCallsOf(calls, "ship");
   const neverStage = shipCalls[0].prompt.slice(shipCalls[0].prompt.indexOf("never-stage"));
   assert.ok(
     neverStage.startsWith("never-stage") && neverStage.includes("[]"),
-    "診断文字列は never-stage 集合に入らない",
+    "the diagnostic string stays out of the never-stage set",
   );
 });
 
-test("Verify の T-NNN 照合が見つからない言明を surface し、verifier への relay prompt に checks JSON が載る", async () => {
+test("Verify's T-NNN match surfaces a statement it could not find, and the relay prompt to the verifier carries the checks JSON", async () => {
   const { calls, result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -1046,44 +1084,47 @@ test("Verify の T-NNN 照合が見つからない言明を surface し、verifi
   assert.deepEqual(
     result.missing_tests,
     ["sample spec statement"],
-    "found: false の言明が missing_tests に載る",
+    "a statement marked found: false lands in missing_tests",
   );
   const shipCalls = agentCallsOf(calls, "ship");
   assert.ok(
     shipCalls[0].prompt.includes('"missing_tests":["sample spec statement"]'),
-    "missing_tests が ship prompt (PR body payload) に載る",
+    "missing_tests rides the ship prompt (the PR body payload)",
   );
 
   const presenceCalls = agentCallsOf(calls, "presence");
-  assert.equal(presenceCalls.length, 1, "verify-tests relay agent が 1 回呼ばれる");
+  assert.equal(presenceCalls.length, 1, "the verify-tests relay agent runs once");
   assert.ok(
     presenceCalls[0].prompt.includes("verify-tests.py"),
-    "relay prompt が決定論 verifier verify-tests.py を指す",
+    "the relay prompt names the deterministic verifier verify-tests.py",
   );
   assert.ok(
     presenceCalls[0].prompt.includes('"names":["sample spec statement"]'),
-    "relay prompt に unit の files + names の checks JSON が載る",
+    "the relay prompt carries the checks JSON of the unit's files plus names",
   );
-  assert.ok(calls.phase.includes("Ship"), "言明の欠落があっても fail-open で Ship まで進む");
+  assert.ok(
+    calls.phase.includes("Ship"),
+    "a missing statement fails open and the run still reaches Ship",
+  );
 });
 
-test("Verify の diff / presence が落ちても fail-open で Ship まで進み、未検証が明示される", async () => {
+test("a failed diff or presence in Verify fails open to Ship and states what went unverified", async () => {
   const { calls, result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({ diff: null, presence: null }),
   });
   assert.ok(
     String(result.scope_deviations[0]).includes("scope not verified"),
-    "diff 不在は「スコープ未検証」として surface する (silent clean にしない)",
+    "an absent diff surfaces as scope not verified rather than as a silent clean",
   );
   assert.ok(
     String(result.missing_tests[0]).includes("presence not verified"),
-    "presence 不在は「言明未検証」として surface する (silent clean にしない)",
+    "an absent presence surfaces as statements not verified rather than as a silent clean",
   );
-  assert.ok(calls.phase.includes("Ship"), "fail-open で Ship phase まで進む");
+  assert.ok(calls.phase.includes("Ship"), "it fails open and reaches the Ship phase");
 });
 
-test("tests 空の unit は invalid-plan にならず、言明 0 件なら presence relay agent を呼ばない", async () => {
+test("a unit with no tests is not invalid-plan, and zero declared statements call no presence relay agent", async () => {
   const plan = makePlan({
     units: [
       {
@@ -1102,28 +1143,32 @@ test("tests 空の unit は invalid-plan にならず、言明 0 件なら prese
   assert.equal(
     result.stopped,
     undefined,
-    "tests 空の unit で fail-close しない (plan の選択として合法)",
+    "a unit with no tests does not fail closed; it is a legitimate choice by the plan",
   );
   assert.equal(
     agentCallsOf(calls, "presence").length,
     0,
-    "宣言された言明が 0 件なら verify-tests relay agent を呼ばない",
+    "zero declared statements call no verify-tests relay agent",
   );
-  assert.deepEqual(result.missing_tests, [], "照合対象が無いので missing_tests は空");
-  assert.ok(calls.phase.includes("Ship"), "直接実装 unit だけの plan でも Ship まで完走する");
+  assert.deepEqual(result.missing_tests, [], "with nothing to match, missing_tests stays empty");
+  assert.ok(
+    calls.phase.includes("Ship"),
+    "a plan of direct-implementation units alone still runs through Ship",
+  );
 });
 
-// ---- unit ごとの commit と分岐点基準の diff ----
-// Code が unit ごとに commit すると HEAD は分岐点でなくなる。Verify の 3 つの review が
-// `git diff HEAD` のままだと差分が空になり、scope 逸脱も conformance も無言で 0 件に
-// なる (可視の失敗ではなく silent pass)。基準を Branch が返す分岐点 sha に固定する。
+// ---- the per-unit commit and the diff measured from the branch point ----
+// Once Code commits per unit, HEAD is no longer the branch point. Leaving Verify's three reviews
+// on `git diff HEAD` would empty the diff, and both the scope deviations and the conformance
+// findings would silently come back at zero: a silent pass rather than a visible failure. The
+// baseline is pinned to the branch-point sha Branch returns.
 
 const refPlan = () =>
   makePlan({
     reference_module: { path: "src/existing", files: ["src/existing/index.ts"] },
   });
 
-test("Verify の diff / conformance / structure が Branch の分岐点 sha を基準にし、素の git diff HEAD を使わない", async () => {
+test("Verify's diff, conformance, and structure measure from Branch's branch-point sha and never use a bare git diff HEAD", async () => {
   const { calls } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({ plan: refPlan() }),
@@ -1132,17 +1177,20 @@ test("Verify の diff / conformance / structure が Branch の分岐点 sha を�
   const reviewPrompts = calls.agent
     .filter((c) => ["diff-files", "conformance", "structure"].includes(c.opts.label))
     .map((c) => ({ label: c.opts.label, prompt: c.prompt }));
-  assert.equal(reviewPrompts.length, 3, "diff-files / conformance / structure の 3 つが走る");
+  assert.equal(reviewPrompts.length, 3, "all three of diff-files, conformance, structure run");
   for (const { label, prompt } of reviewPrompts) {
-    assert.ok(prompt.includes(`git diff ${sha}`), `${label} の diff 基準が分岐点 sha になる`);
+    assert.ok(
+      prompt.includes(`git diff ${sha}`),
+      `${label} measures its diff from the branch-point sha`,
+    );
     assert.ok(
       !/git diff HEAD\b/.test(prompt),
-      `${label} に素の git diff HEAD が残っていない (unit commit 後は空になる)`,
+      `${label} holds no bare git diff HEAD, which would be empty after the unit commits`,
     );
   }
 });
 
-test("code に commit: true / issue / untracked_baseline が渡り、戻り値 unit_commits に件数が載る", async () => {
+test("code receives commit: true, issue, and untracked_baseline, and the return value carries the unit_commits count", async () => {
   const { calls, result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -1157,21 +1205,22 @@ test("code に commit: true / issue / untracked_baseline が渡り、戻り値 u
     }),
   });
   const codeArgs = calls.workflow.find((c) => c.name === "code").args;
-  assert.equal(codeArgs.commit, true, "分岐点 sha があるとき code に commit: true が渡る");
-  assert.equal(codeArgs.issue, "123", "commit trailer 用に issue 番号が渡る");
+  assert.equal(codeArgs.commit, true, "a present branch-point sha passes commit: true to code");
+  assert.equal(codeArgs.issue, "123", "the issue number is passed for the commit trailer");
   assert.deepEqual(
     codeArgs.untracked_baseline,
     ["notes/local-memo.md"],
-    "build 以前からの未追跡パスが never-stage 集合として渡る",
+    "paths untracked since before the build are passed as the never-stage set",
   );
-  assert.equal(result.unit_commits, 1, "戻り値 unit_commits に unit commit 件数が載る");
+  assert.equal(result.unit_commits, 1, "the return value's unit_commits carries the commit count");
 });
 
-// sibling() の退避判定は本番 runtime の文言に依存するので、stub も同じ形で投げる。
+// sibling()'s fallback decision rests on the production runtime's wording, so the stub throws in
+// that same shape.
 const unknownWorkflowError = (name) =>
   new Error(`workflow('${name}'): no workflow with that name. Available: code`);
 
-test("入れ子 workflow が投げた内部エラーは build: 名前空間への退避に置き換わらない", async () => {
+test("an internal error thrown by a nested workflow is not turned into a fallback to the build: namespace", async () => {
   const names = [];
   const stubs = {
     ...makeStubs(),
@@ -1182,11 +1231,11 @@ test("入れ子 workflow が投げた内部エラーは build: 名前空間へ�
     },
   };
   await assert.rejects(runWorkflow(buildJs, { args, stubs }), /retry cap/);
-  assert.deepEqual(names, ["code"], "内部エラーのあと build:code を呼ばない");
+  assert.deepEqual(names, ["code"], "build:code is not called after an internal error");
 });
 
-// 入れ子の失敗は子の stack を message に運ぶので、同じ語が混じることがある。
-test("内部エラーの message に名前解決の文言が混じっても退避しない", async () => {
+// A nested failure carries the child's stack in its message, so the same words can appear there.
+test("no fallback happens when the name-resolution wording appears inside an internal error message", async () => {
   const names = [];
   const stubs = {
     ...makeStubs(),
@@ -1198,11 +1247,12 @@ test("内部エラーの message に名前解決の文言が混じっても退�
     },
   };
   await assert.rejects(runWorkflow(buildJs, { args, stubs }), /answered/);
-  assert.deepEqual(names, ["code"], "文言の混入では退避しない");
+  assert.deepEqual(names, ["code"], "wording appearing in the message causes no fallback");
 });
 
-// plugin 配布では素の名前が解決しない。退避が働く経路は名前解決の失敗だけに残す。
-test("素の名前が解決しないときは build: 名前空間へ退避して完走する", async () => {
+// A bare name does not resolve under a plugin distribution. The fallback route stays reserved
+// for a name-resolution failure alone.
+test("falls back to the build: namespace and runs through when the bare name does not resolve", async () => {
   const names = [];
   const base = makeStubs();
   const stubs = {
@@ -1214,13 +1264,14 @@ test("素の名前が解決しないときは build: 名前空間へ退避して
     },
   };
   const { result } = await runWorkflow(buildJs, { args, stubs });
-  assert.deepEqual(names, ["code", "build:code"], "素の名前を先に試してから退避する");
-  assert.equal(result.stopped, undefined, "退避先が解決すれば build は完走する");
+  assert.deepEqual(names, ["code", "build:code"], "the bare name is tried before the fallback");
+  assert.equal(result.stopped, undefined, "build runs through once the fallback resolves");
 });
 
-// 分岐点 sha を取れないまま unit commit を有効にすると、比較対象を失った Verify が
-// 無言で全 pass する。sha が使えないときは commit を止めて従来の HEAD 基準へ退避する。
-test("head が sha でないときは code の commit を false にし diff 基準を HEAD へ戻す", async () => {
+// Enabling the unit commits without a branch-point sha would leave Verify with nothing to
+// compare against and silently pass everything. When no sha is available, the commits are turned
+// off and the run falls back to the former HEAD baseline.
+test("code's commit becomes false and the diff baseline returns to HEAD when head is not a sha", async () => {
   for (const branch of [
     { branch: "feat/sample-branch", head: "" },
     { branch: "feat/sample-branch", head: "not-a-sha" },
@@ -1230,21 +1281,26 @@ test("head が sha でないときは code の commit を false にし diff 基�
       stubs: makeStubs({ branch, plan: refPlan() }),
     });
     const codeArgs = calls.workflow.find((c) => c.name === "code").args;
-    assert.equal(codeArgs.commit, false, `head=${JSON.stringify(branch.head)} で commit: false`);
+    assert.equal(codeArgs.commit, false, `head=${JSON.stringify(branch.head)} gives commit: false`);
     const diffCall = calls.agent.find((c) => c.opts.label === "diff-files");
     assert.ok(
       diffCall.prompt.includes("git diff HEAD --name-only"),
-      "per-unit commit 無効時は従来どおり HEAD 基準で diff する",
+      "with the per-unit commits off, the diff measures from HEAD as before",
     );
-    assert.equal(result.stopped, undefined, "sha が取れなくても fail-close しない");
+    assert.equal(result.stopped, undefined, "an unavailable sha does not fail closed");
   }
 });
 
-// unit が既に履歴にあるので、Ship は残余だけを commit し、残余ゼロを正常終了として扱う。
-test("per-unit commit 有効時の Ship prompt は残余 commit 指示になり、空なら skip を許す", async () => {
+// The units already sit in history, so Ship commits the remainder alone and treats an empty
+// remainder as a normal finish.
+test("with the per-unit commits on, the Ship prompt instructs a remainder commit and allows skipping when empty", async () => {
   const withCommits = await runWorkflow(buildJs, { args, stubs: makeStubs() });
   const shipPrompt = agentCallsOf(withCommits.calls, "ship")[0].prompt;
-  assert.match(shipPrompt, /skip the commit/, "残余が空なら commit を skip してよいと指示する");
+  assert.match(
+    shipPrompt,
+    /skip the commit/,
+    "it allows skipping the commit on an empty remainder",
+  );
 
   const fallback = await runWorkflow(buildJs, {
     args,
@@ -1254,11 +1310,11 @@ test("per-unit commit 有効時の Ship prompt は残余 commit 指示になり�
   assert.notEqual(
     shipPrompt,
     fallbackPrompt,
-    "per-unit commit 無効時は単一 commit 指示に戻り、prompt が変わる",
+    "with the per-unit commits off it returns to a single-commit instruction and the prompt differs",
   );
 });
 
-test("stopped 値集合の snapshot が 13 値と exact match し、audit 経路の残骸が無い", () => {
+test("the snapshot of the stopped value set matches 13 values exactly and holds no remnant of the audit route", () => {
   const source = readFileSync(buildJs, "utf8");
   const stopped = new Set();
   for (const m of source.matchAll(/stopped:\s*"([^"]+)"/g)) stopped.add(m[1]);
@@ -1279,48 +1335,53 @@ test("stopped 値集合の snapshot が 13 値と exact match し、audit 経路
       "revalidate-failed",
       "revalidate-incomplete",
     ],
-    "stopped リテラル集合が 13 値と exact match する (Plan 節なしの差し戻しで no-plan、plan 自律生成の停止値 2 つは消えている)",
+    "the stopped literal set matches 13 values exactly: no-plan for handing a plan-less issue back, and the two stop values of autonomous plan generation are gone",
   );
   const explore = source.match(/agentType:\s*"Explore"/g) || [];
-  assert.equal(explore.length, 0, 'agentType: "Explore" が 0 件');
-  // regression guard: audit fan-out / fix loop の残骸が無い。
-  assert.ok(!source.includes('sibling("audit"'), "audit workflow の呼び出しが残っていない");
-  assert.ok(!source.includes("MAX_FIX_ROUNDS"), "fix → 再監査 loop が残っていない");
-  assert.ok(!source.includes("reaudited"), "reaudited flag が残っていない");
+  assert.equal(explore.length, 0, 'agentType: "Explore" appears zero times');
+  // regression guard: no remnant of the audit fan-out or the fix loop.
+  assert.ok(!source.includes('sibling("audit"'), "no call to the audit workflow remains");
+  assert.ok(!source.includes("MAX_FIX_ROUNDS"), "no fix-then-re-audit loop remains");
+  assert.ok(!source.includes("reaudited"), "no reaudited flag remains");
 });
 
-// build は起票せず、scope 外候補を戻り値 backlog_candidates にのみ surface する。
-// PR body には出さない (レビュー対象でないため)。ユーザーは戻り値から /issue で起票する。
-test("Backlog 候補は PR body に出さず戻り値 backlog_candidates にのみ surface する", async () => {
+// build files nothing; it surfaces an out-of-scope candidate in the return value's
+// backlog_candidates alone. It stays out of the PR body, which is not what a reviewer reads. The
+// user files it with /issue from the return value.
+test("a backlog candidate stays out of the PR body and surfaces only in the return value's backlog_candidates", async () => {
   const plan = makePlan({
-    backlog_candidates: [{ summary: "issue 由来の scope 外候補" }],
+    backlog_candidates: [{ summary: "an out-of-scope candidate from the issue" }],
   });
   const { calls, result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({ plan }),
   });
 
-  // 候補は Ship の PR body prompt には載らない
+  // The candidate stays out of Ship's PR body prompt
   const shipCalls = agentCallsOf(calls, "ship");
-  assert.equal(shipCalls.length, 1, "ship agent が 1 回呼ばれる");
+  assert.equal(shipCalls.length, 1, "the ship agent runs once");
   assert.ok(
-    !shipCalls[0].prompt.includes("issue 由来の scope 外候補"),
-    "ship prompt (PR body) に backlog 候補 summary が載らない",
+    !shipCalls[0].prompt.includes("an out-of-scope candidate from the issue"),
+    "the backlog candidate summary stays out of the ship prompt (the PR body)",
   );
 
-  // 候補は戻り値にのみ surface する
-  assert.ok(Array.isArray(result.backlog_candidates), "戻り値に backlog_candidates 配列が載る");
+  // The candidate surfaces in the return value alone
+  assert.ok(
+    Array.isArray(result.backlog_candidates),
+    "the return value carries a backlog_candidates array",
+  );
   assert.ok(
     result.backlog_candidates.some(
-      (c) => c.source === "issue" && c.summary === "issue 由来の scope 外候補",
+      (c) => c.source === "issue" && c.summary === "an out-of-scope candidate from the issue",
     ),
-    "backlog_candidates に source: issue の候補が載る",
+    "backlog_candidates carries the candidate with source: issue",
   );
 });
 
-// reviewer-conformance の Spec 軸 findings は決定論の逸脱リスト (scope / missing) と混ぜず、
-// 独立軸として Ship の PR body payload と戻り値 conformance_findings に surface する。
-test("conformance findings が独立軸として surface し、決定論の逸脱リストに混ざらない", async () => {
+// reviewer-conformance's Spec-axis findings stay unmixed with the deterministic deviation lists
+// (scope / missing) and surface as their own axis in Ship's PR body payload and in the return
+// value's conformance_findings.
+test("conformance findings surface as their own axis and stay unmixed with the deterministic deviation lists", async () => {
   const { calls, result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -1338,37 +1399,42 @@ test("conformance findings が独立軸として surface し、決定論の逸�
     }),
   });
 
-  // 候補は Ship の PR body payload (shipPayload JSON) に載る
+  // The finding rides Ship's PR body payload (the shipPayload JSON)
   const shipCalls = agentCallsOf(calls, "ship");
-  assert.equal(shipCalls.length, 1, "ship agent が 1 回呼ばれる");
+  assert.equal(shipCalls.length, 1, "the ship agent runs once");
   assert.ok(
     shipCalls[0].prompt.includes("no test for T-003"),
-    "ship prompt (PR body payload) に conformance finding の detail が載る",
+    "the conformance finding's detail rides the ship prompt (the PR body payload)",
   );
 
   const confCalls = agentCallsOf(calls, "conformance");
   assert.equal(
     confCalls[0].opts.model,
     "sonnet",
-    "conformance は sonnet 固定 (session model を継承しない)",
+    "conformance is fixed to sonnet and does not inherit the session model",
   );
 
-  // 戻り値の conformance_findings に件数が surface する
-  assert.equal(result.conformance_findings, 1, "戻り値 conformance_findings が 1");
+  // The count surfaces in the return value's conformance_findings
+  assert.equal(result.conformance_findings, 1, "the return value's conformance_findings is 1");
 
-  // 独立軸: 決定論の逸脱リストには混ざらない
+  // Its own axis: it stays unmixed with the deterministic deviation lists
   assert.deepEqual(
     result.scope_deviations,
     [],
-    "conformance finding は scope_deviations に混ざらない",
+    "a conformance finding does not mix into scope_deviations",
   );
-  assert.deepEqual(result.missing_tests, [], "conformance finding は missing_tests に混ざらない");
+  assert.deepEqual(
+    result.missing_tests,
+    [],
+    "a conformance finding does not mix into missing_tests",
+  );
 });
 
-// tail の情報系セクション (assumptions / conformance / anomaly) の自由記述は reviewer が
-// 英語で吐くので、Ship 直前に対象言語へ翻訳 + 圧縮する。訳文が shipPayload に反映され、
-// ship prompt (PR body payload) に載ることを検証する。
-test("translate-tail の訳文が shipPayload に反映され ship prompt に載る", async () => {
+// The free-form text in the tail's informational sections (assumptions / conformance / anomaly)
+// comes out of the reviewer in English, so it is translated and compressed just before Ship. These
+// verify that the translation lands in shipPayload and rides the ship prompt (the PR body
+// payload).
+test("the translate-tail output lands in shipPayload and rides the ship prompt", async () => {
   const plan = makePlan({
     assumptions: ["assume in EN"],
   });
@@ -1382,8 +1448,8 @@ test("translate-tail の訳文が shipPayload に反映され ship prompt に載
           { category: "missing", spec_line: "L1", location: "a.js:1", detail: "conf in EN" },
         ],
       },
-      // 入力配列は prompt の最終行 (言語マーカーに依存しない)。各 {id,text} の text を
-      // JA<...> でラップし、id を付けて返す。
+      // The input array is the prompt's last line, independent of any language marker. Each
+      // {id,text} comes back with its text wrapped in JA<...> and its id kept.
       translate: (prompt) => {
         const arr = JSON.parse(prompt.trim().split("\n").pop());
         return { translations: arr.map((o) => ({ id: o.id, text: `JA<${o.text}>` })) };
@@ -1391,27 +1457,28 @@ test("translate-tail の訳文が shipPayload に反映され ship prompt に載
     }),
   });
 
-  // translate agent は slots が非空 (assumption + conformance) なので 1 回呼ばれる
+  // The translate agent runs once because the slots are non-empty (assumption + conformance)
   const translateCalls = agentCallsOf(calls, "translate");
-  assert.equal(translateCalls.length, 1, "translate-tail agent が 1 回呼ばれる");
+  assert.equal(translateCalls.length, 1, "the translate-tail agent runs once");
 
-  // 訳文が ship prompt (shipPayload JSON) に載り、英語原文は残らない
+  // The translation rides the ship prompt (the shipPayload JSON) and no English original remains
   const shipCalls = agentCallsOf(calls, "ship");
-  assert.equal(shipCalls.length, 1, "ship agent が 1 回呼ばれる");
+  assert.equal(shipCalls.length, 1, "the ship agent runs once");
   assert.ok(
     shipCalls[0].prompt.includes("JA<conf in EN>"),
-    "ship prompt に翻訳済み conformance detail が載る",
+    "the translated conformance detail rides the ship prompt",
   );
   assert.ok(
     shipCalls[0].prompt.includes("JA<assume in EN>"),
-    "ship prompt に翻訳済み assumption が載る",
+    "the translated assumption rides the ship prompt",
   );
 });
 
-// 圧縮の強さは kind で分かれる。finding の detail は location / spec_line が根拠を別に
-// 持つので削れるが、assumption は人間が veto を判断する材料で、粒度を落とすと判断できな
-// くなる。kind が入力に載らないと prompt の圧縮指示がどの要素にも当たらない。
-test("translate-tail の入力が slot ごとに kind を運ぶ", async () => {
+// How hard the compression goes differs by kind. A finding's detail can be cut because location
+// and spec_line hold the grounds separately, while an assumption is what a human weighs a veto
+// against and becomes undecidable once its granularity drops. Without kind in the input, the
+// prompt's compression instruction lands on no element at all.
+test("the translate-tail input carries a kind per slot", async () => {
   const plan = makePlan({ assumptions: ["assume A"] });
   const { calls } = await runWorkflow(buildJs, {
     args,
@@ -1432,7 +1499,7 @@ test("translate-tail の入力が slot ごとに kind を運ぶ", async () => {
   });
 
   const translateCalls = agentCallsOf(calls, "translate");
-  assert.equal(translateCalls.length, 1, "translate-tail agent が 1 回呼ばれる");
+  assert.equal(translateCalls.length, 1, "the translate-tail agent runs once");
   const input = JSON.parse(translateCalls[0].prompt.trim().split("\n").pop());
   assert.deepEqual(
     input.map((o) => ({ kind: o.kind, text: o.text })),
@@ -1441,19 +1508,19 @@ test("translate-tail の入力が slot ごとに kind を運ぶ", async () => {
       { kind: "finding", text: "conf B" },
       { kind: "anomaly", text: "anomaly C" },
     ],
-    "assumption / finding / anomaly が kind 付きで渡る",
+    "assumption, finding, and anomaly are passed with their kind",
   );
   assert.ok(
     translateCalls[0].prompt.includes("`finding`") &&
       translateCalls[0].prompt.includes("`assumption`"),
-    "prompt が kind ごとの圧縮指示を持つ",
+    "the prompt carries a compression instruction per kind",
   );
 });
 
-// evidence を slot に入れると anomaly 1 件あたりの id が 1 から 1+N に増え、全か無かの
-// 書き戻しが突合に失敗する確率が上がる。1 つでも欠けると tail 全体が英語のまま ship される。
-// evidence 自体は翻訳を通さず shipPayload へ素通りする。
-test("translate-tail の slot に anomaly の evidence は入らない", async () => {
+// Putting evidence in a slot raises the ids per anomaly from 1 to 1+N and makes the all-or-nothing
+// write-back likelier to fail its match. One missing entry ships the whole tail in English.
+// evidence itself passes straight through to shipPayload without translation.
+test("an anomaly's evidence stays out of the translate-tail slots", async () => {
   const plan = makePlan({ assumptions: [] });
   const { calls } = await runWorkflow(buildJs, {
     args,
@@ -1481,21 +1548,22 @@ test("translate-tail の slot に anomaly の evidence は入らない", async (
   });
 
   const translateCalls = agentCallsOf(calls, "translate");
-  assert.equal(translateCalls.length, 1, "translate-tail agent が 1 回呼ばれる");
+  assert.equal(translateCalls.length, 1, "the translate-tail agent runs once");
   const input = JSON.parse(translateCalls[0].prompt.trim().split("\n").pop());
   assert.deepEqual(
     input.map((o) => o.text),
     ["already implemented"],
-    "slot は notes だけで evidence は含まない",
+    "the slots carry notes alone and no evidence",
   );
 
   const shipCalls = agentCallsOf(calls, "ship");
-  assert.ok(shipCalls[0].prompt.includes("JA<already implemented>"), "notes は翻訳されて載る");
-  assert.ok(shipCalls[0].prompt.includes("ev two"), "evidence は原文のまま載る");
+  assert.ok(shipCalls[0].prompt.includes("JA<already implemented>"), "notes rides translated");
+  assert.ok(shipCalls[0].prompt.includes("ev two"), "evidence rides in its original wording");
 });
 
-// 訳が id 順を入れ替えて返っても、消費側は id で突合して正しい slot へ書き戻す。
-test("translate-tail の訳が順序入れ替えでも id で正しい slot に反映される", async () => {
+// Even when the translation comes back with its ids reordered, the consumer matches on id and
+// writes each one back into the right slot.
+test("a reordered translate-tail translation still lands in the right slot by id", async () => {
   const plan = makePlan({
     assumptions: ["assume A"],
   });
@@ -1507,7 +1575,7 @@ test("translate-tail の訳が順序入れ替えでも id で正しい slot に�
         spec_found: true,
         findings: [{ category: "missing", spec_line: "L1", location: "a.js:1", detail: "conf B" }],
       },
-      // id を保ったまま順序を反転して返す (位置ベースなら取り違える)
+      // Returns the entries reversed with their ids kept; a position-based consumer would mix them up
       translate: (prompt) => {
         const arr = JSON.parse(prompt.trim().split("\n").pop());
         return { translations: arr.map((o) => ({ id: o.id, text: `JA<${o.text}>` })).reverse() };
@@ -1516,20 +1584,20 @@ test("translate-tail の訳が順序入れ替えでも id で正しい slot に�
   });
 
   const shipCalls = agentCallsOf(calls, "ship");
-  assert.equal(shipCalls.length, 1, "ship agent が 1 回呼ばれる");
+  assert.equal(shipCalls.length, 1, "the ship agent runs once");
   assert.ok(
     shipCalls[0].prompt.includes("JA<conf B>"),
-    "順序反転でも conformance detail に自分の訳が載る",
+    "even reversed, the conformance detail carries its own translation",
   );
   assert.ok(
     shipCalls[0].prompt.includes("JA<assume A>"),
-    "順序反転でも assumption に自分の訳が載る",
+    "even reversed, the assumption carries its own translation",
   );
 });
 
-// 訳の id が入力と一致しない (欠落・取り違え) とき、消費側は fail-open で英語原文を
-// 維持し PR を block しない。
-test("translate-tail の訳 id が入力と一致しないなら英語原文で ship を継続する", async () => {
+// When a translation's ids do not match the input (missing or mixed up), the consumer fails open,
+// keeps the English originals, and does not block the PR.
+test("ship continues with the English originals when the translate-tail ids do not match the input", async () => {
   const { calls } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -1539,16 +1607,19 @@ test("translate-tail の訳 id が入力と一致しないなら英語原文で 
           { category: "missing", spec_line: "L1", location: "a.js:1", detail: "conf in EN" },
         ],
       },
-      // slot 0 の訳が無く、存在しない id 5 の訳を返す (取り違え)
+      // No translation for slot 0, and one for the nonexistent id 5: a mix-up
       translate: () => ({ translations: [{ id: 5, text: "only one" }] }),
     }),
   });
 
   const shipCalls = agentCallsOf(calls, "ship");
-  assert.equal(shipCalls.length, 1, "ship agent が 1 回呼ばれる");
+  assert.equal(shipCalls.length, 1, "the ship agent runs once");
   assert.ok(
     shipCalls[0].prompt.includes("conf in EN"),
-    "id 不一致時は英語原文の conformance detail が ship prompt に残る",
+    "on an id mismatch the English conformance detail stays in the ship prompt",
   );
-  assert.ok(!shipCalls[0].prompt.includes("only one"), "id 不一致の訳は採用されない");
+  assert.ok(
+    !shipCalls[0].prompt.includes("only one"),
+    "a translation with a mismatched id is not taken",
+  );
 });

@@ -10,10 +10,11 @@ const sites = {
   en: join(root, "workflows", "code.js"),
 };
 
-// notes と evidence を分けないと、agent は ctx の「各 claim を tool result と突き合わせる」
-// 指示を 1 本の散文への証拠列挙と解釈する。PR 本文の anomaly は改行を潰して 1 行に描画するため、
-// 読み手は結論の切れ目を見つけられない。
-test("no-red の notes は結論 1 文に絞り、根拠を evidence へ分ける", () => {
+// Without separating notes from evidence, the agent reads ctx's "check each claim against the
+// tool result" as an instruction to enumerate the evidence into one stretch of prose. The PR
+// body renders an anomaly with its newlines collapsed onto one line, leaving the reader unable
+// to find where the conclusion ends.
+test("the no-red notes hold one conclusion sentence and move the grounds to evidence", () => {
   const split = {
     ja: /結論を 1 文で書く/,
     en: /the conclusion in one sentence/,
@@ -24,14 +25,14 @@ test("no-red の notes は結論 1 文に絞り、根拠を evidence へ分け�
   };
   for (const [name, path] of Object.entries(sites)) {
     const src = readFileSync(path, "utf8");
-    assert.match(src, split[name], `${name}: notes は結論 1 文`);
-    assert.match(src, separate[name], `${name}: 根拠は evidence へ`);
+    assert.match(src, split[name], `${name}: notes holds one conclusion sentence`);
+    assert.match(src, separate[name], `${name}: the grounds go to evidence`);
   }
 });
 
-// schema の description だけでは Red retry の「精査せよ」に押し負け、精査の経過が notes に
-// 流れ込む。prompt 側にも分担を置く。
-test("Red の prompt が notes と evidence の分担を伝える", () => {
+// The schema description alone loses to the Red retry's "examine it closely", and the course of
+// that examination flows into notes. The division is stated on the prompt side as well.
+test("the Red prompt states the division between notes and evidence", () => {
   const split = {
     ja: [
       /結論を notes に 1 文で、根拠を evidence に 1 項目 1 行で書く/,
@@ -44,15 +45,23 @@ test("Red の prompt が notes と evidence の分担を伝える", () => {
   };
   for (const [name, path] of Object.entries(sites)) {
     const src = readFileSync(path, "utf8");
-    assert.match(src, split[name][0], `${name}: Red が分担を伝える`);
-    assert.match(src, split[name][1], `${name}: Red retry が分担を伝える`);
+    assert.match(src, split[name][0], `${name}: Red states the division`);
+    assert.match(src, split[name][1], `${name}: the Red retry states the division`);
   }
 });
 
-test("no-red anomaly が evidence を PR へ運ぶ", () => {
+test("the no-red anomaly carries evidence into the PR", () => {
   for (const [name, path] of Object.entries(sites)) {
     const src = readFileSync(path, "utf8");
-    assert.match(src, /"red_confirmed", "test_files", "notes", "evidence"/, `${name}: schema 必須`);
-    assert.match(src, /evidence: Array\.isArray\(red\.evidence\)/, `${name}: anomaly が運ぶ`);
+    assert.match(
+      src,
+      /"red_confirmed", "test_files", "notes", "evidence"/,
+      `${name}: required by the schema`,
+    );
+    assert.match(
+      src,
+      /evidence: Array\.isArray\(red\.evidence\)/,
+      `${name}: the anomaly carries it`,
+    );
   }
 });

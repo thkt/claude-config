@@ -1,11 +1,12 @@
-// DR-0088 の unit ごとのコミット。コミットメッセージと staging 範囲は agent の裁量に
-// 委ねると壊れても静かなので、trailer の中身と staging 禁止事項を prompt 上で固定する。
+// DR-0088's per-unit commit. Leaving the commit message and the staging range to the agent's
+// discretion breaks silently, so the trailer contents and the staging prohibitions are pinned
+// on the prompt.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runWorkflow } from "../../_lib/run-workflow.js";
+import { checkWorkflowSyntax, runWorkflow } from "../../_lib/run-workflow.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..", "..");
@@ -25,7 +26,7 @@ const plan = {
   ],
 };
 
-// tests が空の unit は直接実装 1 段。
+// A unit with no tests takes one direct implementation step.
 const noTestPlan = {
   test_command: "echo test",
   units: [
@@ -40,7 +41,7 @@ const noTestPlan = {
   ],
 };
 
-// commit agent の戻り値だけ差し替えられる happy stub。
+// A happy stub where only the commit agent's return value varies.
 const stubWith = (commitResult) => (prompt, opts) => {
   const label = opts.label ?? "";
   if (label === "reference-index") return { found: false, table: "" };
@@ -58,17 +59,17 @@ const committed = { committed: true, subject: "feat: sample subject", left_unsta
 const commitCalls = (calls) =>
   calls.agent.filter((c) => (c.opts.label ?? "").startsWith("commit:"));
 
-test("commit 未指定なら commit agent を呼ばず既存挙動 (working tree 未コミット) のまま完走する", async () => {
+test("runs to completion without the commit agent, leaving the working tree uncommitted, when commit is unset", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
     args: { plan, repo: "" },
     stubs: { agent: stubWith(committed) },
   });
-  assert.equal(commitCalls(calls).length, 0, "commit 未指定で commit agent が呼ばれない");
-  assert.deepEqual(result.commits, [], "戻り値 commits は空配列");
-  assert.deepEqual(result.completed, ["U-1"], "unit は通常どおり完了する");
+  assert.equal(commitCalls(calls).length, 0, "no commit agent runs when commit is unset");
+  assert.deepEqual(result.commits, [], "the returned commits is an empty array");
+  assert.deepEqual(result.completed, ["U-1"], "the unit completes as usual");
 });
 
-test("commit: true で unit ごとに commit agent が 1 回走り、戻り値 commits に unit id と subject が載る", async () => {
+test("runs the commit agent once per unit with commit: true and lists the unit id and subject in commits", async () => {
   const twoUnits = {
     test_command: "echo test",
     units: [
@@ -83,7 +84,7 @@ test("commit: true で unit ごとに commit agent が 1 回走り、戻り値 c
   assert.deepEqual(
     commitCalls(calls).map((c) => c.opts.label),
     ["commit:U-1", "commit:U-2"],
-    "unit ごとに 1 回、実装順に commit agent が走る",
+    "the commit agent runs once per unit, in implementation order",
   );
   assert.deepEqual(
     result.commits,
@@ -91,50 +92,54 @@ test("commit: true で unit ごとに commit agent が 1 回走り、戻り値 c
       { unit: "U-1", subject: "feat: sample subject" },
       { unit: "U-2", subject: "feat: sample subject" },
     ],
-    "戻り値 commits に unit id と subject が載る",
+    "the returned commits carries the unit id and subject",
   );
-  assert.equal(result.anomalies.length, 0, "成功コミットは anomaly を作らない");
+  assert.equal(result.anomalies.length, 0, "a successful commit creates no anomaly");
 });
 
-test("commit prompt が plan 由来の trailer ブロックを逐語コピー指示付きで運ぶ", async () => {
+test("the commit prompt carries the plan-derived trailer block with the verbatim-copy instruction", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan, repo: "", commit: true, issue: "123" },
     stubs: { agent: stubWith(committed) },
   });
   const prompt = commitCalls(calls)[0].prompt;
-  assert.match(prompt, /^Unit: U-1$/m, "Unit trailer が載る");
+  assert.match(prompt, /^Unit: U-1$/m, "the Unit trailer is present");
   assert.match(
     prompt,
     /^Contract: sample contract$/m,
-    "Contract trailer が plan の contract を運ぶ",
+    "the Contract trailer carries the plan's contract",
   );
-  assert.match(prompt, /^Tests: T-001$/m, "Tests trailer が T-NNN を運ぶ");
-  assert.match(prompt, /^Seam: false$/m, "Seam trailer が載る");
-  assert.match(prompt, /^Issue: #123$/m, "issue 引数が Issue trailer になる");
-  assert.match(prompt, /verbatim/, "trailer ブロックの逐語コピー指示が載る");
-  assert.equal(commitCalls(calls)[0].opts.model, "haiku", "commit agent は haiku 固定");
+  assert.match(prompt, /^Tests: T-001$/m, "the Tests trailer carries the T-NNN ids");
+  assert.match(prompt, /^Seam: false$/m, "the Seam trailer is present");
+  assert.match(prompt, /^Issue: #123$/m, "the issue argument becomes the Issue trailer");
+  assert.match(
+    prompt,
+    /verbatim/,
+    "the verbatim-copy instruction for the trailer block is present",
+  );
+  assert.equal(commitCalls(calls)[0].opts.model, "haiku", "the commit agent is fixed to haiku");
 });
 
-// issue 番号は "#123" 形でも渡りうる。trailer 側で "##123" にならないことを固定する。
-test("issue が #付きで渡っても Issue trailer は # を重ねない", async () => {
+// An issue number can also arrive as "#123". This pins that the trailer does not become "##123".
+test("the Issue trailer does not double the # when issue arrives with one", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan, repo: "", commit: true, issue: "#123" },
     stubs: { agent: stubWith(committed) },
   });
-  assert.match(commitCalls(calls)[0].prompt, /^Issue: #123$/m, "Issue trailer は #123");
+  assert.match(commitCalls(calls)[0].prompt, /^Issue: #123$/m, "the Issue trailer reads #123");
 });
 
-test("issue 未指定なら Issue trailer を作らない", async () => {
+test("creates no Issue trailer when issue is unset", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan, repo: "", commit: true },
     stubs: { agent: stubWith(committed) },
   });
-  assert.doesNotMatch(commitCalls(calls)[0].prompt, /^Issue:/m, "Issue trailer が載らない");
+  assert.doesNotMatch(commitCalls(calls)[0].prompt, /^Issue:/m, "no Issue trailer is present");
 });
 
-// pre-existing な untracked を stage すると仕様書・調査メモ・ローカル設定が PR に漏れる。
-// Ship 側と同じガードを commit agent 側にも複製することを固定する。
-test("commit prompt に git add -A 禁止と untracked_baseline の never-stage 指示が載る", async () => {
+// Staging a pre-existing untracked file leaks specs, research notes, and local settings into the
+// PR. This pins that the guard on the Ship side is duplicated on the commit agent side too.
+test("the commit prompt carries the git add -A ban and the never-stage instruction for untracked_baseline", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: {
       plan,
@@ -145,59 +150,73 @@ test("commit prompt に git add -A 禁止と untracked_baseline の never-stage 
     stubs: { agent: stubWith(committed) },
   });
   const prompt = commitCalls(calls)[0].prompt;
-  assert.match(prompt, /git add -A/, "git add -A 禁止が載る");
-  assert.match(prompt, /notes\/local-memo\.md/, "baseline の untracked path が never-stage に載る");
-  assert.match(prompt, /git rev-parse --show-toplevel/, "repo 指定時は repo 確認ガードが載る");
+  assert.match(prompt, /git add -A/, "the git add -A ban is present");
+  assert.match(
+    prompt,
+    /notes\/local-memo\.md/,
+    "the baseline untracked path lands in the never-stage set",
+  );
+  assert.match(
+    prompt,
+    /git rev-parse --show-toplevel/,
+    "a given repo brings the repo confirmation guard",
+  );
 });
 
-// コミット失敗 (pre-commit gate ブロック等) で build 全体を止めない。作業はツリーに
-// 残り、呼び出し側の最終コミットが拾う。落ちたこと自体は anomaly として PR に出す。
-test("commit agent が committed: false を返すと stop せず anomaly (uncommitted) に記録する", async () => {
+// A failed commit (a pre-commit gate block, say) does not stop the whole build. The work stays
+// in the tree and the caller's final commit picks it up. The failure itself surfaces in the PR
+// as an anomaly.
+test("records an uncommitted anomaly without stopping when the commit agent returns committed: false", async () => {
   const { result } = await runWorkflow(codeJs, {
     args: { plan, repo: "", commit: true },
     stubs: {
       agent: stubWith({ committed: false, subject: "", left_unstaged: ["gate blocked"] }),
     },
   });
-  assert.equal(result.stopped, undefined, "コミット失敗で fail-close しない");
-  assert.deepEqual(result.commits, [], "失敗したコミットは commits に載らない");
+  assert.equal(result.stopped, undefined, "a failed commit does not fail closed");
+  assert.deepEqual(result.commits, [], "a failed commit does not land in commits");
   assert.deepEqual(
     result.anomalies,
     [{ unit: "U-1", kind: "uncommitted", notes: "gate blocked" }],
-    "kind: uncommitted の anomaly が理由付きで載る",
+    "an anomaly of kind uncommitted lands with its reason",
   );
 });
 
-test("commit agent が null を返しても stop せず anomaly (uncommitted) に記録する", async () => {
+test("records an uncommitted anomaly without stopping when the commit agent returns null", async () => {
   const { result } = await runWorkflow(codeJs, {
     args: { plan, repo: "", commit: true },
     stubs: { agent: stubWith(null) },
   });
-  assert.equal(result.stopped, undefined, "commit agent 不在でも fail-close しない");
-  assert.equal(result.anomalies[0].kind, "uncommitted", "kind: uncommitted の anomaly が載る");
+  assert.equal(result.stopped, undefined, "a missing commit agent does not fail closed");
+  assert.equal(result.anomalies[0].kind, "uncommitted", "an anomaly of kind uncommitted lands");
 });
 
-test("tests 空の直接実装 unit もコミットされ、Tests trailer は作られない", async () => {
+test("commits a direct-implementation unit with no tests and creates no Tests trailer", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
     args: { plan: noTestPlan, repo: "", commit: true },
     stubs: { agent: stubWith(committed) },
   });
-  assert.equal(commitCalls(calls).length, 1, "直接実装 unit も commit agent が 1 回走る");
+  assert.equal(
+    commitCalls(calls).length,
+    1,
+    "the commit agent runs once for a direct-implementation unit too",
+  );
   assert.doesNotMatch(
     commitCalls(calls)[0].prompt,
     /^Tests:/m,
-    "T-NNN が無い unit は Tests trailer 無し",
+    "a unit with no T-NNN carries no Tests trailer",
   );
   assert.deepEqual(
     result.commits.map((c) => c.unit),
     ["U-1"],
-    "直接実装 unit が commits に載る",
+    "the direct-implementation unit lands in commits",
   );
 });
 
-// Red 未確認 (既に実装済み) の unit は実装 step を飛ばすが、Red step が書いたテストは
-// ツリーに残る。ここもコミット対象にして、次の unit のコミットへ混ざらないようにする。
-test("Red 未確認で実装を飛ばした unit も Red が書いたテストファイルごとコミットされる", async () => {
+// A unit whose Red went unconfirmed (already implemented) skips the implementation step, but the
+// tests the Red step wrote stay in the tree. Those are committed here too, so they do not mix
+// into the next unit's commit.
+test("commits the test files Red wrote even for a unit that skipped implementation on an unconfirmed Red", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
     args: { plan, repo: "", commit: true },
     stubs: {
@@ -212,18 +231,18 @@ test("Red 未確認で実装を飛ばした unit も Red が書いたテスト�
     },
   });
   const commit = commitCalls(calls)[0];
-  assert.ok(commit, "Red 未確認 unit でも commit agent が走る");
-  assert.match(commit.prompt, /t\.test\.js/, "Red が書いたテストファイルが staging 対象に載る");
+  assert.ok(commit, "the commit agent runs for a unit with an unconfirmed Red");
+  assert.match(commit.prompt, /t\.test\.js/, "the test file Red wrote lands in the staging set");
   assert.deepEqual(
     result.anomalies.map((a) => a.kind),
     ["no-red"],
-    "no-red anomaly だけが残り uncommitted は増えない",
+    "only the no-red anomaly remains and no uncommitted one is added",
   );
 });
 
-// unit-failed で停止しても、それまでの unit のコミットは呼び出し側から見えなければ
-// 復旧の手がかりにならない。
-test("unit-failed の終端 return にも commits が載る", async () => {
+// When the run stops at unit-failed, the commits made until then are no help for recovery unless
+// the caller can see them.
+test("carries commits in the unit-failed terminal return too", async () => {
   const twoUnits = {
     test_command: "echo test",
     units: [
@@ -243,24 +262,25 @@ test("unit-failed の終端 return にも commits が載る", async () => {
       },
     },
   });
-  assert.equal(result.stopped, "unit-failed", "U-2 の失敗で unit-failed になる");
+  assert.equal(result.stopped, "unit-failed", "U-2 failing makes the run unit-failed");
   assert.deepEqual(
     result.commits.map((c) => c.unit),
     ["U-1"],
-    "停止時も U-1 のコミットが戻り値に残る",
+    "U-1's commit stays in the return value even when the run stops",
   );
 });
 
-// テストは EN 側のみに置く (DR-0092) ので、静的 gate の対象も EN 側のテストだけになる。
-// .ja/workflows/code.js は実行物ではないが、正である以上は構文が壊れていないことを見る。
-test("静的 gate が JA / EN の code.js と本 test で pass する", () => {
-  const targets = [
-    join(root, ".ja", "workflows", "code.js"),
-    join(root, "workflows", "code.js"),
-    join(root, "workflows", "code", "tests", "code.commit.test.js"),
-  ];
-  for (const file of targets) {
+// Tests live on the EN side only (DR-0092), so the static gates cover the EN tests alone.
+// .ja/workflows/code.js never executes, but it is the source of intent, so its syntax is
+// checked for breakage.
+test("the static gates pass on the JA and EN code.js and on this test", () => {
+  const scripts = [join(root, ".ja", "workflows", "code.js"), join(root, "workflows", "code.js")];
+  const modules = [join(root, "workflows", "code", "tests", "code.commit.test.js")];
+  for (const file of scripts) {
+    checkWorkflowSyntax(file);
+  }
+  for (const file of modules) {
     execFileSync("node", ["--check", file], { cwd: root });
   }
-  execFileSync("npx", ["oxlint", ...targets], { cwd: root });
+  execFileSync("npx", ["oxlint", ...scripts, ...modules], { cwd: root });
 });

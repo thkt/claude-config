@@ -1,6 +1,7 @@
-// 本番サンドボックスが持たないグローバルを、テスト実行からも同じ形で欠かせることを固定
-// する。ここが緩むと、本番で落ちる script がテストでは通る状態に戻る。供給されるものと
-// 塞がれるものの一覧は rules/conventions/WORKFLOWS.md の Script evaluation form にある。
+// These pin that the globals the production sandbox lacks are missing in the same shape from a
+// test run. Loosening this returns the state where a script that dies in production passes under
+// test. The list of what is supplied and what is sealed off lives in
+// rules/conventions/WORKFLOWS.md under Script evaluation form.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -8,9 +9,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PRODUCTION_GLOBALS, runWorkflow } from "../run-workflow.js";
 
-// runWorkflow はファイルパスからソースを読む契約 (readFileSync) なので、script 本文を
-// 一時ファイルへ書き出してから渡す。テストごとに専用の一時ディレクトリを使い、他テストの
-// script ファイルと衝突しないようにする。
+// runWorkflow's contract reads the source from a file path (readFileSync), so the script body is
+// written to a temporary file first. Each test uses its own temporary directory so script files
+// never collide between tests.
 const withScript = async (source, run) => {
   const dir = mkdtempSync(join(tmpdir(), "run-workflow-test-"));
   const path = join(dir, "script.js");
@@ -22,12 +23,12 @@ const withScript = async (source, run) => {
   }
 };
 
-test("T-004 crypto を参照する script は ReferenceError で落ちる", async () => {
+test("T-004 a script referencing crypto dies with a ReferenceError", async () => {
   await withScript("return crypto.randomUUID();", async (path) => {
     await assert.rejects(
       () => runWorkflow(path, {}),
       (err) => {
-        assert.ok(err instanceof ReferenceError, "ReferenceError で落ちる");
+        assert.ok(err instanceof ReferenceError, "it dies with a ReferenceError");
         assert.match(err.message, /crypto is not defined/);
         return true;
       },
@@ -35,7 +36,7 @@ test("T-004 crypto を参照する script は ReferenceError で落ちる", asyn
   });
 });
 
-test("T-005 fetch と process と Buffer を参照する script も同じく落ちる", async () => {
+test("T-005 a script referencing fetch, process, or Buffer dies the same way", async () => {
   const cases = [
     { name: "fetch", source: "return fetch('https://example.com');" },
     { name: "process", source: "return process.version;" },
@@ -46,7 +47,7 @@ test("T-005 fetch と process と Buffer を参照する script も同じく落�
       await assert.rejects(
         () => runWorkflow(path, {}),
         (err) => {
-          assert.ok(err instanceof ReferenceError, `${name} は ReferenceError で落ちる`);
+          assert.ok(err instanceof ReferenceError, `${name} dies with a ReferenceError`);
           assert.match(err.message, new RegExp(`${name} is not defined`));
           return true;
         },
@@ -55,17 +56,17 @@ test("T-005 fetch と process と Buffer を参照する script も同じく落�
   }
 });
 
-test("T-006 Date.now を呼ぶ script は resume を理由に挙げる Error で落ちる", async () => {
+test("T-006 a script calling Date.now dies with an Error citing resume as the reason", async () => {
   await withScript("return Date.now();", async (path) => {
     await assert.rejects(
       () => runWorkflow(path, {}),
       (err) => {
-        // 部分一致だと harness が独自の言い回しに差し替わっても通ってしまう。実測した
-        // 本番の文言そのものと突き合わせる。
+        // A partial match would still pass after the harness swapped in its own phrasing, so this
+        // matches the production message itself.
         assert.equal(
           err.message,
           "Date.now() / new Date() are unavailable in workflow scripts (breaks resume). Stamp results after the workflow returns, or pass timestamps via args.",
-          "本番サンドボックスと同じ文言で落ちる",
+          "it dies with the same message as the production sandbox",
         );
         return true;
       },
@@ -73,58 +74,59 @@ test("T-006 Date.now を呼ぶ script は resume を理由に挙げる Error で
   });
 });
 
-test("T-007 引数つき new Date と Math.floor は落ちずに値を返す", async () => {
+test("T-007 new Date with arguments and Math.floor return values without dying", async () => {
   await withScript(
     "return { time: new Date(0).getTime(), floor: Math.floor(3.7) };",
     async (path) => {
       const { result } = await runWorkflow(path, {});
-      assert.equal(result.time, 0, "new Date(0) は落ちずに 1970-01-01 の epoch を返す");
-      assert.equal(result.floor, 3, "Math.floor は落ちずに小数を切り捨てた値を返す");
+      assert.equal(result.time, 0, "new Date(0) returns the 1970-01-01 epoch without dying");
+      assert.equal(result.floor, 3, "Math.floor returns the truncated value without dying");
     },
   );
 });
 
-test("T-008 返り値に置いた Map と Set と Date と RegExp は、本番の JSON 化と同じく空オブジェクトになる", async () => {
+test("T-008 a Map, Set, Date, or RegExp placed in the return value becomes an empty object, as production's JSON conversion does", async () => {
   await withScript(
     "return { map: new Map([['k', 'v']]), set: new Set([1]), date: new Date(0), re: /x/g, plain: { a: 1 }, arr: [1, 2] };",
     async (path) => {
       const { result } = await runWorkflow(path, {});
-      assert.deepEqual(result.map, {}, "Map は本番と同じく空オブジェクトで届く");
-      assert.deepEqual(result.set, {}, "Set は本番と同じく空オブジェクトで届く");
-      assert.deepEqual(result.date, {}, "Date は本番と同じく空オブジェクトで届く");
-      assert.deepEqual(result.re, {}, "RegExp は本番と同じく空オブジェクトで届く");
-      assert.deepEqual(result.plain, { a: 1 }, "plain object は中身を保ったまま届く");
-      assert.deepEqual(result.arr, [1, 2], "array は中身を保ったまま届く");
+      assert.deepEqual(result.map, {}, "a Map arrives as an empty object, as in production");
+      assert.deepEqual(result.set, {}, "a Set arrives as an empty object, as in production");
+      assert.deepEqual(result.date, {}, "a Date arrives as an empty object, as in production");
+      assert.deepEqual(result.re, {}, "a RegExp arrives as an empty object, as in production");
+      assert.deepEqual(result.plain, { a: 1 }, "a plain object arrives with its contents intact");
+      assert.deepEqual(result.arr, [1, 2], "an array arrives with its contents intact");
     },
   );
 });
 
-// 一覧に名前を足しても注入は増えないので、供給を書き足すまでここが赤くなる。console だけ
-// は ambient な vm の値として object を返すため空回りし、その実質は T-011 が守る。
-test("T-009 本番が供給するグローバルは harness からも参照できる", async () => {
+// Adding a name to the list does not create the injection, so this goes red until the supply is
+// written too. console alone spins idle, since an ambient vm value returns an object for it, and
+// T-011 guards what it actually does.
+test("T-009 the globals production supplies are reachable from the harness too", async () => {
   for (const name of PRODUCTION_GLOBALS) {
     await withScript(`return typeof ${name};`, async (path) => {
       const { result } = await runWorkflow(path, {});
-      assert.notEqual(result, "undefined", `${name} が供給される`);
+      assert.notEqual(result, "undefined", `${name} is supplied`);
     });
   }
 });
 
-// budget.total を見て分岐する script が、テストでだけ別の枝へ入ることを防ぐ。
-test("T-010 budget は target 未設定の状態を返す", async () => {
+// This stops a script branching on budget.total from taking a different branch under test alone.
+test("T-010 budget returns the state of a run with no target set", async () => {
   await withScript(
     "return { total: budget.total, spent: budget.spent(), remaining: budget.remaining() };",
     async (path) => {
       const { result } = await runWorkflow(path, {});
-      assert.equal(result.total, null, "target 未設定なので total は null");
-      assert.equal(result.spent, 0, "消費はまだ無い");
-      assert.equal(result.remaining, Infinity, "total が null のとき remaining は Infinity");
+      assert.equal(result.total, null, "with no target set, total is null");
+      assert.equal(result.spent, 0, "nothing is spent yet");
+      assert.equal(result.remaining, Infinity, "with total null, remaining is Infinity");
     },
   );
 });
 
-// ambient な vm の console のままだと、出力がどこにも現れないままテストが通る。
-test("T-011 console の出力は logs に届き、warn と error は接頭辞を持つ", async () => {
+// Left as the ambient vm console, the output would appear nowhere and the test would still pass.
+test("T-011 console output reaches logs, and warn and error carry a prefix", async () => {
   await withScript(
     "console.log('plain', { a: 1 }); console.warn('careful'); console.error('broken'); return 1;",
     async (path) => {
@@ -134,15 +136,15 @@ test("T-011 console の出力は logs に届き、warn と error は接頭辞を
   );
 });
 
-test("T-012 setTimeout は待ったあと再開し、clearTimeout はその再開を取り消す", async () => {
+test("T-012 setTimeout resumes after waiting, and clearTimeout cancels that resumption", async () => {
   await withScript(
     "const fired = await new Promise((r) => { setTimeout(() => r('fired'), 0); });" +
       "const canceled = await new Promise((r) => { const id = setTimeout(() => r('fired'), 0); clearTimeout(id); setTimeout(() => r('canceled'), 0); });" +
       "return { fired, canceled };",
     async (path) => {
       const { result } = await runWorkflow(path, {});
-      assert.equal(result.fired, "fired", "setTimeout のコールバックが走る");
-      assert.equal(result.canceled, "canceled", "clearTimeout したコールバックは走らない");
+      assert.equal(result.fired, "fired", "the setTimeout callback runs");
+      assert.equal(result.canceled, "canceled", "the cleared callback does not run");
     },
   );
 });

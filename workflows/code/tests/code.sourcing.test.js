@@ -27,24 +27,25 @@ const sites = {
   ),
 };
 
-// docs の取得手段を指示する 3 箇所。手段は scout に揃える。片方だけ手段を絞ると、
-// 読み手はどちらを先に試すのか決められない。
-test("docs の取得手段が scout で揃う", () => {
+// The three places instructing how to fetch docs. The means is scout everywhere. Narrowing it
+// in one place alone leaves the reader unable to tell which to reach for first.
+test("every site names scout as the way to fetch docs", () => {
   for (const [name, path] of Object.entries(sites)) {
-    assert.match(readFileSync(path, "utf8"), /scout fetch/, `${name}: 取得手段が scout fetch`);
+    assert.match(readFileSync(path, "utf8"), /scout fetch/, `${name}: the means is scout fetch`);
   }
 });
 
-// WebFetch と WebSearch は PreToolUse hook で deny しうるので、代替手段として書けない。
-// 名前を出した時点で読み手が第 2 の経路と受け取るため、言及ごと禁じる。
-test("WebFetch / WebSearch を代替経路として挙げない", () => {
+// A PreToolUse hook can deny WebFetch and WebSearch, so neither works as a fallback. Naming
+// one makes the reader take it as a second route, so the mention itself is prohibited.
+test("no site offers WebFetch or WebSearch as a fallback route", () => {
   for (const [name, path] of Object.entries(sites)) {
-    assert.doesNotMatch(readFileSync(path, "utf8"), /WebFetch|WebSearch/, `${name}: 言及なし`);
+    assert.doesNotMatch(readFileSync(path, "utf8"), /WebFetch|WebSearch/, `${name}: no mention`);
   }
 });
 
-// scout で読めなかったときの扱い。代替手段が無い以上、記憶を確定情報として書かせない。
-test("scout で読めないときは unverified 扱いにする", () => {
+// What happens when scout cannot read it. With no fallback, memory must not be written down as
+// confirmed fact.
+test("every site marks an unreadable source as unverified", () => {
   const unverified = {
     "code.js (ja)":
       /scout が無い、または fetch が失敗して読めなければ、その API 使用を未確認として/,
@@ -56,6 +57,6 @@ test("scout で読めないときは unverified 扱いにする", () => {
       /or scout not being installed, keep the finding but mark it `unverified external claim`/,
   };
   for (const [name, path] of Object.entries(sites)) {
-    assert.match(readFileSync(path, "utf8"), unverified[name], `${name}: unverified 扱い`);
+    assert.match(readFileSync(path, "utf8"), unverified[name], `${name}: marked unverified`);
   }
 });

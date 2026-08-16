@@ -1,11 +1,12 @@
-// 規約インデックス (docs/REFERENCE_INDEX.md) を unit ループ前に reader agent 1 体が読み、
-// script が表を glob 照合して実装 step の prompt に注入する。DR-0091 のフラットインデックス +
-// glob 照合を workflows/code.js の referenceModuleCtx 節 (ctx 追補形) に倣って実装する。
-// 注入ブロックは delimiter を持ち、インデックス本文が data であり指示ではない旨と、
-// 矛盾時は後の行が勝つ規則を明記する。glob 精度 (**, * の / 境界など) は後段の照合テスト群で
-// 検証するので、ここでは完全一致名だけの単純な glob 行で最小限を検証する。
-// 注入文言は EN/JA で localized される (EN "Read before implementing:" / JA "実装前に読む:") ため、
-// assertion の期待文字列だけ EN 版に合わせ、それ以外は .ja 版と同一内容にする。
+// One reader agent reads the conventions index (docs/REFERENCE_INDEX.md) before the unit loop,
+// and the script matches its table by glob and injects the result into the implementation step's
+// prompt. The injected block carries delimiters and states that the index body is data rather
+// than instructions, plus the rule that on a conflict the later line wins. Glob precision (the
+// `/` boundary of `**` and `*`, and so on) is verified by the matching cases further down, so
+// these first cases check the minimum with simple exact-name glob rows. The injected wording is
+// localized per EN / JA (EN "Read before implementing:" / JA "実装前に読む:"), so only the
+// expected strings in the assertions follow the EN version and everything else stays identical
+// to the .ja side.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -15,18 +16,19 @@ import { runWorkflow } from "../../_lib/run-workflow.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const codeJs = join(here, "..", "..", "code.js");
 
-// インデックス行は「対象 glob、1 行説明、リファレンスパス」の表。
-// sample.js に一致する glob 行 1 本と、glob 無し (常に判断候補として提示される) 行 1 本。
+// An index row is a table of "target glob, one-line description, reference path". One glob row
+// matching sample.js, and one row with no glob (always offered as a judgment candidate).
 const INDEX_TABLE =
   "| glob | description | path |\n" +
   "| --- | --- | --- |\n" +
-  "| sample.js | JS 実装時の命名規約 | docs/conventions/js-naming.md |\n" +
-  "| - | エラーハンドリングの書式規約。読むかは判断による | docs/conventions/error-handling.md |\n";
+  "| sample.js | naming conventions for JS | docs/conventions/js-naming.md |\n" +
+  "| - | error handling format; read it at your discretion | docs/conventions/error-handling.md |\n";
 
 const foundIndex = { found: true, table: INDEX_TABLE };
 const noIndex = { found: false, table: "" };
 
-// 直接実装 (tests 空) の 1 unit plan。impl step の prompt を最短経路で観測する。
+// A one-unit plan taking direct implementation (no tests). It reaches the impl step's prompt by
+// the shortest path.
 const implPlan = (files) => ({
   test_command: "echo test",
   units: [
@@ -41,8 +43,9 @@ const implPlan = (files) => ({
   ],
 });
 
-// tests 有りの 1 unit plan。red step を red_confirmed: false で 2 回終わらせ、green には進めない
-// (no-red 経路)。red step の prompt だけを観測したいので green stub は用意しない。
+// A one-unit plan carrying tests. The red step ends twice with red_confirmed: false and never
+// advances to green (the no-red route). Only the red step's prompt is under observation, so no
+// green stub is provided.
 const redPlan = (files) => ({
   test_command: "echo test",
   units: [
@@ -57,8 +60,8 @@ const redPlan = (files) => ({
   ],
 });
 
-// reference-index の戻り値だけ差し替えられる、label 網羅 stub。未知 label は throw する
-// (code.degradation.test.js と同じ形)。
+// A label-covering stub where only the reference-index return value varies. An unknown label
+// throws, the same shape as code.degradation.test.js.
 const stubWith = (indexResult) => (prompt, opts) => {
   const label = opts.label ?? "";
   if (label === "reference-index") return indexResult;
@@ -71,14 +74,14 @@ const stubWith = (indexResult) => (prompt, opts) => {
 
 const promptFor = (calls, label) => {
   const call = calls.agent.find((c) => (c.opts.label ?? "") === label);
-  assert.ok(call, `${label} agent が呼ばれる`);
+  assert.ok(call, `the ${label} agent ran`);
   return call.prompt;
 };
 
-// 現行 (reference-index 機能追加前) の code.js が生成する impl:U-1 prompt の逐語。
-// 2026-07-28、runWorkflow(codeJs, {args:{plan: implPlan(["sample.js"]), repo:""}}) を
-// 機能追加前 (main) の workflows/code.js に対して実行し、impl:U-1 の prompt を採取した
-// (このセッションの tool result)。
+// The verbatim impl:U-1 prompt the current code.js (before the reference-index feature) emits.
+// On 2026-07-28, runWorkflow(codeJs, {args:{plan: implPlan(["sample.js"]), repo:""}}) was run
+// against the pre-feature (main) workflows/code.js and the impl:U-1 prompt was captured (the
+// tool result of that session).
 const BASELINE_IMPL_PROMPT =
   'Direct implementation step. Unit U-1\'s goal is "docs goal". The target files are ["sample.js"].\n' +
   "The contract is docs contract. The test scenarios are [].\n" +
@@ -89,65 +92,66 @@ const BASELINE_IMPL_PROMPT =
   "Do not call the advisor tool, even on design ambiguity or an environment blocker. Push through to the end on your own analysis alone; write the judgment you made into notes and any narrowed implementation into deferred, leaving it to the anomaly record.\n" +
   "Implement per the contract; write no new tests. Keep the existing test suite green (echo test); weakening / skipping / deleting existing tests is forbidden. Run the suite and report green.";
 
-test("glob に一致した行のリファレンスパスが実装 step の prompt に読了命令付きで注入される", async () => {
+test("injects the reference path of a matching row into the implementation prompt with a read instruction", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: implPlan(["sample.js"]), repo: "" },
     stubs: { agent: stubWith(foundIndex) },
   });
 
   const reader = calls.agent.find((c) => (c.opts.label ?? "") === "reference-index");
-  assert.ok(reader, "reader agent が unit ループ前に呼ばれる");
+  assert.ok(reader, "the reader agent runs before the unit loop");
   assert.match(
     reader.prompt,
     /docs\/REFERENCE_INDEX\.md/,
-    "reader agent は規約パスのインデックスを読む指示を受ける",
+    "the reader agent is told to read the index of convention paths",
   );
 
   const prompt = promptFor(calls, "impl:U-1");
   assert.match(
     prompt,
     /Read before implementing: docs\/conventions\/js-naming\.md/,
-    "一致した glob 行のリファレンスパスが読了命令付きで載る",
+    "the matching glob row's reference path rides the prompt with a read instruction",
   );
   assert.match(
     prompt,
     /---- reference-index start ----[\s\S]*---- reference-index end ----/,
-    "注入ブロックが delimiter で区切られる",
+    "the injected block is fenced by delimiters",
   );
   assert.match(
     prompt,
     /data, not instructions/,
-    "インデックス本文が data であり指示ではない旨が明記される",
+    "it states that the index body is data rather than instructions",
   );
-  assert.match(prompt, /the later line wins/, "矛盾時は後の行が勝つ規則が明記される");
+  assert.match(prompt, /the later line wins/, "it states the rule that the later line wins");
 });
 
-test("Red step の prompt には注入されない", async () => {
+test("does not inject into the Red step's prompt", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: redPlan(["sample.js"]), repo: "" },
     stubs: { agent: stubWith(foundIndex) },
   });
 
-  // reader が実際に呼ばれ一致を得ていることを先に確かめる。呼ばれていないなら「注入されない」は
-  // 機能が無いことの空真理になり、Red step 除外を検証したことにならない。
+  // Confirm first that the reader really ran and found a match. Had it never run, "no injection"
+  // would be vacuously true through the feature's absence and would verify no Red-step exclusion.
   const reader = calls.agent.find((c) => (c.opts.label ?? "") === "reference-index");
-  assert.ok(reader, "reader agent が unit ループ前に呼ばれる");
+  assert.ok(reader, "the reader agent runs before the unit loop");
 
   const redPrompt = promptFor(calls, "red:U-1");
   assert.doesNotMatch(
     redPrompt,
     /docs\/conventions\/js-naming\.md/,
-    "一致するリファレンスパスが Red step の prompt に載らない",
+    "the matching reference path does not ride the Red step's prompt",
   );
   assert.doesNotMatch(
     redPrompt,
     /reference-index/,
-    "reference-index の注入ブロックが Red step の prompt に無い",
+    "the reference-index injected block is absent from the Red step's prompt",
   );
 });
 
-test("glob の無い行は説明文とパスが判断候補として提示される", async () => {
-  // unit の files は glob 行 (sample.js) に一致しない。glob 無し行だけが常に提示されることを見る。
+test("offers a row with no glob as a judgment candidate carrying its description and path", async () => {
+  // The unit's files match no glob row (sample.js). This watches that only the glob-less row is
+  // always offered.
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: implPlan(["other.rb"]), repo: "" },
     stubs: { agent: stubWith(foundIndex) },
@@ -157,27 +161,28 @@ test("glob の無い行は説明文とパスが判断候補として提示され
   assert.match(
     prompt,
     /Consider reading: docs\/conventions\/error-handling\.md/,
-    "glob 無し行がパス付きの判断候補として載る",
+    "the glob-less row rides as a judgment candidate with its path",
   );
   assert.match(
     prompt,
-    /エラーハンドリングの書式規約/,
-    "glob 無し行の 1 行説明も判断候補として載る",
+    /error handling format/,
+    "the glob-less row's one-line description rides as a judgment candidate too",
   );
   assert.doesNotMatch(
     prompt,
     /docs\/conventions\/js-naming\.md/,
-    "unit の files に一致しない glob 行は載らない",
+    "a glob row not matching the unit's files does not ride",
   );
 });
 
-test("同じリファレンスパスを指す glob 行が複数一致しても読了命令は 1 行だけ載る", async () => {
-  // glob サブセットは brace 展開を持たないので、doc が source 種別より粗いと N glob → 1 doc は避けられない。
+test("folds several matching glob rows pointing at one reference path into a single read instruction", async () => {
+  // The glob subset carries no brace expansion, so N globs to 1 doc is unavoidable when the doc
+  // is coarser than the source kind.
   const table =
     "| glob | description | path |\n" +
     "| --- | --- | --- |\n" +
-    "| **/agents/**/*.md | agent 定義の書き方 | docs/SKILLS_AGENTS.md |\n" +
-    "| **/skills/**/SKILL.md | skill の設計意図 | docs/SKILLS_AGENTS.md |\n";
+    "| **/agents/**/*.md | how to write an agent definition | docs/SKILLS_AGENTS.md |\n" +
+    "| **/skills/**/SKILL.md | the design intent of a skill | docs/SKILLS_AGENTS.md |\n";
 
   const { calls } = await runWorkflow(codeJs, {
     args: {
@@ -189,16 +194,21 @@ test("同じリファレンスパスを指す glob 行が複数一致しても�
 
   const prompt = promptFor(calls, "impl:U-1");
   const occurrences = prompt.split("Read before implementing: docs/SKILLS_AGENTS.md").length - 1;
-  assert.equal(occurrences, 1, "両方の glob 行が一致しても同じパスの読了命令は 1 行に畳まれる");
+  assert.equal(
+    occurrences,
+    1,
+    "both glob rows matching still folds the read instruction for that path into one line",
+  );
 });
 
-test("同じパスの読了命令と判断候補は畳まれず両方載る", async () => {
-  // またいで畳むと、判断候補の説明文か読了命令の必読という強さのどちらかが落ちる。
+test("keeps a read instruction and a judgment candidate for the same path separate", async () => {
+  // Folding across the two would drop either the candidate's description or the read
+  // instruction's must-read force.
   const table =
     "| glob | description | path |\n" +
     "| --- | --- | --- |\n" +
-    "| - | 読むかは判断による | docs/SKILLS_AGENTS.md |\n" +
-    "| **/skills/**/SKILL.md | skill の設計意図 | docs/SKILLS_AGENTS.md |\n";
+    "| - | read it at your discretion | docs/SKILLS_AGENTS.md |\n" +
+    "| **/skills/**/SKILL.md | the design intent of a skill | docs/SKILLS_AGENTS.md |\n";
 
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: implPlan(["skills/stock/SKILL.md"]), repo: "" },
@@ -208,18 +218,19 @@ test("同じパスの読了命令と判断候補は畳まれず両方載る", as
   const prompt = promptFor(calls, "impl:U-1");
   assert.match(
     prompt,
-    /Consider reading: docs\/SKILLS_AGENTS\.md \(読むかは判断による\)/,
-    "判断候補は説明文ごと残る",
+    /Consider reading: docs\/SKILLS_AGENTS\.md \(read it at your discretion\)/,
+    "the judgment candidate keeps its description",
   );
   assert.match(
     prompt,
     /Read before implementing: docs\/SKILLS_AGENTS\.md/,
-    "同じパスでも読了命令は別に載る",
+    "the read instruction rides separately even for the same path",
   );
 });
 
-test("注入順は汎用 (判断候補) が先、具体 (読了命令) が後になる", async () => {
-  // 「後の行を優先する」規則と組むと、後置された読了命令が判断候補より優先される。
+test("orders the injection with the general (judgment candidate) first and the specific (read instruction) after", async () => {
+  // Paired with the "later line wins" rule, placing the read instruction last makes it win over
+  // the judgment candidate.
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: implPlan(["sample.js"]), repo: "" },
     stubs: { agent: stubWith(foundIndex) },
@@ -228,21 +239,25 @@ test("注入順は汎用 (判断候補) が先、具体 (読了命令) が後に
   const prompt = promptFor(calls, "impl:U-1");
   const candidateAt = prompt.indexOf("Consider reading: docs/conventions/error-handling.md");
   const mandatoryAt = prompt.indexOf("Read before implementing: docs/conventions/js-naming.md");
-  assert.ok(candidateAt >= 0, "判断候補の行が載る");
-  assert.ok(mandatoryAt >= 0, "読了命令の行が載る");
-  assert.ok(candidateAt < mandatoryAt, "判断候補 (汎用) が読了命令 (具体) より前に置かれる");
+  assert.ok(candidateAt >= 0, "the judgment candidate line rides");
+  assert.ok(mandatoryAt >= 0, "the read instruction line rides");
+  assert.ok(
+    candidateAt < mandatoryAt,
+    "the judgment candidate (general) sits before the read instruction (specific)",
+  );
 });
 
-// 完全一致名だけでは `**/` と `*` を持つ実用的な
-// glob 行が実運用のファイルパスに照合できない。ここでは glob サブセット (`**/` はゼロ階層にも
-// 一致、`*` は `/` を跨がない) の照合規則と、両辺の先頭 `./` `/` 正規化、未対応メタ文字を含む行が
-// 静かに無視されず anomaly として記録されることを検証する。
+// Exact names alone cannot match a practical glob row carrying `**/` and `*` against a real file
+// path. The cases below verify the matching rules of the glob subset (`**/` matches zero levels
+// too, `*` does not cross `/`), the leading `./` and `/` normalization on both sides, and that a
+// row carrying an unsupported metacharacter is recorded as an anomaly rather than silently
+// ignored.
 
-test("`docs/**/*.md` 形の glob が docs 直下と 1 階層下の md の両方に一致する", async () => {
+test("a `docs/**/*.md` glob matches an md both directly under docs and one level below", async () => {
   const table =
     "| glob | description | path |\n" +
     "| --- | --- | --- |\n" +
-    "| docs/**/*.md | ドキュメント規約 | docs/conventions/docs-naming.md |\n";
+    "| docs/**/*.md | documentation conventions | docs/conventions/docs-naming.md |\n";
   const index = { found: true, table };
 
   const { calls: rootCalls } = await runWorkflow(codeJs, {
@@ -252,7 +267,7 @@ test("`docs/**/*.md` 形の glob が docs 直下と 1 階層下の md の両方�
   assert.match(
     promptFor(rootCalls, "impl:U-1"),
     /Read before implementing: docs\/conventions\/docs-naming\.md/,
-    "docs 直下 (ゼロ階層) の md ファイルが `**` の glob 行に一致する",
+    "an md directly under docs (zero levels) matches the `**` glob row",
   );
 
   const { calls: nestedCalls } = await runWorkflow(codeJs, {
@@ -262,15 +277,15 @@ test("`docs/**/*.md` 形の glob が docs 直下と 1 階層下の md の両方�
   assert.match(
     promptFor(nestedCalls, "impl:U-1"),
     /Read before implementing: docs\/conventions\/docs-naming\.md/,
-    "docs の 1 階層下の md ファイルも同じ glob 行に一致する",
+    "an md one level below docs matches the same glob row",
   );
 });
 
-test("`src/*.tsx` 形の glob は `src/app/page.tsx` に一致しない", async () => {
+test("a `src/*.tsx` glob does not match `src/app/page.tsx`", async () => {
   const table =
     "| glob | description | path |\n" +
     "| --- | --- | --- |\n" +
-    "| src/*.tsx | コンポーネント規約 | docs/conventions/component-tsx.md |\n";
+    "| src/*.tsx | component conventions | docs/conventions/component-tsx.md |\n";
   const index = { found: true, table };
 
   const { calls: shallowCalls } = await runWorkflow(codeJs, {
@@ -280,7 +295,7 @@ test("`src/*.tsx` 形の glob は `src/app/page.tsx` に一致しない", async 
   assert.match(
     promptFor(shallowCalls, "impl:U-1"),
     /Read before implementing: docs\/conventions\/component-tsx\.md/,
-    "src 直下の tsx ファイルは `*.tsx` の glob 行に一致する",
+    "a tsx directly under src matches the `*.tsx` glob row",
   );
 
   const { calls: nestedCalls } = await runWorkflow(codeJs, {
@@ -290,15 +305,15 @@ test("`src/*.tsx` 形の glob は `src/app/page.tsx` に一致しない", async 
   assert.doesNotMatch(
     promptFor(nestedCalls, "impl:U-1"),
     /docs\/conventions\/component-tsx\.md/,
-    "`*` は `/` を跨がないので 1 階層下の tsx ファイルは glob 行に一致しない",
+    "`*` does not cross `/`, so a tsx one level below does not match the glob row",
   );
 });
 
-test("先頭に `./` や `/` が付いたパスは正規化されて照合される", async () => {
+test("normalizes a path carrying a leading `./` or `/` before matching", async () => {
   const table =
     "| glob | description | path |\n" +
     "| --- | --- | --- |\n" +
-    "| src/button.tsx | ボタン規約 | docs/conventions/button.md |\n";
+    "| src/button.tsx | button conventions | docs/conventions/button.md |\n";
   const index = { found: true, table };
 
   const { calls: dotSlashFileCalls } = await runWorkflow(codeJs, {
@@ -308,13 +323,13 @@ test("先頭に `./` や `/` が付いたパスは正規化されて照合され
   assert.match(
     promptFor(dotSlashFileCalls, "impl:U-1"),
     /Read before implementing: docs\/conventions\/button\.md/,
-    "先頭に `./` が付いたファイルパスは正規化後に glob 行と一致する",
+    "a file path carrying a leading `./` matches the glob row after normalization",
   );
 
   const tableLeadingSlash =
     "| glob | description | path |\n" +
     "| --- | --- | --- |\n" +
-    "| /src/button.tsx | ボタン規約 | docs/conventions/button.md |\n";
+    "| /src/button.tsx | button conventions | docs/conventions/button.md |\n";
   const indexLeadingSlash = { found: true, table: tableLeadingSlash };
 
   const { calls: leadingSlashGlobCalls } = await runWorkflow(codeJs, {
@@ -324,15 +339,15 @@ test("先頭に `./` や `/` が付いたパスは正規化されて照合され
   assert.match(
     promptFor(leadingSlashGlobCalls, "impl:U-1"),
     /Read before implementing: docs\/conventions\/button\.md/,
-    "先頭に `/` が付いた glob 行は正規化後にファイルパスと一致する",
+    "a glob row carrying a leading `/` matches the file path after normalization",
   );
 });
 
-test("未対応メタ文字を含む行は照合対象から外れ anomaly に記録される", async () => {
+test("drops a row carrying an unsupported metacharacter from matching and records it as an anomaly", async () => {
   const table =
     "| glob | description | path |\n" +
     "| --- | --- | --- |\n" +
-    "| src/file?.js | 未対応メタ文字を含む行 | docs/conventions/unsupported.md |\n";
+    "| src/file?.js | a row carrying an unsupported metacharacter | docs/conventions/unsupported.md |\n";
   const index = { found: true, table };
 
   const { calls, result } = await runWorkflow(codeJs, {
@@ -343,23 +358,24 @@ test("未対応メタ文字を含む行は照合対象から外れ anomaly に�
   assert.doesNotMatch(
     promptFor(calls, "impl:U-1"),
     /docs\/conventions\/unsupported\.md/,
-    "未対応メタ文字 (`?`) を含む glob 行は照合対象から外れ、実装 prompt に注入されない",
+    "a glob row carrying an unsupported metacharacter (`?`) drops from matching and is not injected",
   );
   assert.ok(
     result.anomalies.some(
       (a) => a.kind === "unsupported-glob" && String(a.notes).includes("src/file?.js"),
     ),
-    "未対応メタ文字を含む行が anomaly (kind: unsupported-glob) として記録される",
+    "a row carrying an unsupported metacharacter is recorded as an anomaly of kind unsupported-glob",
   );
 });
 
-test("`/` が続かない裸の `**` を含む行は照合対象から外れ anomaly に記録される", async () => {
-  // `src/**` は文字集合チェックを通るがトークン化は `**/` と `*` しか認識せず、`*` 2 つに分解
-  // されて 1 セグメント照合に化ける。静かな false negative にせず未対応として記録する。
+test("drops a row carrying a bare `**` not followed by `/` from matching and records it as an anomaly", async () => {
+  // `src/**` clears the character-set check, but tokenization recognizes only `**/` and `*` and
+  // splits it into two `*`, turning it into a single-segment match. Rather than a silent false
+  // negative, it is recorded as unsupported.
   const table =
     "| glob | description | path |\n" +
     "| --- | --- | --- |\n" +
-    "| src/** | 裸の `**` を含む行 | docs/conventions/bare-doublestar.md |\n";
+    "| src/** | a row carrying a bare `**` | docs/conventions/bare-doublestar.md |\n";
   const index = { found: true, table };
 
   const { calls, result } = await runWorkflow(codeJs, {
@@ -370,22 +386,23 @@ test("`/` が続かない裸の `**` を含む行は照合対象から外れ ano
   assert.doesNotMatch(
     promptFor(calls, "impl:U-1"),
     /docs\/conventions\/bare-doublestar\.md/,
-    "裸の `**` を含む glob 行は照合対象から外れ、実装 prompt に注入されない",
+    "a glob row carrying a bare `**` drops from matching and is not injected",
   );
   assert.ok(
     result.anomalies.some(
       (a) => a.kind === "unsupported-glob" && String(a.notes).includes("src/**"),
     ),
-    "裸の `**` を含む行が anomaly (kind: unsupported-glob) として記録される",
+    "a row carrying a bare `**` is recorded as an anomaly of kind unsupported-glob",
   );
 });
 
-// 通し実行の連結検証。各機能は単体では緑でも、reader が
-// 複数 unit を跨いで正しく 1 回だけ呼ばれるか、anomaly の shape が全 push サイトで揃っているかは
-// 未検証だった。ここでは 2 unit plan を実 runWorkflow で通し、reader 呼び出し回数と anomaly の
-// 構造的一貫性を検証する。
+// End-to-end connection checks. Each feature is green on its own, but whether the reader is
+// called exactly once across several units, and whether the anomaly shape is uniform at every
+// push site, went unverified. These carry a two-unit plan through the real runWorkflow and check
+// the reader call count and the structural consistency of the anomalies.
 
-// 2 unit とも直接実装 (tests 空) の plan。reader 呼び出し回数と両 unit の prompt 注入だけを見る。
+// A plan whose two units both take direct implementation (no tests). It watches only the reader
+// call count and the injection into both units' prompts.
 const twoUnitImplPlan = (filesA, filesB) => ({
   test_command: "echo test",
   units: [
@@ -394,29 +411,29 @@ const twoUnitImplPlan = (filesA, filesB) => ({
   ],
 });
 
-test("インデックスありの 2 unit plan の通し実行で reader が 1 回だけ呼ばれ両 unit の実装 prompt に該当リファレンスが載る", async () => {
+test("an end-to-end two-unit plan with an index calls the reader once and injects the reference into both implementation prompts", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: twoUnitImplPlan(["sample.js"], ["sample.js"]), repo: "" },
     stubs: { agent: stubWith(foundIndex) },
   });
 
   const readerCalls = calls.agent.filter((c) => (c.opts.label ?? "") === "reference-index");
-  assert.equal(readerCalls.length, 1, "reader agent は 2 unit plan でも 1 回だけ呼ばれる");
+  assert.equal(readerCalls.length, 1, "the reader agent runs once even on a two-unit plan");
 
   assert.match(
     promptFor(calls, "impl:U-1"),
     /Read before implementing: docs\/conventions\/js-naming\.md/,
-    "1 番目の unit の実装 prompt に該当リファレンスが載る",
+    "the first unit's implementation prompt carries the matching reference",
   );
   assert.match(
     promptFor(calls, "impl:U-2"),
     /Read before implementing: docs\/conventions\/js-naming\.md/,
-    "2 番目の unit の実装 prompt にも同じリファレンスが載る",
+    "the second unit's implementation prompt carries the same reference",
   );
 });
 
-// no-red (U-1)・scope-cut (U-2)・unsupported-glob (reader 読了後、unit ループ前) の 3 種の
-// anomaly を 1 run で同時に発生させる plan。
+// A plan raising all three anomaly kinds in one run: no-red (U-1), scope-cut (U-2), and
+// unsupported-glob (after the reader read, before the unit loop).
 const anomalyPlan = () => ({
   test_command: "echo test",
   units: [
@@ -435,20 +452,21 @@ const anomalyPlan = () => ({
 const unsupportedGlobTable =
   "| glob | description | path |\n" +
   "| --- | --- | --- |\n" +
-  "| src/file?.js | 未対応メタ文字を含む行 | docs/conventions/unsupported.md |\n";
+  "| src/file?.js | a row carrying an unsupported metacharacter | docs/conventions/unsupported.md |\n";
 const unsupportedGlobIndex = { found: true, table: unsupportedGlobTable };
 
 const stubForAnomalies = (prompt, opts) => {
   const label = opts.label ?? "";
   if (label === "reference-index") return unsupportedGlobIndex;
-  if (label.startsWith("impl:")) return { green: true, notes: "", deferred: ["部分実装"] };
+  if (label.startsWith("impl:"))
+    return { green: true, notes: "", deferred: ["partial implementation"] };
   if (label.startsWith("red:") || label.startsWith("red2:"))
     return { red_confirmed: false, test_files: [], notes: "already implemented" };
   if (label === "verify") return { tests_pass: true, gates_pass: true, output_tail: "" };
   throw new Error(`unexpected label: ${label}`);
 };
 
-test("anomalies の各要素が unit と kind と notes を全て持つ", async () => {
+test("every element of anomalies carries unit, kind, and notes", async () => {
   const { result } = await runWorkflow(codeJs, {
     args: { plan: anomalyPlan(), repo: "" },
     stubs: { agent: stubForAnomalies },
@@ -456,36 +474,37 @@ test("anomalies の各要素が unit と kind と notes を全て持つ", async 
 
   assert.ok(
     result.anomalies.length >= 3,
-    "no-red・scope-cut・unsupported-glob の 3 種の anomaly が記録される",
+    "all three anomaly kinds no-red, scope-cut, and unsupported-glob are recorded",
   );
   for (const anomaly of result.anomalies) {
-    assert.equal(typeof anomaly.unit, "string", `anomaly (${anomaly.kind}) は unit を持つ`);
-    assert.ok(anomaly.unit.length > 0, `anomaly (${anomaly.kind}) の unit は空文字でない`);
-    assert.equal(typeof anomaly.kind, "string", "anomaly は kind を持つ");
-    assert.equal(typeof anomaly.notes, "string", "anomaly は notes を持つ");
+    assert.equal(typeof anomaly.unit, "string", `the anomaly (${anomaly.kind}) carries a unit`);
+    assert.ok(anomaly.unit.length > 0, `the anomaly (${anomaly.kind}) unit is not an empty string`);
+    assert.equal(typeof anomaly.kind, "string", "the anomaly carries a kind");
+    assert.equal(typeof anomaly.notes, "string", "the anomaly carries notes");
   }
 });
 
-test("インデックス不在では実装 prompt が現行のまま変わらない", async () => {
+test("leaves the implementation prompt unchanged when the index is absent", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: implPlan(["sample.js"]), repo: "" },
     stubs: { agent: stubWith(noIndex) },
   });
 
-  // reader agent 自体はインデックス不在時も unit ループ前に呼ばれる。呼ばれていないなら
-  // 「prompt が変わらない」は機能が無いことの空真理になり、fail-open を検証したことにならない。
+  // The reader agent itself still runs before the unit loop when the index is absent. Had it
+  // never run, "the prompt is unchanged" would be vacuously true through the feature's absence
+  // and would verify no fail-open.
   const reader = calls.agent.find((c) => (c.opts.label ?? "") === "reference-index");
-  assert.ok(reader, "reader agent はインデックス不在時も unit ループ前に呼ばれる");
+  assert.ok(reader, "the reader agent runs before the unit loop even with the index absent");
   assert.match(
     reader.prompt,
     /docs\/REFERENCE_INDEX\.md/,
-    "reader agent は規約パスのインデックスを読む指示を受ける",
+    "the reader agent is told to read the index of convention paths",
   );
 
   const prompt = promptFor(calls, "impl:U-1");
   assert.equal(
     prompt,
     BASELINE_IMPL_PROMPT,
-    "インデックス不在時の impl prompt は現行の逐語と同じで、注入が発生しない",
+    "with the index absent the impl prompt matches the current verbatim text and no injection happens",
   );
 });

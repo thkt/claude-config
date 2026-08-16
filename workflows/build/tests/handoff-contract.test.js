@@ -6,11 +6,11 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
-// build に issue を渡す案内。日本語と英語の両方の言い回しを拾う。
+// The phrasing that hands an issue to build. Matches both the Japanese and the English wording.
 const HANDOFF =
   /build workflow に|build に渡|build に委譲|build へ|to the build workflow|delegate to build/;
-// qualify は verdict 表で Plan 節の有無を先に分岐し、build-ready の行にたどり着く
-// 時点で Plan 節の存在が確定している。
+// qualify branches on the presence of a Plan section earlier in its verdict table, so by the
+// time the build-ready row is reached the Plan section is already established.
 const EXEMPT = new Set(["qualify"]);
 
 const skillDocs = () => {
@@ -27,13 +27,13 @@ const skillDocs = () => {
   return docs;
 };
 
-// build は ## Plan 節の無い issue を no-plan で差し戻す。渡す側の skill がそれを書いて
-// いないと、案内どおりに渡した人が Load 段で止まる。この挙動へ戻したとき、
-// slice は直したが issue と fix を取りこぼした。文言の取りこぼしは実行時に何も落ちない
-// ので、この静的照合が次の取りこぼしを検出する。
-test("build へ渡す案内は同じ行で Plan 節の必要性に触れる", () => {
+// build hands an issue with no ## Plan section back as no-plan. When the skill doing the
+// handoff does not say so, whoever followed that instruction stops at the Load stage. When
+// this behavior was restored, slice was fixed while issue and fix were missed. A missed
+// wording drops nothing at runtime, so this static match catches the next omission.
+test("the handoff instruction names the Plan section on the same line", () => {
   const docs = skillDocs();
-  assert.ok(docs.length > 0, "skill の SKILL.md を読める");
+  assert.ok(docs.length > 0, "the skill SKILL.md files are readable");
 
   const missing = [];
   for (const { lang, name, path } of docs) {
@@ -43,5 +43,9 @@ test("build へ渡す案内は同じ行で Plan 節の必要性に触れる", ()
       missing.push(`${lang}:${name}:${i + 1}: ${line.trim().slice(0, 60)}`);
     }
   }
-  assert.deepEqual(missing, [], `build へ渡す案内が Plan 節に触れていない\n${missing.join("\n")}`);
+  assert.deepEqual(
+    missing,
+    [],
+    `a handoff instruction does not name the Plan section\n${missing.join("\n")}`,
+  );
 });

@@ -1,6 +1,7 @@
-// challenge (critic-audit) を id 付き rawFindings で駆動し、survivor 判定を script 側の
-// triage ループ (finding 側を回して verdict を引く) に持たせる挙動を先に固定する。
-// polish.js の VERDICTS_SCHEMA (confirmed/disputed/downgraded/needs_context) を踏襲する。
+// These pin the behavior of driving challenge (critic-audit) with id-carrying rawFindings and
+// leaving the survivor decision to the script-side triage loop (walking the findings and
+// looking up each verdict). It follows polish.js's VERDICTS_SCHEMA
+// (confirmed / disputed / downgraded / needs_context).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -11,15 +12,15 @@ import { defaultAgentStub, callOf } from "./_fixtures.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const auditJs = join(here, "..", "..", "audit.js");
 
-// Route -> Review (security / silence の 2 reviewer) -> Challenge まで通す最小 stub。
-// 既定応答と id の採番は _fixtures.js の defaultAgentStub が決める。
+// The shortest stub carrying Route -> Review (the security and silence reviewers) -> Challenge.
+// defaultAgentStub in _fixtures.js decides the default responses and the id numbering.
 const runChallenge = (challenge) =>
   runWorkflow(auditJs, {
     args: { focus: "security", skipPreflight: true },
     stubs: { agent: defaultAgentStub({ challenge }) },
   });
 
-test("T-001 challenge が disputed を返した finding は survivors から外れる", async () => {
+test("T-001 drops a finding from survivors when challenge returns disputed", async () => {
   const { result } = await runChallenge({
     verdicts: [
       { id: "R-1", verdict: "confirmed" },
@@ -29,11 +30,11 @@ test("T-001 challenge が disputed を返した finding は survivors から外�
   assert.deepEqual(
     result.survivors.map((s) => s.id),
     ["R-1"],
-    "disputed の R-2 は survivors に残らない",
+    "the disputed R-2 does not stay in survivors",
   );
 });
 
-test("T-002 challenge が downgraded を返した finding は下げた severity で survivors に残る", async () => {
+test("T-002 keeps a downgraded finding in survivors at the lowered severity", async () => {
   const { result } = await runChallenge({
     verdicts: [
       { id: "R-1", verdict: "downgraded", severity: "low" },
@@ -41,28 +42,28 @@ test("T-002 challenge が downgraded を返した finding は下げた severity 
     ],
   });
   const byId = new Map(result.survivors.map((s) => [s.id, s]));
-  assert.equal(byId.get("R-1").severity, "low", "downgraded は下げた severity で残る");
-  assert.equal(byId.get("R-2").severity, "high", "confirmed は元の severity のまま残る");
+  assert.equal(byId.get("R-1").severity, "low", "a downgraded finding stays at the lower severity");
+  assert.equal(byId.get("R-2").severity, "high", "a confirmed finding keeps its own severity");
 });
 
-test("T-003 challenge が verdict を返さなかった finding は confirmed 扱いで survivors に入り no_verdict に計上される", async () => {
+test("T-003 treats a finding with no verdict as confirmed and counts it under no_verdict", async () => {
   const { result, logs } = await runChallenge({
     verdicts: [{ id: "R-1", verdict: "confirmed" }],
   });
   assert.deepEqual(
     result.survivors.map((s) => s.id).sort(),
     ["R-1", "R-2"],
-    "verdict の付かなかった R-2 も confirmed 扱いで survivors に入る",
+    "R-2, which drew no verdict, enters survivors as confirmed",
   );
   const byId = new Map(result.survivors.map((s) => [s.id, s]));
-  assert.equal(byId.get("R-2").severity, "high", "confirmed 扱いなので元の severity のまま");
+  assert.equal(byId.get("R-2").severity, "high", "treated as confirmed, so its severity stands");
   assert.ok(
     logs.some((l) => /no_verdict/.test(l) && /1/.test(l)),
-    "verdict の付かなかった件数が no_verdict として log() に出る",
+    "log() carries the count of findings that drew no verdict as no_verdict",
   );
 });
 
-test("T-004 critic に渡す入力に reviewer 名が含まれない", async () => {
+test("T-004 leaves the reviewer name out of the input handed to the critic", async () => {
   const { calls } = await runChallenge({
     verdicts: [
       { id: "R-1", verdict: "confirmed" },
@@ -70,7 +71,7 @@ test("T-004 critic に渡す入力に reviewer 名が含まれない", async () 
     ],
   });
   const call = callOf(calls, "challenge");
-  assert.ok(call, "challenge agent が起動する");
-  assert.match(call.prompt, /"id":"R-1"/, "critic 入力に rawFindings の id (R-N) が乗る");
-  assert.doesNotMatch(call.prompt, /"reviewer"/, "critic 入力に reviewer 名は含めない");
+  assert.ok(call, "the challenge agent started");
+  assert.match(call.prompt, /"id":"R-1"/, "the critic input carries the rawFindings id (R-N)");
+  assert.doesNotMatch(call.prompt, /"reviewer"/, "the critic input carries no reviewer name");
 });
