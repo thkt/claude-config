@@ -1,15 +1,15 @@
-// skills/issue/scripts/validate-issue-body.py を実 subprocess として起動し、CLI 契約
-// (引数 -> stdout JSON -> exit code) を固定する。workflows/audit/tests/audit.seam.test.js と
-// 同じく実スクリプトを spawnSync で通し、python の test discover には乗せない。
+// These start skills/issue/scripts/validate-issue-body.py as a real subprocess and pin its CLI
+// contract (arguments -> stdout JSON -> exit code). They stay off python's test discovery.
 //
-// CLI 契約 (validate-outcome.py の def section_body と同じ形で節を切り出す):
+// The CLI contract:
 //   Usage: validate-issue-body.py <template-file> <title> <body-file>
 //   stdout: JSON { errors, warnings, checks }
 //   exit: 0 if no errors (warnings allowed), 1 if errors
 //
-// 骨格は <template-file> の "## Template" 見出し配下、最初のコードブロックから読む。
-// "## Template" と "## Guidelines" 自体は骨格に含めない。見出し末尾が "(optional)" の節は
-// 任意節として missing_section の対象から外す。照合は集合で行い、本文側の節の並び順は見ない。
+// The skeleton is read from the first code block under <template-file>'s "## Template" heading.
+// "## Template" and "## Guidelines" themselves are not part of it. A section whose heading ends in
+// "(optional)" is optional and falls outside missing_section. The match runs on sets and ignores
+// the order of the sections in the body.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -25,8 +25,8 @@ const bugTemplate = join(root, "skills", "issue", "templates", "bug.md");
 const choreTemplate = join(root, "skills", "issue", "templates", "chore.md");
 const featureTemplate = join(root, "skills", "issue", "templates", "feature.md");
 
-// 本文は一時ファイルへ書き出してから渡す。validate-outcome.py 側もファイルパス引数なので、
-// 呼び出し側 (/issue の Phase 4 検証) が渡す実際の形に揃える。
+// The body is written to a temporary file before being passed. validate-outcome.py also takes a
+// file path argument, so this matches the shape the caller (/issue's Phase 4 validation) uses.
 const runValidate = (templatePath, title, bodyText) => {
   const dir = mkdtempSync(join(tmpdir(), "validate-issue-body-"));
   try {
@@ -47,7 +47,7 @@ const runValidate = (templatePath, title, bodyText) => {
   }
 };
 
-test("T-001 骨格の必須節が本文に無いとき missing_section をその節名つきで返す", () => {
+test("T-001 returns missing_section with the section name when a required skeleton section is absent from the body", () => {
   const body = [
     "## What & Why",
     "",
@@ -65,15 +65,15 @@ test("T-001 骨格の必須節が本文に無いとき missing_section をその
     "",
   ].join("\n");
   const { status, out } = runValidate(bugTemplate, "[Bug] Login fails for some users", body);
-  assert.ok(out, "stdout が JSON として parse できる");
-  assert.equal(status, 1, "errors がある run は exit 1 で終わる");
+  assert.ok(out, "stdout parses as JSON");
+  assert.equal(status, 1, "a run carrying errors exits 1");
   assert.ok(
     out.errors.includes("missing_section:Expected vs Actual"),
-    `errors に missing_section:Expected vs Actual が節名つきで載る (実際: ${JSON.stringify(out.errors)})`,
+    `errors carries missing_section:Expected vs Actual with the section name (actual: ${JSON.stringify(out.errors)})`,
   );
 });
 
-test("T-002 骨格に無い Plan と Backlog candidates は errors にならない", () => {
+test("T-002 Plan and Backlog candidates, absent from the skeleton, do not become errors", () => {
   const body = [
     "## What & Why",
     "",
@@ -104,18 +104,18 @@ test("T-002 骨格に無い Plan と Backlog candidates は errors にならな�
     "",
   ].join("\n");
   const { status, out } = runValidate(bugTemplate, "[Bug] Login fails for some users", body);
-  assert.ok(out, "stdout が JSON として parse できる");
-  assert.equal(status, 0, "骨格の必須節が揃っていれば exit 0 で終わる");
+  assert.ok(out, "stdout parses as JSON");
+  assert.equal(status, 0, "every required skeleton section present exits 0");
   assert.deepEqual(
     out.errors,
     [],
-    `骨格に無い Plan / Backlog candidates は errors に載らない (実際: ${JSON.stringify(out.errors)})`,
+    `Plan and Backlog candidates, absent from the skeleton, stay out of errors (actual: ${JSON.stringify(out.errors)})`,
   );
 });
 
-test("T-011 必須節が揃っていても骨格に無い節を持つ本文は unknown_section を返す", () => {
-  // 必須節を欠く本文は T-001 が見る。ここは必須節が全部あるため missing_section では
-  // 止まらず、余計な節を見る経路だけが働く。#286 の `## Changes` がこの形にあたる。
+test("T-011 a body carrying a section absent from the skeleton returns unknown_section even with every required section present", () => {
+  // T-001 covers a body missing a required section. Here every required section is present, so
+  // the run does not stop at missing_section and only the extra-section route is exercised.
   const body = [
     "## What & Why",
     "",
@@ -140,16 +140,16 @@ test("T-011 必須節が揃っていても骨格に無い節を持つ本文は u
     "",
   ].join("\n");
   const { status, out } = runValidate(bugTemplate, "[Bug] Login fails for some users", body);
-  assert.ok(out, "stdout が JSON として parse できる");
-  assert.equal(status, 1, "骨格外の節を持つ本文は exit 1 で終わる");
+  assert.ok(out, "stdout parses as JSON");
+  assert.equal(status, 1, "a body carrying a section outside the skeleton exits 1");
   assert.deepEqual(
     out.errors,
     ["unknown_section:Changes"],
-    `骨格に無い Changes が節名つきで errors に載る (実際: ${JSON.stringify(out.errors)})`,
+    `Changes, absent from the skeleton, lands in errors with its section name (actual: ${JSON.stringify(out.errors)})`,
   );
 });
 
-test("T-003 タイトルの型と渡したテンプレートが食い違うとき type_mismatch を返す", () => {
+test("T-003 returns type_mismatch when the title's type and the template passed disagree", () => {
   const body = [
     "## What & Why",
     "",
@@ -169,17 +169,17 @@ test("T-003 タイトルの型と渡したテンプレートが食い違うと�
     "- Cover the session persistence path",
     "",
   ].join("\n");
-  // title は [Bug] だが渡したテンプレートは feature.md なので型が食い違う。
+  // The title is [Bug] while the template passed is feature.md, so the types disagree.
   const { status, out } = runValidate(featureTemplate, "[Bug] Login fails for some users", body);
-  assert.ok(out, "stdout が JSON として parse できる");
-  assert.equal(status, 1, "type_mismatch がある run は exit 1 で終わる");
+  assert.ok(out, "stdout parses as JSON");
+  assert.equal(status, 1, "a run carrying type_mismatch exits 1");
   assert.ok(
     out.errors.some((e) => e.startsWith("type_mismatch:")),
-    `errors に type_mismatch が載る (実際: ${JSON.stringify(out.errors)})`,
+    `errors carries type_mismatch (actual: ${JSON.stringify(out.errors)})`,
   );
 });
 
-test("T-004 本文の節の並びが骨格と違っても errors にならない", () => {
+test("T-004 a body whose section order differs from the skeleton does not become an error", () => {
   const body = [
     "## Scope",
     "",
@@ -196,11 +196,11 @@ test("T-004 本文の節の並びが骨格と違っても errors にならない
     "",
   ].join("\n");
   const { status, out } = runValidate(choreTemplate, "[Chore] Bump dependency", body);
-  assert.ok(out, "stdout が JSON として parse できる");
-  assert.equal(status, 0, "節の並びが骨格と違っても揃っていれば exit 0 で終わる");
+  assert.ok(out, "stdout parses as JSON");
+  assert.equal(status, 0, "a differing section order still exits 0 when every section is present");
   assert.deepEqual(
     out.errors,
     [],
-    `並び順の違いは errors にならない (実際: ${JSON.stringify(out.errors)})`,
+    `a difference in order does not become an error (actual: ${JSON.stringify(out.errors)})`,
   );
 });

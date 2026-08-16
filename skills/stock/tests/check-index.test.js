@@ -6,15 +6,16 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const scriptPath = join(root, "skills", "stock", "scripts", "check-index.js");
 
-// exists / trackedFiles を注入するのは、実 fs / git ls-files を呼ばずに判定ロジックだけを
-// 固定 fixture で検証するため (argv/git 連携は check-index.cli.test.js が担う)。
+// exists and trackedFiles are injected so the decision logic alone is verified against fixed
+// fixtures without touching the real fs or git ls-files; check-index.cli.test.js covers the
+// argv and git wiring.
 
-test("リファレンスパスが実在しない行が dangling-path として報告され exit code が非ゼロになる", async () => {
+test("a row whose reference path does not exist is reported as dangling-path and the exit code is non-zero", async () => {
   const { checkIndex } = await import(scriptPath);
   const table = [
     "| glob | description | path |",
     "| --- | --- | --- |",
-    "| src/*.tsx | コンポーネント規約 | docs/does-not-exist.md |",
+    "| src/*.tsx | component conventions | docs/does-not-exist.md |",
   ].join("\n");
 
   const result = checkIndex({
@@ -28,12 +29,12 @@ test("リファレンスパスが実在しない行が dangling-path として�
   assert.notEqual(result.exitCode, 0);
 });
 
-test("どの tracked ファイルにも一致しない glob 行が no-match の警告として報告される", async () => {
+test("a glob row matching no tracked file is reported as a no-match warning", async () => {
   const { checkIndex } = await import(scriptPath);
   const table = [
     "| glob | description | path |",
     "| --- | --- | --- |",
-    "| src/*.foo | 一致しない拡張子 | docs/existing.md |",
+    "| src/*.foo | an extension that matches nothing | docs/existing.md |",
   ].join("\n");
 
   const result = checkIndex({
@@ -48,13 +49,13 @@ test("どの tracked ファイルにも一致しない glob 行が no-match の�
   assert.equal(result.exitCode, 0);
 });
 
-test("`-` 行と未対応メタ文字の行は drift として報告されず未対応は unsupported として別掲される", async () => {
+test("a `-` row and a row with an unsupported metacharacter are not reported as drift, and the unsupported one is listed separately", async () => {
   const { checkIndex } = await import(scriptPath);
   const table = [
     "| glob | description | path |",
     "| --- | --- | --- |",
-    "| - | 無条件候補。読むかは判断による | docs/candidate.md |",
-    "| src/** | 裸の double star は未対応 | docs/unsupported.md |",
+    "| - | an unconditional candidate; read it at your discretion | docs/candidate.md |",
+    "| src/** | a bare double star is unsupported | docs/unsupported.md |",
   ].join("\n");
 
   const result = checkIndex({
@@ -70,12 +71,12 @@ test("`-` 行と未対応メタ文字の行は drift として報告されず未
   assert.equal(result.exitCode, 0);
 });
 
-test("ずれの無い index では報告 0 件で exit 0 になる", async () => {
+test("an index with no drift reports nothing and exits 0", async () => {
   const { checkIndex } = await import(scriptPath);
   const table = [
     "| glob | description | path |",
     "| --- | --- | --- |",
-    "| src/*.tsx | コンポーネント規約 | docs/existing.md |",
+    "| src/*.tsx | component conventions | docs/existing.md |",
   ].join("\n");
 
   const result = checkIndex({

@@ -6,10 +6,10 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const scriptPath = join(root, "skills", "stock", "scripts", "check-index.js");
 
-// result.size は DR-0091「インデックスが 1 画面を超えたら注入過多の兆候として見張る」を
-// 行数閾値に落としたもの。
+// result.size renders DR-0091's "watch an index that outgrows one screen as a sign of
+// over-injection" as a line-count threshold.
 
-test("表の行数が 30 行までは size 警告が立たず、31 行で立つ", async () => {
+test("the size warning stays down through 30 table rows and rises at 31", async () => {
   const { checkIndex } = await import(scriptPath);
   const header = ["| glob | description | path |", "| --- | --- | --- |"];
   const tableOf = (dataRowCount) =>
@@ -17,7 +17,7 @@ test("表の行数が 30 行までは size 警告が立たず、31 行で立つ"
       ...header,
       ...Array.from(
         { length: dataRowCount },
-        (_, i) => `| src/*.tsx | 規約 ${i} | docs/existing.md |`,
+        (_, i) => `| src/*.tsx | convention ${i} | docs/existing.md |`,
       ),
     ].join("\n");
   const deps = { exists: () => true, trackedFiles: ["src/button.tsx"] };
@@ -31,17 +31,17 @@ test("表の行数が 30 行までは size 警告が立たず、31 行で立つ"
   assert.equal(overThreshold.size.warning, true);
 });
 
-test("表の前後の散文行は size の行数に数えられない", async () => {
-  // DR-0091 が見張るのは index 表のサイズ。code.js の reader も表本文だけを抽出するため、
-  // ファイル全行でなく `|` で始まる表行だけを数える。
+test("prose lines around the table do not count toward size", async () => {
+  // What DR-0091 watches is the size of the index table. code.js's reader extracts the table body
+  // alone as well, so only the rows starting with `|` are counted rather than every line.
   const { checkIndex } = await import(scriptPath);
-  const prose = ["# REFERENCE_INDEX", "", "説明の散文が表の前後に並ぶ。", ""];
+  const prose = ["# REFERENCE_INDEX", "", "Explanatory prose sits around the table.", ""];
   const tableLines = [
     "| glob | description | path |",
     "| --- | --- | --- |",
-    "| src/*.tsx | 規約 | docs/existing.md |",
+    "| src/*.tsx | conventions | docs/existing.md |",
   ];
-  const table = [...prose, ...tableLines, "", "末尾の散文。"].join("\n");
+  const table = [...prose, ...tableLines, "", "Trailing prose."].join("\n");
 
   const result = checkIndex({
     table,
@@ -52,13 +52,14 @@ test("表の前後の散文行は size の行数に数えられない", async ()
   assert.equal(result.size.lines, tableLines.length);
 });
 
-test("監査対象の index ファイル自身は unreferenced に載らない", async () => {
-  // index は自分の path 列に自分を載せられないため、除外しないと恒久的に unreferenced に残る。
+test("the audited index file itself never lands in unreferenced", async () => {
+  // An index cannot list itself in its own path column, so without the exclusion it would stay
+  // unreferenced forever.
   const { checkIndex } = await import(scriptPath);
   const table = [
     "| glob | description | path |",
     "| --- | --- | --- |",
-    "| src/*.tsx | コンポーネント規約 | docs/referenced.md |",
+    "| src/*.tsx | component conventions | docs/referenced.md |",
   ].join("\n");
 
   const result = checkIndex({
@@ -71,8 +72,9 @@ test("監査対象の index ファイル自身は unreferenced に載らない",
   assert.deepEqual(result.unreferenced, []);
 });
 
-test("実装 agent に読ませる規約でない docs は候補から外れる", async () => {
-  // 決定記録は過去の判断の経緯で、実装時に読ませると 1 画面の閾値を即座に食い潰す。
+test("docs that are not conventions for the implementation agent drop out of the candidates", async () => {
+  // A decision record is the history of a past judgment; handing it over at implementation time
+  // would eat the one-screen threshold immediately.
   const { checkIndex } = await import(scriptPath);
   const table = ["| glob | description | path |", "| --- | --- | --- |"].join("\n");
 
@@ -90,12 +92,12 @@ test("実装 agent に読ませる規約でない docs は候補から外れる"
   assert.deepEqual(result.unreferenced, ["docs/conventions/component-tsx.md"]);
 });
 
-test("index のどの行からも参照されない docs 配下の md が unreferenced として列挙される", async () => {
+test("an md under docs referenced by no index row is listed as unreferenced", async () => {
   const { checkIndex } = await import(scriptPath);
   const table = [
     "| glob | description | path |",
     "| --- | --- | --- |",
-    "| src/*.tsx | コンポーネント規約 | docs/referenced.md |",
+    "| src/*.tsx | component conventions | docs/referenced.md |",
   ].join("\n");
 
   const result = checkIndex({

@@ -10,22 +10,22 @@ decision-makers: thkt
 
 ADR-0053 で skill 集約 (Option 3) を却下した 4 理由のうち、検証で 2 つが失効した。
 
-| 理由 | 元の論拠 | 検証結果 |
-| --- | --- | --- |
-| A | `context: fork` の knowledge inject が機能するか要検証 | 検証済: agent `skills: [...]` 注入は parent context window に直接 inject、子 fork context では消費されない。inline と token 等価 |
-| D | 将来 user-invocable 化するパスを潰す | user 確認済: user-invocable とは完全切り離し設計を確定 |
+| 理由 | 元の論拠                                               | 検証結果                                                                                                                         |
+| ---- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| A    | `context: fork` の knowledge inject が機能するか要検証 | 検証済: agent `skills: [...]` 注入は parent context window に直接 inject、子 fork context では消費されない。inline と token 等価 |
+| D    | 将来 user-invocable 化するパスを潰す                   | user 確認済: user-invocable とは完全切り離し設計を確定                                                                           |
 
 残る B (agent.md 肥大化) と C (knowledge と orchestration の role separation) は valid だが、multi-consumer skill (DRY が機能) と single consumer skill (DRY 不在) で適用度が異なる。現状の use-context-* skill は consumer 数で 2 群に分かれる。
 
-| skill | consumer | DRY |
-| --- | --- | --- |
-| use-context-reviewer-readability | 4 | yes |
-| use-context-root-cause-analysis | 3 | yes |
-| use-context-reviewer-strictness | 2 | yes |
-| use-context-reviewer-performance | 1 | no |
-| use-context-reviewer-security | 1 | no |
-| use-context-reviewer-silence | 1 | no |
-| use-context-reviewer-testability | 1 | no |
+| skill                            | consumer | DRY |
+| -------------------------------- | -------- | --- |
+| use-context-reviewer-readability | 4        | yes |
+| use-context-root-cause-analysis  | 3        | yes |
+| use-context-reviewer-strictness  | 2        | yes |
+| use-context-reviewer-performance | 1        | no  |
+| use-context-reviewer-security    | 1        | no  |
+| use-context-reviewer-silence     | 1        | no  |
+| use-context-reviewer-testability | 1        | no  |
 
 ## Decision Drivers
 
@@ -114,11 +114,11 @@ agents/reviewers/reviewer-{performance,security,silence,testability}.md
 
 ### Quality Attributes
 
-| Attribute | Priority | Approach |
-| --- | --- | --- |
-| DRY when shared | High | Multi-consumer skill 維持 |
-| Self-containment for single | High | Agent body inline |
-| Discoverability | Medium | skill list の noise 削減 |
+| Attribute                   | Priority | Approach                  |
+| --------------------------- | -------- | ------------------------- |
+| DRY when shared             | High     | Multi-consumer skill 維持 |
+| Self-containment for single | High     | Agent body inline         |
+| Discoverability             | Medium   | skill list の noise 削減  |
 
 ### Trade-offs
 

@@ -33,11 +33,11 @@ ratatuiベースのRust TUIバイナリ `mado` を新規構築する。Ghostty s
 
 ### 検討したアプローチ
 
-| アプローチ | 概要 | 判定 |
-|---|---|---|
-| A: Rust TUI (ratatui) | Ghostty split に常駐する TUI。JSONL のみ読む | 採用 |
-| B: Tauri v2 アプリ | SessionDock と同じメニューバー + ダッシュボード | 却下 |
-| C: CLI デーモン + 通知 | バックグラウンドで動き、状態変化を通知のみ | 却下 |
+| アプローチ             | 概要                                            | 判定 |
+| ---------------------- | ----------------------------------------------- | ---- |
+| A: Rust TUI (ratatui)  | Ghostty split に常駐する TUI。JSONL のみ読む    | 採用 |
+| B: Tauri v2 アプリ     | SessionDock と同じメニューバー + ダッシュボード | 却下 |
+| C: CLI デーモン + 通知 | バックグラウンドで動き、状態変化を通知のみ      | 却下 |
 
 ### Approach B 却下理由
 
@@ -62,11 +62,11 @@ ratatuiベースのRust TUIバイナリ `mado` を新規構築する。Ghostty s
 
 ### データソース: JSONL のみ
 
-| 検討した方式 | 判定 | 理由 |
-|---|---|---|
-| JSONL のみ | 採用 | hook_progress, stop_hook_summary が JSONL に記録済み。追加データソース不要 |
-| Event ファイル | 却下 | gates/shields 側の改修が必要。疎結合だが YAGNI |
-| 共有 SQLite | 却下 | recall との結合度が上がる。責務が異なる |
+| 検討した方式   | 判定 | 理由                                                                       |
+| -------------- | ---- | -------------------------------------------------------------------------- |
+| JSONL のみ     | 採用 | hook_progress, stop_hook_summary が JSONL に記録済み。追加データソース不要 |
+| Event ファイル | 却下 | gates/shields 側の改修が必要。疎結合だが YAGNI                             |
+| 共有 SQLite    | 却下 | recall との結合度が上がる。責務が異なる                                    |
 
 実証: gatesプロジェクトのJSONLでhook_progress 3,973件、stop_hook_summary 198件を確認。preventedContinuationフィールドでpass/block判定可能。
 

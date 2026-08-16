@@ -26,7 +26,7 @@ From a reported symptom and repro steps, generate failing tests that reproduce t
 
 ## Input
 
-Receives symptom, repro, root_cause, and test_paths via the Task spawn prompt. If symptom or repro is not passed, return `No repro provided`.
+Receives symptom, repro, root_cause, and test_paths via the Agent spawn prompt. If symptom or repro is not passed, return `No repro provided`.
 
 | Field      | Type     | Example                                              |
 | ---------- | -------- | ---------------------------------------------------- |
@@ -71,7 +71,7 @@ Receives symptom, repro, root_cause, and test_paths via the Task spawn prompt. I
 
 ## Output
 
-Return the following fields on Task completion. The caller runs the tests (Red confirmation).
+Return the following fields when the agent completes. The result reaches the caller as a completion notification, and the caller runs the tests (Red confirmation).
 
 | Field       | Type   | Value                                                                               |
 | ----------- | ------ | ----------------------------------------------------------------------------------- |

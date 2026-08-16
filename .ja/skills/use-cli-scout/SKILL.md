@@ -40,6 +40,10 @@ Web 上の情報が要るときは scout を使う。ページの本文がその
 | ファイル構成                                     | `scout repo-tree <owner/repo> [-p <dir>] [--pattern '*.rs']` |
 | ファイルの中身                                   | `scout repo-read <owner/repo> <path> [-l 1-80]`              |
 
+## 取れないとき
+
+`fetch` は本文が取れなくても exit 0 で返る。返った Markdown に次のいずれかが出たら ${CLAUDE_SKILL_DIR}/references/fetch-failures.md を読む。本文が短い。表の区切り行が無い。見出しが本文と混ざる。行番号が合わない。crates.io と builder.aws.com と zenn.dev、GitHub の wiki、GitLab、docs.rs のソースビューア、x.com の迂回路もそこにある。
+
 ## 正典は help 出力
 
 必須の環境変数、オプション、`--json` envelope、exit code、stdin 入力、実行例は `scout --help` と `scout <subcommand> --help` にある。scout 自体について答えるときは、インストール済みバージョンの help 出力を根拠にする。help と記憶が食い違えば help が正しい。

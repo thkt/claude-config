@@ -18,7 +18,7 @@ HERE = Path(__file__).resolve().parent
 SCRIPT = HERE.parent / "revalidate.py"
 sys.path.insert(0, str(HERE.parent))
 
-import revalidate  # noqa: E402
+import revalidate
 
 
 class RunTest(unittest.TestCase):
@@ -113,6 +113,7 @@ class CliTest(unittest.TestCase):
             capture_output=True,
             text=True,
             cwd=cwd,
+            check=False,
         )
 
     def test_stdin_to_stdout_contract(self):

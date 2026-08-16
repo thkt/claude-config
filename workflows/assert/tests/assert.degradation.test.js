@@ -1,22 +1,16 @@
-// U-004: assert workflow の adversarial stage stall を result.adversarial に記録する。
-// T-004 adversarial agent が null を返した (stall) 時、result.adversarial が stall を示し、
-//        adversarial が生存しつつテスト 0 件を書いた (genuine no-tests) 場合と区別できる。
-// contract: workflows/assert.js の adversarialSummary shape (total / passed / failed /
-// promoted / excluded) に従い、stall・未実行を示すフィールドを summary へ足す。adrift.js /
-// shake.js の per-item stall accounting に倣い、structured token は英語 "no output / stall"
-// で持つ (shake.js の smellScan と同じ)。EN 版と .ja 版でこの構造トークンは同一のため、本
-// test は localized prose でなく返り値の構造トークンだけを検査し、EN/.ja で同一内容にする。
+// The assert workflow records an adversarial stage stall in result.adversarial. The structural
+// tokens are identical between the EN and the .ja version, so these cases inspect only those
+// tokens rather than the localized prose.
 //
-// stall marker は「stall した時だけ現れる文字列フィールド」を前提にする (shake.js の
-// `...(shaken.smellScan ? { smellScan } : {})` と同じ pattern)。genuine no-tests には
-// 当該フィールドが無いことを負側 assertion で要求するため、Green が `stall: false` の
-// ような常時 present な boolean を足すと負側が誤って落ちる。stall は文字列トークンで、
-// stall 時のみ emit する — これが本 test が Green に課す契約。
+// The stall marker is a string field appearing only when a stall happened. Making it an
+// always-present boolean such as `stall: false` would break the negative assertion that checks
+// the field is absent on a genuine no-tests run.
 //
-// adversarial stage は run 全体で 1 agent (per-target ではない) なので、区別の検証には
-// 2 回の workflow 実行 (stall / genuine no-tests) を並べて比較する。bootstrap は
-// worktree_ok / install ok / build pass を返して dynamicOk を真にし、adversarial agent が
-// 実際に呼ばれる (= その null 返却が env skip でなく agent stall を表す) ようにする。
+// The adversarial stage is one agent for the whole run rather than per target, so telling the
+// two apart means running the workflow twice (stall and genuine no-tests) and comparing. The
+// bootstrap returns worktree_ok / install ok / build pass to make dynamicOk true, so the
+// adversarial agent really runs and its null return means an agent stall rather than an env
+// skip.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -26,7 +20,8 @@ import { runWorkflow } from "../../_lib/run-workflow.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const assertJs = join(here, "..", "..", "assert.js");
 
-// dynamicOk を真にする bootstrap 返り値 (worktree_ok true / install ok / build pass)。
+// The bootstrap return value that makes dynamicOk true (worktree_ok true / install ok / build
+// pass).
 const bootOk = {
   codex_available: true,
   mode: "target",
@@ -40,8 +35,8 @@ const bootOk = {
   reason: "",
 };
 
-// adversarial 以外の全 stage を通す最小 agent stub。advReturn を adversarial stage の
-// 返り値に差し込む (null = stall、{ ran: true, tests: [] } = genuine no-tests)。
+// The shortest agent stub carrying every stage but adversarial. advReturn is injected as the
+// adversarial stage's return value (null = stall, { ran: true, tests: [] } = genuine no-tests).
 const makeAgent = (advReturn) => (prompt, opts) => {
   const label = opts && opts.label;
   if (label === "bootstrap") return bootOk;
@@ -53,54 +48,54 @@ const makeAgent = (advReturn) => (prompt, opts) => {
   return undefined;
 };
 
-test("adversarial agent が null を返す時、result.adversarial が stall を示しテスト 0 件と区別できる", async () => {
+test("result.adversarial shows a stall distinct from zero tests when the adversarial agent returns null", async () => {
   const stallRun = await runWorkflow(assertJs, {
     args: {},
     stubs: { agent: makeAgent(null) }, // adversarial agent stall
   });
   const zeroRun = await runWorkflow(assertJs, {
     args: {},
-    stubs: { agent: makeAgent({ ran: true, tests: [] }) }, // 生存・テスト 0 件
+    stubs: { agent: makeAgent({ ran: true, tests: [] }) }, // alive, zero tests
   });
 
   const stallAdv = stallRun.result && stallRun.result.adversarial;
   const zeroAdv = zeroRun.result && zeroRun.result.adversarial;
-  assert.ok(stallAdv, "stall 時も result.adversarial が返る");
-  assert.ok(zeroAdv, "genuine no-tests 時も result.adversarial が返る");
+  assert.ok(stallAdv, "result.adversarial comes back on a stall too");
+  assert.ok(zeroAdv, "result.adversarial comes back on genuine no-tests too");
 
   const stallText = JSON.stringify(stallAdv);
   const zeroText = JSON.stringify(zeroAdv);
 
   assert.ok(
     /stall|no output/i.test(stallText),
-    "adversarial agent が stall した時 result.adversarial に stall marker が記録される",
+    "a stalled adversarial agent records a stall marker in result.adversarial",
   );
   assert.ok(
     !/stall|no output/i.test(zeroText),
-    "genuine no-tests には stall marker が無く、stall と 0 件を区別できる",
+    "genuine no-tests carries no stall marker, keeping a stall and zero tests apart",
   );
 });
 
-test("adversarial agent が ran: false を自己申告した時、result.adversarial が診断理由付きで未実行を示す", async () => {
+test("result.adversarial shows the stage as not run with a diagnostic reason when the agent self-reports ran: false", async () => {
   const selfSkipRun = await runWorkflow(assertJs, {
     args: {},
     stubs: { agent: makeAgent({ ran: false, tests: [], notes: "sandbox denied codex exec" }) },
   });
   const adv = selfSkipRun.result && selfSkipRun.result.adversarial;
-  assert.ok(adv, "自己申告未実行時も result.adversarial が返る");
+  assert.ok(adv, "result.adversarial comes back on a self-reported skip too");
   assert.equal(
     adv.stall,
     "not run: sandbox denied codex exec",
-    "自己申告の未実行は診断理由 notes 付きで記録され、agent 無出力 (no output / stall) と区別できる",
+    "a self-reported skip is recorded with its diagnostic notes, distinct from an agent with no output",
   );
 });
 
-test("triage block 内で throw が起きた時、result.adversarial が stall を示しテスト 0 件と区別できる", async () => {
-  // testRunP / adversarialP は agent 側で .catch(() => null) 済みのため、block throw の再現には
-  // catch なしで await parallel される triage verdict agent (label "triage:*") を使う。harness の
-  // parallel は thunk の throw で reject するので IIFE ごと throw し、外側の .catch(() => null)
-  // が triageRes を null に畳む。この throw class 全体で stall marker が summary に残ることを
-  // 固定する。
+test("result.adversarial shows a stall distinct from zero tests when the triage block throws", async () => {
+  // testRunP and adversarialP already carry .catch(() => null) on the agent side, so
+  // reproducing a block throw uses the triage verdict agent (label "triage:*"), which is
+  // awaited through parallel with no catch. The harness's parallel rejects when a thunk throws,
+  // so the IIFE throws as a whole and the outer .catch(() => null) folds triageRes to null.
+  // This pins that the stall marker survives in the summary for that entire throw class.
   const failTest = {
     test_name: "t1",
     target: "src/foo.js:3",
@@ -115,19 +110,19 @@ test("triage block 内で throw が起きた時、result.adversarial が stall �
   };
   const thrownRun = await runWorkflow(assertJs, { args: {}, stubs: { agent: throwingAgent } });
   const adv = thrownRun.result && thrownRun.result.adversarial;
-  assert.ok(adv, "throw 時も result.adversarial が返る");
+  assert.ok(adv, "result.adversarial comes back on a throw too");
   assert.equal(
     adv.stall,
     "triage stage threw / no output",
-    "triage block の throw が stall として記録され、clean な 0 件と区別できる",
+    "a throw in the triage block is recorded as a stall, distinct from a clean zero",
   );
 });
 
-// U-002: 入れ子の workflow("audit") が fail-open (challenge_ran=false) した run では、
-// audit findings を critic 検証済みと呼ばず、gate も Ready にならない。
+// U-002: on a run where the nested workflow("audit") failed open (challenge_ran=false), the
+// audit findings are not called critic-verified and the gate does not reach Ready.
 
-// challenge_ran だけを差し替え、findings は両ケースとも1件持たせる。findings 0件との組み合わせは
-// T-009 が別に押さえる。
+// Only challenge_ran varies; both cases carry one finding. The combination with zero findings
+// is covered separately by T-009.
 const makeAuditWorkflowStub = (challengeRan) => (name) =>
   name === "audit"
     ? {
@@ -137,13 +132,13 @@ const makeAuditWorkflowStub = (challengeRan) => (name) =>
       }
     : undefined;
 
-// synthesize agent への呼び出しは run 全体で 1 件のみ。
+// The synthesize agent is called exactly once per run.
 const synthesizePromptOf = (calls) => {
   const call = calls.agent.find((c) => c.opts && c.opts.label === "synthesize");
   return (call && call.prompt) || "";
 };
 
-test("T-004 audit が challenge_ran=false を返した run の Synthesize prompt は audit findings を critic 検証済みと書かない", async () => {
+test("T-004 the Synthesize prompt does not call audit findings critic-verified when audit returns challenge_ran=false", async () => {
   const { calls } = await runWorkflow(assertJs, {
     args: {},
     stubs: {
@@ -152,14 +147,14 @@ test("T-004 audit が challenge_ran=false を返した run の Synthesize prompt
     },
   });
   const prompt = synthesizePromptOf(calls);
-  assert.ok(prompt.length > 0, "synthesize agent が呼ばれる");
+  assert.ok(prompt.length > 0, "the synthesize agent ran");
   assert.ok(
     !/critic-verified/i.test(prompt),
-    "audit の challenge が fail-open (challenge_ran=false) の run では audit findings を critic 検証済みと書かない",
+    "a run where audit's challenge failed open (challenge_ran=false) does not call its findings critic-verified",
   );
 });
 
-test("T-005 audit が challenge_ran=true を返した run の文言は変わらない", async () => {
+test("T-005 the wording is unchanged when audit returns challenge_ran=true", async () => {
   const { calls } = await runWorkflow(assertJs, {
     args: {},
     stubs: {
@@ -168,14 +163,14 @@ test("T-005 audit が challenge_ran=true を返した run の文言は変わら�
     },
   });
   const prompt = synthesizePromptOf(calls);
-  assert.ok(prompt.length > 0, "synthesize agent が呼ばれる");
+  assert.ok(prompt.length > 0, "the synthesize agent ran");
   assert.ok(
     /critic-verified/i.test(prompt),
-    "audit の challenge が正常に走った (challenge_ran=true) run の文言は既存の critic-verified 表記のままになる",
+    "a run where audit's challenge ran normally (challenge_ran=true) keeps the existing critic-verified wording",
   );
 });
 
-test("T-006 audit が challenge_ran=false で issues が0件の run の gate は Ready ではなく Ready (caveat) になる", async () => {
+test("T-006 the gate becomes Ready (caveat) rather than Ready when audit returns challenge_ran=false with zero issues", async () => {
   const { result } = await runWorkflow(assertJs, {
     args: {},
     stubs: {
@@ -186,11 +181,11 @@ test("T-006 audit が challenge_ran=false で issues が0件の run の gate は
   assert.equal(
     result.gate,
     "Ready (caveat)",
-    "audit が fail-open した run は issues 0件でも Ready でなく Ready (caveat) になる",
+    "a run where audit failed open reaches Ready (caveat) rather than Ready even with zero issues",
   );
 });
 
-test("T-007 audit が challenge_ran=true で issues が0件かつ tests が pass の run の gate は Ready のままになる", async () => {
+test("T-007 the gate stays Ready when audit returns challenge_ran=true with zero issues and passing tests", async () => {
   const { result } = await runWorkflow(assertJs, {
     args: {},
     stubs: {
@@ -201,11 +196,11 @@ test("T-007 audit が challenge_ran=true で issues が0件かつ tests が pass
   assert.equal(
     result.gate,
     "Ready",
-    "audit の challenge が正常に走った run は issues 0件かつ tests pass のとき Ready のままになる",
+    "a run where audit's challenge ran normally stays Ready with zero issues and passing tests",
   );
 });
 
-test("T-009 audit が findings 0件かつ challenge_ran=false を返した run の gate は Ready ではなく Ready (caveat) になる", async () => {
+test("T-009 the gate becomes Ready (caveat) rather than Ready when audit returns zero findings and challenge_ran=false", async () => {
   const { result } = await runWorkflow(assertJs, {
     args: {},
     stubs: {
@@ -217,18 +212,18 @@ test("T-009 audit が findings 0件かつ challenge_ran=false を返した run �
   assert.equal(
     result.gate,
     "Ready (caveat)",
-    "reviewer が何も出さず challenge も走らなかった run は issues 0件でも Ready にならない",
+    "a run where no reviewer produced anything and challenge never ran does not reach Ready even with zero issues",
   );
 });
 
-// U-003: audit workflow の返り値を実際に受け取った assert が、劣化を gate に反映する。
-// T-008 は workflow("audit") を手書きオブジェクトへ置き換えず、audit.js をネストで本当に走らせる。
-// 検証対象が audit の返り値から assert の gate 計算までの接続なので、内部レイヤーはスタブ化しない
-// (seam unit の契約)。
+// U-003: assert, having actually received the audit workflow's return value, reflects the
+// degradation in its gate. T-008 does not replace workflow("audit") with a hand-written object;
+// it really runs audit.js nested. What is under test is the connection from audit's return
+// value to assert's gate calculation, so no inner layer is stubbed (the seam unit contract).
 const auditJs = join(here, "..", "..", "audit.js");
 
-// audit.js の各 stage label に対応する最小応答。challenge 段だけ無出力にして、
-// challenge_ran=false と findings 非空を audit.js 自身に計算させる。
+// The minimum response for each audit.js stage label. Only the challenge stage stays silent, so
+// audit.js itself computes challenge_ran=false alongside non-empty findings.
 const auditAgentStub = (prompt, opts) => {
   const label = opts && opts.label;
   if (label === "route") return { files: [{ path: "a.js", churn: 0 }] };
@@ -241,12 +236,12 @@ const auditAgentStub = (prompt, opts) => {
         { file: "a.js", line: 5, severity: "high", summary: "issue", source_ids: ["R-1"] },
       ],
     };
-  // "challenge" (audit.js 自身の challenge 段) / "snapshot" / 他の reviewer label は
-  // 意図的に無出力のまま返す。
+  // "challenge" (audit.js's own challenge stage), "snapshot", and the other reviewer labels
+  // deliberately return nothing.
   return undefined;
 };
 
-// assert.js の workflow("audit", wfArgs) を、audit.js を本当にネストで走らせる形に差し替える。
+// Replaces assert.js's workflow("audit", wfArgs) with a form that really runs audit.js nested.
 const runRealAudit = async (name, wfArgs) => {
   if (name !== "audit") return undefined;
   const { result } = await runWorkflow(auditJs, {
@@ -256,7 +251,7 @@ const runRealAudit = async (name, wfArgs) => {
   return result;
 };
 
-test("T-008 challenge を stub しない audit を入れ子で走らせた assert は、audit の challenge_ran=false を受け取って gate を Ready にしない", async () => {
+test("T-008 assert running a nested audit with no challenge stub receives challenge_ran=false and keeps the gate off Ready", async () => {
   const { result } = await runWorkflow(assertJs, {
     args: {},
     stubs: {
@@ -267,6 +262,6 @@ test("T-008 challenge を stub しない audit を入れ子で走らせた asser
   assert.equal(
     result.gate,
     "Ready (caveat)",
-    "audit を実際に入れ子で走らせ challenge が fail-open (challenge_ran=false) になった run は gate が Ready (caveat) になる",
+    "a run that really nested audit and saw its challenge fail open (challenge_ran=false) lands on gate Ready (caveat)",
   );
 });

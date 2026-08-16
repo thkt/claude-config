@@ -85,7 +85,7 @@ const fenced = (value) => {
 // live under ~/.claude/plugins instead of ~/.claude; the shell fragment tries the
 // dev-tree path first, so the dev tree keeps working unchanged.
 const bundled = (rel) =>
-  `"$(P="$HOME/.claude/${rel}"; [ -f "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
+  `"$(P="$HOME/.claude/${rel}"; [ -e "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" -not -path "*/.ja/*" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
 
 // audit/snapshot.py resolves the timestamp and branch. The agent only writes the
 // payload to a temp file and runs the script once; the disk side-effect is the

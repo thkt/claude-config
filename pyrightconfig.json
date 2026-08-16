@@ -1,0 +1,4 @@
+{
+  "extraPaths": ["hooks/lib", "workflows/build"],
+  "exclude": ["**/node_modules", "**/__pycache__", "plugins", "attic"]
+}

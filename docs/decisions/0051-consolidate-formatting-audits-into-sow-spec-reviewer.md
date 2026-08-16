@@ -10,12 +10,12 @@ decision-makers: thkt
 
 `formatting-audits` skill は Gate / Priority / Finding Format の canonical source として、`reviewer-spec` agent + 3 箇所（`validating-specs` skill, `enhancer-evidence` agent, `verify/gate-decision.md`）から参照されていた。実ロード経路を検証した結果、構造と実態に乖離があった。
 
-| 参照元                  | skills:[] ロード      | 実態                                  |
-| ----------------------- | --------------------- | ------------------------------------- |
-| reviewer-spec agent | 入ってる              | 実ロード                              |
-| validating-specs skill  | 入ってない（agent 経由） | reviewer-spec 文脈で間接ロード    |
-| enhancer-evidence     | 入ってない            | 文字列ヒントのみ、実ロードなし        |
-| verify/gate-decision.md | 入ってない            | 文字列ヒントのみ、実ロードなし        |
+| 参照元                  | skills:[] ロード         | 実態                           |
+| ----------------------- | ------------------------ | ------------------------------ |
+| reviewer-spec agent     | 入ってる                 | 実ロード                       |
+| validating-specs skill  | 入ってない（agent 経由） | reviewer-spec 文脈で間接ロード |
+| enhancer-evidence       | 入ってない               | 文字列ヒントのみ、実ロードなし |
+| verify/gate-decision.md | 入ってない               | 文字列ヒントのみ、実ロードなし |
 
 さらに `enhancer-evidence` と `/verify` は対象が違う Gate 体系（実装コード検証）で、`formatting-audits` の Priority Assignment（"CC will escalate?"）は SOW/Spec レビュー専用の判定軸だった。canonical source という文字列参照は実態と乖離していた。
 

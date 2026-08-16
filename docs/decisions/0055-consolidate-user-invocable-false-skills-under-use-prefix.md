@@ -10,11 +10,11 @@ decision-makers: thkt
 
 ADR-0052/0053/0054 で user-invocable: false の skill を 3 prefix (`use-*` / `ctx-*` / `workflow-*`) に分類し、「4 カテゴリ視覚分離」を完成させた。しかし skill 一覧をアルファベット順で表示すると、user-invocable: false skill が `c` / `u` / `w` に散在し、「内部運用 skill 全体」を単一グループとして識別できない。
 
-| Prefix       | 例                        | Alphabet 位置 |
-| ------------ | ------------------------- | ------------- |
-| `use-*`      | use-git, use-yomu         | `u`           |
+| Prefix       | 例                       | Alphabet 位置 |
+| ------------ | ------------------------ | ------------- |
+| `use-*`      | use-git, use-yomu        | `u`           |
 | `ctx-*`      | ctx-reviewer-readability | `c`           |
-| `workflow-*` | workflow-code             | `w`           |
+| `workflow-*` | workflow-code            | `w`           |
 
 それぞれ役割を示す prefix だが alphabetical に散るため、一覧で「内部運用カテゴリ全体」を視覚的に一括把握できない。ADR-0052 は「CLI wrapper カテゴリを one-of-a-kind 化」する動機で採用されたが、カテゴリ間の統一 marker は scope 外だった。
 
@@ -36,24 +36,24 @@ user (2026-04-24) は以下の優先順位を明示:
 
 全 user-invocable: false skill を `use-<role>-<name>` に再改名。
 
-| Before (after 0052/0053/0054) | After (0055)                        |
-| ----------------------------- | ----------------------------------- |
-| use-yomu                      | use-cli-yomu                        |
-| use-git                       | use-cli-git                         |
-| use-gh                        | use-cli-gh                          |
-| use-npm                       | use-cli-npm                         |
-| use-scout                     | use-cli-scout                       |
-| use-recall                    | use-cli-recall                      |
-| use-gcloud                    | use-cli-gcloud                      |
-| use-heptabase                 | use-cli-heptabase                   |
-| workflow-code                 | use-workflow-code                   |
-| workflow-spec-validation      | use-workflow-spec-validation        |
-| ctx-reviewer-readability     | use-context-reviewer-readability   |
-| ctx-reviewer-performance      | use-context-reviewer-performance    |
-| ctx-reviewer-silence   | use-context-reviewer-silence |
-| ctx-reviewer-strictness      | use-context-reviewer-strictness    |
-| ctx-reviewer-testability      | use-context-reviewer-testability    |
-| ctx-reviewer-security         | use-context-reviewer-security       |
+| Before (after 0052/0053/0054) | After (0055)                     |
+| ----------------------------- | -------------------------------- |
+| use-yomu                      | use-cli-yomu                     |
+| use-git                       | use-cli-git                      |
+| use-gh                        | use-cli-gh                       |
+| use-npm                       | use-cli-npm                      |
+| use-scout                     | use-cli-scout                    |
+| use-recall                    | use-cli-recall                   |
+| use-gcloud                    | use-cli-gcloud                   |
+| use-heptabase                 | use-cli-heptabase                |
+| workflow-code                 | use-workflow-code                |
+| workflow-spec-validation      | use-workflow-spec-validation     |
+| ctx-reviewer-readability      | use-context-reviewer-readability |
+| ctx-reviewer-performance      | use-context-reviewer-performance |
+| ctx-reviewer-silence          | use-context-reviewer-silence     |
+| ctx-reviewer-strictness       | use-context-reviewer-strictness  |
+| ctx-reviewer-testability      | use-context-reviewer-testability |
+| ctx-reviewer-security         | use-context-reviewer-security    |
 
 - Good: alphabetical sort で user-invocable: false が `u` に全集約
 - Good: 3 subcategory (cli/workflow/context) で役割識別維持
@@ -90,13 +90,13 @@ Chosen: Option 1。user の明示的な一貫性優先指示 (2026-04-24) に従
 
 ADR-0052 では `use-*` を「CLI wrapper 専用」と定義したが、本 ADR で「user-invocable: false skill の統一 marker」に拡張。subcategory (`-cli-` / `-workflow-` / `-context-`) が役割を明示する 3-segment 命名。
 
-| Semantic             | Before (0052)           | After (0055)                         |
-| -------------------- | ----------------------- | ------------------------------------ |
-| `use-` の意味        | CLI wrapper 専用 marker | user-invocable: false の統一 marker |
-| 命名 segment         | 2 segment (`use-<cli>`) | 3 segment (`use-<role>-<name>`)      |
-| CLI wrapper          | `use-yomu`              | `use-cli-yomu`                       |
-| Workflow             | `workflow-code`         | `use-workflow-code`                  |
-| Agent context        | `ctx-reviewer-security` | `use-context-reviewer-security`      |
+| Semantic      | Before (0052)           | After (0055)                        |
+| ------------- | ----------------------- | ----------------------------------- |
+| `use-` の意味 | CLI wrapper 専用 marker | user-invocable: false の統一 marker |
+| 命名 segment  | 2 segment (`use-<cli>`) | 3 segment (`use-<role>-<name>`)     |
+| CLI wrapper   | `use-yomu`              | `use-cli-yomu`                      |
+| Workflow      | `workflow-code`         | `use-workflow-code`                 |
+| Agent context | `ctx-reviewer-security` | `use-context-reviewer-security`     |
 
 ADR-0053 Option 2 の却下理由「`use-*` は CLI wrapper 専用と確定」は本 ADR で上書き。却下時の「冗長」懸念は、alphabetical grouping の便益で相殺されると判断。
 

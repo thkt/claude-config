@@ -75,7 +75,7 @@ const sibling = async (name, a) => {
   }
 };
 const bundled = (rel) =>
-  `"$(P="$HOME/.claude/${rel}"; [ -f "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
+  `"$(P="$HOME/.claude/${rel}"; [ -e "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" -not -path "*/.ja/*" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
 
 // Closed objects throughout, so extra fields and omissions in LLM output are
 // rejected at the schema layer.

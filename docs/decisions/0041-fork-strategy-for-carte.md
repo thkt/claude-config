@@ -65,15 +65,15 @@ shared package 化の判断は、次のトリガのいずれかが発生した�
 
 ### フォーク時の変更点
 
-| 項目 | CCPlanView | carte |
-| --- | --- | --- |
-| Bundle ID | sh.saqoo.ccplanview | sh.saqoo.carte |
-| URL scheme | ccplanview:// | carte:// |
-| Product name | CCPlanView | carte (CLI), Carte (App) |
-| UTI rank | LSHandlerRank: Alternate | LSHandlerRank: Alternate (両方 Alternate で共存) |
-| CCHookInstaller | dependency 有 | 削除 |
-| Diff 機能 | 有 | 削除 |
-| index.html | 既存 | 全面書き換え |
+| 項目            | CCPlanView               | carte                                            |
+| --------------- | ------------------------ | ------------------------------------------------ |
+| Bundle ID       | sh.saqoo.ccplanview      | sh.saqoo.carte                                   |
+| URL scheme      | ccplanview://            | carte://                                         |
+| Product name    | CCPlanView               | carte (CLI), Carte (App)                         |
+| UTI rank        | LSHandlerRank: Alternate | LSHandlerRank: Alternate (両方 Alternate で共存) |
+| CCHookInstaller | dependency 有            | 削除                                             |
+| Diff 機能       | 有                       | 削除                                             |
+| index.html      | 既存                     | 全面書き換え                                     |
 
 ### 維持する共通部品
 
@@ -110,10 +110,10 @@ shared package 化の判断は、次のトリガのいずれかが発生した�
 
 `/Users/thkt/.claude/hooks/viewer/ccplanview-open.sh` は PostToolUse で sow/spec/idr を自動的に CCPlanView に展開する。carte リリース後に以下の振り分けに変更:
 
-| ファイル種別 | viewer | 理由 |
-| --- | --- | --- |
-| `*/sow.md`, `*/spec.md` | carte | 構造俯瞰が主用途 |
-| `*/idr-*.md` | CCPlanView | diff 可視化が主用途 (carte は diff なし) |
+| ファイル種別            | viewer     | 理由                                     |
+| ----------------------- | ---------- | ---------------------------------------- |
+| `*/sow.md`, `*/spec.md` | carte      | 構造俯瞰が主用途                         |
+| `*/idr-*.md`            | CCPlanView | diff 可視化が主用途 (carte は diff なし) |
 
 切替は Phase 5 Step 4 で実施。AS-003 dogfooding 評価は carte がデフォルト経路に入ってから始める。
 

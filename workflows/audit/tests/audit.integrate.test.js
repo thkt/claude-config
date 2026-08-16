@@ -1,6 +1,7 @@
-// Integrate 段が吸収した R-N id を root cause の source_ids に残す挙動と、その入力を
-// survivors のみに絞る挙動 (disputed を再び integrate に渡さない) を固定する。
-// Integrate は polish.js に対応する段が無く、id の追跡は audit.js 固有の要件になる。
+// These pin two behaviors of the Integrate stage: keeping the R-N ids it absorbed in each root
+// cause's source_ids, and narrowing its input to survivors alone (a disputed finding is never
+// handed back to integrate). polish.js has no matching stage, so id tracking is a requirement
+// specific to audit.js.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -11,9 +12,9 @@ import { defaultAgentStub, callOf } from "./_fixtures.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const auditJs = join(here, "..", "..", "audit.js");
 
-// Route -> Review (security / silence の 2 reviewer) -> Challenge/Verify -> Integrate まで
-// 通す最小 stub。focus: "security" で rawFindings の id を R-1 (security) / R-2 (silence) に
-// 固定する (既定応答は _fixtures.js の defaultAgentStub)。
+// The shortest stub carrying Route -> Review (the security and silence reviewers) ->
+// Challenge / Verify -> Integrate. focus: "security" pins the rawFindings ids to R-1 (security)
+// and R-2 (silence); defaultAgentStub in _fixtures.js supplies the default responses.
 const run = (opts) =>
   runWorkflow(auditJs, {
     args: { focus: "security", skipPreflight: true },
@@ -27,30 +28,30 @@ const BOTH_CONFIRMED = {
   ],
 };
 
-test("T-023 Integrate に渡す schema だけが source_ids を必須にし、reviewer 用は property ごと持たない", async () => {
+test("T-023 requires source_ids on the Integrate schema alone, and the reviewer one lacks the property", async () => {
   const { calls } = await run({ challenge: BOTH_CONFIRMED, integrate: { findings: [] } });
   const item = (label) => callOf(calls, label).opts.schema.properties.findings.items;
 
   const integrate = item("integrate");
   assert.ok(
     integrate.required.includes("source_ids"),
-    "source_ids を required にしないと Integrate が省いても validation を通り、R-N の追跡が run ごとに切れる",
+    "without source_ids required, an Integrate run that omits it still validates and R-N tracking breaks per run",
   );
 
   const reviewer = item("security");
   assert.equal(
     reviewer.properties.source_ids,
     undefined,
-    "reviewer 用 schema は source_ids を持たず、捏造した id は additionalProperties: false が弾く",
+    "the reviewer schema lacks source_ids, so additionalProperties: false rejects an invented id",
   );
   assert.equal(
     reviewer.required.includes("source_ids"),
     false,
-    "reviewer に source_ids は求めない",
+    "a reviewer is never asked for source_ids",
   );
 });
 
-test("T-009 Integrate が返す finding の source_ids が返り値の findings に保持される", async () => {
+test("T-009 keeps the source_ids Integrate returns in the findings of the return value", async () => {
   const { result, calls } = await run({
     challenge: BOTH_CONFIRMED,
     integrate: {
@@ -68,19 +69,19 @@ test("T-009 Integrate が返す finding の source_ids が返り値の findings 
   assert.deepEqual(
     result.findings[0].source_ids,
     ["R-1", "R-2"],
-    "Integrate が返した source_ids がそのまま返り値の findings に乗る",
+    "the source_ids Integrate returned ride the return value's findings unchanged",
   );
   const integrateCall = callOf(calls, "integrate");
-  assert.ok(integrateCall, "integrate agent が起動する");
+  assert.ok(integrateCall, "the integrate agent started");
   const itemSchema = integrateCall.opts.schema.properties.findings.items;
   assert.equal(
     itemSchema.properties.source_ids && itemSchema.properties.source_ids.type,
     "array",
-    "FINDINGS_SCHEMA の finding item に source_ids (array) が定義されている",
+    "the finding item of FINDINGS_SCHEMA defines source_ids as an array",
   );
 });
 
-test("T-010 Integrate に渡す入力に disputed と判定された finding が含まれない", async () => {
+test("T-010 leaves a finding judged disputed out of the input handed to Integrate", async () => {
   const { calls } = await run({
     challenge: {
       verdicts: [
@@ -91,19 +92,20 @@ test("T-010 Integrate に渡す入力に disputed と判定された finding が
     integrate: { findings: [] },
   });
   const integrateCall = callOf(calls, "integrate");
-  assert.ok(integrateCall, "integrate agent が起動する");
+  assert.ok(integrateCall, "the integrate agent started");
   assert.doesNotMatch(
     integrateCall.prompt,
     /R-2/,
-    "disputed と判定された R-2 は integrate への入力から外れる",
+    "R-2, judged disputed, drops out of the integrate input",
   );
 });
 
-test("T-011 Integrate が survivors を全件返した run の最終 findings は survivors と同数になる", async () => {
+test("T-011 ends with as many findings as survivors when Integrate returns every survivor", async () => {
   const { result, calls } = await run({
     challenge: BOTH_CONFIRMED,
-    // verify の自由記述には survivor の内容 (summary) を含めない。integrate プロンプトに
-    // survivor の内容が乗るとしたら、それは survivors 入力自体からのみ、という前提を保つ。
+    // The free-form verify output carries no survivor content (no summary). That keeps the
+    // premise that survivor content in the integrate prompt can only come from the survivors
+    // input itself.
     verify: "verify pass output",
     integrate: {
       findings: [
@@ -127,15 +129,15 @@ test("T-011 Integrate が survivors を全件返した run の最終 findings �
   assert.equal(
     result.findings.length,
     result.survivors.length,
-    "survivors を全件返した run の最終 findings は survivors と同数になる",
+    "a run where Integrate returned every survivor ends with as many findings as survivors",
   );
   const integrateCall = callOf(calls, "integrate");
-  assert.ok(integrateCall, "integrate agent が起動する");
+  assert.ok(integrateCall, "the integrate agent started");
   for (const s of result.survivors) {
     assert.match(
       integrateCall.prompt,
       new RegExp(s.message),
-      `survivor ${s.id} (${s.message}) の内容が integrate への入力 (survivors) に乗る`,
+      `the content of survivor ${s.id} (${s.message}) rides the integrate input (survivors)`,
     );
   }
 });

@@ -50,6 +50,37 @@ class RunTest(unittest.TestCase):
         )
         self.assertEqual(results, [{"name": "accepts zero amounts", "found": False}])
 
+    def test_statement_spaced_by_textlint_matches_the_unspaced_test_name(self):
+        # The issue body carries "0 件" (textlint spaces half- and full-width); the test
+        # file's string literal carries "0件".
+        (self.root / "gate.test.js").write_text(
+            'test("issues が0件の run の gate は Ready のままになる", () => {});\n'
+        )
+        results = self._run(
+            [
+                {
+                    "files": ["gate.test.js"],
+                    "names": ["issues が 0 件の run の gate は Ready のままになる"],
+                }
+            ]
+        )
+        self.assertEqual(results[0]["found"], True)
+
+    def test_statement_split_across_lines_still_matches(self):
+        # Whitespace is dropped from the whole file, so a formatter's line break inside
+        # a test name still counts as present.
+        (self.root / "wrapped.test.js").write_text(
+            'test(\n  "rejects negative\n  amounts",\n  () => {},\n);\n'
+        )
+        results = self._run(
+            [{"files": ["wrapped.test.js"], "names": ["rejects negative amounts"]}]
+        )
+        self.assertEqual(results[0]["found"], True)
+
+    def test_whitespace_only_statement_is_not_found(self):
+        results = self._run([{"files": ["foo.test.js"], "names": ["   "]}])
+        self.assertEqual(results[0]["found"], False)
+
     def test_missing_file_fails_closed_to_not_found(self):
         results = self._run([{"files": ["gone.test.js"], "names": ["rejects negative amounts"]}])
         self.assertEqual(results, [{"name": "rejects negative amounts", "found": False}])
@@ -85,6 +116,7 @@ class CliTest(unittest.TestCase):
             capture_output=True,
             text=True,
             cwd=cwd,
+            check=False,
         )
 
     def test_stdin_to_stdout(self):

@@ -32,20 +32,22 @@ export const meta = {
 // has no write side-effects on the target repo. Record the absence in the report and move on.
 
 const parseArgs = () => {
-  if (typeof args === "string") {
+  if (typeof args === "object" && args) return args;
+  if (typeof args !== "string") return {};
+  const s = args.trim();
+  if (s.startsWith("{")) {
     try {
-      const parsed = JSON.parse(args);
+      const parsed = JSON.parse(s);
       if (parsed && typeof parsed === "object") return parsed;
     } catch {
-      // a non-JSON string is the scope shorthand
+      // malformed JSON falls through to the scope shorthand below
     }
-    return { scope: args };
   }
-  return args && typeof args === "object" ? args : {};
+  return { scope: args };
 };
 const opts = parseArgs();
 const scope = typeof opts.scope === "string" ? opts.scope : "";
-const base = typeof opts.base === "string" ? opts.base : "main";
+const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 const repo = typeof opts.repo === "string" ? opts.repo : "";
 
 const anchor = (p) =>
@@ -53,12 +55,18 @@ const anchor = (p) =>
     ? `Run every git / file / build command from the ${repo} repository (start each shell command with \`cd ${repo} && \`).\n\n${p}`
     : p;
 
+// Plugin-aware asset resolution. When this script ships as a plugin, bundled assets
+// live under ~/.claude/plugins instead of ~/.claude; the shell fragment tries the
+// dev-tree path first, so the dev tree keeps working unchanged. The -e test admits a
+// directory, which the SCRIPTS constant below needs.
+const bundled = (rel) =>
+  `"$(P="$HOME/.claude/${rel}"; [ -e "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" -not -path "*/.ja/*" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
 // Scripts bundled with this workflow. The loader only reads .js directly under workflows/,
 // so a subdir is a safe asset home (instructions and references live inside the workflow).
-const SCRIPTS = "$HOME/.claude/workflows/assert";
+const SCRIPTS = bundled("workflows/assert");
 // /outcome owns the emptiness criteria for OUTCOME.md, so Bootstrap reads its verdict
 // instead of judging TBD markers by eye.
-const OUTCOME_VALIDATOR = "$HOME/.claude/skills/outcome/scripts/validate-outcome.py";
+const OUTCOME_VALIDATOR = bundled("skills/outcome/scripts/validate-outcome.py");
 
 // Inline the two rules of merge-findings.py in JS. P1 -> high, P2 -> medium, P3 -> dropped.
 // critical / high / medium / low pass through. Unrecognized severities cannot be ranked,
@@ -241,9 +249,9 @@ const scopeInstr = scope
 const bootstrapPrompt = anchor(
   `You handle the Bootstrap stage of assert. Perform these in order.\n` +
     `1. Check for the codex CLI with \`command -v codex\`. If missing, set codex_available: false, skip the rest, and return mode: none.\n` +
-    `2. Run "${OUTCOME_VALIDATOR}" .claude/OUTCOME.md. If the JSON state is absent or empty, set outcome: "absent". Otherwise read the file and digest Behavior / Non-goals / Constraints into outcome. Do not generate a stub.\n` +
+    `2. Run ${OUTCOME_VALIDATOR} .claude/OUTCOME.md. If the JSON state is absent or empty, set outcome: "absent". Otherwise read the file and digest Behavior / Non-goals / Constraints into outcome. Do not generate a stub.\n` +
     `3. ${scopeInstr}\n` +
-    `4. Unless mode is none, prepare an isolated worktree with "${SCRIPTS}/worktree.py" "$CLAUDE_SESSION_ID" (if the JSON status is error, set worktree_ok: false and copy stderr into reason), then run "${SCRIPTS}/bootstrap.py" "<worktree path>" and copy install / build / reason from its JSON. When diff_kind is uncommitted, mirror the uncommitted changes into the worktree (apply \`git diff HEAD\` on the worktree side, and cp untracked files among scope_files).\n` +
+    `4. Unless mode is none, prepare an isolated worktree with ${SCRIPTS}/worktree.py "$CLAUDE_SESSION_ID" (if the JSON status is error, set worktree_ok: false and copy stderr into reason), then run ${SCRIPTS}/bootstrap.py "<worktree path>" and copy install / build / reason from its JSON. When diff_kind is uncommitted, mirror the uncommitted changes into the worktree (apply \`git diff HEAD\` on the worktree side, and cp untracked files among scope_files).\n` +
     `Do not review or fix code. This stage's job is environment setup and recording facts only.`,
 );
 const boot = (await agent(bootstrapPrompt, {
@@ -588,7 +596,7 @@ try {
   phase("Cleanup");
   await agent(
     anchor(
-      `You handle the Cleanup stage of assert. Tear down the assert worktree with "${SCRIPTS}/worktree.py" --cleanup "$CLAUDE_SESSION_ID". If it fails, reporting it as a warning is enough (best-effort). Do not touch other files.`,
+      `You handle the Cleanup stage of assert. Tear down the assert worktree with ${SCRIPTS}/worktree.py --cleanup "$CLAUDE_SESSION_ID". If it fails, reporting it as a warning is enough (best-effort). Do not touch other files.`,
     ),
     {
       agentType: "general-purpose",

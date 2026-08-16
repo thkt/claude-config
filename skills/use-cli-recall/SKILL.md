@@ -24,11 +24,11 @@ When one applies, call without deliberation.
 
 | Purpose           | Command                                                     |
 | ----------------- | ----------------------------------------------------------- |
-| Search            | `recall search "query"`. Shorthand: `recall "query"`         |
+| Search            | `recall search "query"`. Shorthand: `recall "query"`        |
 | Last N days       | `recall search "query" --days N`                            |
 | Project filter    | `recall search "query" --project <path>`                    |
 | Source filter     | `recall search "query" --source claude` or `--source codex` |
-| Limit results     | `recall search "query" --limit N`. Default 10, max 100       |
+| Limit results     | `recall search "query" --limit N`. Default 10, max 100      |
 | Show session      | `recall show <session-id>`                                  |
 | Status            | `recall status`                                             |
 | Incremental index | `recall index`                                              |

@@ -10,10 +10,10 @@ decision-makers: thkt
 
 `user-invocable: false` の skill は ADR-0052 で CLI wrapper に `use-` prefix、ADR-0053 で agent 専用 skill に `ctx-` prefix を導入した。残余カテゴリ Workflow (orchestrating-workflows, validating-specs) は `verb-noun` パターン（接頭辞なし）のまま。
 
-| skill                   | caller                                                    | user-invocable |
-| ----------------------- | --------------------------------------------------------- | -------------- |
+| skill                   | caller                                                               | user-invocable |
+| ----------------------- | -------------------------------------------------------------------- | -------------- |
 | orchestrating-workflows | /code SKILL.md, explorer-feature, team-implementation (各 `skills:`) | false          |
-| validating-specs        | /think, /feature (spec validation phase)                 | false          |
+| validating-specs        | /think, /feature (spec validation phase)                             | false          |
 
 ADR-0049 の「caller=1 → colocate」基準では対象外（orchestrating-workflows は caller=3）。しかし Workflow カテゴリだけ接頭辞なしで、skill list の視覚的識別が `use-*` / `ctx-*` と比べて弱い。
 
@@ -30,10 +30,10 @@ ADR-0049 の「caller=1 → colocate」基準では対象外（orchestrating-wor
 
 全 Workflow skill を `workflow-<noun>` に改名。
 
-| Before                  | After                     |
-| ----------------------- | ------------------------- |
-| orchestrating-workflows | workflow-code             |
-| validating-specs        | workflow-spec-validation  |
+| Before                  | After                    |
+| ----------------------- | ------------------------ |
+| orchestrating-workflows | workflow-code            |
+| validating-specs        | workflow-spec-validation |
 
 - Good: 4 カテゴリ（short / `use-*` / `ctx-*` / `workflow-*`）の視覚分離完成
 - Good: ADR-0052/0053 の discovery category identification 論理を一貫適用
@@ -75,12 +75,12 @@ Chosen: Option 1。ADR-0052/0053 と同じ動機を残余カテゴリに適用�
 
 ## Current Process vs New Process
 
-| Aspect                           | Before                                | After                                  |
-| -------------------------------- | ------------------------------------- | -------------------------------------- |
-| Workflow skill 命名              | `orchestrating-workflows`（接頭辞なし） | `workflow-code`                        |
-| SKILLS.md Naming Workflow 行    | `verb-noun`                           | `workflow-<noun>`                      |
-| skill list 視覚識別              | 3 カテゴリ prefix + Workflow 無 prefix | 4 カテゴリ全 prefix                    |
-| agent frontmatter 参照           | `skills: [orchestrating-workflows]`   | `skills: [workflow-code]`              |
+| Aspect                       | Before                                  | After                     |
+| ---------------------------- | --------------------------------------- | ------------------------- |
+| Workflow skill 命名          | `orchestrating-workflows`（接頭辞なし） | `workflow-code`           |
+| SKILLS.md Naming Workflow 行 | `verb-noun`                             | `workflow-<noun>`         |
+| skill list 視覚識別          | 3 カテゴリ prefix + Workflow 無 prefix  | 4 カテゴリ全 prefix       |
+| agent frontmatter 参照       | `skills: [orchestrating-workflows]`     | `skills: [workflow-code]` |
 
 ## Scope
 

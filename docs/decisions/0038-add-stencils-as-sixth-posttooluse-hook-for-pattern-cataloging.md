@@ -90,12 +90,12 @@ CLI
 
 ## Quality Attributes
 
-| Attribute   | Priority | Approach                                                 |
-| ----------- | -------- | -------------------------------------------------------- |
-| Determinism | High     | tree-sitter AST解析。LLMを検出に使わない                 |
-| Fail-open   | High     | hook modeは常にexit 0。エージェントをブロックしない      |
-| Idempotency | High     | 同一入力で同一出力（NFR-003）                            |
-| Performance | Medium   | hook: 2秒以内（単一ファイル）。scan: 30秒以内            |
+| Attribute   | Priority | Approach                                            |
+| ----------- | -------- | --------------------------------------------------- |
+| Determinism | High     | tree-sitter AST解析。LLMを検出に使わない            |
+| Fail-open   | High     | hook modeは常にexit 0。エージェントをブロックしない |
+| Idempotency | High     | 同一入力で同一出力（NFR-003）                       |
+| Performance | Medium   | hook: 2秒以内（単一ファイル）。scan: 30秒以内       |
 
 ## Trade-offs
 

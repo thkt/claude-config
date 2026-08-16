@@ -111,15 +111,15 @@ After:
 
 ## Baseline Metrics (2026-02-12 初回 audit)
 
-| Metric | Value |
-| --- | --- |
-| Total findings processed | 94 |
-| Verified | 63 (67.0%) |
-| Weak evidence | 17 (18.1%) |
-| Unverifiable | 0 (0.0%) |
-| Verification rate | 78.8% |
-| False positive rate (post-reconciliation) | 21.3% |
-| disputed + verified (Rule 1 catches) | 6 |
+| Metric                                    | Value      |
+| ----------------------------------------- | ---------- |
+| Total findings processed                  | 94         |
+| Verified                                  | 63 (67.0%) |
+| Weak evidence                             | 17 (18.1%) |
+| Unverifiable                              | 0 (0.0%)   |
+| Verification rate                         | 78.8%      |
+| False positive rate (post-reconciliation) | 21.3%      |
+| disputed + verified (Rule 1 catches)      | 6          |
 
 ## Related ADRs
 

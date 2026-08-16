@@ -1,5 +1,6 @@
-// polish の diff fallback: scope 省略時は uncommitted な変更、無ければ base...HEAD (push 済み branch diff)。
-// codex agent が返す diff_kind に応じて fix / cleanup の対象 diff が切り替わることをテストで固定する。
+// polish's diff fallback: with scope omitted the target is the uncommitted changes, and
+// base...HEAD (the pushed branch diff) when there are none. These cases pin that the fix and
+// cleanup targets switch on the diff_kind the codex agent returns.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -9,7 +10,7 @@ import { runWorkflow } from "../../_lib/run-workflow.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const polishJs = join(here, "..", "..", "polish.js");
 
-// Review -> Challenge -> Fix -> Cleanup を通す最小 stub。diff_kind だけ差し替える。
+// The shortest stub carrying Review -> Challenge -> Fix -> Cleanup. Only diff_kind varies.
 const agentStub = (diffKind) => (prompt, opts) => {
   const label = opts && opts.label;
   if (label === "codex") {
@@ -34,27 +35,27 @@ const agentStub = (diffKind) => (prompt, opts) => {
 
 const promptOf = (calls, label) => calls.agent.find((c) => c.opts && c.opts.label === label).prompt;
 
-test("scope 省略時の Review prompt に branch fallback 判定と --base 実行が含まれる", async () => {
+test("the Review prompt carries the branch fallback check and the --base run when scope is omitted", async () => {
   const { calls } = await runWorkflow(polishJs, {
     args: {},
     stubs: { agent: agentStub("branch") },
   });
   const review = promptOf(calls, "codex");
-  assert.match(review, /git rev-list --count main\.\.HEAD/, "rev-list による先行 commit 判定");
-  assert.match(review, /codex review --base main/, "branch diff は --base で codex 実行");
+  assert.match(review, /git rev-list --count main\.\.HEAD/, "rev-list decides the ahead commits");
+  assert.match(review, /codex review --base main/, "a branch diff runs codex with --base");
 });
 
-test("diff_kind: branch のとき fix と cleanup の対象が base...HEAD になる", async () => {
+test("the fix and cleanup targets become base...HEAD when diff_kind is branch", async () => {
   const { calls, result } = await runWorkflow(polishJs, {
     args: {},
     stubs: { agent: agentStub("branch") },
   });
-  assert.match(promptOf(calls, "fix"), /git diff main\.\.\.HEAD/, "fix の対象は branch diff");
-  assert.match(promptOf(calls, "simplify"), /main\.\.\.HEAD/, "cleanup の対象は branch diff");
-  assert.equal(result.diff_kind, "branch", "返り値に diff_kind が出る");
+  assert.match(promptOf(calls, "fix"), /git diff main\.\.\.HEAD/, "fix targets the branch diff");
+  assert.match(promptOf(calls, "simplify"), /main\.\.\.HEAD/, "cleanup targets the branch diff");
+  assert.equal(result.diff_kind, "branch", "the return value carries diff_kind");
 });
 
-test("diff_kind: uncommitted のとき fix の対象が git diff HEAD のままである", async () => {
+test("the fix target stays git diff HEAD when diff_kind is uncommitted", async () => {
   const { calls } = await runWorkflow(polishJs, {
     args: {},
     stubs: { agent: agentStub("uncommitted") },
@@ -62,7 +63,7 @@ test("diff_kind: uncommitted のとき fix の対象が git diff HEAD のまま�
   assert.match(promptOf(calls, "fix"), /git diff HEAD/);
 });
 
-test("base 指定が Review / Fix の prompt に伝播する", async () => {
+test("a given base propagates into the Review and Fix prompts", async () => {
   const { calls } = await runWorkflow(polishJs, {
     args: { base: "develop" },
     stubs: { agent: agentStub("branch") },

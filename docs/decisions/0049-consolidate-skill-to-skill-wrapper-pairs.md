@@ -6,18 +6,18 @@ decision-makers: thkt
 
 # ADR-0049: Consolidate skill-to-skill wrapper pairs
 
-  ADR-0042 の precedent と同じ論理
+ADR-0042 の precedent と同じ論理
 
 ## Context and Problem Statement
 
 ADR-0004 §4 は全コマンドを「薄いラッパー + 知識ベース」構造に統一する方針を決めた。
 運用後の棚卸しで skill-to-skill wrapper ペアの caller 数を実測:
 
-| Impl skill                     | Caller (wrapper 以外) |
-| ------------------------------ | --------------------- |
-| creating-adrs                  | なし (skills/adr のみ) |
+| Impl skill                     | Caller (wrapper 以外)       |
+| ------------------------------ | --------------------------- |
+| creating-adrs                  | なし (skills/adr のみ)      |
 | extracting-ubiquitous-language | なし (skills/glossary のみ) |
-| screening-pr-review            | なし (skills/preview のみ) |
+| screening-pr-review            | なし (skills/preview のみ)  |
 
 「複数 wrapper から共有される」前提が3組とも成立してない。ADR-0042 が scripts に対して下した判断（caller=1 なら colocate）と同じ構造。
 

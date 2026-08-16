@@ -22,20 +22,22 @@ export const meta = {
 // 誤検知するため使わない)。
 
 const parseArgs = () => {
-  if (typeof args === "string") {
+  if (typeof args === "object" && args) return args;
+  if (typeof args !== "string") return {};
+  const s = args.trim();
+  if (s.startsWith("{")) {
     try {
-      const parsed = JSON.parse(args);
+      const parsed = JSON.parse(s);
       if (parsed && typeof parsed === "object") return parsed;
     } catch {
-      // JSON でない文字列は scope の短縮記法
+      // 壊れた JSON はそのまま scope の短縮記法へ落ちる
     }
-    return { scope: args };
   }
-  return args && typeof args === "object" ? args : {};
+  return { scope: args };
 };
 const opts = parseArgs();
 const scope = typeof opts.scope === "string" ? opts.scope : "";
-const base = typeof opts.base === "string" ? opts.base : "main";
+const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 const repo = typeof opts.repo === "string" ? opts.repo : "";
 
 const anchor = (p) =>

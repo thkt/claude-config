@@ -81,15 +81,15 @@ recallでembedderを実装・実証した後、独立crateに抽出してyomu �
 
 ### Embedding Stack
 
-| Component | Choice |
-|-----------|--------|
-| Runtime | ort v2.0.0-rc.12 |
-| Model | Ruri v3-310m（keitokei1994/ruri-v3-310m-onnx、1.26 GB） |
-| Tokenizer | tokenizers crate + tokenizer.json |
-| Pooling | mean pooling（自前実装） |
-| Normalization | L2 normalize（自前実装） |
-| Prefix | query: "検索クエリ: " / document: "検索文書: " |
-| Dimensions | 768（kiku/yomu 互換） |
+| Component     | Choice                                                  |
+| ------------- | ------------------------------------------------------- |
+| Runtime       | ort v2.0.0-rc.12                                        |
+| Model         | Ruri v3-310m（keitokei1994/ruri-v3-310m-onnx、1.26 GB） |
+| Tokenizer     | tokenizers crate + tokenizer.json                       |
+| Pooling       | mean pooling（自前実装）                                |
+| Normalization | L2 normalize（自前実装）                                |
+| Prefix        | query: "検索クエリ: " / document: "検索文書: "          |
+| Dimensions    | 768（kiku/yomu 互換）                                   |
 
 ### sync/async 戦略
 
@@ -99,11 +99,11 @@ recallのembedderは同期（sync）で実装する。kiku/yomuの既存 `Embed`
 
 ### 展開計画
 
-| Phase | Target | Action |
-|-------|--------|--------|
-| 1 | recall | ort + Ruri v3 embedder を実装。semantic session search |
-| 2 | yomu | recall の embedder を独立 crate に抽出。Gemini API を置換 |
-| 3 | kiku | 同様に移行 |
+| Phase | Target | Action                                                    |
+| ----- | ------ | --------------------------------------------------------- |
+| 1     | recall | ort + Ruri v3 embedder を実装。semantic session search    |
+| 2     | yomu   | recall の embedder を独立 crate に抽出。Gemini API を置換 |
+| 3     | kiku   | 同様に移行                                                |
 
 ## Links
 

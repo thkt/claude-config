@@ -17,7 +17,7 @@ memory: project
 
 ## 入力
 
-Task spawn プロンプト経由で subject、domain、feature_scope を受け取る。feature_scope が渡されない場合は、bfs と LS で発見したプロジェクトルートから探索する。
+Agent spawn プロンプト経由で subject、domain、feature_scope を受け取る。feature_scope が渡されない場合は、bfs と LS で発見したプロジェクトルートから探索する。
 
 | フィールド    | 型     | 例                                               |
 | ------------- | ------ | ------------------------------------------------ |
@@ -41,7 +41,7 @@ bfs と LS でプロジェクト構造とエントリポイントを発見する
 
 ## アウトプット
 
-Task 完了時に以下のフィールドを返す。各発見はソース (file:line 引用、または「inferred from X」) を伴う。
+エージェントの完了時に以下のフィールドを返す。各発見はソース (file:line 引用、または「inferred from X」) を伴う。
 
 | Field                 | Type   | Value                                                                                    |
 | --------------------- | ------ | ---------------------------------------------------------------------------------------- |
@@ -50,7 +50,7 @@ Task 完了時に以下のフィールドを返す。各発見はソース (file
 | key_components        | list   | 各 item は component、responsibility、file                                               |
 | architecture_insights | list   | 各 item は aspect、observation (layering pattern / state management / error boundary 等) |
 | dependencies          | object | internal、external                                                                       |
-| essential_files       | list   | 優先順位付き 5-10 ファイル、各 item は order、file、why                                  |
+| essential_files       | list   | 優先順位付き 5〜10 ファイル、各 item は order、file、why                                 |
 | sources               | list   | 各 item は finding、source (file:line 引用、または `inferred from X, not yet read`)      |
 
 | 制約             | 理由                                   |

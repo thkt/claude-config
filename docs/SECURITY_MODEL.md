@@ -22,12 +22,12 @@ Important: L1 to L3 tune human intervention points (UX). L4 to L5 are the actual
 
 ## Known Gaps
 
-| Gap                                       | Risk                                            | Mitigation                                                  |
-| ----------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------- |
-| Network calls from allowed Bash commands  | Data exfiltration possible via curl/wget        | Block file upload patterns via shields check                |
-| External transmission via allowed tools   | Data exfiltration possible via scout, gh api    | Indistinguishable from legitimate use, handle operationally |
-| npm/pnpm install postinstall              | Arbitrary code execution                        | Use only trusted packages                                   |
-| L5 process sandbox not implemented        | Cannot restrict agent communication at OS level | Consider containerization (future)                          |
+| Gap                                      | Risk                                            | Mitigation                                                  |
+| ---------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------- |
+| Network calls from allowed Bash commands | Data exfiltration possible via curl/wget        | Block file upload patterns via shields check                |
+| External transmission via allowed tools  | Data exfiltration possible via scout, gh api    | Indistinguishable from legitimate use, handle operationally |
+| npm/pnpm install postinstall             | Arbitrary code execution                        | Use only trusted packages                                   |
+| L5 process sandbox not implemented       | Cannot restrict agent communication at OS level | Consider containerization (future)                          |
 
 ## Team Guidelines
 

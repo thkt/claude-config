@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runWorkflow } from "../../_lib/run-workflow.js";
+import { checkWorkflowSyntax, runWorkflow } from "../../_lib/run-workflow.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..", "..");
@@ -24,7 +24,7 @@ const plan = {
   ],
 };
 
-// tests が空の unit は plan の選択により Red→Green でなく直接実装になる。
+// A unit with no tests takes direct implementation instead of Red -> Green, chosen by the plan.
 const noTestPlan = {
   test_command: "echo test",
   units: [
@@ -67,7 +67,7 @@ const happyAgentStub = (prompt, opts) => {
   throw new Error(`unexpected label: ${label}`);
 };
 
-test("model 指定時に Red / Green とその retry の 4 呼び出しへ伝播し Verify は固定 sonnet のまま", async () => {
+test("propagates a given model to the 4 Red / Green calls and their retries while Verify stays sonnet", async () => {
   const { calls } = await runWorkflow(codeJs, {
     // A model distinct from Verify's fixed sonnet, so the assertions below can
     // tell input.model propagation apart from the fixed value.
@@ -91,7 +91,7 @@ test("model 指定時に Red / Green とその retry の 4 呼び出しへ伝播
   );
 });
 
-test("model 未指定で Red / Green の opts が既定の sonnet と effort high を持ち完走する", async () => {
+test("runs to completion with the default sonnet and effort high on Red / Green when no model is given", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
     args: { plan, repo: "" },
     stubs: { agent: happyAgentStub },
@@ -109,9 +109,10 @@ test("model 未指定で Red / Green の opts が既定の sonnet と effort hig
   assert.equal(result.tests_pass, true, "verify tests_pass is returned as-is");
 });
 
-// seam unit のテストだけが層と層の結線漏れで落ちる。内部層を stub すると unit の意味が
-// 消えるので、その禁止を Red / Green の prompt に載せることを固定する (kizalas #558)。
-test("seam: true の unit だけ Red / Green の prompt に内部層 stub 禁止と導線 assert の指示が載る", async () => {
+// Only a seam unit's test fails on a missing wire between two layers. Stubbing an inner layer
+// erases what the unit means, so these cases pin that the prohibition rides the Red / Green
+// prompts.
+test("only a unit with seam: true carries the inner-layer stub ban and the wiring assert in its Red / Green prompts", async () => {
   const seamPlan = (seam) => ({
     test_command: "echo test",
     units: [{ ...plan.units[0], seam }],
@@ -129,17 +130,18 @@ test("seam: true の unit だけ Red / Green の prompt に内部層 stub 禁止
   };
 
   const withSeam = await promptsFor(true);
-  assert.match(withSeam, /seam unit/, "seam unit である旨が prompt に載る");
-  assert.match(withSeam, /stub/, "内部層 stub の禁止が prompt に載る");
+  assert.match(withSeam, /seam unit/, "the prompt says the unit is a seam unit");
+  assert.match(withSeam, /stub/, "the prompt carries the inner-layer stub ban");
 
   const withoutSeam = await promptsFor(false);
-  assert.doesNotMatch(withoutSeam, /seam unit/, "seam: false の unit には seam 指示が載らない");
+  assert.doesNotMatch(withoutSeam, /seam unit/, "a unit with seam: false carries no seam wording");
 });
 
-// 実装中の advisor 相談は build の設計 (blocker は anomaly として記録して進み、重い assurance
-// は draft PR 上で人間が起動する) と噛み合わないので、3 経路すべての実装 prompt に
-// no-advisor constraint が載り、Verify には載らないことを固定する (#221)。
-test("direct impl / Red / Green の prompt に advisor 禁止と anomaly 記録への誘導が載り Verify には載らない", async () => {
+// Consulting the advisor mid-implementation clashes with build's design (a blocker is recorded
+// as an anomaly and the run advances; heavy assurance is human-invoked on the draft PR), so
+// these pin that the no-advisor constraint rides all three implementation prompts and not
+// Verify's.
+test("the direct impl, Red, and Green prompts carry the advisor ban and the anomaly routing while Verify does not", async () => {
   const directStub = (prompt, opts) => {
     const label = opts.label ?? "";
     if (label === "reference-index") return { found: false, table: "" };
@@ -159,21 +161,17 @@ test("direct impl / Red / Green の prompt に advisor 禁止と anomaly 記録�
   const implementCalls = [...tddCalls.agent, ...directCalls.agent].filter((c) =>
     /^(red|green|impl):/.test(c.opts.label),
   );
-  assert.equal(implementCalls.length, 3, "red / green / impl の 3 経路が揃う");
+  assert.equal(implementCalls.length, 3, "all three routes red / green / impl are present");
   for (const call of implementCalls) {
-    assert.match(call.prompt, /advisor tool/, `${call.opts.label} に advisor 禁止が載る`);
-    assert.match(call.prompt, /anomaly/, `${call.opts.label} に anomaly 記録への誘導が載る`);
+    assert.match(call.prompt, /advisor tool/, `${call.opts.label} carries the advisor ban`);
+    assert.match(call.prompt, /anomaly/, `${call.opts.label} carries the anomaly routing`);
   }
 
   const verify = tddCalls.agent.find((c) => c.opts.label === "verify");
-  assert.doesNotMatch(
-    verify.prompt,
-    /advisor/,
-    "Verify の prompt に advisor constraint は載らない",
-  );
+  assert.doesNotMatch(verify.prompt, /advisor/, "the Verify prompt carries no advisor constraint");
 });
 
-test("tests 空の unit は Red / Green を呼ばず直接実装 (impl) 1 段で完走し、model / effort が伝播する", async () => {
+test("a unit with no tests skips Red / Green, completes in one direct impl step, and propagates model and effort", async () => {
   const directStub = (prompt, opts) => {
     const label = opts.label ?? "";
     if (label === "reference-index") return { found: false, table: "" };
@@ -189,16 +187,16 @@ test("tests 空の unit は Red / Green を呼ばず直接実装 (impl) 1 段で
   const labels = calls.agent.map((c) => c.opts.label);
   assert.ok(
     labels.every((l) => !/^(red|red2|green|green2):/.test(l)),
-    "Red / Green agent は呼ばれない",
+    "no Red / Green agent runs",
   );
   const impl = calls.agent.find((c) => c.opts.label === "impl:U-1");
-  assert.ok(impl, "直接実装 agent impl:U-1 が呼ばれる");
-  assert.equal(impl.opts.model, "haiku", "impl に input.model が伝播する");
-  assert.equal(impl.opts.effort, "high", "impl は effort high で走る");
-  assert.deepEqual(result.completed, ["U-1"], "直接実装 unit が completed に載る");
+  assert.ok(impl, "the direct implementation agent impl:U-1 ran");
+  assert.equal(impl.opts.model, "haiku", "input.model propagates to impl");
+  assert.equal(impl.opts.effort, "high", "impl runs at effort high");
+  assert.deepEqual(result.completed, ["U-1"], "the directly implemented unit lands in completed");
 });
 
-test("tests 空の unit の直接実装が 2 回失敗すると stopped: unit-failed で fail-close する", async () => {
+test("fails closed with stopped: unit-failed when the direct implementation fails twice", async () => {
   const failingStub = (prompt, opts) => {
     const label = opts.label ?? "";
     if (label === "reference-index") return { found: false, table: "" };
@@ -210,22 +208,24 @@ test("tests 空の unit の直接実装が 2 回失敗すると stopped: unit-fa
     args: { plan: noTestPlan, repo: "" },
     stubs: { agent: failingStub },
   });
-  assert.equal(result.stopped, "unit-failed", "retry 後も green でなければ unit-failed");
+  assert.equal(result.stopped, "unit-failed", "not green after the retry means unit-failed");
   assert.ok(
     calls.agent.some((c) => c.opts.label === "impl2:U-1"),
-    "直接実装の retry (impl2) が 1 回走る",
+    "the direct implementation retry (impl2) runs once",
   );
 });
 
-test("静的 gate が JA / EN の code.js と tests/*.js で pass する", () => {
-  const targets = [
-    join(root, ".ja", "workflows", "code.js"),
-    join(root, "workflows", "code.js"),
+test("the static gates pass on the JA and EN code.js and on tests/*.js", () => {
+  const scripts = [join(root, ".ja", "workflows", "code.js"), join(root, "workflows", "code.js")];
+  const modules = [
     join(root, "workflows", "_lib", "run-workflow.js"),
     join(root, "workflows", "code", "tests", "code.model.test.js"),
   ];
-  for (const file of targets) {
+  for (const file of scripts) {
+    checkWorkflowSyntax(file);
+  }
+  for (const file of modules) {
     execFileSync("node", ["--check", file], { cwd: root });
   }
-  execFileSync("npx", ["oxlint", ...targets], { cwd: root });
+  execFileSync("npx", ["oxlint", ...scripts, ...modules], { cwd: root });
 });

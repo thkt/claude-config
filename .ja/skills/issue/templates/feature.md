@@ -9,7 +9,7 @@
 ```markdown
 ## What & Why
 
-{作るもの - 1-2 文}
+{作るもの - 1〜2 文}
 {なぜ必要か - ユーザー問題やビジネス理由}
 
 ## Acceptance Criteria

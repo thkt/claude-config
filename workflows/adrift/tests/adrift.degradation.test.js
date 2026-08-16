@@ -1,11 +1,9 @@
-// U-002: when some of the reviewers returned by the routing table stall (agent returns null)
-// during adrift's per-DR scan, the stalled reviewer names are recorded in the per-DR result.
-// The primary channel is the workflow return value result.skipped (WORKFLOWS.md). The per-DR
-// serialization passed to the Report stage (report agent prompt) is pinned as the auxiliary
-// channel alongside it.
-// contract: follows workflows/audit.js's per-unit skip accounting (a skipped array whose
-// reason is "no output / stall"); adrift adds per-item records to the per-DR result and fills
-// the note on a partial stall, not only on a total wipeout.
+// When some of the reviewers returned by the routing table stall (agent returns null) during
+// adrift's per-DR scan, the stalled reviewer names are recorded in the per-DR result. The
+// primary channel is the workflow return value result.skipped (WORKFLOWS.md); the per-DR
+// serialization passed to the Report stage is pinned as the auxiliary channel alongside it.
+//
+// A partial stall fills the note too, not only a total wipeout.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -46,7 +44,7 @@ const agentStub = (prompt, opts) => {
   return undefined;
 };
 
-test("一部の reviewer agent が null を返す時、per-DR 結果に stall した reviewer 名が記録される", async () => {
+test("records the stalled reviewer name in the per-DR result when some reviewer agent returns null", async () => {
   const { result, calls } = await runWorkflow(adriftJs, {
     args: {},
     stubs: { agent: agentStub },
@@ -57,25 +55,25 @@ test("一部の reviewer agent が null を返す時、per-DR 結果に stall �
   assert.deepEqual(
     result.skipped,
     [{ id: "0001", skipped: [{ reviewer: "reviewer-rust", reason: "no output / stall" }] }],
-    "result.skipped に stall した reviewer が DR id 付きで記録される",
+    "result.skipped records the stalled reviewer with its DR id",
   );
   // A partial stall (some reviewer alive) does not count as unverifiable
-  assert.deepEqual(result.unverifiable, [], "部分 stall の DR は verifiable のまま");
+  assert.deepEqual(result.unverifiable, [], "a partially stalled DR stays verifiable");
 
   // Auxiliary channel: the per-DR result serialized into the Report stage prompt carries the
   // same record
   const reportCall = calls.agent.find((c) => c.opts && c.opts.label === "report");
-  assert.ok(reportCall, "Report 段の agent が呼ばれる");
+  assert.ok(reportCall, "the Report stage agent ran");
   const matched = reportCall.prompt.match(
     /per-DR results are as follows\.\n([\s\S]*?)\n\nThe external DR references/,
   );
-  assert.ok(matched, "report prompt に per-DR 結果の直列化が含まれる");
+  assert.ok(matched, "the report prompt carries the serialized per-DR results");
   const perDr = JSON.parse(matched[1]);
   const entry = perDr.find((d) => d.id === "0001");
-  assert.ok(entry, "per-DR 結果に対象 DR 0001 が含まれる");
+  assert.ok(entry, "the per-DR results include the target DR 0001");
   assert.deepEqual(
     entry.skipped,
     [{ reviewer: "reviewer-rust", reason: "no output / stall" }],
-    "stall した reviewer 名 reviewer-rust が per-DR 結果に記録される",
+    "the per-DR result records the stalled reviewer name reviewer-rust",
   );
 });

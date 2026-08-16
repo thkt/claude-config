@@ -27,13 +27,13 @@ Run `codegraph <subcommand> --help` for options, output format, and exit codes. 
 
 Structural queries only. Route symbol-level structure questions like who calls X or what breaks to codegraph, and keep free-text content search on Grep / Explore.
 
-| Question                                | Tool                                       |
-| --------------------------------------- | ------------------------------------------ |
-| What breaks if I change X / who calls X | codegraph; Grep cannot trace structure     |
-| Symbol definition + caller/callee trail | codegraph node / explore                   |
-| Tests affected by changed files         | codegraph affected                         |
-| Free-text or string content search      | Grep / Explore; codegraph is symbol-level  |
-| Repo without a `.codegraph` index       | Grep / Explore, or prompt to init          |
+| Question                                | Tool                                      |
+| --------------------------------------- | ----------------------------------------- |
+| What breaks if I change X / who calls X | codegraph; Grep cannot trace structure    |
+| Symbol definition + caller/callee trail | codegraph node / explore                  |
+| Tests affected by changed files         | codegraph affected                        |
+| Free-text or string content search      | Grep / Explore; codegraph is symbol-level |
+| Repo without a `.codegraph` index       | Grep / Explore, or prompt to init         |
 
 ## Prerequisite
 

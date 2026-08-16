@@ -26,17 +26,19 @@ const isIdList = (s) => {
 };
 
 const parseArgs = () => {
-  if (typeof args === "string") {
+  if (typeof args === "object" && args) return args;
+  if (typeof args !== "string") return {};
+  const s = args.trim();
+  if (s.startsWith("{")) {
     try {
-      const parsed = JSON.parse(args);
+      const parsed = JSON.parse(s);
       if (parsed && typeof parsed === "object") return parsed;
     } catch {
-      // a non-JSON string is shorthand: an id list like "0061" or
-      // "DR-0061, 0073" means focus, anything else means dir
+      // malformed JSON falls through to the shorthand below
     }
-    return isIdList(args) ? { focus: args } : { dir: args };
   }
-  return args && typeof args === "object" ? args : {};
+  // an id list like "0061" or "DR-0061, 0073" means focus, anything else means dir
+  return isIdList(args) ? { focus: args } : { dir: args };
 };
 const opts = parseArgs();
 const dir = typeof opts.dir === "string" ? opts.dir.trim() : "";

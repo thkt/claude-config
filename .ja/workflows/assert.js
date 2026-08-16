@@ -32,20 +32,22 @@ export const meta = {
 // 書き込み副作用を持たない。不在は report に記録して前進する。
 
 const parseArgs = () => {
-  if (typeof args === "string") {
+  if (typeof args === "object" && args) return args;
+  if (typeof args !== "string") return {};
+  const s = args.trim();
+  if (s.startsWith("{")) {
     try {
-      const parsed = JSON.parse(args);
+      const parsed = JSON.parse(s);
       if (parsed && typeof parsed === "object") return parsed;
     } catch {
-      // JSON でない文字列は scope の短縮記法
+      // 壊れた JSON はそのまま scope の短縮記法へ落ちる
     }
-    return { scope: args };
   }
-  return args && typeof args === "object" ? args : {};
+  return { scope: args };
 };
 const opts = parseArgs();
 const scope = typeof opts.scope === "string" ? opts.scope : "";
-const base = typeof opts.base === "string" ? opts.base : "main";
+const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 const repo = typeof opts.repo === "string" ? opts.repo : "";
 
 const anchor = (p) =>
@@ -53,12 +55,17 @@ const anchor = (p) =>
     ? `git / ファイル / ビルドのコマンドはすべて ${repo} の repository から実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`
     : p;
 
+// plugin 配布を考慮した資産解決。この script が plugin として配られると、同梱資産は
+// ~/.claude ではなく ~/.claude/plugins 配下に置かれる。shell 片は dev tree のパスを先に
+// 試すので、dev tree はそのまま動く。-e 判定はディレクトリも通し、下の SCRIPTS が要る。
+const bundled = (rel) =>
+  `"$(P="$HOME/.claude/${rel}"; [ -e "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" -not -path "*/.ja/*" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
 // この workflow の付属 script。loader は workflows/ 直下の .js しか読まないため、
 // subdir は資産置き場として安全 (指示とリファレンスは workflow に内包する)。
-const SCRIPTS = "$HOME/.claude/workflows/assert";
+const SCRIPTS = bundled("workflows/assert");
 // OUTCOME.md の空判定の基準は /outcome が持つので、Bootstrap は TBD を目視せず
 // その判定結果を読む。
-const OUTCOME_VALIDATOR = "$HOME/.claude/skills/outcome/scripts/validate-outcome.py";
+const OUTCOME_VALIDATOR = bundled("skills/outcome/scripts/validate-outcome.py");
 
 // merge-findings.py の 2 規則を JS に inline する。P1 -> high、P2 -> medium、P3 -> 落とす。
 // critical / high / medium / low は素通し。認識できない severity は順位付け不能なので落とす。
@@ -238,9 +245,9 @@ const scopeInstr = scope
 const bootstrapPrompt = anchor(
   `assert の Bootstrap 段階を担当する。順に実行する。\n` +
     `1. \`command -v codex\` で codex CLI の有無を確認する。無ければ codex_available: false とし、以降を省いて mode: none で返す。\n` +
-    `2. "${OUTCOME_VALIDATOR}" .claude/OUTCOME.md を実行する。JSON の state が absent または empty なら outcome: "absent"。それ以外は本文を読み、Behavior / Non-goals / Constraints を outcome に要約する。stub 生成はしない。\n` +
+    `2. ${OUTCOME_VALIDATOR} .claude/OUTCOME.md を実行する。JSON の state が absent または empty なら outcome: "absent"。それ以外は本文を読み、Behavior / Non-goals / Constraints を outcome に要約する。stub 生成はしない。\n` +
     `3. ${scopeInstr}\n` +
-    `4. mode が none でなければ、"${SCRIPTS}/worktree.py" "$CLAUDE_SESSION_ID" で isolated worktree を用意し (JSON の status が error なら worktree_ok: false、reason に stderr を写す)、続けて "${SCRIPTS}/bootstrap.py" "<worktree path>" を実行して install / build / reason を JSON から写す。diff_kind が uncommitted のときは worktree に uncommitted 変更を反映する (\`git diff HEAD\` を worktree 側で apply し、scope_files 中の untracked ファイルは cp する)。\n` +
+    `4. mode が none でなければ、${SCRIPTS}/worktree.py "$CLAUDE_SESSION_ID" で isolated worktree を用意し (JSON の status が error なら worktree_ok: false、reason に stderr を写す)、続けて ${SCRIPTS}/bootstrap.py "<worktree path>" を実行して install / build / reason を JSON から写す。diff_kind が uncommitted のときは worktree に uncommitted 変更を反映する (\`git diff HEAD\` を worktree 側で apply し、scope_files 中の untracked ファイルは cp する)。\n` +
     `コードの review や修正はしない。この段階の仕事は環境の準備と事実の記録だけ。`,
 );
 const boot = (await agent(bootstrapPrompt, {
@@ -577,7 +584,7 @@ try {
   phase("Cleanup");
   await agent(
     anchor(
-      `assert の Cleanup 段階を担当する。"${SCRIPTS}/worktree.py" --cleanup "$CLAUDE_SESSION_ID" で assert 用 worktree を撤去する。失敗しても warning として報告するだけでよい (best-effort)。他のファイルに触れない。`,
+      `assert の Cleanup 段階を担当する。${SCRIPTS}/worktree.py --cleanup "$CLAUDE_SESSION_ID" で assert 用 worktree を撤去する。失敗しても warning として報告するだけでよい (best-effort)。他のファイルに触れない。`,
     ),
     {
       agentType: "general-purpose",

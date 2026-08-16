@@ -10,14 +10,14 @@ decision-makers: thkt
 
 `reviewing-*` 5 skill と `optimizing-performance` 1 skill は `user-invocable: false` かつ `context: fork` で特定 agent にバインドされる「agent 専用 knowledge skill」カテゴリに属する。しかし命名は user-invocable な動詞-ing skill と区別がつかず、LLM discovery 時に識別困難。
 
-| skill                     | agent                  | user-invocable |
-| ------------------------- | ---------------------- | -------------- |
-| reviewing-readability     | reviewer-readability  | false          |
-| reviewing-security        | reviewer-security      | false          |
-| reviewing-silent-failures | reviewer-silence| false          |
-| reviewing-testability     | reviewer-testability   | false          |
-| reviewing-type-safety     | reviewer-strictness   | false          |
-| optimizing-performance    | reviewer-performance   | false          |
+| skill                     | agent                | user-invocable |
+| ------------------------- | -------------------- | -------------- |
+| reviewing-readability     | reviewer-readability | false          |
+| reviewing-security        | reviewer-security    | false          |
+| reviewing-silent-failures | reviewer-silence     | false          |
+| reviewing-testability     | reviewer-testability | false          |
+| reviewing-type-safety     | reviewer-strictness  | false          |
+| optimizing-performance    | reviewer-performance | false          |
 
 ADR-0052 で `use-*` を CLI wrapper 専用と確定したが、agent 専用 skill の命名指針は未確立。ADR-0049 Reassessment Triggers に「reviewing-*/reviewer 拡張検討」が予約されてたが未着手。
 
@@ -35,14 +35,14 @@ ADR-0052 で `use-*` を CLI wrapper 専用と確定したが、agent 専用 ski
 
 全 agent 専用 skill を `ctx-<agent-name>` に改名。
 
-| Before                    | After                        |
-| ------------------------- | ---------------------------- |
-| reviewing-readability     | ctx-reviewer-readability    |
-| reviewing-security        | ctx-reviewer-security        |
-| reviewing-silent-failures | ctx-reviewer-silence  |
-| reviewing-testability     | ctx-reviewer-testability     |
-| reviewing-type-safety     | ctx-reviewer-strictness     |
-| optimizing-performance    | ctx-reviewer-performance     |
+| Before                    | After                    |
+| ------------------------- | ------------------------ |
+| reviewing-readability     | ctx-reviewer-readability |
+| reviewing-security        | ctx-reviewer-security    |
+| reviewing-silent-failures | ctx-reviewer-silence     |
+| reviewing-testability     | ctx-reviewer-testability |
+| reviewing-type-safety     | ctx-reviewer-strictness  |
+| optimizing-performance    | ctx-reviewer-performance |
 
 - Good: agent 名が skill 名に含まれ対応関係が一目瞭然
 - Good: `ctx-` が `context: fork` 運用と意味一致
@@ -93,7 +93,7 @@ Chosen: Option 1。3 カテゴリ視覚分離と agent 対応明示を両取り�
 
 適用対象:
 
-- skills/{reviewing-*, optimizing-performance} → skills/ctx-*-reviewer (6 pair)
+- skills/{reviewing-_, optimizing-performance} → skills/ctx-_-reviewer (6 pair)
 - .ja/skills/ ミラー側も同等
 - agents/reviewers/*-reviewer.md の `skills:` 配列を新名に更新
 - .claude-plugin/marketplace.json の path を新名に更新

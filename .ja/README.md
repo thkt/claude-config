@@ -65,7 +65,7 @@ Claude AI のためのカスタムコマンド、開発原則、ワークフロ�
 
 利用可能なプラグイン:
 
-- build: 自己完結の開発ワークフロー一式。install 時にリポジトリ全体を一度 clone し、全 skill / agent / workflow を build: namespace でロードする。/issue で起票した issue の番号を build workflow に渡す。build は Load / Revalidate / Branch / Code / Cleanup / Verify / Ship を実行して draft PR を作る。/audit と /polish は draft PR に対して人間が個別に起動する。同梱対象は planning 系 (/think, /research, /slice, /outcome)、reviewer / critic エージェント、code / audit / polish / shake / assert / adrift workflow。git 系 (/commit, /checkout, /pr) と /dr、/census も含む
+- build: 自己完結の開発ワークフロー一式。install 時にリポジトリ全体を一度 clone し、全 skill/agent/workflow を build: namespace でロードする。/issue で起票した issue の番号を build workflow に渡す。build は Load/Revalidate/Branch/Code/Cleanup/Verify/Ship を実行して draft PR を作る。/audit と/polish は draft PR に対して人間が個別に起動する。同梱対象は planning 系 (/think,/research,/slice,/outcome)、reviewer/critic エージェント、code/audit/polish/shake/assert/adrift workflow。git 系 (/commit,/checkout,/pr) と/dr、/census も含む
 
 ### Option 2: 手動インストール (フル設定)
 
@@ -150,23 +150,23 @@ brew tap thkt/tap
 brew install guardrails formatter reviews gates
 ```
 
-| ツール     | フック      | タイミング      | 役割                                 |
-| ---------- | ----------- | --------------- | ------------------------------------ |
-| guardrails | PreToolUse  | Write/Edit 前   | Lint (oxlint) + セキュリティチェック |
-| formatter  | PostToolUse | Write/Edit 後   | 自動整形 (oxfmt)                     |
-| reviews    | 未配線      | 自動実行なし    | 静的解析コマンド (dormant)           |
-| gates      | PostToolUse | Write/Edit/Bash 後 | 品質ゲート (knip, tsgo, madge)     |
+| ツール     | フック      | タイミング         | 役割                                 |
+| ---------- | ----------- | ------------------ | ------------------------------------ |
+| guardrails | PreToolUse  | Write/Edit 前      | Lint (oxlint) + セキュリティチェック |
+| formatter  | PostToolUse | Write/Edit 後      | 自動整形 (oxfmt)                     |
+| reviews    | 未配線      | 自動実行なし       | 静的解析コマンド (dormant)           |
+| gates      | PostToolUse | Write/Edit/Bash 後 | 品質ゲート (knip, tsgo, madge)       |
 
-プロジェクト単位の設定は `.claude/tools.json` で行う。詳細は [thkt/tap](https://github.com/thkt/homebrew-tap) を参照。
+プロジェクト単位の設定は `.claude/tools.json` で行う。詳細は[thkt/tap](https://github.com/thkt/homebrew-tap)を参照。
 
 ### 外部 CLI ツール (任意)
 
 一部のコマンドはデータソース連携のために外部 CLI を使う。
 
-| ツール  | 利用コマンド                       | 用途                 | インストール                       |
-| ------- | ---------------------------------- | -------------------- | ---------------------------------- |
-| `gh`    | `/issue`, `/pr`, `/preview`, `/build` | GitHub API アクセス | `brew install gh && gh auth login` |
-| `scout` | Slack URL 読み込み                 | Slack メッセージ取得 | `brew install thkt/tap/scout`      |
+| ツール  | 利用コマンド                          | 用途                 | インストール                       |
+| ------- | ------------------------------------- | -------------------- | ---------------------------------- |
+| `gh`    | `/issue`, `/pr`, `/preview`, `/build` | GitHub API アクセス  | `brew install gh && gh auth login` |
+| `scout` | Slack URL 読み込み                    | Slack メッセージ取得 | `brew install thkt/tap/scout`      |
 
 Slack 読み込み: `scout fetch <slack-url>` で任意の Slack メッセージ/スレッド URL を直接読み込む。scout が設定済みなら追加設定は不要。
 
@@ -199,7 +199,7 @@ Slack 読み込み: `scout fetch <slack-url>` で任意の Slack メッセージ
 
 - AI 処理: 内部は英語
 - ユーザー出力: 日本語 (設定可能)
-- ドキュメント: README.md と docs/*.md は英語・日本語の両方を提供。docs/wiki/*.md の 5 件は英語のみ
+- ドキュメント: README.md と `docs/*.md` は英語・日本語の両方を提供。`docs/wiki/*.md` の 5 件は英語のみ
 
 ## 🛠️ 主要機能
 

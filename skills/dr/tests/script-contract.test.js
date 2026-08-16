@@ -21,45 +21,48 @@ const formats = {
 const preCheck = join(root, "skills", "dr", "scripts", "pre-check.py");
 const validate = join(root, "skills", "dr", "scripts", "validate-dr.py");
 
-// pre-check.py が返すキーは SKILL.md が使い先を書いて初めて生きる。number と filename を
-// 名指ししないと自動採番の結果が捨てられ、agent がファイル名を自分で作る。
-test("pre-check.py の出力キーを SKILL.md が使う", () => {
+// The keys pre-check.py returns come alive only once SKILL.md names where they go. Without naming
+// number and filename, the auto-numbering result is thrown away and the agent invents the
+// filename itself.
+test("SKILL.md uses pre-check.py's output keys", () => {
   const src = readFileSync(preCheck, "utf8");
   const block = src.slice(src.indexOf("print(json.dumps({"));
   const keys = [...block.matchAll(/^\s{8}"(\w+)":/gm)].map((m) => m[1]);
-  assert.ok(keys.includes("filename"), `出力キーを読める (${keys.join(", ")})`);
-  assert.ok(keys.length >= 6, `キーが 6 つ以上ある (${keys.length} 件)`);
+  assert.ok(keys.includes("filename"), `the output keys are readable (${keys.join(", ")})`);
+  assert.ok(keys.length >= 6, `six or more keys are present (${keys.length})`);
 
   const consumed = ["number", "filename", "dr_dir", "similar_drs", "date"];
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
     for (const key of consumed) {
-      assert.match(doc, new RegExp(`\\b${key}\\b`), `${lang}: SKILL.md が ${key} を名指しする`);
+      assert.match(doc, new RegExp(`\\b${key}\\b`), `${lang}: SKILL.md names ${key}`);
     }
   }
 });
 
-// DR へのリネーム後に取り残された表記を弾く。status の値は validate-dr.py が検査しないので、
-// 表記が割れたまま両方が通ってしまう。
-test("supersede の識別子が DR-NNNN に揃う", () => {
+// This rejects a spelling left behind after the rename to DR. validate-dr.py does not check the
+// status value, so a split spelling would let both through.
+test("the supersede identifier is DR-NNNN everywhere", () => {
   for (const group of [skills, templates, formats]) {
     for (const [lang, path] of Object.entries(group)) {
       const doc = readFileSync(path, "utf8");
-      assert.doesNotMatch(doc, /ADR-NNNN/, `${lang}: ${path} に ADR-NNNN が残っていない`);
+      assert.doesNotMatch(doc, /ADR-NNNN/, `${lang}: no ADR-NNNN remains in ${path}`);
     }
   }
   for (const [lang, path] of Object.entries(formats)) {
-    assert.match(readFileSync(path, "utf8"), /superseded by DR-NNNN/, `${lang}: DR-NNNN を書く`);
+    assert.match(readFileSync(path, "utf8"), /superseded by DR-NNNN/, `${lang}: it writes DR-NNNN`);
   }
 });
 
-// DR はアーキテクチャに限らない決定を指す。旧称 ADR が指示や規約に残ると、書き手は
-// アーキテクチャ決定だけを記録対象と読む。除外は明示リストにして、新しい ADR- の混入を落とす。
-test("live な指示と規約に旧称 ADR が残っていない", () => {
+// DR names a decision beyond architecture. An old ADR left in an instruction or a convention
+// makes the writer read only architectural decisions as recordable. The exclusions form an
+// explicit list so a newly introduced ADR- is caught.
+test("no live instruction or convention still carries the old name ADR", () => {
   const EXEMPT = [
-    // Fowler の記事要約。出典側の用語なので ADR のまま引用し、その旨を本文が宣言する。
+    // A summary of Fowler's article. It quotes ADR as the source's own term and declares so in
+    // its body.
     "skills/dr/references/fowler-adr.md",
-    // このテスト自身が ADR- を negative assert に使う。
+    // This test itself uses ADR- in a negative assert.
     "skills/dr/tests/script-contract.test.js",
   ];
   const fowler = {
@@ -70,9 +73,10 @@ test("live な指示と規約に旧称 ADR が残っていない", () => {
     en: [join(root, "skills", "dr", "references", "fowler-adr.md"), /it says ADR throughout/],
   };
   for (const [lang, [path, declaration]] of Object.entries(fowler)) {
-    assert.match(readFileSync(path, "utf8"), declaration, `${lang}: 除外の根拠を本文が宣言する`);
+    assert.match(readFileSync(path, "utf8"), declaration, `${lang}: the body declares the grounds for the exclusion`);
   }
-  // when_to_use は利用者が打つ語の一覧。旧称で呼ぶ人に届かせるため ADR も並べておく。
+  // when_to_use lists the words a user types. ADR stays listed so it reaches whoever calls it by
+  // the old name.
   const TRIGGERS = /^when_to_use:.*$/gm;
   const scanned = [];
   for (const prefix of ["", ".ja"]) {
@@ -86,18 +90,18 @@ test("live な指示と規約に旧称 ADR が残っていない", () => {
         if (EXEMPT.includes(rel) || rel.includes("__pycache__")) continue;
         scanned.push(rel);
         const text = readFileSync(full, "utf8").replace(TRIGGERS, "");
-        assert.doesNotMatch(text, /\bADRs?\b/, `${prefix || "en"}: ${rel} に旧称 ADR が残る`);
+        assert.doesNotMatch(text, /\bADRs?\b/, `${prefix || "en"}: ${rel} still carries the old name ADR`);
       }
     }
   }
-  assert.ok(scanned.length > 100, `走査した件数 (${scanned.length})`);
+  assert.ok(scanned.length > 100, `the number scanned (${scanned.length})`);
   assert.doesNotMatch(readFileSync(join(root, "README.md"), "utf8"), /\bADRs?\b/, "README.md");
 });
 
-// DR-0090 の Confirmation を機械化する。作業成果物は .claude/workspace/ に統一したので、
-// 他プロジェクトのルート直下に無い workspace/ を live な指示が指すと参照が解決しない。
-// 走査形は上の旧称チェックと同じで、置き場所もそれに揃えた。
-test("live な指示と規約が .claude/ を伴わない workspace/ を指していない", () => {
+// This mechanizes DR-0090's Confirmation. Work products were unified under .claude/workspace/, so
+// a live instruction naming a workspace/ that does not sit directly under another project's root
+// leaves the reference unresolved.
+test("no live instruction or convention names a workspace/ without .claude/", () => {
   const BARE_WORKSPACE = /(?<!\.claude\/)(?<![\w/.])workspace\//;
   const scanned = [];
   for (const prefix of ["", ".ja"]) {
@@ -108,7 +112,7 @@ test("live な指示と規約が .claude/ を伴わない workspace/ を指し�
         if (!entry.isFile() || !/\.(md|js|py)$/.test(entry.name)) continue;
         const full = join(entry.parentPath ?? entry.path, entry.name);
         const rel = full.slice(join(root, prefix).length + 1);
-        // このテスト自身が bare workspace/ を negative assert に使う。
+        // This test itself uses a bare workspace/ in a negative assert.
         if (rel.includes("__pycache__") || rel === "skills/dr/tests/script-contract.test.js") {
           continue;
         }
@@ -116,71 +120,72 @@ test("live な指示と規約が .claude/ を伴わない workspace/ を指し�
         assert.doesNotMatch(
           readFileSync(full, "utf8"),
           BARE_WORKSPACE,
-          `${prefix || "en"}: ${rel} が .claude/ を伴わない workspace/ を指す`,
+          `${prefix || "en"}: ${rel} names a workspace/ without .claude/`,
         );
       }
     }
   }
-  assert.ok(scanned.length > 100, `走査した件数 (${scanned.length})`);
+  assert.ok(scanned.length > 100, `the number scanned (${scanned.length})`);
 });
 
-// MADR は v4 で名称が Architectural に戻った外部仕様。この skill が対象を広げていることを
-// 書いておかないと、名称を読んだ書き手がアーキテクチャ決定だけに絞る。
-test("madr-format がアーキテクチャに限らない旨を述べる", () => {
+// MADR is an external spec whose name went back to Architectural in v4. Without stating that this
+// skill widens the scope, a writer reading the name narrows to architectural decisions alone.
+test("madr-format states that the scope is not limited to architecture", () => {
   assert.match(
     readFileSync(formats.ja, "utf8"),
     /アーキテクチャに限らない決定/,
-    "ja: 対象の広がりを述べる",
+    "ja: it states the widened scope",
   );
   assert.match(
     readFileSync(formats.en, "utf8"),
     /decisions beyond architecture/,
-    "en: 対象の広がりを述べる",
+    "en: it states the widened scope",
   );
 });
 
-// frontmatter の表とテンプレートは書き手が往復する 2 面。表にある枠がテンプレートに無いと、
-// 書き手はフィールドを手で足すことになる。
-test("frontmatter の全フィールドがテンプレートに枠を持つ", () => {
+// The frontmatter table and the template are the two faces a writer moves between. A slot present
+// in the table but absent from the template leaves the writer adding the field by hand.
+test("every frontmatter field has a slot in the template", () => {
   const FIELDS = ["status", "date", "decision-makers", "consulted", "informed"];
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
     for (const field of FIELDS) {
-      assert.match(doc, new RegExp(`^\\| ${field} `, "m"), `${lang}: 表に ${field} の行`);
+      assert.match(doc, new RegExp(`^\\| ${field} `, "m"), `${lang}: the table carries a ${field} row`);
     }
   }
   for (const [lang, path] of Object.entries(templates)) {
     const doc = readFileSync(path, "utf8");
     for (const field of FIELDS) {
-      assert.match(doc, new RegExp(`^${field}: `, "m"), `${lang}: テンプレートに ${field} の枠`);
+      assert.match(doc, new RegExp(`^${field}: `, "m"), `${lang}: the template carries a ${field} slot`);
     }
   }
 });
 
-// validate-dr.py の必須セクションとテンプレートの見出し。片方が欠けると、書いた DR が
-// Phase 4 で必ず missing_section で落ちる。
-test("必須セクションがテンプレートと validate-dr.py で一致する", () => {
+// validate-dr.py's required sections against the template's headings. With either missing, every
+// DR written fails at Phase 4 with missing_section.
+test("the required sections match between the template and validate-dr.py", () => {
   const src = readFileSync(validate, "utf8");
   const sections = [...src.matchAll(/^\s{4}"([^"]+)",$/gm)].map((m) => m[1]);
-  assert.ok(sections.length >= 4, `必須セクションを読める (${sections.join(" / ")})`);
+  assert.ok(sections.length >= 4, `the required sections are readable (${sections.join(" / ")})`);
   for (const [lang, path] of Object.entries(templates)) {
     const doc = readFileSync(path, "utf8");
     for (const section of sections) {
-      assert.match(doc, new RegExp(`^#{2,3} ${section}$`, "m"), `${lang}: ${section} の見出し`);
+      assert.match(doc, new RegExp(`^#{2,3} ${section}$`, "m"), `${lang}: the ${section} heading`);
     }
   }
 });
 
-// フェーズ数は本文の 3 箇所に散る。表の行だけ増減させると宣言した数と合わなくなる。
-test("宣言したフェーズ数が表の行数と一致する", () => {
+// The phase count is scattered across three places in the body. Adding or removing table rows
+// alone leaves it out of step with the declared number.
+test("the declared phase count matches the table row count", () => {
   for (const [lang, path] of Object.entries(skills)) {
-    assert.ok(existsSync(path), `${path} が存在する`);
+    assert.ok(existsSync(path), `${path} exists`);
     const doc = readFileSync(path, "utf8");
     const declared = doc.match(/(\d) ?(フェーズプロセス|-Phase Process)/g) || [];
-    assert.equal(declared.length, 3, `${lang}: フェーズ数の宣言が 3 箇所 (${declared.length})`);
+    assert.equal(declared.length, 3, `${lang}: the phase count is declared in three places (${declared.length})`);
     const counts = new Set(declared.map((d) => d[0]));
-    assert.equal(counts.size, 1, `${lang}: 3 箇所が同じ数 (${[...counts].join(", ")})`);
+    assert.equal(counts.size, 1, `${lang}: all three declare the same number (${[...counts].join(", ")})`);
     const rows = doc.match(/^\| \d {4}\| /gm) || [];
-    assert.equal(rows.length, Number([...counts][0]), `${lang}: 表の行数が宣言と一致する`);
+    assert.equal(rows.length, Number([...counts][0]), `${lang}: the table row count matches the declaration`);
   }
 });

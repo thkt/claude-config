@@ -1,5 +1,5 @@
-// classify() が返す reviewer 一覧は assert しない。ROUTING の中身を固定すると
-// 表の編集ごとに落ちる change detector になるため。
+// The reviewer list classify() returns is never asserted. Pinning the contents of ROUTING would
+// make a change detector that fails on every edit to the table.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
@@ -12,8 +12,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const auditJs = join(here, "..", "..", "audit.js");
 const reviewersDir = join(here, "..", "..", "..", "agents", "reviewers");
 
-// Challenge 以降の stub は置かない。reviewer label に undefined を返すと findings が
-// 空になり、assignments を持つ早期 return に落ちるため。
+// No stub is placed past Challenge. Returning undefined on a reviewer label empties findings and
+// drops the run into the early return that still carries assignments.
 const routeOnlyStub = (files) => (prompt, opts) => {
   if (opts && opts.label === "route") {
     return { files: files.map((path) => ({ path, churn: 0 })) };
@@ -34,11 +34,11 @@ const unassigned = (result, files) => {
   return files.filter((p) => !assigned.has(p));
 };
 
-// ROUTING / FOCUS の中身そのものは通常 assert しない (上のコメント参照)。だが
-// T-012〜T-014 は ROUTING と FOCUS と agents/reviewers/ の 3 者の整合性を見る回
-// なので、ここだけは audit.js のソースから両定数を抽出して突き合わせる。eval 系は
-// 使わず、キーと配列を正規表現で読み取る。ROUTING/FOCUS の値は文字列配列か null
-// のみという前提に依る。
+// The contents of ROUTING and FOCUS are normally not asserted (see the comment above). But
+// T-012 through T-014 check the consistency among ROUTING, FOCUS, and agents/reviewers/, so
+// this one place extracts both constants from the audit.js source and matches them up. Nothing
+// eval-like is used; the keys and arrays are read with a regular expression. That rests on the
+// premise that a ROUTING / FOCUS value is either a string array or null.
 const extractBracedBody = (source, name) => {
   const marker = `const ${name} = {`;
   const idx = source.indexOf(marker);
@@ -70,59 +70,60 @@ const parseRoutingLikeConst = (source, name) => {
   }
   return result;
 };
-// agents/reviewers/に定義はあるが ROUTING に行を持たない reviewer。skill から直接呼ばれる
-// ときだけ走るので glob 表の行を持たず、audit.js の実行時にはこの区別が要らない (ROUTING に
-// 無い名前は routing されないだけ)。よって期待値はここに置く。ここにも ROUTING にも名前の
-// 無い定義は誰からも呼ばれないまま残るので、T-014 がそれを検知する。
+// Reviewers defined under agents/reviewers/ that hold no ROUTING row. They run only when a skill
+// calls them directly, so they carry no glob-table row and audit.js needs no such distinction at
+// run time (a name absent from ROUTING simply is not routed). The expectation therefore lives
+// here. A definition named neither here nor in ROUTING stays behind uncalled by anyone, and
+// T-014 detects that.
 const SKILL_ONLY_REVIEWERS = ["causation", "readability", "conformance"];
 
-test("yaml と yml と json を含む diff で audit が Route 段を通過し 3 ファイルとも assignments に載る", async () => {
+test("audit clears the Route stage on a diff of yaml, yml, and json, and all three files land in assignments", async () => {
   const files = ["config.yaml", "ci.yml", "package.json"];
 
   const { result } = await runRoute(files);
 
-  assert.deepEqual(unassigned(result, files), [], "assignments から漏れたファイルは無い");
+  assert.deepEqual(unassigned(result, files), [], "no file is missing from assignments");
 });
 
-test("classify がソース上で分岐する全拡張子について、そのファイルが assignments のいずれかに載る", async () => {
-  // 拡張子はテスト側に列挙しない。classify に分岐が増えたとき追随できないため。
-  // `[".yaml", ".yml"].includes(e)` のような形で分岐を足すとこの抽出からは漏れる。
+test("every extension classify branches on in the source lands its file in some assignment", async () => {
+  // The extensions are not listed on the test side, which could not follow a new branch in
+  // classify. A branch written as `[".yaml", ".yml"].includes(e)` escapes this extraction.
   const source = readFileSync(auditJs, "utf8");
   const extensions = [...source.matchAll(/\be === "(\.[a-z0-9]+)"/g)].map((m) => m[1]);
-  assert.notEqual(extensions.length, 0, "audit.js から拡張子の分岐を抽出できる");
+  assert.notEqual(extensions.length, 0, "the extension branches are extractable from audit.js");
 
-  // `.yaml` のような先頭ドットだけのパスは使わない。ext() が "" を返し、分岐を
-  // 通らないまま ROUTING.default に落ちるため。stem に test を含めないのは
-  // classify 先頭の test 判定に吸われるため。
+  // A path that is nothing but a leading dot, such as `.yaml`, is avoided: ext() returns "" and
+  // the path falls to ROUTING.default without passing a branch. The stem carries no "test"
+  // because the test check at the head of classify would absorb it.
   const files = extensions.map((e, i) => `src/sample-${i}${e}`);
 
   const { result } = await runRoute(files);
 
-  assert.deepEqual(unassigned(result, files), [], "assignments から漏れたファイルは無い");
+  assert.deepEqual(unassigned(result, files), [], "no file is missing from assignments");
 });
 
-test("T-012 FOCUS のどのキーに載る reviewer 名も ROUTING のいずれかの行に存在する", () => {
+test("T-012 every reviewer named under any FOCUS key exists on some ROUTING row", () => {
   const source = readFileSync(auditJs, "utf8");
   const routing = parseRoutingLikeConst(source, "ROUTING");
   const focus = parseRoutingLikeConst(source, "FOCUS");
-  assert.ok(routing, "audit.js から ROUTING を抽出できる");
-  assert.ok(focus, "audit.js から FOCUS を抽出できる");
+  assert.ok(routing, "ROUTING is extractable from audit.js");
+  assert.ok(focus, "FOCUS is extractable from audit.js");
 
   const routedReviewers = new Set(Object.values(routing).flat());
   const missing = [];
   for (const [key, reviewers] of Object.entries(focus)) {
-    if (!Array.isArray(reviewers)) continue; // all: null はスキップ
+    if (!Array.isArray(reviewers)) continue; // all: null is skipped
     for (const r of reviewers) {
       if (!routedReviewers.has(r)) missing.push(`${key}:${r}`);
     }
   }
-  assert.deepEqual(missing, [], `ROUTING のどの行にも無い FOCUS reviewer: ${missing.join(", ")}`);
+  assert.deepEqual(missing, [], `FOCUS reviewers on no ROUTING row: ${missing.join(", ")}`);
 });
 
-test("T-013 ROUTING に載る reviewer 名は agents/reviewers/に定義ファイルを持つ", () => {
+test("T-013 every reviewer named in ROUTING holds a definition file under agents/reviewers/", () => {
   const source = readFileSync(auditJs, "utf8");
   const routing = parseRoutingLikeConst(source, "ROUTING");
-  assert.ok(routing, "audit.js から ROUTING を抽出できる");
+  assert.ok(routing, "ROUTING is extractable from audit.js");
 
   const routedReviewers = [...new Set(Object.values(routing).flat())];
   const definedFiles = new Set(readdirSync(reviewersDir));
@@ -130,14 +131,14 @@ test("T-013 ROUTING に載る reviewer 名は agents/reviewers/に定義ファ�
   assert.deepEqual(
     missing,
     [],
-    `agents/reviewers/に定義ファイルの無い ROUTING reviewer: ${missing.join(", ")}`,
+    `ROUTING reviewers with no definition file under agents/reviewers/: ${missing.join(", ")}`,
   );
 });
 
-test("T-014 agents/reviewers/の定義は ROUTING か skill-only allowlist のどちらかに載る", () => {
+test("T-014 every definition under agents/reviewers/ appears in ROUTING or in the skill-only allowlist", () => {
   const source = readFileSync(auditJs, "utf8");
   const routing = parseRoutingLikeConst(source, "ROUTING");
-  assert.ok(routing, "audit.js から ROUTING を抽出できる");
+  assert.ok(routing, "ROUTING is extractable from audit.js");
 
   const routedReviewers = new Set(Object.values(routing).flat());
   const skillOnly = new Set(SKILL_ONLY_REVIEWERS);
@@ -149,20 +150,20 @@ test("T-014 agents/reviewers/の定義は ROUTING か skill-only allowlist の�
   assert.deepEqual(
     orphaned,
     [],
-    `ROUTING にも skill-only allowlist にも載らない agents/reviewers/定義: ${orphaned.join(", ")}`,
+    `agents/reviewers/ definitions in neither ROUTING nor the skill-only allowlist: ${orphaned.join(", ")}`,
   );
 
-  // 両方に載る名前は ROUTING 側で発火するので、skill-only に置いた意図が消える。
+  // A name in both fires through ROUTING, which erases the intent of placing it in skill-only.
   const both = [...routedReviewers].filter((n) => skillOnly.has(n));
   assert.deepEqual(
     both,
     [],
-    `ROUTING と skill-only allowlist の両方に載る reviewer: ${both.join(", ")}`,
+    `reviewers in both ROUTING and the skill-only allowlist: ${both.join(", ")}`,
   );
 });
 
-// T-001〜T-004: scope の種別ごとの解決を固定する回。分岐は audit.js が持ち、agent 段が
-// 返すのは git の生出力だけなので、stub もその出力だけを模す。
+// T-001 through T-004 pin how each kind of scope resolves. audit.js owns the branching and the
+// agent stage returns only raw git output, so the stub mimics that output alone.
 const scopeStub =
   ({ scopeKind, scopeStatus, route } = {}) =>
   (prompt, opts) => {
@@ -181,14 +182,14 @@ const runScoped = async (extraArgs, stubOpts) => {
   return { result, logs, calls };
 };
 
-test("作業ツリーに未コミット変更が無いとき、path を scope に渡すとその path 配下の追跡ファイルが Route の対象に入る", async () => {
+test("a path scope targets the tracked files under it when the working tree has no uncommitted change", async () => {
   const files = ["src/sample.js"];
 
   const { result } = await runScoped(
     { scope: "src" },
     {
-      // 実測 (git 2.x): 実在するパスを渡すと exit 0 でそのパスをそのまま返し、実在しない
-      // 名前は exit 128 になる。どちらも SHA 行にはならないので path 側へ分かれる。
+      // git rev-parse echoes an existing path back at exit 0 and exits 128 on a name that does
+      // not exist. Neither becomes a SHA line, so both fall to the path side.
       scopeKind: { exit_code: 0, stdout: "src" },
       route: { files: files.map((path) => ({ path, churn: 0 })) },
     },
@@ -197,16 +198,16 @@ test("作業ツリーに未コミット変更が無いとき、path を scope �
   assert.equal(result.resolution.kind, "path");
   assert.match(result.resolution.command, /ls-files/);
   assert.match(result.resolution.command, /src/);
-  assert.deepEqual(unassigned(result, files), [], "path 配下のファイルが assignments に載る");
+  assert.deepEqual(unassigned(result, files), [], "the files under the path land in assignments");
 });
 
-test("`main...HEAD` 形式の範囲指定を scope に渡すと revision として解決され、path 絞り込みに落ちない", async () => {
+test("a `main...HEAD` range scope resolves as a revision and never falls to path narrowing", async () => {
   const files = ["workflows/audit.js"];
 
   const { result } = await runScoped(
     { scope: "main...HEAD" },
     {
-      // git rev-parse "main...HEAD" は範囲の両端を SHA 行で返す (実測)。
+      // git rev-parse "main...HEAD" returns both ends of the range as SHA lines.
       scopeKind: {
         exit_code: 0,
         stdout:
@@ -222,11 +223,11 @@ test("`main...HEAD` 形式の範囲指定を scope に渡すと revision とし�
   assert.deepEqual(
     unassigned(result, files),
     [],
-    "revision の diff 対象ファイルが assignments に載る",
+    "the files in the revision diff land in assignments",
   );
 });
 
-test("scope 省略で未コミット変更が 0 件のとき、base から HEAD までの diff が対象になる", async () => {
+test("the diff from base to HEAD becomes the target when scope is omitted and no change is uncommitted", async () => {
   const files = ["workflows/polish.js"];
 
   const { result } = await runScoped(
@@ -242,12 +243,12 @@ test("scope 省略で未コミット変更が 0 件のとき、base から HEAD 
   assert.deepEqual(
     unassigned(result, files),
     [],
-    "base...HEAD の diff 対象ファイルが assignments に載る",
+    "the files in the base...HEAD diff land in assignments",
   );
 });
 
-test("対象 0 件で終わる run が、対象なしと変更なしを読み分けられる resolution を返り値に持つ", async () => {
-  // path scope が 0 件 (対象なし): scope の path 配下に追跡ファイルが無い
+test("a run ending with zero targets returns a resolution telling no-target apart from no-changes", async () => {
+  // A path scope with zero files (no target): no tracked file lives under the scope path
   const { result: pathResult } = await runScoped(
     { scope: "empty-dir" },
     {
@@ -255,7 +256,7 @@ test("対象 0 件で終わる run が、対象なしと変更なしを読み分
       route: { files: [] },
     },
   );
-  // scope 省略かつ base...HEAD の diff も 0 件 (変更なし)
+  // scope omitted and the base...HEAD diff is also empty (no changes)
   const { result: branchResult } = await runScoped(
     {},
     {
@@ -271,10 +272,11 @@ test("対象 0 件で終わる run が、対象なしと変更なしを読み分
   assert.notEqual(pathResult.resolution.reason, branchResult.resolution.reason);
 });
 
-// T-005〜T-007: Route が決めた種別を後段の 3 箇所 (reviewer への指示、soft limit の判定、
-// snapshot payload) が読む回。種別ごとに見る対象が変わるので、後段が raw の scope を読み
-// 続けると Route の解決結果と食い違う。
-test("path を scope に渡した run で、reviewer への指示が diff の参照でなくファイル本文の読み取りになる", async () => {
+// T-005 through T-007 cover the three later places that read the kind Route decided (the
+// reviewer instruction, the soft-limit check, and the snapshot payload). What each inspects
+// changes with the kind, so a later stage still reading the raw scope would diverge from Route's
+// resolution.
+test("a path scope makes the reviewer instruction read the file bodies rather than consult a diff", async () => {
   const { calls } = await runScoped(
     { scope: "workflows" },
     {
@@ -283,14 +285,15 @@ test("path を scope に渡した run で、reviewer への指示が diff の参
     },
   );
 
-  // reviewer の label は `<reviewer 名>#<batch>` で、agent 名は prompt の先頭に載る。
+  // A reviewer label reads `<reviewer name>#<batch>`, and the agent name rides the head of the
+  // prompt.
   const reviewer = calls.agent.find((c) => (c.prompt || "").includes("reviewer-"));
-  assert.ok(reviewer, "reviewer が起動する");
-  assert.doesNotMatch(reviewer.prompt, /git diff/, "path scope では diff を参照させない");
-  assert.match(reviewer.prompt, /read those files/i, "ファイル本文の読み取りを指示する");
+  assert.ok(reviewer, "a reviewer started");
+  assert.doesNotMatch(reviewer.prompt, /git diff/, "a path scope consults no diff");
+  assert.match(reviewer.prompt, /read those files/i, "it instructs reading the file bodies");
 });
 
-test("解決後のファイル数が 30 を超えると、scope 指定の有無に関わらず soft limit の log が出る", async () => {
+test("the soft-limit log appears once the resolved file count passes 30, with or without a given scope", async () => {
   const files = Array.from({ length: 31 }, (_, i) => ({ path: `workflows/f${i}.js`, churn: 0 }));
 
   const { logs } = await runScoped(
@@ -300,11 +303,11 @@ test("解決後のファイル数が 30 を超えると、scope 指定の有無�
 
   assert.ok(
     logs.some((l) => /soft limit/i.test(l) && l.includes("31")),
-    "scope を渡した run でも 31 ファイルが soft limit の log に載る",
+    "31 files reach the soft-limit log even on a run given a scope",
   );
 });
 
-test("snapshot payload が、解決後の種別と実行したコマンドを記録する", async () => {
+test("the snapshot payload records the resolved kind and the command that ran", async () => {
   const { calls } = await runScoped(
     { scope: "workflows" },
     {
@@ -314,30 +317,30 @@ test("snapshot payload が、解決後の種別と実行したコマンドを記
   );
 
   const payload = snapshotPayload(calls);
-  assert.ok(payload, "snapshot payload が書き出される");
+  assert.ok(payload, "the snapshot payload is written out");
   assert.equal(payload.resolution.kind, "path");
   assert.match(payload.resolution.command, /ls-files/);
 });
 
-test("T-015 focus 指定で 0 reviewer になったファイルが件数とパスつきで返り値に載る", async () => {
-  // *.js は ROUTING["*.js"] に accessibility / progressive を含まないため、
-  // focus: "a11y" (FOCUS.a11y = ["accessibility", "progressive"]) と交差させると
-  // このファイルは reviewer 0 件になる。
+test("T-015 a file left with zero reviewers by a focus lands in the return value with its count and path", async () => {
+  // ROUTING["*.js"] carries neither accessibility nor progressive, so intersecting it with
+  // focus: "a11y" (FOCUS.a11y = ["accessibility", "progressive"]) leaves this file with zero
+  // reviewers.
   const files = ["src/sample.js"];
 
   const { result, logs } = await runRoute(files, { focus: "a11y" });
 
   assert.ok(
     Array.isArray(result.zero_reviewer_files),
-    "0 reviewer になったファイルの配列を返り値に持つ",
+    "the return value carries an array of the files left with zero reviewers",
   );
   assert.deepEqual(
     result.zero_reviewer_files.map((f) => f.path),
     files,
-    "0 reviewer になったファイルのパスが返り値に載る",
+    "the path of the file left with zero reviewers rides the return value",
   );
   assert.ok(
     logs.some((l) => /zero.?reviewer/i.test(l) && l.includes(String(files.length))),
-    "0 reviewer になった件数が log() に出る",
+    "log() carries the count of files left with zero reviewers",
   );
 });

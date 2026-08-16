@@ -44,11 +44,11 @@ Keep existing 3-layer architecture.
 
 **Tier-based hybrid** combining A + B:
 
-| Tier | Architecture |
-|---|---|
-| Small (1-3) | Leader reviews directly |
-| Medium (4-15) | 3 general-purpose reviewers |
-| Large (16+) | Sub-reviewers with file routing (Option B) |
+| Tier          | Architecture                               |
+| ------------- | ------------------------------------------ |
+| Small (1-3)   | Leader reviews directly                    |
+| Medium (4-15) | 3 general-purpose reviewers                |
+| Large (16+)   | Sub-reviewers with file routing (Option B) |
 
 Compound-reviewer layer removed in all tiers.
 
@@ -56,31 +56,31 @@ Compound-reviewer layer removed in all tiers.
 
 ### Quantitative (2026-02-13 audit)
 
-| Metric | Compound Pipeline | Standalone | Ratio |
-|---|---|---|---|
-| Agent instances | 19 | 4 | 4.75x |
-| File reads | ~612 | 129 | 4.74x |
-| Messages | 27 | 3 | 9x |
-| Execution depth | 10 layers | 2 layers | 5x |
-| Wall time | 10-16min | ~2.5min | 4-6x |
-| Findings | 78 | 43 | 0.55x |
+| Metric          | Compound Pipeline | Standalone | Ratio |
+| --------------- | ----------------- | ---------- | ----- |
+| Agent instances | 19                | 4          | 4.75x |
+| File reads      | ~612              | 129        | 4.74x |
+| Messages        | 27                | 3          | 9x    |
+| Execution depth | 10 layers         | 2 layers   | 5x    |
+| Wall time       | 10-16min          | ~2.5min    | 4-6x  |
+| Findings        | 78                | 43         | 0.55x |
 
 ### Qualitative
 
-| Factor | Finding |
-|---|---|
-| Sub-reviewer specialization | 7/13 have unique expertise (verified) |
-| Compound layer functions | All 4 replaceable by Leader (verified) |
-| Comparison fairness | 3 unfair factors identified (model, prompt, tools) |
+| Factor                      | Finding                                                          |
+| --------------------------- | ---------------------------------------------------------------- |
+| Sub-reviewer specialization | 7/13 have unique expertise (verified)                            |
+| Compound layer functions    | All 4 replaceable by Leader (verified)                           |
+| Comparison fairness         | 3 unfair factors identified (model, prompt, tools)               |
 | Idle notification confusion | Compound layer's sub-task waiting indistinguishable from "stuck" |
 
 ### Sub-reviewer Specialization (verified)
 
-| Category | Count | Reviewers |
-|---|---|---|
-| Irreplaceable | 7 | root-cause, type-design, test-coverage, reviewer-progressive, accessibility, performance, testability |
-| Partially replaceable | 4 | security, silent-failure, type-safety, design-pattern |
-| Replaceable | 2 | code-quality, document |
+| Category              | Count | Reviewers                                                                                             |
+| --------------------- | ----- | ----------------------------------------------------------------------------------------------------- |
+| Irreplaceable         | 7     | root-cause, type-design, test-coverage, reviewer-progressive, accessibility, performance, testability |
+| Partially replaceable | 4     | security, silent-failure, type-safety, design-pattern                                                 |
+| Replaceable           | 2     | code-quality, document                                                                                |
 
 ## Consequences
 

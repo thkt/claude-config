@@ -24,21 +24,32 @@ The naming pattern is lowercase + hyphens `<role>-<scope>` only. Files live in p
 
 ## YAML Frontmatter
 
-Subagents are spawned via the Task tool, not auto-loaded. AskUserQuestion / EnterPlanMode / ScheduleWakeup and similar tools do not work inside subagents, even when listed in `tools`. In contrast, Agent does work, and subagents nest up to depth 3 counting the main loop as depth 0.
+Subagents are spawned via the Agent tool, not auto-loaded. AskUserQuestion / EnterPlanMode / ScheduleWakeup and similar tools do not work inside subagents, even when listed in `tools`. The Agent tool itself does work inside a subagent, and subagents nest up to depth 3 counting the main loop as depth 0.
 
-| Field                           | Required | Notes                                                                                                               |
-| ------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------- |
-| name                            | Yes      | Lowercase + hyphens. Need not match the filename. Unique per scope (on duplicate, one is discarded without warning) |
-| description                     | Yes      | States when to delegate. Used for delegation routing                                                                |
-| tools, disallowedTools          | No       | Comma- or space-separated string. Omitting inherits all tools. Bash matcher syntax (`Bash(git log:*)`) supported    |
-| model                           | No       | sonnet / opus / haiku / fable / inherit / full-id. Defaults to `inherit`                                            |
-| permissionMode, maxTurns        | No       | As needed                                                                                                           |
-| skills                          | No       | Injects skill contents at spawn time. Plugin form: `<plugin>:<skill>`                                               |
-| mcpServers, hooks               | No       | As needed                                                                                                           |
-| memory                          | No       | `user` / `project` / `local`. Enabling auto-grants Read / Write / Edit                                              |
-| background                      | No       | Boolean. Defaults to `false`                                                                                        |
-| effort                          | No       | low / medium / high / xhigh / max                                                                                   |
-| isolation, color, initialPrompt | No       | As needed                                                                                                           |
+| Field                           | Required | Notes                                                                                                                                                |
+| ------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| name                            | Yes      | Lowercase + hyphens. Need not match the filename. Unique per scope (on duplicate, one is discarded without warning)                                  |
+| description                     | Yes      | States when to delegate. Used for delegation routing                                                                                                 |
+| tools, disallowedTools          | No       | Comma- or space-separated string. Omitting inherits all tools. Bash matcher syntax (`Bash(git log:*)`) supported                                     |
+| model                           | No       | sonnet / opus / haiku / fable / inherit / full-id. Defaults to `inherit`                                                                             |
+| permissionMode, maxTurns        | No       | As needed                                                                                                                                            |
+| skills                          | No       | Injects skill contents at spawn time. Plugin form: `<plugin>:<skill>`                                                                                |
+| mcpServers, hooks               | No       | As needed                                                                                                                                            |
+| memory                          | No       | `user` / `project` / `local`. Enabling auto-grants Read / Write / Edit                                                                               |
+| background                      | No       | Boolean. An interactive-session spawn runs in the background even when this is set to `false`. Workflow and headless paths fall outside that default |
+| effort                          | No       | low / medium / high / xhigh / max                                                                                                                    |
+| isolation, color, initialPrompt | No       | As needed                                                                                                                                            |
+
+## Fork decision
+
+`subagent_type` takes exactly one value. `"fork"` and an `agents/` type name are mutually exclusive, so choosing fork loads no agent definition. A fork is a copy of yourself, not a different agent. critic- and reviewer- agents exist to attack the parent's conclusion, so forking one dissolves the role.
+
+The decision turns on whether the spawn names an `agents/` type.
+
+| Spawn                                     | Fork       | Reason                                                                                                                                  |
+| ----------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Names an `agents/` type                   | Unsuitable | model choice, tools restriction, independence, and return shape are discarded together                                                  |
+| Omits the type, or passes a built-in type | Allowed    | Saves rewriting the context into the prompt when the parent conversation is itself the subject. Input tokens grow with the conversation |
 
 ## Model selection
 

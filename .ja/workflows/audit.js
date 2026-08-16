@@ -82,7 +82,7 @@ const fenced = (value) => {
 // なく ~/.claude/plugins 配下に置かれる。shell 断片は dev-tree のパスを先に試すので、
 // dev tree での動作は変わらない。
 const bundled = (rel) =>
-  `"$(P="$HOME/.claude/${rel}"; [ -f "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
+  `"$(P="$HOME/.claude/${rel}"; [ -e "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" -not -path "*/.ja/*" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
 
 // timestamp・branch の解決は audit/snapshot.py が行う。agent は payload を一時ファイルに
 // 書いてそのスクリプトを 1 回叩くだけで、disk への副作用が目的、戻り値は使わない。

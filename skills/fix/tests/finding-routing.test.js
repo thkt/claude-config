@@ -13,126 +13,130 @@ const schema = join(root, "agents", "_lib", "finding-schema.md");
 const integrator = join(root, "agents", "enhancers", "enhancer-integration.md");
 const generator = join(root, "agents", "generators", "generator-test.md");
 
-// ID prefix は finding-schema.md の registry が決める。A11Y のように数字を含む prefix があるので、
-// 文字だけを許す正規表現は Finding ID を取り落として Standard Flow に落とす。エラーにならず
-// 静かに Outcome Anchor と Build Check を走らせてしまう。
-test("Finding ID の正規表現が registry の全 prefix を受ける", () => {
+// The registry in finding-schema.md decides the ID prefixes. Some carry digits, A11Y among them,
+// so a regex admitting letters alone drops the Finding ID and falls to the Standard Flow. It
+// raises no error and quietly runs the Outcome Anchor and the Build Check.
+test("the Finding ID regex admits every prefix in the registry", () => {
   const registry = readFileSync(schema, "utf8");
   const prefixes = [...registry.matchAll(/^\| ([A-Z0-9]+) {2,}\| reviewer-/gm)].map((m) => m[1]);
-  assert.ok(prefixes.includes("A11Y"), "registry に数字入り prefix がある");
-  assert.ok(prefixes.length >= 10, `registry から prefix を読める (${prefixes.length} 件)`);
+  assert.ok(prefixes.includes("A11Y"), "the registry carries a prefix with digits");
+  assert.ok(prefixes.length >= 10, `the prefixes are readable from the registry (${prefixes.length})`);
 
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
     const found = doc.match(/`\/(\^\[[^`]+?)\/`/);
-    assert.ok(found, `${lang}: SKILL.md から Finding ID の正規表現を読める`);
+    assert.ok(found, `${lang}: the Finding ID regex is readable from SKILL.md`);
     const pattern = new RegExp(found[1]);
     for (const prefix of prefixes) {
-      assert.match(`${prefix}-001`, pattern, `${lang}: ${prefix}-001 が Finding ID として通る`);
+      assert.match(`${prefix}-001`, pattern, `${lang}: ${prefix}-001 passes as a Finding ID`);
     }
-    assert.doesNotMatch("just a bug description", pattern, `${lang}: 散文は Finding ID にしない`);
-    // Issue 引き継ぎの入力と競合させない。prefix に英字を要求しないと 1-2 が両方の行にマッチする。
-    assert.doesNotMatch("1-2", pattern, `${lang}: 数字だけの prefix は Finding ID にしない`);
+    assert.doesNotMatch("just a bug description", pattern, `${lang}: prose does not become a Finding ID`);
+    // This keeps it from clashing with the issue handoff input. Without demanding a letter in the
+    // prefix, 1-2 would match both rows.
+    assert.doesNotMatch("1-2", pattern, `${lang}: a digits-only prefix does not become a Finding ID`);
   }
 });
 
-// severity の語彙。finding-schema と enhancer-integration の出力が medium と書くので、
-// トリアージ表が med と略すと snapshot の値と一致しない。
-test("severity の語彙が schema と fix のトリアージで一致する", () => {
+// The severity vocabulary. finding-schema and enhancer-integration's output both write medium, so
+// abbreviating it to med in the triage table would stop matching the snapshot's value.
+test("the severity vocabulary matches between the schema and fix's triage", () => {
   for (const path of [schema, integrator]) {
     assert.match(
       readFileSync(path, "utf8"),
       /critical \/ high \/ medium \/ low/,
-      `${path} が 4 段の severity を並べる`,
+      `${path} lists the four severity levels`,
     );
   }
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
-    assert.match(doc, /severity low \/ medium/, `${lang}: トリアージが medium と書く`);
-    assert.doesNotMatch(doc, /severity low \/ med\b/, `${lang}: med の略記が残っていない`);
+    assert.match(doc, /severity low \/ medium/, `${lang}: the triage writes medium`);
+    assert.doesNotMatch(doc, /severity low \/ med\b/, `${lang}: no med abbreviation remains`);
   }
 });
 
-// snapshot の finding が持つのは file / line / severity / summary の 4 つ。
-// enhancer-integration.md § Auto-fix marking が fix_type を持たないと明言しているので、
-// その語で分岐すると存在しないフィールドを読むことになる。
-test("fix が snapshot に無いフィールドで分岐しない", () => {
+// A snapshot finding carries four things: file, line, severity, and summary.
+// enhancer-integration.md § Auto-fix marking states outright that it carries no fix_type, so
+// branching on that word would read a field that does not exist.
+test("fix does not branch on a field absent from the snapshot", () => {
   const src = readFileSync(integrator, "utf8");
-  assert.match(src, /no dedicated fix_type field/, "integrator が fix_type の不在を明言する");
+  assert.match(src, /no dedicated fix_type field/, "the integrator states outright that fix_type is absent");
   for (const field of ["file", "line", "severity", "summary"]) {
-    assert.match(src, new RegExp(`findings\\[\\]\\.${field}`), `snapshot が ${field} を持つ`);
+    assert.match(src, new RegExp(`findings\\[\\]\\.${field}`), `the snapshot carries ${field}`);
   }
   for (const [lang, path] of Object.entries(skills)) {
-    assert.doesNotMatch(readFileSync(path, "utf8"), /fix_type/, `${lang}: fix_type で分岐しない`);
+    assert.doesNotMatch(readFileSync(path, "utf8"), /fix_type/, `${lang}: it does not branch on fix_type`);
   }
 });
 
-// generator-test は root_cause を optional で受け、渡されたら振る舞いに束縛する。
-// fix の Non-obvious は step 1 で root cause を得るので、渡さないとその optional が常に空になる。
-test("generator-test への引き渡しが agent の Input と揃う", () => {
+// generator-test takes root_cause as optional and binds it to the behavior once passed. fix's
+// Non-obvious path obtains the root cause at step 1, so not passing it leaves that optional
+// permanently empty.
+test("what is handed to generator-test matches the agent's Input", () => {
   const agent = readFileSync(generator, "utf8");
-  assert.match(agent, /^\| root_cause \| optional \|/m, "agent が root_cause を optional で受ける");
-  assert.match(agent, /When a root cause is passed/, "agent が root_cause の使い道を述べる");
+  assert.match(agent, /^\| root_cause \| optional \|/m, "the agent takes root_cause as optional");
+  assert.match(agent, /When a root cause is passed/, "the agent states what root_cause is for");
   assert.match(
     readFileSync(skills.ja, "utf8"),
     /渡すのは symptom、再現手順、step 1 の root cause/,
-    "ja: 3 つを渡す",
+    "ja: all three are passed",
   );
   assert.match(
     readFileSync(skills.en, "utf8"),
     /Pass symptom, repro steps, and the root cause from step 1/,
-    "en: 3 つを渡す",
+    "en: all three are passed",
   );
 });
 
-// issue から fix への引き継ぎ。issue 側の案内と fix 側の入力経路とエスカレーション閾値が
-// 揃っていないと、issue が /fix を勧めた番号を fix が Standard Flow として読み直す。
-test("issue から fix への引き継ぎが両側で揃う", () => {
+// The handoff from issue to fix. Without issue's guidance, fix's input route, and the escalation
+// threshold all in step, fix rereads a number issue recommended /fix for as a Standard Flow
+// input.
+test("the handoff from issue to fix lines up on both sides", () => {
   const issues = {
     ja: join(root, ".ja", "skills", "issue", "SKILL.md"),
     en: join(root, "skills", "issue", "SKILL.md"),
   };
   for (const [lang, path] of Object.entries(issues)) {
     const doc = readFileSync(path, "utf8");
-    assert.match(doc, /`\/fix <(番号|number)>`/, `${lang}: issue が /fix を番号付きで勧める`);
-    assert.match(doc, /1[〜-]3 ?(ファイル|files)/, `${lang}: 1-3 ファイルの下限側を示す`);
-    assert.match(doc, /(4 ファイル以上|4 or more files)/, `${lang}: 4 ファイル以上は build へ`);
+    assert.match(doc, /`\/fix <(番号|number)>`/, `${lang}: issue recommends /fix with a number`);
+    assert.match(doc, /1[〜-]3 ?(ファイル|files)/, `${lang}: it states the 1-3 files lower bound`);
+    assert.match(doc, /(4 ファイル以上|4 or more files)/, `${lang}: four or more files go to build`);
   }
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
-    assert.match(doc, /`\/\^#\?\[0-9\]\+\$\/`/, `${lang}: fix が issue 番号のパターンを持つ`);
-    assert.match(doc, /gh issue view/, `${lang}: 本文を gh issue view で読む`);
+    assert.match(doc, /`\/\^#\?\[0-9\]\+\$\/`/, `${lang}: fix carries the issue number pattern`);
+    assert.match(doc, /gh issue view/, `${lang}: the body is read with gh issue view`);
     assert.match(
       doc,
       /(次の 4 形式|one of four forms)/,
-      `${lang}: 入力の列挙が issue 番号を数に入れている`,
+      `${lang}: the input enumeration counts the issue number`,
     );
     assert.match(
       doc,
       /(起票済み issue の番号|the number of a filed issue)/,
-      `${lang}: 列挙に issue 番号が並ぶ`,
+      `${lang}: the issue number is listed in the enumeration`,
     );
     assert.match(
       doc.split("---")[1],
       /(1〜3 ファイル|1-3 files)/,
-      `${lang}: description が issue 引き継ぎを許す`,
+      `${lang}: the description allows the issue handoff`,
     );
     assert.match(
       doc,
       /(4 ファイル以上|4\+ files)/,
-      `${lang}: エスカレーション閾値が issue 側と同じ 4 ファイル`,
+      `${lang}: the escalation threshold is four files, the same as on issue's side`,
     );
   }
   const frontmatter = readFileSync(skills.en, "utf8").split("---")[1];
-  assert.match(frontmatter, /Bash\(gh issue view:\*\)/, "allowed-tools が gh issue view を許す");
+  assert.match(frontmatter, /Bash\(gh issue view:\*\)/, "allowed-tools grants gh issue view");
 });
 
-// 完了条件はチェックリスト。表に戻すと Required 列が Yes の羅列になり、埋める先が消える。
-test("完了条件が両言語でチェックリスト形式", () => {
+// The completion conditions are a checklist. Reverting them to a table turns the Required column
+// into a row of Yes and leaves nothing to fill in.
+test("the completion conditions take checklist form in both languages", () => {
   for (const [lang, path] of Object.entries(skills)) {
-    assert.ok(existsSync(path), `${path} が存在する`);
+    assert.ok(existsSync(path), `${path} exists`);
     const doc = readFileSync(path, "utf8");
     const items = doc.match(/^- \[ \] /gm) || [];
-    assert.equal(items.length, 5, `${lang}: 完了条件が 5 項目 (実際は ${items.length})`);
+    assert.equal(items.length, 5, `${lang}: there are five completion conditions (actual ${items.length})`);
   }
 });

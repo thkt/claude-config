@@ -2,7 +2,7 @@
 name: fix
 description: Rapidly fix small bugs and minor improvements in development environment. Hand it a filed issue number and a fix confined to 1-3 files carries straight through. Do NOT use for new feature implementation or changes spanning 4 or more files (write the plan via /think and /issue, then hand the number to the build workflow).
 when_to_use: バグ修正, 直して, 修正して, fix bug, 不具合
-allowed-tools: Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit MultiEdit Read LS Task AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit Read LS Agent AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
 model: opus
 argument-hint: "[bug or issue description]"
 ---
@@ -38,10 +38,10 @@ Read `.claude/OUTCOME.md` before Build Check. If absent, generate the stub via /
 
 Detect the build command from package.json or project config and run it.
 
-| Result       | Action                                                |
-| ------------ | ----------------------------------------------------- |
-| Build errors | `Task` with `subagent_type: resolver-build`, then END |
-| No errors    | Continue to Triage                                    |
+| Result       | Action                                           |
+| ------------ | ------------------------------------------------ |
+| Build errors | `Agent(subagent_type: resolver-build)`, then END |
+| No errors    | Continue to Triage                               |
 
 ## Triage
 
@@ -62,8 +62,8 @@ Obvious skips both RCA and regression test generation, so it is limited to findi
 ## Non-obvious
 
 1. Run 5 Whys via `Skill("use-context-root-cause-analysis")`. If via Finding ID or Direct Finding Input, pass the finding's file:line and summary as the 5 Whys starting point. Output Symptom / Root cause / Pattern. When an Issue Handoff body already names the cause down to a file:line, skip the 5 Whys, carry that cause as the Root cause, and judge only the Pattern.
-2. `Task(subagent_type: generator-test)` for the regression test. Pass symptom, repro steps, and the root cause from step 1
-3. Verify regression test is Red
+2. `Agent(subagent_type: generator-test)` for the regression test. Pass symptom, repro steps, and the root cause from step 1. The spawn runs in the background and its result arrives as a completion notification
+3. Verify the regression test is Red once the completion notification arrives
 4. Apply fix
 5. Verify regression test is Green and no other tests regressed
 6. If Pattern is Recurring or Systematic, apply `${CLAUDE_SKILL_DIR}/references/defense-in-depth.md`

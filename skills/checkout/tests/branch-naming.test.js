@@ -17,44 +17,52 @@ const commits = {
 const prefixes = (doc) =>
   (doc.match(/^\| ([a-z]+)\/ +\|/gm) || []).map((r) => r.match(/[a-z]+/)[0]);
 
-// ブランチの prefix と commit の type は同じ Conventional Commits 由来。片方だけ改名すると、
-// 同じ変更が feat/ ブランチの feat commit にならず、履歴の型が割れる。
-test("ブランチ prefix が commit の type 表に存在する", () => {
+// A branch prefix and a commit type both come from Conventional Commits. Renaming one alone stops
+// the same change from becoming a feat commit on a feat/ branch and splits the history's types.
+test("every branch prefix exists in the commit type table", () => {
   for (const [lang, path] of Object.entries(skills)) {
-    assert.ok(existsSync(path), `${path} が存在する`);
+    assert.ok(existsSync(path), `${path} exists`);
     const found = prefixes(readFileSync(path, "utf8"));
-    assert.ok(found.length >= 7, `${lang}: prefix を 7 つ以上読める (${found.join(", ")})`);
-    assert.ok(found.includes("feat"), `${lang}: feat/ を使う (feature/ ではない)`);
+    assert.ok(
+      found.length >= 7,
+      `${lang}: seven or more prefixes are readable (${found.join(", ")})`,
+    );
+    assert.ok(found.includes("feat"), `${lang}: it uses feat/ rather than feature/`);
     const commitDoc = readFileSync(commits[lang], "utf8");
     for (const prefix of found) {
-      assert.match(commitDoc, new RegExp(`^\\| ${prefix} `, "m"), `${lang}: commit に ${prefix}`);
+      assert.match(
+        commitDoc,
+        new RegExp(`^\\| ${prefix} `, "m"),
+        `${lang}: commit carries ${prefix}`,
+      );
     }
   }
 });
 
-// ブランチを切る前にステージ済みかどうかは決まっていない。git diff だけだと staged が
-// 空に見え、type 判定が git status の porcelain だけに落ちる。
-test("変更の読み取りが staged と unstaged の両方を見る", () => {
+// Whether anything is staged before a branch is cut is undecided. A bare git diff shows the staged
+// side as empty and leaves the type decision resting on git status --porcelain alone.
+test("reading the changes looks at both the staged and the unstaged side", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
-    assert.match(doc, /`git diff HEAD`/, `${lang}: git diff HEAD で両方を読む`);
+    assert.match(doc, /`git diff HEAD`/, `${lang}: git diff HEAD reads both sides`);
     assert.doesNotMatch(
       doc,
       /`git diff` を並列|`git diff` in parallel/,
-      `${lang}: 素の diff でない`,
+      `${lang}: it is not the bare diff`,
     );
   }
 });
 
-// scribe は scribe/<yyyymmdd-HHMMSS> を作る。日付の禁止をリポジトリ全体の規則と読ませない。
-test("日付の禁止がこのスキルの作る名前に限定される", () => {
+// scribe creates scribe/<yyyymmdd-HHMMSS>. The date prohibition must not read as a
+// repository-wide rule.
+test("the date prohibition is scoped to the names this skill creates", () => {
   const scoped = {
     ja: /このスキルが作る名前に日付は入れない/,
     en: /Names this skill creates carry no date/,
   };
   for (const [lang, path] of Object.entries(skills)) {
-    assert.match(readFileSync(path, "utf8"), scoped[lang], `${lang}: 主語が限定されている`);
+    assert.match(readFileSync(path, "utf8"), scoped[lang], `${lang}: the subject is scoped`);
   }
   const scribe = readFileSync(join(root, "skills", "scribe", "SKILL.md"), "utf8");
-  assert.match(scribe, /scribe\/<yyyymmdd-HHMMSS>/, "scribe は日付付きの名前を作る");
+  assert.match(scribe, /scribe\/<yyyymmdd-HHMMSS>/, "scribe creates names carrying a date");
 });

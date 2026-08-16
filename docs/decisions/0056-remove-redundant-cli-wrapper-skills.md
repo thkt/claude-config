@@ -12,14 +12,14 @@ ADR-0055 (2026-04-24) で `use-cli-*` を user-invocable: false 統一 marker �
 
 監査結果 (2026-04-29):
 
-| 項目 | 結果 |
-| ---- | ---- |
-| agents/ からの skill 配列参照 | ゼロ |
-| commands/ からの参照 | ゼロ |
-| 他 skill からの相互参照 | ゼロ |
-| references/ の内容 | git/gh/npm の generic best practice (HEREDOC commit, conventional commits, gh PR/issue, npm scripts) |
-| Claude 標準知識との差分 | ほぼなし。Claude Code system prompt にも HEREDOC commit 例あり |
-| 合計行数 | 545 lines (4 reference files) |
+| 項目                          | 結果                                                                                                 |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------- |
+| agents/ からの skill 配列参照 | ゼロ                                                                                                 |
+| commands/ からの参照          | ゼロ                                                                                                 |
+| 他 skill からの相互参照       | ゼロ                                                                                                 |
+| references/ の内容            | git/gh/npm の generic best practice (HEREDOC commit, conventional commits, gh PR/issue, npm scripts) |
+| Claude 標準知識との差分       | ほぼなし。Claude Code system prompt にも HEREDOC commit 例あり                                       |
+| 合計行数                      | 545 lines (4 reference files)                                                                        |
 
 `use-cli-yomu`/`use-cli-recall`/`use-cli-scout`/`use-cli-gcloud`/`use-cli-heptabase` は CLI 固有の subcommand, environment variables, design rationale を含み load-bearing。一方 `use-cli-git`/`use-cli-gh`/`use-cli-npm` は標準コマンドの再録に留まる。
 

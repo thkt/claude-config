@@ -24,20 +24,22 @@ export const meta = {
 // guardrails raw-html misreads them as HTML tags).
 
 const parseArgs = () => {
-  if (typeof args === "string") {
+  if (typeof args === "object" && args) return args;
+  if (typeof args !== "string") return {};
+  const s = args.trim();
+  if (s.startsWith("{")) {
     try {
-      const parsed = JSON.parse(args);
+      const parsed = JSON.parse(s);
       if (parsed && typeof parsed === "object") return parsed;
     } catch {
-      // a non-JSON string is the scope shorthand
+      // malformed JSON falls through to the scope shorthand below
     }
-    return { scope: args };
   }
-  return args && typeof args === "object" ? args : {};
+  return { scope: args };
 };
 const opts = parseArgs();
 const scope = typeof opts.scope === "string" ? opts.scope : "";
-const base = typeof opts.base === "string" ? opts.base : "main";
+const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 const repo = typeof opts.repo === "string" ? opts.repo : "";
 
 const anchor = (p) =>

@@ -20,7 +20,8 @@
       "rules": {
         "func-style": ["error", "expression"],
         "prefer-arrow-callback": "error",
-        "no-var": "error"
+        "no-var": "error",
+        "no-undef": "error"
       }
     }
   ]

@@ -10,74 +10,78 @@ const skills = {
   en: join(root, "skills", "commit", "SKILL.md"),
 };
 
-// Conventional Commits の type。表から 1 つ落ちると、その変更に当てはまる型が無くなり
-// haiku が近い型へ寄せる。semver に効く feat / fix が巻き込まれると release 判断が狂う。
+// The Conventional Commits types. Dropping one from the table leaves a change with no type that
+// fits and haiku settles on the nearest one. When feat or fix is swept up, the semver-bearing
+// types, the release decision goes wrong.
 const TYPES = ["feat", "fix", "refactor", "docs", "test", "chore", "perf", "style", "ci"];
 
-test("type の一覧が両言語で揃う", () => {
+test("the type list matches across both languages", () => {
   for (const [lang, path] of Object.entries(skills)) {
-    assert.ok(existsSync(path), `${path} が存在する`);
+    assert.ok(existsSync(path), `${path} exists`);
     const doc = readFileSync(path, "utf8");
     for (const type of TYPES) {
-      assert.match(doc, new RegExp(`^\\| ${type} `, "m"), `${lang}: ${type} の行`);
+      assert.match(doc, new RegExp(`^\\| ${type} `, "m"), `${lang}: the ${type} row`);
     }
     const rows = doc.match(/^\| (feat|fix|refactor|docs|test|chore|perf|style|ci) /gm) || [];
-    assert.equal(rows.length, TYPES.length, `${lang}: 型の行数が ${TYPES.length}`);
+    assert.equal(rows.length, TYPES.length, `${lang}: the type row count is ${TYPES.length}`);
   }
 });
 
-// 判別できないときの既定値。feat は semver minor を上げる宣言なので、根拠なしに選ぶと
-// リリース判断を誤らせる。文言でなく既定値そのものを取り出して判定する。
-test("判別不能時の既定 type が feat でない", () => {
+// The default when the type cannot be told. feat declares a semver minor bump, so choosing it
+// without grounds misleads the release decision. What is checked is the default value itself
+// rather than the wording.
+test("the default type when it cannot be told is not feat", () => {
   const fallback = {
     ja: /判別できないときは (\w+) とする/,
     en: /When it cannot be told, use (\w+)\./,
   };
   for (const [lang, path] of Object.entries(skills)) {
     const found = readFileSync(path, "utf8").match(fallback[lang]);
-    assert.ok(found, `${lang}: 既定 type を読み取れる`);
-    assert.notEqual(found[1], "feat", `${lang}: 既定が feat ではない`);
-    assert.ok(TYPES.includes(found[1]), `${lang}: 既定 ${found[1]} が型の一覧にある`);
+    assert.ok(found, `${lang}: the default type is readable`);
+    assert.notEqual(found[1], "feat", `${lang}: the default is not feat`);
+    assert.ok(TYPES.includes(found[1]), `${lang}: the default ${found[1]} is in the type list`);
   }
 });
 
-// 一時ファイルの置き場。/tmp 直書きは sandbox の許可範囲に依存するので、$TMPDIR で受ける。
-test("sandbox 互換コミットが $TMPDIR を使う", () => {
+// Where the temporary file goes. Writing /tmp literally rests on the sandbox's allowlist, so it is
+// taken through $TMPDIR.
+test("the sandbox-compatible commit uses $TMPDIR", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
     const block = doc.slice(doc.indexOf("```bash"), doc.indexOf("```", doc.indexOf("```bash") + 3));
-    assert.match(block, /\$TMPDIR/, `${lang}: 一時ファイルが $TMPDIR 配下`);
-    assert.doesNotMatch(block, /\/tmp\/claude/, `${lang}: /tmp の直書きが残っていない`);
-    // rm は hook が拒む。~/.Trash への mv で後始末する。
-    assert.match(block, /mv .* ~\/\.Trash\//, `${lang}: 後始末が mv`);
-    assert.doesNotMatch(block, /\brm\b/, `${lang}: rm を使わない`);
+    assert.match(block, /\$TMPDIR/, `${lang}: the temporary file sits under $TMPDIR`);
+    assert.doesNotMatch(block, /\/tmp\/claude/, `${lang}: no literal /tmp remains`);
+    // A hook rejects rm. Cleanup goes through mv to ~/.Trash.
+    assert.match(block, /mv .* ~\/\.Trash\//, `${lang}: cleanup goes through mv`);
+    assert.doesNotMatch(block, /\brm\b/, `${lang}: rm is not used`);
   }
 });
 
-// 誤ったリポジトリへのコミットは取り返しがつかない。code workflow が per-unit commit で
-// 使うガードと同じコマンドで、手動コミット経路にも同じ確認を置く。
-test("commit 前にリポジトリを確かめる", () => {
+// A commit to the wrong repository cannot be taken back. The manual commit route carries the same
+// confirmation as the guard the code workflow uses for its per-unit commits.
+test("the repository is confirmed before the commit", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
     const block = doc.slice(doc.indexOf("```bash"), doc.indexOf("```", doc.indexOf("```bash") + 3));
     const guard = block.indexOf("git rev-parse --show-toplevel");
     const commit = block.indexOf("git commit -F");
-    assert.ok(guard >= 0, `${lang}: repo guard がある`);
-    assert.ok(guard < commit, `${lang}: guard が commit より前`);
+    assert.ok(guard >= 0, `${lang}: the repo guard is present`);
+    assert.ok(guard < commit, `${lang}: the guard sits before the commit`);
   }
   assert.match(
     readFileSync(join(root, "workflows", "code.js"), "utf8"),
     /git rev-parse --show-toplevel/,
-    "code workflow も同じコマンドで確かめる",
+    "the code workflow confirms with the same command",
   );
 });
 
-// allowed-tools は事前承認の列挙。手順が使うコマンドが漏れると、実行時に確認が挟まる。
-test("allowed-tools が手順の使うコマンドを網羅する", () => {
+// allowed-tools enumerates what is pre-approved. A command the steps use but the list omits brings
+// a confirmation prompt at run time.
+test("allowed-tools covers every command the steps use", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const frontmatter = readFileSync(path, "utf8").split("---")[1];
     for (const grant of ["Bash(git:*)", "Bash(cat:*)", "Bash(mv:*)"]) {
-      assert.ok(frontmatter.includes(grant), `${lang}: ${grant} を許可する`);
+      assert.ok(frontmatter.includes(grant), `${lang}: it grants ${grant}`);
     }
   }
 });

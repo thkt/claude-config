@@ -183,7 +183,7 @@ async function createTeam(data: CreateTeamInput) {
 
 ## SF (reviewer-silence)
 
-### REPORT
+### REPORT (error returned as success)
 
 ```rust
 fn sync_messages(&self, channel: &str) -> Result<usize> {
@@ -200,7 +200,7 @@ fn sync_messages(&self, channel: &str) -> Result<usize> {
 | Trigger | Slack API でネットワークエラー、auth 失敗、rate limit              |
 | Impact  | caller は `Ok(0)` を見て「0 件同期」と「API ダウン」を区別できない |
 
-### SKIP
+### SKIP (intentional default)
 
 ```rust
 fn load_config(path: &Path) -> Config {
@@ -216,6 +216,41 @@ fn load_config(path: &Path) -> Config {
 | Filter | Context Test: 意図的 fallback                                        |
 | Signal | 関数名 `load_config` (`require_config` ではない)、`default()` を返す |
 | Path   | Cold: 起動時 1 回実行                                                |
+
+### REPORT (catch as dispatch)
+
+```javascript
+const sibling = async (name, args) => {
+  try {
+    return await workflow(name, args);
+  } catch {
+    return await workflow(`build:${name}`, args); // fires on any error, not just an unresolved name
+  }
+};
+```
+
+| Field   | Value                                                          |
+| ------- | -------------------------------------------------------------- |
+| Filter  | Harm Test pass: 具体的失敗シナリオが存在                       |
+| Trigger | 入れ子の workflow が名前解決以外の理由で throw する            |
+| Impact  | 退避先の名前解決エラーが最終の失敗として残り、真の原因が消える |
+
+### SKIP (single failure mode)
+
+```javascript
+function parseCache(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {}; // malformed cache is the only way to reach here
+  }
+}
+```
+
+| Field  | Value                                                                       |
+| ------ | --------------------------------------------------------------------------- |
+| Filter | Context Test: try 内の失敗経路が 1 本                                       |
+| Signal | try 内の呼び出しは 1 つで throw も 1 通りなので、catch が別の原因を覆えない |
 
 ## SEC (reviewer-security)
 
@@ -254,7 +289,7 @@ app.get("/users", async (req, res) => {
 
 ## RP (reviewer-react-pattern)
 
-### REPORT
+### REPORT (肥大コンポーネント)
 
 ```tsx
 function OrderPage() {
@@ -296,7 +331,7 @@ function OrderPage() {
 | Trigger | 新規フィルタ種類追加でレンダリングコード変更が必要             |
 | Impact  | テスト不能ロジック; render と state が結合; 際限なく成長       |
 
-### SKIP
+### SKIP (leaf component)
 
 ```tsx
 function UserAvatar({ name, src }: { name: string; src: string }) {
@@ -312,6 +347,48 @@ function UserAvatar({ name, src }: { name: string; src: string }) {
 | ------ | -------------------------------------------------------------- |
 | Filter | Context Test: 単一責務、leaf component                         |
 | Signal | `initials` 導出は些末; hook 抽出はオーバーヘッドにしかならない |
+
+### REPORT (prop-forwarding)
+
+```tsx
+interface SegmentedControlProps extends React.HTMLAttributes<HTMLDivElement> {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+}
+
+export function SegmentedControl({ value, onChange, label }: SegmentedControlProps) {
+  return (
+    <div role="radiogroup" aria-label={label}>
+      {/* ...items */}
+    </div>
+  );
+}
+```
+
+| Field   | Value                                                                        |
+| ------- | ---------------------------------------------------------------------------- |
+| Filter  | Harm Test pass: HTMLAttributes を継承しながら `...rest` を分割代入していない |
+| Trigger | consumer が渡す `data-testid`、`aria-describedby`、`id` が DOM に出ない      |
+| Impact  | 型検査も描画も通るため、consumer 側が参照するまで欠落が表面化しない          |
+
+### SKIP (閉じた props)
+
+```tsx
+interface IconProps {
+  name: IconName;
+  size?: "sm" | "md";
+}
+
+export function Icon({ name, size = "md" }: IconProps) {
+  return <svg {...registry[name]} data-size={size} />;
+}
+```
+
+| Field  | Value                                                    |
+| ------ | -------------------------------------------------------- |
+| Filter | Context Test: props 型が DOM 属性を継承していない        |
+| Signal | pass-through の契約が無いので、rest 未捕捉は欠落ではない |
 
 ## DP (reviewer-design)
 

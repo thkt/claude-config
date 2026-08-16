@@ -2,7 +2,7 @@
 name: research
 description: プロジェクトと技術的な質問を調査する。発見事項は結論ではなく、明示的なソース付きで反証にさらすべき主張として扱う。Phase 6 では統合が確定する前に advisor がそれへ反論する。設計計画や plan 生成には使わない (代わりに /think を使う)。
 when_to_use: 調査して, 調べて, リサーチ, investigate, 分析して, issueやろう, issue見て, 横並びチェック, 類似パターン検出, refactor 横展開
-allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Task AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) Bash($HOME/.claude/skills/research/scripts/*)
+allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Agent AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) Bash($HOME/.claude/skills/research/scripts/*)
 model: opus
 context: fork
 background: false
@@ -47,7 +47,7 @@ Explore、ugrep、bfs、Read を並列起動する。各コマンドと生出力
 
 発見事項にはその場でソースを書く。事実は `file:line` かコマンド出力、推論は `inferred from X`、未検証は `unknown, requires X`。これが後続 Phase と出力テンプレートの言うソース記法で、他の形式は認めない。
 
-意図が Feature planning か Bug investigation なら `Task(subagent_type: explorer-feature, run_in_background: false)` も起動する。返り値は `{ findings: [{ statement: string, source: string }] }` の JSON 1 object で受け取る。この起動条件に当たるとき、または `.codegraph/` index があるときは `${CLAUDE_SKILL_DIR}/references/tactics.md` を読み、該当する手段を適用する。締めでは `${CLAUDE_SKILL_DIR}/references/verification.md` を読み、finding の種類に該当する検証を適用する。
+意図が Feature planning か Bug investigation なら `Agent(subagent_type: explorer-feature)` も起動する。この起動はバックグラウンドで走るので、他の探索を続けながら完了通知を待つ。返り値は `{ findings: [{ statement: string, source: string }] }` の JSON 1 object で受け取り、受け取るまで次の Phase へ進まない。この起動条件に当たるとき、または `.codegraph/` index があるときは `${CLAUDE_SKILL_DIR}/references/tactics.md` を読み、該当する手段を適用する。締めでは `${CLAUDE_SKILL_DIR}/references/verification.md` を読み、finding の種類に該当する検証を適用する。
 
 ### ドメインスコープ
 

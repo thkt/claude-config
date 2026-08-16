@@ -1,12 +1,19 @@
 {
-  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
     "workflows/*.js",
     ".ja/workflows/*.js",
     "workflows/**/*.test.js",
     "workflows/tests/index.js",
-    "skills/**/tests/**/*.test.js"
+    "skills/**/tests/**/*.test.js",
+    "skills/**/scripts/*.{js,mjs}",
+    ".ja/skills/**/scripts/*.{js,mjs}"
   ],
-  "project": ["workflows/**/*.js", ".ja/workflows/**/*.js"],
-  "ignoreDependencies": ["oxlint", "oxfmt"]
+  "project": [
+    "workflows/**/*.js",
+    ".ja/workflows/**/*.js",
+    "skills/**/*.{js,mjs}",
+    ".ja/skills/**/*.{js,mjs}"
+  ],
+  "ignoreDependencies": ["oxfmt", "^@?textlint"]
 }
