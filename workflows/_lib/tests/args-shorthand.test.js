@@ -1,8 +1,6 @@
-// A workflow takes args as a string shorthand as well as an object, and every test that
-// drives a script passes an object, so the shorthand branch of parseArgs ran nowhere.
-// These cases push a string through runWorkflow and assert the shorthand value reaches
-// the agent prompts. The convention lives in rules/conventions/WORKFLOWS.md under Taking
-// arguments and prompts.
+// Every other test that drives a script passes args as an object, so parseArgs's shorthand
+// branch ran nowhere. rules/conventions/WORKFLOWS.md § Taking arguments and prompts carries the
+// convention.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -86,9 +84,8 @@ for (const { name, file, arg, stub, shorthand } of cases) {
   });
 }
 
-// An id list is the one string adrift reads as focus rather than dir, which is the branch
-// separating its shorthand from every other script's. A DR matching no focus token makes
-// the narrowing visible in the return value.
+// An id list is the one string adrift reads as focus rather than dir. A DR matching no focus
+// token makes the narrowing visible in the return value.
 const adriftWithDr = (prompt, opts) => {
   const label = opts && opts.label;
   if (label === "detect")

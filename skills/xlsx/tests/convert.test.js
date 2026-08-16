@@ -69,9 +69,8 @@ test("in a column expressing nesting, the cell position within the column restor
   assert.match(markdown, /\| 3 \| 　　code \| エラーコード \|/);
 });
 
-// The 2026-08-13 defect. Adding `#` to the header words made a comment row of the single
-// character `#` read as a table header, and the body in the neighboring cell vanished without an
-// error.
+// `#` as a header word makes a comment row of that single character read as a table header, and
+// the body in the neighboring cell vanishes without an error.
 test("a two-cell row starting with one cell matching a header word stays body rather than becoming a table header", () => {
   const markdown = sheetToMarkdown(
     sheetOf(row([3, "#"], [4, "これは結局 admin_id が取得できない場合、ということ。"])),

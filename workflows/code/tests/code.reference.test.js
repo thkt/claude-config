@@ -78,10 +78,9 @@ const promptFor = (calls, label) => {
   return call.prompt;
 };
 
-// The verbatim impl:U-1 prompt the current code.js (before the reference-index feature) emits.
-// On 2026-07-28, runWorkflow(codeJs, {args:{plan: implPlan(["sample.js"]), repo:""}}) was run
-// against the pre-feature (main) workflows/code.js and the impl:U-1 prompt was captured (the
-// tool result of that session).
+// The verbatim impl:U-1 prompt code.js emits with no index present. Regenerate it by running
+// runWorkflow(codeJs, {args: {plan: implPlan(["sample.js"]), repo: ""}}) and reading the
+// impl:U-1 prompt; a hand-edited copy stops catching an unintended change to the prompt.
 const BASELINE_IMPL_PROMPT =
   'Direct implementation step. Unit U-1\'s goal is "docs goal". The target files are ["sample.js"].\n' +
   "The contract is docs contract. The test scenarios are [].\n" +

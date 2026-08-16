@@ -52,10 +52,8 @@ const makePlan = (overrides = {}) => ({
   ...overrides,
 });
 
-// Classifies an agent call by the shape of its schema. It avoids coupling to the label string
-// and tells apart FETCH_SCHEMA {found, body}, EXTRACT_SCHEMA (units), REVALIDATE_SCHEMA
-// (results whose items carry path), TEST_PRESENCE_SCHEMA (results whose items carry name),
-// DIFF_SCHEMA {files}, CONFORMANCE {spec_found}, TRANSLATION {translations}, SHIP {pr_url}.
+// Classifies an agent call by the shape of its schema rather than by its label string, which
+// would couple these tests to wording build.js is free to reword.
 const kindOf = (opts) => {
   const p = (opts && opts.schema && opts.schema.properties) || null;
   if (!p) return "plain";
@@ -75,8 +73,7 @@ const kindOf = (opts) => {
   return "plain";
 };
 
-// The full set of happy-path stubs. body / plan / revalidate / diff / presence / conformance
-// swap the happy-path return values. diff and presence take a value or a prompt-receiving function.
+// The full set of happy-path stubs. Each named override swaps that stage's return value.
 const makeStubs = ({
   body,
   title,
@@ -220,10 +217,8 @@ test("args missing repo (object / bare string) fail closed with stopped: no-repo
   }
 });
 
-// A valid reference form (a bare number, #number, or an issue URL) yields the same number from
-// args carrying a repo. A bare string args cannot carry a repo and stops at the no-repo gate
-// (stopped: no-repo) before the fetch, so acceptance of a reference form is observable only in
-// the { issue: ref, repo } shape.
+// A bare string args cannot carry a repo and stops at the no-repo gate before the fetch, so
+// whether a reference form is accepted is observable only in the { issue: ref, repo } shape.
 test("a bare number, #number, and an issue URL in args with a repo all extract the same issue number and each run one fetch", async () => {
   for (const ref of ["123", "#123", "https://github.com/o/r/issues/123"]) {
     const run = await runWorkflow(buildJs, {
@@ -236,9 +231,8 @@ test("a bare number, #number, and an issue URL in args with a repo all extract t
   }
 });
 
-// An issue with no Plan section does not get a plan generated in its place; the run stops at
-// stopped: no-plan and hands the issue back for refinement. why carries the route for re-running
-// /think and /issue.
+// The issue goes back for refinement rather than getting a plan generated in its place, so why
+// carries the route for re-running /think and /issue.
 test("a body with no Plan section stops at stopped: no-plan and generates no plan", async () => {
   const noPlan = await runWorkflow(buildJs, {
     args,
