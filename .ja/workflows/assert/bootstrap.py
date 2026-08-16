@@ -44,6 +44,7 @@ PROJECT_MARKERS = [
 # lock ファイル別の npm install コマンド。最初に一致したものを採用。
 NPM_LOCK_COMMANDS = [
     ("bun.lockb", ["bun", "install", "--frozen-lockfile"]),
+    ("bun.lock", ["bun", "install", "--frozen-lockfile"]),
     ("pnpm-lock.yaml", ["pnpm", "install", "--frozen-lockfile"]),
     ("yarn.lock", ["yarn", "install", "--frozen-lockfile"]),
     ("package-lock.json", ["npm", "ci"]),

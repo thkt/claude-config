@@ -107,6 +107,19 @@ const partToString = (part) => {
   }
 };
 
+// A workflow script is neither ESM nor CommonJS: it is a function body holding a top-level
+// return. `node --check` therefore reads it under whichever module goal package.json names
+// and rejects that return once the repository declares `type: module`. Compiling it the way
+// production does asks the only question a syntax gate should ask of these files.
+export function checkWorkflowSyntax(scriptPath) {
+  const source = readFileSync(scriptPath, "utf8").replace(/^export const meta/m, "const meta");
+  vm.compileFunction(
+    `return (async () => {\n${source}\n})();`,
+    ["args", "agent", "workflow", "parallel", "pipeline", "phase", "log"],
+    { filename: scriptPath },
+  );
+}
+
 // runWorkflow(scriptPath, { args, stubs }) -> { result, calls, logs }
 // stubs.agent / stubs.workflow receive (prompt|name, opts|args) and return the stub result.
 // stubs.pipeline receives (items, ...stages) and replaces the default pipeline implementation.

@@ -123,7 +123,7 @@ class RenderTest(unittest.TestCase):
         self.assertIn("- rejects negative amounts", body)
         self.assertIn("**Anomalies (Red unconfirmed)**", body)
         self.assertIn("- U-001 (no-red): flaky", body)
-        # The audit fan-out is retired from build: no residual section.
+        # build does not run the audit fan-out, so no residual section belongs here.
         self.assertNotIn("Unresolved", body)
         self.assertNotIn("re-audit", body)
 
@@ -331,7 +331,11 @@ class RenderTest(unittest.TestCase):
 class CliTest(unittest.TestCase):
     def _run(self, stdin):
         return subprocess.run(
-            [sys.executable, str(SCRIPT)], input=stdin, capture_output=True, text=True
+            [sys.executable, str(SCRIPT)],
+            input=stdin,
+            capture_output=True,
+            text=True,
+            check=False,
         )
 
     def test_stdin_to_stdout(self):
