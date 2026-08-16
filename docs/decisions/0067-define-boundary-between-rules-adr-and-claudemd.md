@@ -80,11 +80,11 @@ Adopt Option 1.
 
 Artifact responsibilities:
 
-| Artifact  | Domain                                              | Lifecycle             | Discovery mechanism                       |
-| --------- | --------------------------------------------------- | --------------------- | ----------------------------------------- |
-| RULES     | Language and domain directives, always applied     | Living document       | `paths:` frontmatter auto-attach          |
-| ADR       | Decisions: rationale + alternatives considered     | Immutable + scope tag | `grep scope`, `audit-adr-scopes.py`       |
-| CLAUDE.md | Project-specific current state and WHY             | Living document       | Per-project root as the AI entry point    |
+| Artifact  | Domain                                         | Lifecycle             | Discovery mechanism                    |
+| --------- | ---------------------------------------------- | --------------------- | -------------------------------------- |
+| RULES     | Language and domain directives, always applied | Living document       | `paths:` frontmatter auto-attach       |
+| ADR       | Decisions: rationale + alternatives considered | Immutable + scope tag | `grep scope`, `audit-adr-scopes.py`    |
+| CLAUDE.md | Project-specific current state and WHY         | Living document       | Per-project root as the AI entry point |
 
 Routing rules for new decisions:
 

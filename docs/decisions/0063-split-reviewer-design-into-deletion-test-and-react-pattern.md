@@ -16,17 +16,17 @@ Adding the deletion test as Phase 5 of the existing `reviewer-design` would requ
 
 ## Decision Drivers
 
-* Deletion test concept is language-agnostic (Ousterhout: behavior hidden / interface exposed)
-* Existing `reviewer-design` phases assume React mechanisms that have no Rust counterpart
-* `project_reviewer-restructuring-backlog.md` discourages new agents in favor of consolidation
-* `feedback_incident-driven-adoption.md` requires structural changes to be load-bearing, not speculative
+- Deletion test concept is language-agnostic (Ousterhout: behavior hidden / interface exposed)
+- Existing `reviewer-design` phases assume React mechanisms that have no Rust counterpart
+- `project_reviewer-restructuring-backlog.md` discourages new agents in favor of consolidation
+- `feedback_incident-driven-adoption.md` requires structural changes to be load-bearing, not speculative
 
 ## Considered Options
 
-* Split: rename React parts to `reviewer-react-pattern`, rebuild `reviewer-design` around deletion test
-* Expand: keep `reviewer-design` and add language-fork prompt for Rust + React deletion test
-* Move: integrate deletion test into `reviewer-encapsulation` (TD prefix), keep `reviewer-design` React-only
-* Defer: stay React-only and punt Rust scope to a future issue
+- Split: rename React parts to `reviewer-react-pattern`, rebuild `reviewer-design` around deletion test
+- Expand: keep `reviewer-design` and add language-fork prompt for Rust + React deletion test
+- Move: integrate deletion test into `reviewer-encapsulation` (TD prefix), keep `reviewer-design` React-only
+- Defer: stay React-only and punt Rust scope to a future issue
 
 ## Decision Outcome
 
@@ -34,11 +34,11 @@ Chosen option: "Split", because it removes the misnomer (`reviewer-design` was n
 
 ### Consequences
 
-* Good, because `reviewer-design` (DP) is now language-agnostic and runs on `*.ts`, `*.tsx`, `*.rs`
-* Good, because `reviewer-react-pattern` (RP) names what the legacy phases actually were
-* Good, because baseline harness ships with the change (Recall 3/3, FP 0/2 on 6 cases)
-* Bad, because existing audit history that cited `DP-N` findings now refers to a different category set
-* Bad, because two reviewers can both fire on `*.tsx` files; integrator must merge findings cleanly
+- Good, because `reviewer-design` (DP) is now language-agnostic and runs on `*.ts`, `*.tsx`, `*.rs`
+- Good, because `reviewer-react-pattern` (RP) names what the legacy phases actually were
+- Good, because baseline harness ships with the change (Recall 3/3, FP 0/2 on 6 cases)
+- Bad, because existing audit history that cited `DP-N` findings now refers to a different category set
+- Bad, because two reviewers can both fire on `*.tsx` files; integrator must merge findings cleanly
 
 ### Confirmation
 
@@ -48,27 +48,27 @@ Chosen option: "Split", because it removes the misnomer (`reviewer-design` was n
 
 ### Split
 
-* Good, because each reviewer's lens is single-purpose
-* Good, because deletion test is one phase, not a forked sub-prompt
-* Bad, because `*.tsx` routing now fires both reviewers; potential overlap on wrapper components
+- Good, because each reviewer's lens is single-purpose
+- Good, because deletion test is one phase, not a forked sub-prompt
+- Bad, because `*.tsx` routing now fires both reviewers; potential overlap on wrapper components
 
 ### Expand
 
-* Good, because issue-faithful (no rename)
-* Bad, because language fork inside one prompt is two reviewers in one file
-* Bad, because calibration examples and findings would interleave React mechanism with module depth
+- Good, because issue-faithful (no rename)
+- Bad, because language fork inside one prompt is two reviewers in one file
+- Bad, because calibration examples and findings would interleave React mechanism with module depth
 
 ### Move (into reviewer-encapsulation)
 
-* Good, because deletion test conceptually fits encapsulation (interface earns its hidden behavior)
-* Bad, because deviates from issue text without solving the React-only misnomer
-* Bad, because TD prefix already covers invariant-driven type design; depth adds a different lens
+- Good, because deletion test conceptually fits encapsulation (interface earns its hidden behavior)
+- Bad, because deviates from issue text without solving the React-only misnomer
+- Bad, because TD prefix already covers invariant-driven type design; depth adds a different lens
 
 ### Defer
 
-* Good, because zero churn
-* Bad, because punts the user-stated Rust requirement
-* Bad, because the misnomer continues to mislead
+- Good, because zero churn
+- Bad, because punts the user-stated Rust requirement
+- Bad, because the misnomer continues to mislead
 
 ## More Information
 
@@ -81,11 +81,11 @@ reviewer-react-pattern (RP) → Container/Presentational, hooks, state, anti-pat
 
 ### Quality Attributes
 
-| Attribute         | Priority | Approach                           |
-| ----------------- | -------- | ---------------------------------- |
-| Recall on shallow | High     | Harness baseline gate              |
-| Naming clarity    | High     | Reviewer name reflects actual lens |
-| Audit blast radius | Medium  | Single PR (#43), 18 files          |
+| Attribute          | Priority | Approach                           |
+| ------------------ | -------- | ---------------------------------- |
+| Recall on shallow  | High     | Harness baseline gate              |
+| Naming clarity     | High     | Reviewer name reflects actual lens |
+| Audit blast radius | Medium   | Single PR (#43), 18 files          |
 
 ### Trade-offs
 
@@ -93,11 +93,11 @@ Two reviewers running on `*.tsx` instead of one, in exchange for lens clarity pe
 
 ### Reassessment Triggers
 
-* If `*.tsx` audits regularly produce duplicate findings between DP and RP, merge or differentiate further
-* If Recall on Rust shallow drops below 80% across two consecutive baselines, revisit deletion test phrasing for Rust
+- If `*.tsx` audits regularly produce duplicate findings between DP and RP, merge or differentiate further
+- If Recall on Rust shallow drops below 80% across two consecutive baselines, revisit deletion test phrasing for Rust
 
 ### References
 
-* PR #43
-* Issue #28
-* `agents/reviewers/test/reviewer-design/results/2026-05-07-baseline.json`
+- PR #43
+- Issue #28
+- `agents/reviewers/test/reviewer-design/results/2026-05-07-baseline.json`

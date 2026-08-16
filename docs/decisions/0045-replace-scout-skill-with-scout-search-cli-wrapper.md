@@ -10,10 +10,10 @@ decision-makers: thkt
 
 `/scout` skill was a wrapper around the `scouting-anomalies` skill (file-by-file read-through diagnostic), designed in session `5bcba14e` (2026-04-15). Two issues surfaced during 2026-04-20 cleanup:
 
-| Issue | Detail |
-| ----- | ------ |
+| Issue               | Detail                                                                                                                                                                                                                                                                                                          |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Namespace collision | `scout` CLI (`/opt/homebrew/bin/scout`) provides Web search, page fetch, GitHub repo exploration - shipped via `brew install thkt/tap/scout`. `/scout` skill had no relation to that CLI, breaking the mental model established by sibling `yomu-search` / `recall-search` skills (each wraps its namesake CLI) |
-| Dead skill | recall search across 11,260 sessions found no invocation of `scouting-anomalies` or `/scout` outside the original design discussion (2026-04-15) and two later meta-discussions (2026-04-17 cleanup, 2026-04-20 rename). Read-through diagnostic never produced a staging entry in production |
+| Dead skill          | recall search across 11,260 sessions found no invocation of `scouting-anomalies` or `/scout` outside the original design discussion (2026-04-15) and two later meta-discussions (2026-04-17 cleanup, 2026-04-20 rename). Read-through diagnostic never produced a staging entry in production                   |
 
 Meanwhile, `scout` CLI was not surfaced as a skill, so neither humans nor the LLM had a discoverable wrapper that matched the `yomu-search` / `recall-search` pattern.
 
@@ -75,17 +75,17 @@ Adopted option B. The sibling-consistency benefit plus empirical non-use of scou
 
 Reconsider if any of the following occur:
 
-| Trigger | Action |
-| ------- | ------ |
-| Read-through diagnostic demand recurs in ≥2 separate sessions within 30 days | Restore scouting-anomalies from git history, redesign with non-colliding name |
-| scout CLI adds state-management subcommands requiring prerequisites like yomu-search | Expand scout-search Prerequisite section accordingly |
-| `/scout` slash command is needed for CLI shortcuts | Create thin user-invocable skill distinct from scout-search |
+| Trigger                                                                              | Action                                                                        |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| Read-through diagnostic demand recurs in ≥2 separate sessions within 30 days         | Restore scouting-anomalies from git history, redesign with non-colliding name |
+| scout CLI adds state-management subcommands requiring prerequisites like yomu-search | Expand scout-search Prerequisite section accordingly                          |
+| `/scout` slash command is needed for CLI shortcuts                                   | Create thin user-invocable skill distinct from scout-search                   |
 
 ### Files
 
-| Change | Path |
-| ------ | ---- |
-| Deleted | `skills/scout/SKILL.md` |
-| Deleted | `skills/scouting-anomalies/SKILL.md` |
+| Change  | Path                                      |
+| ------- | ----------------------------------------- |
+| Deleted | `skills/scout/SKILL.md`                   |
+| Deleted | `skills/scouting-anomalies/SKILL.md`      |
 | Deleted | `templates/scout/read-through-staging.md` |
-| Added | `skills/scout-search/SKILL.md` |
+| Added   | `skills/scout-search/SKILL.md`            |

@@ -80,15 +80,15 @@ guardrails と同じパターンで、stdin からフック入力を受け取り
 
 ### Component Mapping
 
-| Current (Shell)            | New (Rust)          |
-| -------------------------- | ------------------- |
-| `idr-pre-commit.sh`        | `main.rs`           |
-| `_utils.sh`                | `session.rs`        |
-| `_context-extractor.sh`    | `context.rs`        |
-| `resolve-idr-path.sh`      | `path.rs`           |
-| `next-idr-number.sh`       | `numbering.rs`      |
-| IDR format (in prompt)     | `prompt.rs`         |
-| -                          | `config.rs`         |
+| Current (Shell)         | New (Rust)     |
+| ----------------------- | -------------- |
+| `idr-pre-commit.sh`     | `main.rs`      |
+| `_utils.sh`             | `session.rs`   |
+| `_context-extractor.sh` | `context.rs`   |
+| `resolve-idr-path.sh`   | `path.rs`      |
+| `next-idr-number.sh`    | `numbering.rs` |
+| IDR format (in prompt)  | `prompt.rs`    |
+| -                       | `config.rs`    |
 
 ### Integration Points
 

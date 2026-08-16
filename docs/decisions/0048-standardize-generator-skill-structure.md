@@ -6,20 +6,20 @@ decision-makers: thkt
 
 # Adopt unified SKILL.md template for generator-class workflows
 
-  将来追加される generator の形は予測。固有ブロック許容で柔軟性は確保
+将来追加される generator の形は予測。固有ブロック許容で柔軟性は確保
 
 ## Context and Problem Statement
 
-`commit` / `checkout` / `pr` / `issue` の4 skill はすべて同じ
+`commit`/`checkout`/`pr`/`issue` の 4 skill はすべて同じ
 「generator agent 呼び出し → 候補提示 → 実行」パターンに従うが、
 SKILL.md の命名・構造に揺れがある。棚卸し結果:
 
-| 揺れ箇所 | commit | checkout | pr | issue |
-| -------- | ------ | -------- | -- | ----- |
-| Agent テーブル見出し | `## Task`(揺れ) | `## Agent` | `## Agent` | `## Agent` |
-| Flow セクション | `## Flow: Preview` | `## Flow: Select` | なし | `## Flow: Preview` |
-| 独自重複セクション | `## Message Selection`(Step 2 と被る) | なし | なし | なし |
-| Rules セクション | なし | なし | `## Rules` | なし |
+| 揺れ箇所             | commit                                | checkout          | pr         | issue              |
+| -------------------- | ------------------------------------- | ----------------- | ---------- | ------------------ |
+| Agent テーブル見出し | `## Task`(揺れ)                       | `## Agent`        | `## Agent` | `## Agent`         |
+| Flow セクション      | `## Flow: Preview`                    | `## Flow: Select` | なし       | `## Flow: Preview` |
+| 独自重複セクション   | `## Message Selection`(Step 2 と被る) | なし              | なし       | なし               |
+| Rules セクション     | なし                                  | なし              | `## Rules` | なし               |
 
 新規 generator skill 追加時に参照できる構造基準が無いため、
 場当たり的に既存 skill を模倣する結果、揺れが再発する。
@@ -34,7 +34,7 @@ generator 系特化のセクション構成には踏み込んでいない。
   (feedback: 全体統一 > 個別最適)
 - 固有ブロック保持: `Sandbox-Compatible Commit` 等の load-bearing ブロックは
   skill 固有。汎用テンプレに閉じ込めない
-- MODULARIZATION との整合: Thin Wrapper / ≤100 lines / Reference Patterns を引き継ぐ
+- MODULARIZATION との整合: Thin Wrapper/≤100 lines/Reference Patterns を引き継ぐ
 - 新規 generator 追加時の準拠基準: この ADR が判断記録として参照される
 
 ## Considered Options
@@ -45,16 +45,16 @@ generator 系 SKILL.md の必須セクションとオプショナルセクショ
 
 必須（この順序）:
 
-| # | セクション | 目的 |
-| - | ---------- | ---- |
-| 1 | frontmatter | `allowed-tools`, `user-invocable: true`, `model`, `argument-hint` |
-| 2 | `# /<name> - <短い説明>` | H1 見出し |
-| 3 | 1-2行の概要 | 一言で何をする skill か |
-| 4 | `## Input` | `$1` の扱い、省略時の挙動 |
-| 5 | `## Agent` | 呼び出す generator agent の1行表（Type / Name / Purpose） |
-| 6 | `## Execution` | Step テーブル（subagent_type 呼び出し → 候補提示 → 実行） |
-| 7 | `## Display Format` | Preview / Success の表示形式 |
-| 8 | `## Verification` | セルフチェック（`subagent_type` が正しい等） |
+| #   | セクション               | 目的                                                              |
+| --- | ------------------------ | ----------------------------------------------------------------- |
+| 1   | frontmatter              | `allowed-tools`, `user-invocable: true`, `model`, `argument-hint` |
+| 2   | `# /<name> - <短い説明>` | H1 見出し                                                         |
+| 3   | 1〜2行の概要             | 一言で何をする skill か                                           |
+| 4   | `## Input`               | `$1` の扱い、省略時の挙動                                         |
+| 5   | `## Agent`               | 呼び出す generator agent の1行表（Type / Name / Purpose）         |
+| 6   | `## Execution`           | Step テーブル（subagent_type 呼び出し → 候補提示 → 実行）         |
+| 7   | `## Display Format`      | Preview / Success の表示形式                                      |
+| 8   | `## Verification`        | セルフチェック（`subagent_type` が正しい等）                      |
 
 オプショナル:
 
@@ -118,13 +118,13 @@ skill の独立性を保てるため。Option 3 は YAGNI 違反で skill 独立
 
 ## Current Process vs New Process
 
-| Aspect | Before | After |
-| ------ | ------ | ----- |
-| Agent テーブル見出し | `## Task` / `## Agent` 揺れ | `## Agent` 統一 |
-| Flow セクション | skill ごとに有無・内容揺れ | 削除（Execution で十分） |
-| Execution と重複する独立セクション | 許容（例: `## Message Selection`） | 禁止（Execution に統合） |
-| 固有実行ブロック | 配置揺れ可能性 | H3 で `## Execution` 直下、命名は概念名で自由 |
-| 新規 generator 追加時 | 既存模倣（揺れ再発リスク） | 本 ADR 準拠 |
+| Aspect                             | Before                             | After                                         |
+| ---------------------------------- | ---------------------------------- | --------------------------------------------- |
+| Agent テーブル見出し               | `## Task` / `## Agent` 揺れ        | `## Agent` 統一                               |
+| Flow セクション                    | skill ごとに有無・内容揺れ         | 削除（Execution で十分）                      |
+| Execution と重複する独立セクション | 許容（例: `## Message Selection`） | 禁止（Execution に統合）                      |
+| 固有実行ブロック                   | 配置揺れ可能性                     | H3 で `## Execution` 直下、命名は概念名で自由 |
+| 新規 generator 追加時              | 既存模倣（揺れ再発リスク）         | 本 ADR 準拠                                   |
 
 ## Implementation Guidelines
 
@@ -135,7 +135,7 @@ skill の独立性を保てるため。Option 3 は YAGNI 違反で skill 独立
 3. `## Execution` テーブルは Step 番号付きの Action 列のみ
 4. 固有の実行コード（heredoc, gh command 等）は H3 見出しで `## Execution`
    の直下に置く。H3 タイトルは概念を端的に表す名前にする
-   （既存例: `### Sandbox-Compatible Commit`, `### Visual Recording`）
+  （既存例: `### Sandbox-Compatible Commit`, `### Visual Recording`）
 5. Flow 図は書かない。「`[A] → [B] → [C]`」のような 1 行表現は Execution テーブルで代替できる
 6. Size: ≤100 lines を維持（MODULARIZATION.md 準拠）
 
@@ -143,7 +143,7 @@ skill の独立性を保てるため。Option 3 は YAGNI 違反で skill 独立
 
 Trigger Conditions:
 
-- 統一テンプレートに収まらない generator skill が3件以上発生
+- 統一テンプレートに収まらない generator skill が 3 件以上発生
 - H3 配置ルールが守られず、Execution 直下の構造が予測不能になった
 
 Rollback Steps:

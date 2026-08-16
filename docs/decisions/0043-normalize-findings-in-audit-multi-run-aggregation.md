@@ -74,11 +74,11 @@ Leader applies normalization before merge key comparison. `runs_observed` intege
 
 ## Quality Attributes
 
-| Attribute     | Priority | Approach                                                     |
-| ------------- | -------- | ------------------------------------------------------------ |
-| Observability | High     | `runs_observed` tracks which runs produced each finding      |
-| Correctness   | High     | Category prefix preserved for integrator compatibility       |
-| Simplicity    | Medium   | Tolerance is a single parameter (±3), not a fuzzy matcher    |
+| Attribute     | Priority | Approach                                                  |
+| ------------- | -------- | --------------------------------------------------------- |
+| Observability | High     | `runs_observed` tracks which runs produced each finding   |
+| Correctness   | High     | Category prefix preserved for integrator compatibility    |
+| Simplicity    | Medium   | Tolerance is a single parameter (±3), not a fuzzy matcher |
 
 ## Trade-offs
 

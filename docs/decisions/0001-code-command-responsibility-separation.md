@@ -29,18 +29,18 @@ date: 2025-12-16
 
 ### 現状の責任（調査結果）
 
-| # | 責任 | 行数 | セクション |
-| --- | --- | --- | --- |
-| 1 | spec.md 管理 | 26 | Specification Context |
-| 2 | Storybook 統合 | 73 | Storybook Integration |
-| 3 | スキル参照 | 10 | Integration with Skills |
-| 4 | 実装原則説明 | 305 | Implementation Principles |
-| 5 | テスト準備 | 143 | Test Preparation (Phase 0) |
-| 6 | RGRC サイクル | 120 | TDD Cycle |
-| 7 | 進捗表示 | 89 | Progress Display |
-| 8 | 品質チェック | 56 | Quality Check Results |
-| 9 | リスク軽減 | 34 | Risk Mitigation |
-| 10 | 完了定義 | 53 | Definition of Done |
+| #   | 責任           | 行数 | セクション                 |
+| --- | -------------- | ---- | -------------------------- |
+| 1   | spec.md 管理   | 26   | Specification Context      |
+| 2   | Storybook 統合 | 73   | Storybook Integration      |
+| 3   | スキル参照     | 10   | Integration with Skills    |
+| 4   | 実装原則説明   | 305  | Implementation Principles  |
+| 5   | テスト準備     | 143  | Test Preparation (Phase 0) |
+| 6   | RGRC サイクル  | 120  | TDD Cycle                  |
+| 7   | 進捗表示       | 89   | Progress Display           |
+| 8   | 品質チェック   | 56   | Quality Check Results      |
+| 9   | リスク軽減     | 34   | Risk Mitigation            |
+| 10  | 完了定義       | 53   | Definition of Done         |
 
 ### 問題点
 
@@ -157,6 +157,6 @@ references/commands/code/
 
 ---
 
-*作成日: 2025-12-16*
-*著者: Claude Code*
-*ステータス: 承認済み*
+_作成日: 2025-12-16_
+_著者: Claude Code_
+_ステータス: 承認済み_

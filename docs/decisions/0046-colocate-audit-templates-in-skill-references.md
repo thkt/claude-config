@@ -10,12 +10,12 @@ decision-makers: thkt
 
 ADR 0042 で skill-specific scripts を skill 内に colocate する方針を採用した。同じ原則が `templates/audit/` 配下の 4 ファイルにも該当する。現状の配置と参照関係を棚卸しした結果:
 
-| ファイル                  | 参照元                                                                       |
-| ------------------------- | ---------------------------------------------------------------------------- |
+| ファイル                  | 参照元                                                                |
+| ------------------------- | --------------------------------------------------------------------- |
 | `snapshot.yaml`           | `skills/audit/SKILL.md`, `agents/teams/team-integration.md` (EN + JA) |
-| `output.md`               | `skills/audit/SKILL.md` (EN + JA)                                            |
-| `calibration-examples.md` | 21 種全ての `agents/reviewers/*.md` (EN + JA)                                |
-| `finding-schema.md`       | `skills/audit/references/pre-flight.md` (EN + JA)                            |
+| `output.md`               | `skills/audit/SKILL.md` (EN + JA)                                     |
+| `calibration-examples.md` | 21 種全ての `agents/reviewers/*.md` (EN + JA)                         |
+| `finding-schema.md`       | `skills/audit/references/pre-flight.md` (EN + JA)                     |
 
 4 ファイル合計で約 50 ファイルから参照されるが、参照元は全て audit pipeline (skill + reviewer/integrator agents) 内で閉じている。他 skill からの利用はゼロ。ADR 0042 が指摘した「複数箇所で使用」が成立しない、`templates/audit/` 配下に templates 版が残るのは ADR 0042 の判断と非対称な状態。
 
@@ -92,13 +92,13 @@ Out of scope items are tracked separately to avoid scope creep:
 
 ## Current Process vs New Process
 
-| Aspect         | Before                                  | After                                                                  |
-| -------------- | --------------------------------------- | ---------------------------------------------------------------------- |
-| 配置           | `templates/audit/*`                    | `skills/audit/references/*` (読み物) + `skills/audit/templates/*` (雛形) |
-| 参照パス       | `templates/audit/snapshot.yaml` 等      | `templates/snapshot.yaml` / `references/calibration-examples.md` 等    |
-| スコープ       | `templates/` 直下で共有扱い             | audit skill 内で閉じる                                                 |
-| 役割分離       | なし（全部同居）                       | references = 読み物、templates = fill-in 雛形                          |
-| ADR 0042 整合  | scripts は skill 内、templates は共有 (非対称) | scripts も assets も skill 内 (対称)                              |
+| Aspect        | Before                                         | After                                                                    |
+| ------------- | ---------------------------------------------- | ------------------------------------------------------------------------ |
+| 配置          | `templates/audit/*`                            | `skills/audit/references/*` (読み物) + `skills/audit/templates/*` (雛形) |
+| 参照パス      | `templates/audit/snapshot.yaml` 等             | `templates/snapshot.yaml` / `references/calibration-examples.md` 等      |
+| スコープ      | `templates/` 直下で共有扱い                    | audit skill 内で閉じる                                                   |
+| 役割分離      | なし（全部同居）                               | references = 読み物、templates = fill-in 雛形                            |
+| ADR 0042 整合 | scripts は skill 内、templates は共有 (非対称) | scripts も assets も skill 内 (対称)                                     |
 
 ## Rollback Plan
 

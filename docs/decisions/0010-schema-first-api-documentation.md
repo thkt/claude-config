@@ -81,12 +81,12 @@ Chosen option: "Hybrid: Schema-First with Architectural Guidance", because Archi
 
 ## Implementation Phases
 
-| Phase | 内容 | 見積もり |
-| ----- | ---- | -------- |
-| 1 | api-analyzer を schema-first に書き換え（regex ベース） | 150 lines |
-| 2 | dual output (api.yaml + api.md) を docs.md に追加 | 80 lines |
-| 3 | architect-feature/explorer に api.yaml seed context 統合 | 60 lines |
-| 4 | confidence タグ (verified/inferred/unknown) | Phase 1 に含む |
+| Phase | 内容                                                     | 見積もり       |
+| ----- | -------------------------------------------------------- | -------------- |
+| 1     | api-analyzer を schema-first に書き換え（regex ベース）  | 150 lines      |
+| 2     | dual output (api.yaml + api.md) を docs.md に追加        | 80 lines       |
+| 3     | architect-feature/explorer に api.yaml seed context 統合 | 60 lines       |
+| 4     | confidence タグ (verified/inferred/unknown)              | Phase 1 に含む |
 
 ## Rollback Plan
 

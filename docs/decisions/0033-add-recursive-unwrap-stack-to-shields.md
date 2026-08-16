@@ -59,10 +59,10 @@ Option 2: 新unwrapモジュール + normalize 2フェーズ化。
 
 ### normalize 2フェーズ化
 
-| Phase | Transforms | 性質 |
-|---|---|---|
-| decode | N7 (ANSI-C), N5 (indirection), N6 (backslash), N3 (IFS) | 構造を壊さずに難読化を解除 |
-| strip | N1 (quotes), N4 (braces), N2 (cmd sub) | 構造を破壊する変換（unwrap 後に実行） |
+| Phase  | Transforms                                              | 性質                                  |
+| ------ | ------------------------------------------------------- | ------------------------------------- |
+| decode | N7 (ANSI-C), N5 (indirection), N6 (backslash), N3 (IFS) | 構造を壊さずに難読化を解除            |
+| strip  | N1 (quotes), N4 (braces), N2 (cmd sub)                  | 構造を破壊する変換（unwrap 後に実行） |
 
 ### パイプライン
 
@@ -76,25 +76,25 @@ oneline
 
 ### 構造的検出（unwrap 内）
 
-| 検出 | 条件 | 結果 |
-|---|---|---|
-| pipe-to-shell | `\|` 分割後のセグメントが bare shell | BLOCK |
+| 検出               | 条件                                       | 結果  |
+| ------------------ | ------------------------------------------ | ----- |
+| pipe-to-shell      | `\|` 分割後のセグメントが bare shell       | BLOCK |
 | dynamic generation | shell launcher 内側に `$(...)` or backtick | BLOCK |
-| depth exceeded | 再帰 > 5 | BLOCK |
-| too many tokens | > 1000 | BLOCK |
-| too many segments | > 20 | BLOCK |
-| input too large | > 1MB | BLOCK |
+| depth exceeded     | 再帰 > 5                                   | BLOCK |
+| too many tokens    | > 1000                                     | BLOCK |
+| too many segments  | > 20                                       | BLOCK |
+| input too large    | > 1MB                                      | BLOCK |
 
 ## Technical Details
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| トークナイザ | `shell-words` crate | POSIX 準拠、0 deps、引用符処理を自前で書かない |
-| unwrap の位置 | decode の後、strip の前 | 引用符を保持した状態で構造パース |
-| compound split | unwrap 内で quote-aware | DA 指摘の N1 順序依存を回避 |
-| 既存パイプライン | フォールバックとして維持 | defense in depth |
-| cross-segment 検出 | 構造的（unwrap 内） | regex では pipe 分割後に検知不可 |
-| stderr 改善 | hint 行追加 + 経路表示 | omamori の UX を参考 |
+| Decision           | Choice                   | Rationale                                      |
+| ------------------ | ------------------------ | ---------------------------------------------- |
+| トークナイザ       | `shell-words` crate      | POSIX 準拠、0 deps、引用符処理を自前で書かない |
+| unwrap の位置      | decode の後、strip の前  | 引用符を保持した状態で構造パース               |
+| compound split     | unwrap 内で quote-aware  | DA 指摘の N1 順序依存を回避                    |
+| 既存パイプライン   | フォールバックとして維持 | defense in depth                               |
+| cross-segment 検出 | 構造的（unwrap 内）      | regex では pipe 分割後に検知不可               |
+| stderr 改善        | hint 行追加 + 経路表示   | omamori の UX を参考                           |
 
 ## Links
 

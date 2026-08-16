@@ -14,17 +14,17 @@ gates plugin runs gates on PostToolUse Write/Edit/MultiEdit. After a fail, agent
 
 ## Decision Drivers
 
-* Outcome: silent commit recall = 1.0 on direct VCS invocations (preventive)
-* No reliance on Bash-mediated edit tracking
-* Existing `Bash(*--no-verify*)` deny covers one bypass; commit detection must cover the rest
-* Bash hook chain budget: pre-commit must not stall non-commit Bash
+- Outcome: silent commit recall = 1.0 on direct VCS invocations (preventive)
+- No reliance on Bash-mediated edit tracking
+- Existing `Bash(*--no-verify*)` deny covers one bypass; commit detection must cover the rest
+- Bash hook chain budget: pre-commit must not stall non-commit Bash
 
 ## Considered Options
 
-* A. Always-rerun pre-commit gate in gates plugin (chosen)
-* B. Hybrid cache (60s fresh window, stale triggers sync re-run)
-* C. New `closure` sentinel plugin owning pre-commit + Stop diagnostic
-* D. shields-only intercept (extend shields to delegate to gates on `git commit`)
+- A. Always-rerun pre-commit gate in gates plugin (chosen)
+- B. Hybrid cache (60s fresh window, stale triggers sync re-run)
+- C. New `closure` sentinel plugin owning pre-commit + Stop diagnostic
+- D. shields-only intercept (extend shields to delegate to gates on `git commit`)
 
 ## Decision Outcome
 
@@ -36,42 +36,42 @@ Chosen option: A. Three load-bearing sub-decisions:
 
 ### Consequences
 
-* Good, because silent commit recall = 1.0 on direct invocations of enumerated VCS commands.
-* Good, because zero cache, zero atomic-write race, zero cross-repo project_hash logic.
-* Bad, because 3-30s synchronous block on every commit (acceptable; commits are infrequent vs edits).
-* Bad, because aliases, heredocs, and `gh pr merge` are not preventively blocked (Phase 2 diagnostic only).
+- Good, because silent commit recall = 1.0 on direct invocations of enumerated VCS commands.
+- Good, because zero cache, zero atomic-write race, zero cross-repo project_hash logic.
+- Bad, because 3-30s synchronous block on every commit (acceptable; commits are infrequent vs edits).
+- Bad, because aliases, heredocs, and `gh pr merge` are not preventively blocked (Phase 2 diagnostic only).
 
 ### Confirmation
 
-* AC: `git commit`, `jj commit`, `hg commit` synchronously invoke gates and block on fail.
-* AC: non-commit Bash exits the hook in <50ms (fast-path).
-* AC: `gates run` (default subcommand) remains backward-compatible.
-* AC: PreToolUse Bash timeout 70000ms accommodates worst-case gates run.
+- AC: `git commit`, `jj commit`, `hg commit` synchronously invoke gates and block on fail.
+- AC: non-commit Bash exits the hook in <50ms (fast-path).
+- AC: `gates run` (default subcommand) remains backward-compatible.
+- AC: PreToolUse Bash timeout 70000ms accommodates worst-case gates run.
 
 ## Pros and Cons of the Options
 
 ### A. Always-rerun in gates plugin (chosen)
 
-* Good, because zero state, zero cache invalidation logic.
-* Good, because closes Bash-mediated-edit silent path by construction.
-* Bad, because every commit pays 3-30s gate run.
+- Good, because zero state, zero cache invalidation logic.
+- Good, because closes Bash-mediated-edit silent path by construction.
+- Bad, because every commit pays 3-30s gate run.
 
 ### B. Hybrid cache
 
-* Good, because cache-hit commits are zero-latency.
-* Bad, because Bash-mediated edits write to disk without invalidating cache, violating recall=1.0 (advisor + DA F1).
-* Bad, because cache atomicity, cross-repo project_hash, session_id race all add complexity (DA F4/F5/F7).
+- Good, because cache-hit commits are zero-latency.
+- Bad, because Bash-mediated edits write to disk without invalidating cache, violating recall=1.0 (advisor + DA F1).
+- Bad, because cache atomicity, cross-repo project_hash, session_id race all add complexity (DA F4/F5/F7).
 
 ### C. New `closure` sentinel plugin
 
-* Good, because clean separation of test-gate vs commit-lifecycle responsibilities.
-* Bad, because doubles initial cost (new repo, crate, plugin manifest, marketplace entry).
-* Bad, because cross-binary subprocess latency on every Bash hook.
+- Good, because clean separation of test-gate vs commit-lifecycle responsibilities.
+- Bad, because doubles initial cost (new repo, crate, plugin manifest, marketplace entry).
+- Bad, because cross-binary subprocess latency on every Bash hook.
 
 ### D. shields-only intercept
 
-* Bad, because shields concerns are command guard + secrets, not test gating (mission creep).
-* Bad, because cross-binary chaining adds latency without architectural benefit.
+- Bad, because shields concerns are command guard + secrets, not test gating (mission creep).
+- Bad, because cross-binary chaining adds latency without architectural benefit.
 
 ## More Information
 
@@ -92,15 +92,15 @@ PostToolUse W|E|M (existing, unchanged)
 
 ### Reassessment Triggers
 
-* gates run time exceeds 30s on common repos → reconsider hybrid cache with mtime-based invalidation.
-* Aliases or heredoc bypass becomes frequent → migrate detection to closure with command-tree introspection.
-* gates plugin scope expands beyond commit gating (e.g., session-end audit) → split closure as a sibling sentinel.
-* Phase 2 diagnostic Stop hook reveals shared infra with #16 (hash gate) → consolidate pre-commit phase abstraction.
+- gates run time exceeds 30s on common repos → reconsider hybrid cache with mtime-based invalidation.
+- Aliases or heredoc bypass becomes frequent → migrate detection to closure with command-tree introspection.
+- gates plugin scope expands beyond commit gating (e.g., session-end audit) → split closure as a sibling sentinel.
+- Phase 2 diagnostic Stop hook reveals shared infra with #16 (hash gate) → consolidate pre-commit phase abstraction.
 
 ### References
 
-* Issue: thkt/dotclaude#42 (harness-level tracker)
-* Related: thkt/gates#16 (pre-commit hash gate, shares pre-commit phase infra)
-* Related: thkt/gates#10 (audit log, candidate Phase 2 storage)
-* Research: ~/.claude/workspace/research/2026-05-07-knowledge-reflection-cache-safe-design.md
-* Memory: project_harness-investigation-quality.md ("biggest gap" record)
+- Issue: thkt/dotclaude#42 (harness-level tracker)
+- Related: thkt/gates#16 (pre-commit hash gate, shares pre-commit phase infra)
+- Related: thkt/gates#10 (audit log, candidate Phase 2 storage)
+- Research: ~/.claude/workspace/research/2026-05-07-knowledge-reflection-cache-safe-design.md
+- Memory: project_harness-investigation-quality.md ("biggest gap" record)

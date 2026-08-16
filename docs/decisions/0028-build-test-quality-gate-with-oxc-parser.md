@@ -29,11 +29,11 @@ oxc_parserベースの独立Rustバイナリ `litmus` を新規構築し、gates
 
 ### 検討したアプローチ
 
-| アプローチ | 概要 | 判定 |
-|---|---|---|
-| A: gates 内蔵 | oxc_parser を gates の Cargo 依存に追加。内部モジュールとして実装 | 却下 |
-| B: 独立バイナリ | 新規 tap バイナリ。gates から GateDefinition で呼び出し | 採用 |
-| C: ESLint カスタムルール | 1ファイルスコープのルールは ESLint で対応 | 却下 |
+| アプローチ               | 概要                                                              | 判定 |
+| ------------------------ | ----------------------------------------------------------------- | ---- |
+| A: gates 内蔵            | oxc_parser を gates の Cargo 依存に追加。内部モジュールとして実装 | 却下 |
+| B: 独立バイナリ          | 新規 tap バイナリ。gates から GateDefinition で呼び出し           | 採用 |
+| C: ESLint カスタムルール | 1ファイルスコープのルールは ESLint で対応                         | 却下 |
 
 ### Approach A 却下理由
 
@@ -56,11 +56,11 @@ oxc_parserベースの独立Rustバイナリ `litmus` を新規構築し、gates
 
 ## 検出ルール
 
-| Phase | ルール | スコープ | 検出内容 |
-|---|---|---|---|
-| 1 | weak-assertion | 1ファイル | toBeTruthy/toBeDefined のみのテストブロック |
-| 1 | mock-overuse | 1ファイル | mock数 > assertion数のテストブロック |
-| 3 | duplicate-coverage | 横断 | 同一モジュール×同一メソッドへの重複assertion |
+| Phase | ルール             | スコープ  | 検出内容                                     |
+| ----- | ------------------ | --------- | -------------------------------------------- |
+| 1     | weak-assertion     | 1ファイル | toBeTruthy/toBeDefined のみのテストブロック  |
+| 1     | mock-overuse       | 1ファイル | mock数 > assertion数のテストブロック         |
+| 3     | duplicate-coverage | 横断      | 同一モジュール×同一メソッドへの重複assertion |
 
 ## 技術スタック
 

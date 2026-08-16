@@ -10,13 +10,13 @@ decision-makers: thkt
 
 CLI ラッパー skill 群が命名パターンバラバラで、LLM discovery 時に「CLI ラッパー skill カテゴリ」として識別しにくい状態だった。
 
-| Before              | パターン           | Trigger suffix   |
-| ------------------- | ------------------ | ---------------- |
-| yomu-search         | CLI 名 + 機能      | `-search`        |
-| recall-search       | CLI 名 + 機能      | `-search`        |
-| scout-search        | CLI 名 + 機能      | `-search`        |
-| google-workspace    | ドメイン名         | なし             |
-| utilizing-cli-tools | 動詞-ing + 複数CLI | なし（動名詞）   |
+| Before              | パターン           | Trigger suffix |
+| ------------------- | ------------------ | -------------- |
+| yomu-search         | CLI 名 + 機能      | `-search`      |
+| recall-search       | CLI 名 + 機能      | `-search`      |
+| scout-search        | CLI 名 + 機能      | `-search`      |
+| google-workspace    | ドメイン名         | なし           |
+| utilizing-cli-tools | 動詞-ing + 複数CLI | なし（動名詞） |
 
 問題:
 
@@ -66,12 +66,12 @@ Chosen: Option 1。`use-` 前置詞で CLI ラッパーを一括識別。
 
 ### 最終命名
 
-| Before              | After                          |
-| ------------------- | ------------------------------ |
-| yomu-search         | use-yomu                       |
-| recall-search       | use-recall                     |
-| scout-search        | use-scout                      |
-| google-workspace    | use-gcloud                     |
+| Before              | After                           |
+| ------------------- | ------------------------------- |
+| yomu-search         | use-yomu                        |
+| recall-search       | use-recall                      |
+| scout-search        | use-scout                       |
+| google-workspace    | use-gcloud                      |
 | utilizing-cli-tools | use-git, use-gh, use-npm (分解) |
 
 ### `use-` の semantic

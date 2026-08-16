@@ -103,12 +103,12 @@ graph TD
 
 ## Quality Attributes
 
-| Attribute       | Priority | Approach                              |
-| --------------- | -------- | ------------------------------------- |
-| Simplicity      | High     | No new dependencies                   |
-| Performance     | Medium   | Recursive CTE with depth limit        |
-| Consistency     | High     | Same DB, same transaction             |
-| Extensibility   | Medium   | New reference types via ref_kind enum |
+| Attribute     | Priority | Approach                              |
+| ------------- | -------- | ------------------------------------- |
+| Simplicity    | High     | No new dependencies                   |
+| Performance   | Medium   | Recursive CTE with depth limit        |
+| Consistency   | High     | Same DB, same transaction             |
+| Extensibility | Medium   | New reference types via ref_kind enum |
 
 ## Trade-offs
 

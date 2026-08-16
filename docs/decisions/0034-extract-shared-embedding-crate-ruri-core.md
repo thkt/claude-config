@@ -60,15 +60,15 @@ Option 1: ruricoを独立リポジトリとして作成し、git dependencyで�
 
 ## Technical Details
 
-| Decision | Choice | Rationale |
-| --- | --- | --- |
-| クレート数 | 1（rurico） | embedding と storage util は消費者が同一 |
-| Embed trait receiver | `&self` | yomu が `Arc<dyn Embed>` で並行アクセス |
-| Embed trait sync/async | sync | yomu の async は superficial（DA-V2 で検証済み） |
-| 配布方式 | git dep + [patch] | リポジトリ独立維持。ローカルは自動反映 |
-| Feature flags | mlx (default) / candle / test-support | 既存パターン踏襲 |
-| storage scope | ensure_sqlite_vec, f32_as_bytes, rrf_merge, fts_expand | open_db, schema, WAL recovery は各ツール固有 |
-| 前提条件 | rusqlite 0.39 統一 | bundled SQLite の FFI 衝突回避（DA-V4） |
+| Decision               | Choice                                                 | Rationale                                        |
+| ---------------------- | ------------------------------------------------------ | ------------------------------------------------ |
+| クレート数             | 1（rurico）                                            | embedding と storage util は消費者が同一         |
+| Embed trait receiver   | `&self`                                                | yomu が `Arc<dyn Embed>` で並行アクセス          |
+| Embed trait sync/async | sync                                                   | yomu の async は superficial（DA-V2 で検証済み） |
+| 配布方式               | git dep + [patch]                                      | リポジトリ独立維持。ローカルは自動反映           |
+| Feature flags          | mlx (default) / candle / test-support                  | 既存パターン踏襲                                 |
+| storage scope          | ensure_sqlite_vec, f32_as_bytes, rrf_merge, fts_expand | open_db, schema, WAL recovery は各ツール固有     |
+| 前提条件               | rusqlite 0.39 統一                                     | bundled SQLite の FFI 衝突回避（DA-V4）          |
 
 ## Links
 

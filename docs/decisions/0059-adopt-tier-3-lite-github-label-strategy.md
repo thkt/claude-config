@@ -28,19 +28,19 @@ informed: future contributors
 
 ## Considered Options
 
-| Option | 中身 | 主な弱点 |
-| --- | --- | --- |
-| A. Tier 1（標準のみ + `priority:high`） | GitHub 標準 9 個に最小限の追加 | area filter 達成しない、Outcome 半分後退 |
-| B. Tier 2（priority + area、人力ラベリング） | prefix 採用、Issue Forms 無し | Anti-Patterns Inventory「Label hygiene falls apart when humans are the only label source」直撃、Outcome 不達 |
-| C. Tier 3 full（priority + area eager + effort + status full + automation） | レポート完全版 | effort/full status は YAGNI、area eager 棚卸しは K8s sprawl 再現 |
-| D. Tier 3 lite（priority + area lazy + automation + status 1 個のみ） | Tier 3 から effort・full status・eager area を引いた形 | "lite" 呼称が独自定義、CONTRIBUTING で差分明記必要 |
+| Option                                                                      | 中身                                                   | 主な弱点                                                                                                     |
+| --------------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| A. Tier 1（標準のみ + `priority:high`）                                     | GitHub 標準 9 個に最小限の追加                         | area filter 達成しない、Outcome 半分後退                                                                     |
+| B. Tier 2（priority + area、人力ラベリング）                                | prefix 採用、Issue Forms 無し                          | Anti-Patterns Inventory「Label hygiene falls apart when humans are the only label source」直撃、Outcome 不達 |
+| C. Tier 3 full（priority + area eager + effort + status full + automation） | レポート完全版                                         | effort/full status は YAGNI、area eager 棚卸しは K8s sprawl 再現                                             |
+| D. Tier 3 lite（priority + area lazy + automation + status 1 個のみ）       | Tier 3 から effort・full status・eager area を引いた形 | "lite" 呼称が独自定義、CONTRIBUTING で差分明記必要                                                           |
 
-| Sync mechanism Option | 中身 | 主な弱点 |
-| --- | --- | --- |
-| α. NPM `Micnews/github-label-sync` | YAML config、aliases、dry-run、unlisted-removal の 4 機能標準装備 | NPM 依存（GitHub Actions 上のみ） |
-| β. 自作 Rust CLI `obi`（octocrab + serde_yaml + clap） | Rust philosophy 整合、自分の CLI 群と統一感 | 既存 OSS で全機能カバー可能、開発・保守工数が outcome に寄与しない（YAGNI 違反） |
-| γ. `chevdor/glabel`（既存 Rust CLI） | Rust 製、cargo install | aliases 未対応、メンテ弱、機能不足 |
-| δ. `gh label` + Bash ループ | 依存最小、gh CLI のみ | aliases 自前実装、削除順序の事故リスク |
+| Sync mechanism Option                                  | 中身                                                              | 主な弱点                                                                         |
+| ------------------------------------------------------ | ----------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| α. NPM `Micnews/github-label-sync`                     | YAML config、aliases、dry-run、unlisted-removal の 4 機能標準装備 | NPM 依存（GitHub Actions 上のみ）                                                |
+| β. 自作 Rust CLI `obi`（octocrab + serde_yaml + clap） | Rust philosophy 整合、自分の CLI 群と統一感                       | 既存 OSS で全機能カバー可能、開発・保守工数が outcome に寄与しない（YAGNI 違反） |
+| γ. `chevdor/glabel`（既存 Rust CLI）                   | Rust 製、cargo install                                            | aliases 未対応、メンテ弱、機能不足                                               |
+| δ. `gh label` + Bash ループ                            | 依存最小、gh CLI のみ                                             | aliases 自前実装、削除順序の事故リスク                                           |
 
 ## Decision Outcome
 
@@ -48,21 +48,21 @@ informed: future contributors
 
 ### Tier 3 lite の構成
 
-| 項目 | 採用 |
-| --- | --- |
-| ベースラベル | GitHub 標準 9 個残置 |
-| 追加 prefix | `priority:high` `priority:medium` `priority:low` + `area:<component>`（lazy）+ `status:in-progress`（Projects 棚卸し後再評価） |
-| separator | `:` |
-| 命名 | lowercase + kebab-case |
-| 色規律 | 1 prefix 1 色、priority のみ赤→橙→黄グラデ |
-| Sync | Leader repo `thkt/github-labels` + NPM `github-label-sync` を GitHub Actions matrix で実行 |
-| Auto-label | Issue Forms + `stefanbuck/advanced-issue-labeler` |
-| area enumeration | B 方式（lazy）、リポ毎 opt-in、最初は priority のみ運用 |
-| Migration | 段階適用（1 → 5 → 残り）、`unlisted-label removal` は最低 2 週間オフ |
-| Dependabot 共存 | `dependencies` `ci` `rust` を preserve list として明示 |
-| Private sync | fine-grained PAT 90 日、毎週 monitor workflow |
-| 失敗監視 | matrix `fail-fast: false` + 集約 job + 失敗時 issue 自動作成 |
-| Retirement | 四半期退役（zero applied issues 6 ヶ月） |
+| 項目             | 採用                                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| ベースラベル     | GitHub 標準 9 個残置                                                                                                           |
+| 追加 prefix      | `priority:high` `priority:medium` `priority:low` + `area:<component>`（lazy）+ `status:in-progress`（Projects 棚卸し後再評価） |
+| separator        | `:`                                                                                                                            |
+| 命名             | lowercase + kebab-case                                                                                                         |
+| 色規律           | 1 prefix 1 色、priority のみ赤→橙→黄グラデ                                                                                     |
+| Sync             | Leader repo `thkt/github-labels` + NPM `github-label-sync` を GitHub Actions matrix で実行                                     |
+| Auto-label       | Issue Forms + `stefanbuck/advanced-issue-labeler`                                                                              |
+| area enumeration | B 方式（lazy）、リポ毎 opt-in、最初は priority のみ運用                                                                        |
+| Migration        | 段階適用（1 → 5 → 残り）、`unlisted-label removal` は最低 2 週間オフ                                                           |
+| Dependabot 共存  | `dependencies` `ci` `rust` を preserve list として明示                                                                         |
+| Private sync     | fine-grained PAT 90 日、毎週 monitor workflow                                                                                  |
+| 失敗監視         | matrix `fail-fast: false` + 集約 job + 失敗時 issue 自動作成                                                                   |
+| Retirement       | 四半期退役（zero applied issues 6 ヶ月）                                                                                       |
 
 ### "lite" の差分定義
 
@@ -92,12 +92,12 @@ informed: future contributors
 
 ## More Information
 
-| 関連ドキュメント | パス |
-| ---- | ---- |
-| 研究レポート | `~/.claude/workspace/research/2026-05-02-github-issue-label-strategy.md` |
-| SOW | `~/.claude/workspace/planning/2026-05-02-label-strategy/sow.md` |
-| Spec | `~/.claude/workspace/planning/2026-05-02-label-strategy/spec.md` |
-| Anti-Patterns 出典 | 上記研究レポートの Anti-Patterns Inventory |
+| 関連ドキュメント   | パス                                                                     |
+| ------------------ | ------------------------------------------------------------------------ |
+| 研究レポート       | `~/.claude/workspace/research/2026-05-02-github-issue-label-strategy.md` |
+| SOW                | `~/.claude/workspace/planning/2026-05-02-label-strategy/sow.md`          |
+| Spec               | `~/.claude/workspace/planning/2026-05-02-label-strategy/spec.md`         |
+| Anti-Patterns 出典 | 上記研究レポートの Anti-Patterns Inventory                               |
 
 ### Pros and Cons of Reference Tools
 

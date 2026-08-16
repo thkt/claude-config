@@ -10,10 +10,10 @@ decision-makers: thkt
 
 During audit pipeline redesign discussion (session df1eb6ca), reviewer drift between runs was split into two flavors with distinct remediation axes:
 
-| Flavor         | Symptom                                         | Cause                           | Proposed remedy         |
-| -------------- | ----------------------------------------------- | ------------------------------- | ----------------------- |
-| A. Stochastic  | Same input, ~40-87% different findings per run  | LLM stochasticity               | Multi-run aggregation   |
-| B. Accumulative| Run 2 deepens on Run 1 results                  | Prior snapshot not in input     | Snapshot-aware pipeline |
+| Flavor          | Symptom                                        | Cause                       | Proposed remedy         |
+| --------------- | ---------------------------------------------- | --------------------------- | ----------------------- |
+| A. Stochastic   | Same input, ~40-87% different findings per run | LLM stochasticity           | Multi-run aggregation   |
+| B. Accumulative | Run 2 deepens on Run 1 results                 | Prior snapshot not in input | Snapshot-aware pipeline |
 
 Snapshot-aware pipeline was conceived as Flavor B remedy: feed prior run's findings to reviewers as input context so each successive run builds on the last rather than re-exploring from scratch.
 

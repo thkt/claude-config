@@ -69,12 +69,12 @@ Chosen option: Option 1 (Skill 内 colocate), because 実際の参照関係が�
 
 ## Current Process vs New Process
 
-| Aspect | Before (ADR-0006) | After (ADR-0042) |
-| --- | --- | --- |
-| 配置 | `~/.claude/scripts/*.sh` | `skills/creating-adrs/scripts/*.sh` |
-| 参照パス | `$HOME/.claude/scripts/...` | `./scripts/...` または同ディレクトリ相対 |
-| スコープ | 全 skill から共有 | 単一 skill 内で閉じる |
-| allowed-tools | 一致してないケースあり | skill の glob と完全一致 |
+| Aspect        | Before (ADR-0006)           | After (ADR-0042)                         |
+| ------------- | --------------------------- | ---------------------------------------- |
+| 配置          | `~/.claude/scripts/*.sh`    | `skills/creating-adrs/scripts/*.sh`      |
+| 参照パス      | `$HOME/.claude/scripts/...` | `./scripts/...` または同ディレクトリ相対 |
+| スコープ      | 全 skill から共有           | 単一 skill 内で閉じる                    |
+| allowed-tools | 一致してないケースあり      | skill の glob と完全一致                 |
 
 ## Rollback Plan
 
