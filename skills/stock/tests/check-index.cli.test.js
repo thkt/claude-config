@@ -9,8 +9,9 @@ import { initRepo, commitAll } from "./_git-fixture.js";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const scriptPath = join(root, "skills", "stock", "scripts", "check-index.js");
 
-// 実 git リポジトリを立てて CLI プロセスを起動し、argv で受けた repo root と index パスの
-// 解決結果が git の状態と一致するかを見る (判定ロジック単体は check-index.test.js)。
+// These stand up a real git repository and start the CLI process, checking that the repo root and
+// index path it resolves from argv agree with git's state; check-index.test.js covers the
+// decision logic on its own.
 
 function runCli(repoRootArg, indexPath, cwd) {
   const stdout = execFileSync("node", [scriptPath, repoRootArg, indexPath], {
@@ -20,7 +21,7 @@ function runCli(repoRootArg, indexPath, cwd) {
   return JSON.parse(stdout);
 }
 
-test("サブディレクトリから起動しても repo root 起動と同一のレポートが返る", () => {
+test("starting from a subdirectory returns the same report as starting from the repo root", () => {
   const dir = initRepo("cli");
   mkdirSync(join(dir, "src"), { recursive: true });
   mkdirSync(join(dir, "docs"), { recursive: true });
@@ -33,7 +34,7 @@ test("サブディレクトリから起動しても repo root 起動と同一の
     [
       "| glob | description | path |",
       "| --- | --- | --- |",
-      "| src/*.tsx | ボタン規約 | docs/reference.md |",
+      "| src/*.tsx | button conventions | docs/reference.md |",
     ].join("\n"),
   );
   commitAll(dir);
@@ -44,20 +45,20 @@ test("サブディレクトリから起動しても repo root 起動と同一の
   assert.deepEqual(fromSubdir, fromRoot);
 });
 
-test("git 管理外のファイルは glob 照合の対象にならない", () => {
+test("a file outside git's control is not matched against the globs", () => {
   const dir = initRepo("cli");
   mkdirSync(join(dir, "src"), { recursive: true });
   mkdirSync(join(dir, "docs"), { recursive: true });
   writeFileSync(join(dir, "docs", "reference.md"), "# reference\n");
   const indexPath = join(dir, "docs", "REFERENCE_INDEX.md");
-  // glob は widget.tsx にしか一致しない。widget.tsx をディスク上に置くが git add はせず
-  // 未追跡のまま残すので、tracked ファイル一覧 (git ls-files) にはどの行の一致先も存在しない。
+  // The glob matches widget.tsx alone. widget.tsx is placed on disk but never git added, so it
+  // stays untracked and no row's target exists in the tracked file list (git ls-files).
   writeFileSync(
     indexPath,
     [
       "| glob | description | path |",
       "| --- | --- | --- |",
-      "| src/widget.tsx | 未追跡ファイル | docs/reference.md |",
+      "| src/widget.tsx | an untracked file | docs/reference.md |",
     ].join("\n"),
   );
   commitAll(dir);

@@ -1,5 +1,5 @@
-// check-index.cli.test.js と e2e.test.js が共有する git fixture。init / commit はどちらも
-// 同一の下ごしらえでテスト固有の振る舞いを持たないので、ここに 1 つだけ置く。
+// The git fixture check-index.cli.test.js and e2e.test.js share. init and commit are the same
+// preparation for both and hold no test-specific behavior, so one copy lives here.
 import { execFileSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";

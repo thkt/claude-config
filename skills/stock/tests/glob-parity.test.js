@@ -1,5 +1,6 @@
-// check-index.js と workflows/code.js は同じ glob 規則を 2 箇所に複製して持つ。複製は改修時に
-// ずれ得るので、共通 fixture 表を両者へ同じ入力として与え、判定結果の一致を見張る。
+// check-index.js and workflows/code.js hold the same glob rules as two copies. A copy can drift
+// when either is revised, so a shared fixture table feeds both the same input and these cases
+// watch that their decisions agree.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
@@ -11,11 +12,12 @@ const root = join(here, "..", "..", "..");
 const scriptPath = join(root, "skills", "stock", "scripts", "check-index.js");
 const codeJs = join(root, "workflows", "code.js");
 
-// リファレンス先パスは判定に効かないので固定する。
+// The reference path plays no part in the decision, so it stays fixed.
 const REF_PATH = "docs/ref.md";
 
-// 完全一致、`**/` のゼロ階層と 1 階層、`*` が `/` を跨がない境界、先頭 `./` `/` の正規化、
-// 未対応メタ文字、裸の `**`、拡張子不一致を並べる。
+// The rows cover an exact match, `**/` at zero and one level, the boundary where `*` does not
+// cross `/`, the leading `./` and `/` normalization, an unsupported metacharacter, a bare `**`,
+// and a mismatched extension.
 const FIXTURE = [
   { glob: "sample.js", path: "sample.js" },
   { glob: "sample.js", path: "other.js" },
@@ -30,8 +32,9 @@ const FIXTURE = [
   { glob: "src/*.foo", path: "src/button.tsx" },
 ];
 
-// unsupported 行は noMatch の母集団から外れるため、noMatch が空でも一致とは限らない。
-// code.js 側も未対応行は注入しないので、ここでは「一致しない」に寄せる。
+// An unsupported row falls outside the noMatch population, so an empty noMatch does not by itself
+// mean a match. code.js injects nothing for an unsupported row either, so this reads it as
+// "no match".
 async function scriptMatches(glob, path) {
   const { checkIndex } = await import(scriptPath);
   const table = [
@@ -44,8 +47,8 @@ async function scriptMatches(glob, path) {
   return result.noMatch.length === 0;
 }
 
-// code.js に判定用の API は無いので、reader agent の戻り値に table を注入し、impl step の
-// prompt に読了命令が載るかどうかを一致判定として採る。
+// code.js exposes no API for the decision, so the table is injected through the reader agent's
+// return value and whether a read instruction rides the impl step's prompt is taken as the match.
 async function codeMatches(glob, path) {
   const table = [
     "| glob | description | path |",
@@ -77,13 +80,13 @@ async function codeMatches(glob, path) {
     stubs: { agent: stub },
   });
   const impl = calls.agent.find((c) => (c.opts.label ?? "") === "impl:U-1");
-  assert.ok(impl, "impl:U-1 agent が呼ばれる");
+  assert.ok(impl, "the impl:U-1 agent runs");
   return new RegExp(`Read before implementing: ${REF_PATH.replace(/\./g, "\\.")}`).test(
     impl.prompt,
   );
 }
 
-test("共通 fixture 表の全 (glob, path) 組で code.js の注入有無と script の一致判定が同じ結果になる", async () => {
+test("for every (glob, path) pair in the shared fixture table, code.js's injection and the script's match decision agree", async () => {
   const mismatches = [];
   for (const { glob, path } of FIXTURE) {
     const [fromScript, fromCode] = await Promise.all([
@@ -97,6 +100,6 @@ test("共通 fixture 表の全 (glob, path) 組で code.js の注入有無と sc
   assert.deepEqual(
     mismatches,
     [],
-    `script と code.js の判定が食い違う行がある: ${JSON.stringify(mismatches)}`,
+    `rows where the script and code.js disagree: ${JSON.stringify(mismatches)}`,
   );
 });

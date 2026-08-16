@@ -14,51 +14,53 @@ const agents = {
   en: join(root, "agents", "critics", "critic-design.md"),
 };
 
-// critic-design が返す verdict は agent 定義が決める。challenge が GO / NO-GO を返せと
-// 指示すると、agent 定義と Task prompt が競合し、受け取り側は解釈できない値を掴む。
-test("challenge が critic-design の verdict をそのまま受ける", () => {
+// The agent definition decides the verdict critic-design returns. Were challenge to instruct it
+// to return GO / NO-GO, the agent definition and the Task prompt would conflict and the receiving
+// side would hold a value it cannot interpret.
+test("challenge takes critic-design's verdict as it stands", () => {
   const table = readFileSync(agents.en, "utf8");
   const verdicts = [...table.matchAll(/^\| (confirmed|weakened|needs_revision) +\|/gm)].map(
     (m) => m[1],
   );
-  assert.equal(verdicts.length, 3, `agent の verdict を 3 つ読める (${verdicts.join(", ")})`);
+  assert.equal(verdicts.length, 3, `three agent verdicts are readable (${verdicts.join(", ")})`);
 
   for (const [lang, path] of Object.entries(skills)) {
-    assert.ok(existsSync(path), `${path} が存在する`);
+    assert.ok(existsSync(path), `${path} exists`);
     const doc = readFileSync(path, "utf8");
     for (const verdict of verdicts) {
-      assert.match(doc, new RegExp(verdict), `${lang}: ${verdict} の扱いを書いている`);
+      assert.match(doc, new RegExp(verdict), `${lang}: it states how ${verdict} is handled`);
     }
     assert.doesNotMatch(
       doc,
       /verdict: "GO" \| "NO-GO"/,
-      `${lang}: agent に GO / NO-GO を返させていない`,
+      `${lang}: it does not make the agent return GO / NO-GO`,
     );
   }
 });
 
-// weaknesses は viewpoint / severity / finding / evidence / probe を持つ項目の配列。
-// string[] と書くと、突き合わせで severity を落として重複判定を誤る。
-test("weaknesses の形が agent の Output と揃う", () => {
+// weaknesses is an array of items carrying viewpoint, severity, finding, evidence, and probe.
+// Writing it as string[] drops severity during the match and misjudges the duplicates.
+test("the shape of weaknesses matches the agent's Output", () => {
   assert.match(
     readFileSync(agents.en, "utf8"),
     /Each item includes viewpoint, severity, finding, evidence/,
-    "agent が weaknesses の中身を列挙する",
+    "the agent enumerates what a weakness holds",
   );
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
-    assert.doesNotMatch(doc, /weaknesses: string\[\]/, `${lang}: string[] と書いていない`);
-    assert.match(doc, /severity/, `${lang}: 項目の中身に触れている`);
+    assert.doesNotMatch(doc, /weaknesses: string\[\]/, `${lang}: it is not written as string[]`);
+    assert.match(doc, /severity/, `${lang}: it names what an item holds`);
   }
 });
 
-// Phase 2 で走るのは critic-design 2 体だけ。表に載る Pass と手順が起動するものを揃える。
-test("Phase 2 の Pass 表が手順と一致する", () => {
+// Phase 2 runs two critic-design agents and nothing else. The Passes listed in the table match
+// what the steps start.
+test("the Phase 2 Pass table matches the steps", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
     const phase2 = doc.slice(doc.indexOf(lang === "ja" ? "## Phase 2" : "## Phase 2"));
     const passes = phase2.match(/^\| critic-design \(/gm) || [];
-    assert.equal(passes.length, 2, `${lang}: Pass が critic-design 2 体 (${passes.length})`);
-    assert.doesNotMatch(phase2, /^\| advisor /m, `${lang}: 起動しない Pass を表に載せない`);
+    assert.equal(passes.length, 2, `${lang}: the Passes are two critic-design (${passes.length})`);
+    assert.doesNotMatch(phase2, /^\| advisor /m, `${lang}: no Pass that never starts is listed`);
   }
 });

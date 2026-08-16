@@ -10,35 +10,36 @@ const skills = {
   en: join(root, "skills", "stock", "SKILL.md"),
 };
 
-// SKILL.md が指すパスは agent が Read する。ファイル名の文字列一致で見張ると、参照先を
-// rename して SKILL.md を直し忘れた場合に通り、両方正しく直した場合に落ちる。捕まえたい
-// のは参照先の不在なので、実在するかどうかで見る。
+// An agent Reads the paths SKILL.md names. Watching them by filename string would pass when a
+// target was renamed and SKILL.md left unfixed, and fail when both were fixed correctly. What is
+// worth catching is a missing target, so existence is what gets checked.
 const refsIn = (doc) => [...doc.matchAll(/\$\{CLAUDE_SKILL_DIR\}(\/[\w./-]+)/g)].map((m) => m[1]);
 
-test("SKILL.md が指す skill 内のパスがすべて実在する", () => {
+test("every in-skill path SKILL.md names exists", () => {
   for (const [lang, path] of Object.entries(skills)) {
-    assert.ok(existsSync(path), `${lang}: ${path} が存在する`);
+    assert.ok(existsSync(path), `${lang}: ${path} exists`);
     const refs = new Set(refsIn(readFileSync(path, "utf8")));
-    assert.ok(refs.size > 0, `${lang}: skill 内への参照が 1 つ以上ある`);
+    assert.ok(refs.size > 0, `${lang}: at least one in-skill reference is present`);
     for (const ref of refs) {
       const resolved = join(dirname(path), ref);
-      assert.ok(existsSync(resolved), `${lang}: ${ref} の参照先が実在する`);
+      assert.ok(existsSync(resolved), `${lang}: the target of ${ref} exists`);
     }
   }
 });
 
-// 判定本体を呼ぶ手順と、結果を読むためのフォーマット規約。どちらを落としても、SKILL.md を
-// 読む agent は何を実行しどう読むか分からなくなる。ファイル名でなく置き場所で見張る。
-test("SKILL.md が scripts と references の両方を参照している", () => {
+// The steps that call the decision itself, and the format convention for reading its result.
+// Dropping either leaves the agent reading SKILL.md unable to tell what to run or how to read it.
+// What is watched is the location rather than the filename.
+test("SKILL.md references both scripts and references", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const refs = refsIn(readFileSync(path, "utf8"));
     assert.ok(
       refs.some((ref) => ref.startsWith("/scripts/")),
-      `${lang}: 実行する script を参照する`,
+      `${lang}: it references the script to run`,
     );
     assert.ok(
       refs.some((ref) => ref.startsWith("/references/")),
-      `${lang}: 判定を読むための規約を参照する`,
+      `${lang}: it references the convention for reading the decision`,
     );
   }
 });

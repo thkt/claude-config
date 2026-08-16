@@ -9,11 +9,11 @@ import { initRepo, commitAll } from "./_git-fixture.js";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const scriptPath = join(root, "skills", "stock", "scripts", "check-index.js");
 
-// 他のテストが個別に緑にした判定を、実 git リポジトリへの 1 回の子プロセス実行で通しに
-// 繋げて見る。区分ごとの単体検証はそれぞれのテストが持つ。
+// These connect the decisions the other tests turned green individually into one run of the child
+// process against a real git repository. Each category keeps its own unit verification elsewhere.
 
-// execFileSync は非ゼロ終了で例外を投げるため、exit code 自体を見る検証には使えない。
-// spawnSync は終了コードを status として返すので、0 と非ゼロを同じ形で受け取れる。
+// execFileSync throws on a non-zero exit, so it cannot verify the exit code itself. spawnSync
+// returns the code as status, which receives 0 and non-zero in the same shape.
 function runCli(repoRootArg, indexPath, cwd) {
   const result = spawnSync("node", [scriptPath, repoRootArg, indexPath], {
     cwd,
@@ -22,27 +22,27 @@ function runCli(repoRootArg, indexPath, cwd) {
   return { status: result.status, json: JSON.parse(result.stdout) };
 }
 
-test("dangling/no-match/unsupported/unreferenced/size を同時に仕込んだ fixture への 1 回の実行で全区分が件数どおり返る", () => {
+test("one run against a fixture carrying dangling, no-match, unsupported, unreferenced, and size at once returns every category at its expected count", () => {
   const dir = initRepo("e2e");
   mkdirSync(join(dir, "src"), { recursive: true });
   mkdirSync(join(dir, "docs"), { recursive: true });
 
-  // dangling 用: glob は tracked file と一致させ noMatch に混ざらないようにし、
-  // path は存在しないファイルを指して dangling だけを単独で発生させる。
+  // For dangling: the glob matches a tracked file so it stays out of noMatch, and the path names a
+  // file that does not exist so dangling arises on its own.
   writeFileSync(join(dir, "src", "a.tsx"), "export const A = () => null;\n");
-  // no-match / unsupported の参照先として実在させる。
+  // Exists as the target for the no-match and unsupported rows.
   writeFileSync(join(dir, "docs", "existing.md"), "# existing\n");
-  // どの行からも参照されない docs 配下の md (unreferenced として拾われる想定)。
+  // An md under docs referenced by no row, expected to be picked up as unreferenced.
   writeFileSync(join(dir, "docs", "orphan.md"), "# orphan\n");
 
   const header = ["| glob | description | path |", "| --- | --- | --- |"];
-  const dangling = ["| src/a.tsx | dangling 検証 | docs/missing-target.md |"];
-  const noMatch = ["| src/nomatch.foo | no-match 検証 | docs/existing.md |"];
-  const unsupported = ["| src/** | unsupported 検証 (裸の double star) | docs/existing.md |"];
-  // index ファイル自身は CLI が indexPath として除外するため、自己参照行は要らない。
-  // size 警告 (閾値 30 行, DR-0091) を超えさせるための埋め草行。drift 判定に影響しない
-  // よう glob は `-` に固定する。
-  const padding = Array.from({ length: 30 }, (_, i) => `| - | 埋め草 ${i} | docs/existing.md |`);
+  const dangling = ["| src/a.tsx | the dangling case | docs/missing-target.md |"];
+  const noMatch = ["| src/nomatch.foo | the no-match case | docs/existing.md |"];
+  const unsupported = ["| src/** | the unsupported case (a bare double star) | docs/existing.md |"];
+  // The CLI excludes the index file itself through indexPath, so no self-referencing row is needed.
+  // These padding rows push past the size warning threshold (30 rows, DR-0091). Their glob stays
+  // `-` so they do not affect the drift decision.
+  const padding = Array.from({ length: 30 }, (_, i) => `| - | padding ${i} | docs/existing.md |`);
   const table = [...header, ...dangling, ...noMatch, ...unsupported, ...padding].join("\n");
   const indexPath = join(dir, "docs", "REFERENCE_INDEX.md");
   writeFileSync(indexPath, table);
@@ -57,15 +57,15 @@ test("dangling/no-match/unsupported/unreferenced/size を同時に仕込んだ f
   assert.equal(json.unsupported.length, 1);
   assert.equal(json.unsupported[0].glob, "src/**");
   assert.deepEqual(json.unreferenced, ["docs/orphan.md"]);
-  // ヘッダー 2 行 + 判定対象 3 行 + 埋め草 30 行。
+  // Two header rows plus three checked rows plus thirty padding rows.
   assert.equal(json.size.lines, 35);
   assert.equal(json.size.warning, true);
   assert.notEqual(status, 0);
   assert.equal(json.exitCode, status);
 });
 
-test("index が無いリポジトリでも落ちず、found: false と索引化候補を返す", () => {
-  // 索引化の入口は index がまだ無い状態。ここで落ちると backfill が始められない。
+test("a repository with no index does not die and returns found: false with the indexing candidates", () => {
+  // Indexing starts from a state where no index exists yet. Dying here would block the backfill.
   const dir = initRepo("e2e");
   mkdirSync(join(dir, "docs"), { recursive: true });
   writeFileSync(join(dir, "docs", "convention.md"), "# convention\n");
@@ -80,7 +80,7 @@ test("index が無いリポジトリでも落ちず、found: false と索引化�
   assert.equal(status, 0);
 });
 
-test("dangling の有無だけを変えた 2 つの fixture で exit code が 0 と非ゼロに分かれる", () => {
+test("two fixtures differing only in whether a dangling row exists split the exit code into 0 and non-zero", () => {
   function buildFixture({ withDangling }) {
     const dir = initRepo("e2e");
     mkdirSync(join(dir, "src"), { recursive: true });
@@ -95,7 +95,7 @@ test("dangling の有無だけを変えた 2 つの fixture で exit code が 0 
       [
         "| glob | description | path |",
         "| --- | --- | --- |",
-        "| src/a.tsx | dangling 有無の切り替え | docs/target.md |",
+        "| src/a.tsx | toggles whether a dangling row exists | docs/target.md |",
       ].join("\n"),
     );
     commitAll(dir);

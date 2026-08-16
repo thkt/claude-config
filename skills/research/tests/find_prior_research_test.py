@@ -38,7 +38,7 @@ def make_dir(*filenames):
 
 class FindPriorResearch(unittest.TestCase):
     def test_t001_two_word_overlap_returns_shared_2(self):
-        """T-001 slug と語が 2 つ重なるファイルが shared 2 で返る"""
+        """T-001 a file sharing two words with the slug comes back with shared 2"""
         directory = make_dir("2026-06-01-add-user-dashboard.md")
         code, out = run("add-user-permission-flow", directory)
         self.assertEqual(code, 0)
@@ -46,14 +46,14 @@ class FindPriorResearch(unittest.TestCase):
         self.assertEqual(shared["2026-06-01-add-user-dashboard.md"], 2)
 
     def test_t002_missing_search_dir_returns_empty_candidates(self):
-        """T-002 探索ディレクトリが存在しないとき空の候補配列を返す"""
+        """T-002 a missing search directory returns an empty candidate array"""
         missing = Path(tempfile.mkdtemp()) / "does-not-exist"
         code, out = run("add-user-permission-flow", missing)
         self.assertEqual(code, 0)
         self.assertEqual(out["candidates"], [])
 
     def test_t003_zero_overlap_file_is_excluded(self):
-        """T-003 語が 1 つも重ならないファイルは候補に含まれない"""
+        """T-003 a file sharing no word is left out of the candidates"""
         directory = make_dir("2026-06-01-billing-invoice-export.md")
         code, out = run("add-user-permission-flow", directory)
         self.assertEqual(code, 0)
@@ -61,7 +61,7 @@ class FindPriorResearch(unittest.TestCase):
         self.assertNotIn("2026-06-01-billing-invoice-export.md", files)
 
     def test_t004_filename_date_prefix_is_excluded_from_word_matching(self):
-        """T-004 ファイル名の日付プレフィックスは語の照合対象から外れる"""
+        """T-004 the date prefix of a filename stays out of the word matching"""
         directory = make_dir("2026-07-01-schema-export.md")
         code, out = run("07-01-schema-export", directory)
         self.assertEqual(code, 0)
@@ -69,7 +69,7 @@ class FindPriorResearch(unittest.TestCase):
         self.assertEqual(shared["2026-07-01-schema-export.md"], 2)
 
     def test_non_markdown_file_is_excluded(self):
-        """語が重なっても .md 以外の拡張子のファイルは候補に含まれない"""
+        """a file whose extension is not .md is left out even when words overlap"""
         directory = make_dir("2026-07-02-schema-export.json", "2026-07-01-schema-export.md")
         code, out = run("schema-export", directory)
         self.assertEqual(code, 0)
