@@ -10,7 +10,23 @@ HOOK="$SCRIPT_DIR/../failure-alert.sh"
 
 # Template under $TMPDIR: macOS mktemp without a template ignores TMPDIR
 TEST_TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/failure-alert-tests-XXXXXX")
-trap 'rm -rf "$TEST_TMPDIR"' EXIT
+
+# sounds/ is gitignored, so a fresh checkout carries no audio and the hook's `[[ -f ]]` guard
+# skips afplay before any assertion can read it. Place an empty stand-in when the file is
+# absent, so what gets asserted is the hook's decision rather than the checkout's contents.
+SOUND_FILE="$SCRIPT_DIR/../../../sounds/DHVMagellanHorn_Heavy.mp3"
+PLACEHOLDER_SOUND=""
+if [[ ! -f "$SOUND_FILE" ]]; then
+  mkdir -p "$(dirname "$SOUND_FILE")"
+  : > "$SOUND_FILE"
+  PLACEHOLDER_SOUND="$SOUND_FILE"
+fi
+
+cleanup() {
+  rm -rf "$TEST_TMPDIR"
+  [[ -n "$PLACEHOLDER_SOUND" ]] && rm -f "$PLACEHOLDER_SOUND"
+}
+trap cleanup EXIT
 
 STUB_BIN="$TEST_TMPDIR/bin"
 mkdir -p "$STUB_BIN"
@@ -82,7 +98,8 @@ test_the_sound_file_is_named() {
   echo "T-006: The file it plays exists under sounds/"
   # Renaming the file without replacing the source leaves the hook doing nothing, silently.
   local named
-  named=$(rg -o 'DHVMagellanHorn_[A-Za-z]+\.mp3' "$HOOK" | head -1)
+  # grep, not rg: a CI runner carries the POSIX tools alone.
+  named=$(grep -oE 'DHVMagellanHorn_[A-Za-z]+\.mp3' "$HOOK" | head -1)
   assert_eq "the file exists" "yes" \
     "$([[ -f "$SCRIPT_DIR/../../../sounds/$named" ]] && echo yes || echo no)"
 }

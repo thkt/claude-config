@@ -24,7 +24,9 @@ run_hook() {
   printf '%s' "$payload" | CLAUDE_STATE_DIR="$state_dir" zsh "$HOOK" >/dev/null 2>&1
 }
 
-aged() { touch -t "$(date -v-"$1"d +%Y%m%d%H%M)" "$2"; }
+# BSD date takes -v, GNU date takes -d. A CI runner has the latter, so try both.
+days_ago() { date -v-"$1"d +%Y%m%d%H%M 2>/dev/null || date -d "$1 days ago" +%Y%m%d%H%M; }
+aged() { touch -t "$(days_ago "$1")" "$2"; }
 
 exists() { [[ -e "$1" ]] && echo yes || echo no; }
 
