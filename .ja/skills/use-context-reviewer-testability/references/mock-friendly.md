@@ -57,9 +57,7 @@ render(<Component />, { wrapper: createWrapper({ api: mockApi }) })
 
 ```typescript
 const server = setupServer(
-  rest.get("/api/users/:id", (req, res, ctx) =>
-    res(ctx.json({ id: req.params.id, name: "Test" })),
-  ),
+  rest.get("/api/users/:id", (req, res, ctx) => res(ctx.json({ id: req.params.id, name: "Test" }))),
 );
 ```
 

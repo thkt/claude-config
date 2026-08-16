@@ -11,7 +11,7 @@
 
 ### Overview
 
-{背景と目的を 2-3 文で}
+{背景と目的を 2〜3 文で}
 
 ### Changes Summary
 

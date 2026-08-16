@@ -22,12 +22,12 @@ Why, not What. Code should explain itself; comments explain intent.
 
 ## Anti-Patterns
 
-| Pattern           | Problem                         | Solution         |
-| ----------------- | ------------------------------- | ---------------- |
+| Pattern           | Problem                         | Solution             |
+| ----------------- | ------------------------------- | -------------------- |
 | Commented code    | Dead code confusion             | Delete; git keeps it |
-| Obvious comments  | `// Set name to 'John'`         | Remove           |
-| Journal comments  | `// 2024-01-05: Changed - John` | Use git history  |
-| Outdated comments | Says X, code does Y             | Update or delete |
+| Obvious comments  | `// Set name to 'John'`         | Remove               |
+| Journal comments  | `// 2024-01-05: Changed - John` | Use git history      |
+| Outdated comments | Says X, code does Y             | Update or delete     |
 
 ## Self-Documenting Code
 

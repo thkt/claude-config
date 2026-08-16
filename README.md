@@ -181,10 +181,10 @@ Per-project configuration is done via `.claude/tools.json`. See
 
 Some commands use external CLI tools for data source integration:
 
-| Tool    | Required By                        | Purpose             | Install                            |
-| ------- | ---------------------------------- | ------------------- | ---------------------------------- |
-| `gh`    | `/issue`, `/pr`, `/preview`, `/build` | GitHub API access | `brew install gh && gh auth login` |
-| `scout` | Slack URL reading                  | Slack message fetch | `brew install thkt/tap/scout`      |
+| Tool    | Required By                           | Purpose             | Install                            |
+| ------- | ------------------------------------- | ------------------- | ---------------------------------- |
+| `gh`    | `/issue`, `/pr`, `/preview`, `/build` | GitHub API access   | `brew install gh && gh auth login` |
+| `scout` | Slack URL reading                     | Slack message fetch | `brew install thkt/tap/scout`      |
 
 **Slack reading**: `scout fetch <slack-url>` reads any Slack message/thread URL
 directly. No additional setup needed if scout is configured.
@@ -226,8 +226,7 @@ See the complete command reference:
 
 - **AI Processing**: English internally
 - **User Output**: Japanese (configurable)
-- **Documentation**: README.md and docs/*.md are available in English and
-  Japanese; the five docs/wiki/*.md files are English-only
+- **Documentation**: README.md and `docs/*.md` are available in English and Japanese; the five `docs/wiki/*.md` files are English-only
 
 ## 🛠️ Key Features
 

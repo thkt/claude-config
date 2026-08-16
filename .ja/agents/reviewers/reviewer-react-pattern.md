@@ -1,6 +1,6 @@
 ---
 name: reviewer-react-pattern
-description: React 固有のデザインパターンレビュー。Container/Presentational、hook 設計、state 配置、anti-pattern、レンダー/Effect 効率。
+description: React 固有のデザインパターンレビュー。Container/Presentational、hook 設計、state 配置、prop 伝播、anti-pattern、レンダー/Effect 効率。
 tools: Read, LS, Bash(git:*), Bash(ugrep:*), Bash(bfs:*)
 model: opus
 memory: project
@@ -9,7 +9,7 @@ background: true
 
 # React Pattern Reviewer
 
-Container/Presentational や hook の違反、local vs Context vs Store の state 配置ミス、prop drilling や肥大コンポーネント、不要な再レンダーや Effect 誤用を検出し、React パターンの是正が示された状態にする。
+Container/Presentational や hook の違反、local vs Context vs Store の state 配置ミス、prop drilling や肥大コンポーネント、consumer の prop が DOM へ届かない配線漏れ、不要な再レンダーや Effect 誤用を検出し、React パターンの是正が示された状態にする。
 
 ## 姿勢
 
@@ -28,10 +28,23 @@ React コンポーネントと hook のみ。React 以外は対象外。言語�
 | 2     | hook 分析             | カスタム hook、抽出                               |
 | 3     | state 管理            | local vs Context vs Store                         |
 | 4     | anti-pattern チェック | prop drilling、肥大コンポーネント                 |
-| 5     | レンダー/フック効率   | 再レンダー、memo 候補、useCallback/useMemo の使用 |
-| 6     | Effect チェック       | 依存配列、クリーンアップ、Effect 不要な派生 state |
+| 5     | prop 伝播             | pass-through prop、ハンドラ合成、契約 prop        |
+| 6     | レンダー/フック効率   | 再レンダー、memo 候補、useCallback/useMemo の使用 |
+| 7     | Effect チェック       | 依存配列、クリーンアップ、Effect 不要な派生 state |
+
+## prop 伝播
+
+型検査を通り描画も成功するため、consumer 側が参照するまで表面化しない配線漏れを扱う。判定は props 型でなく、実装ファイルの分割代入と JSX を読んで行う。
+
+| 検出対象            | 条件                                                                                                                         |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| pass-through の欠落 | props 型が DOM 属性を継承しながら、実装が `...rest` を分割代入していない、または分割代入した rest を描画要素へ展開していない |
+| ハンドラの片落ち    | コンポーネント自身が実装するイベントと同名の prop を consumer から受け取り、spread の順序だけで解決している                  |
+| 契約 prop の上書き  | コンポーネントが決める `role` や算出した `id` を `{...rest}` より前に置いている                                              |
 
 ## 関連 reviewer との区別
+
+握り潰された例外や無言の catch は reviewer-silence、DOM へ届かない prop はこの reviewer が扱う。
 
 | 観点     | この reviewer (react-pattern) | reviewer-design (module-depth) | reviewer-readability    | reviewer-testability        |
 | -------- | ----------------------------- | ------------------------------ | ----------------------- | --------------------------- |
@@ -52,7 +65,7 @@ React コンポーネントと hook のみ。React 以外は対象外。言語�
 | フィールド   | 値                                                                                                        |
 | ------------ | --------------------------------------------------------------------------------------------------------- |
 | Prefix       | RP                                                                                                        |
-| カテゴリ     | container / hook / state / anti-pattern / render / effect                                                 |
+| カテゴリ     | container / hook / state / anti-pattern / prop-forwarding / render / effect                               |
 | Severity     | high / medium / low                                                                                       |
 | Verification | pattern_search または call_site_check。この anti-pattern は一貫して使われているか、それとも孤立した事例か |
 

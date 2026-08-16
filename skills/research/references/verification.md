@@ -16,6 +16,18 @@ Verify external-behavior claims against primary sources.
 2. Verify the extracted claims against primary sources in one batch. Use `scout fetch <official docs URL>` for web docs and `scout repo-read` / `scout repo-overview` for sources on GitHub (use-cli-scout is the canonical command reference)
 3. When a primary source is unreachable, such as paywall, no docs, fetch failure, or scout not being installed, keep the finding but mark it `unverified external claim`, and do not use it as Disconfirmation evidence or a Next Action premise
 
+A repository's README reflects an unreleased main, so it is not a primary source for what the published version does. Confirm what the published version accepts with `npx <pkg>@latest <cmd> --help` and by running it.
+
+## Reading a zero-result
+
+A zero-result does not separate "it does not exist" from "the query is shaped wrong". Before concluding absence, round-trip the same query against a case that returns non-zero. To claim a filter works, measure it with a value that actually has matches. Measuring with an unused value returns zero and cannot be told apart from the filter failing.
+
+| Query                                      | Another reason it returns zero                                                      |
+| ------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Multiple words in `gh issue list --search` | It ANDs the words, so one word missing the mark returns zero                        |
+| A filter on a label or a field             | No item carries that value. It returns the same zero as a value that does not exist |
+| An issue search scoped to a repo           | The issue lives in your own repo, not upstream. Re-query with `--owner <yourself>`  |
+
 ## Same-origin sweep
 
 After a root cause is confirmed in Bug investigation, sweep the artifacts that share its origin for sibling defects.

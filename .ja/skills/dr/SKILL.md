@@ -21,6 +21,10 @@ argument-hint: "[decision title]"
 2. 文脈がないと意外に見える。将来の読み手が「なぜこの形にしたのか」と疑問を持つ
 3. 実在するトレードオフの結果。本物の代替案が存在し、特定の理由で 1 つを選んでいる
 
+## 事前チャレンジ
+
+既存 DR の原則に例外を作る DR と、既存 DR を supersede する DR は、status を accepted にする前に `/challenge` を通す。verdict と成立条件を More Information に 1 行で残す。
+
 ## ルール
 
 | ルール       | 詳細                                                              |

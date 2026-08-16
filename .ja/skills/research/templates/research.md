@@ -17,7 +17,7 @@ Prior research: {引き継いだファイルの slug、または "none found"}
 
 ## 目的
 
-<!-- 1-2 文でこの調査のゴール。$ARGUMENTS と Phase 3 の意図から導く。 -->
+<!-- 1〜2 文でこの調査のゴール。$ARGUMENTS と Phase 3 の意図から導く。 -->
 
 {... を ... のために調査する}
 

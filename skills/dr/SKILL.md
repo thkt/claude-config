@@ -21,6 +21,10 @@ Proceed to the 5-Phase Process only when all three conditions hold. Otherwise sk
 2. Surprising without context. A future reader will ask "why this way?"
 3. Result of a real trade-off. Genuine alternatives existed and one was picked for specific reasons
 
+## Pre-Adoption Challenge
+
+Run `/challenge` before setting `status` to accepted, for a DR that carves an exception into an existing DR's principle and for a DR that supersedes an existing DR. Record the verdict and the condition it holds under as one line in More Information.
+
 ## Rules
 
 | Rule         | Detail                                                                       |

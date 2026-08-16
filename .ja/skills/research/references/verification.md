@@ -16,6 +16,18 @@
 2. 抽出した claim を一括で一次ソースと突合する。web docs は `scout fetch <公式 docs URL>`、GitHub 上のソースは `scout repo-read` か `scout repo-overview` を使う。コマンドの正典は use-cli-scout
 3. paywall、docs 不在、fetch 失敗、scout 未導入などで一次ソースが辿れない場合は finding を残して `unverified external claim` とマークし、Disconfirmation の根拠や Next Action の前提には使わない
 
+リポジトリの README は未リリースの main を反映するので、公開版の機能の一次ソースにはならない。公開版が何を受けるかは `npx <pkg>@latest <cmd> --help` と実行で確かめる。
+
+## 0 件の解釈
+
+0 件は「存在しない」と「引き方が違う」を区別しない。不在と結論づける前に、同じ引き方が非 0 を返す例で往復させる。絞り込みが機能すると言うには、実際に該当がある値で測る。未使用の値で測ると 0 件が返り、絞り込みの成否と区別が付かない。
+
+| 引き方                            | 0 件になる別の理由                                                           |
+| --------------------------------- | ---------------------------------------------------------------------------- |
+| `gh issue list --search` の複数語 | 語を AND で結ぶので、1 語でも外れると 0 件になる                             |
+| ラベルやフィールドでの絞り込み    | その値が 1 件も付いていない。存在しない値と同じ 0 件を返す                   |
+| repo を指定した issue 検索        | 探している issue が上流でなく自分の repo にある。`--owner <自分>` で引き直す |
+
 ## Same-origin sweep
 
 Bug investigation で root cause を確定した後、同じ origin を共有する artifact 群を sweep して兄弟欠陥を探す。
