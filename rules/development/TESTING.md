@@ -16,6 +16,10 @@ paths:
 
 Covers coverage perspectives, priority areas, test naming, and the delta-based gate.
 
+## Project decisions come first
+
+Read the testing policy in the order the project's `.claude/rules/development/TESTING.md` > the global `~/.claude/rules/development/TESTING.md`. The global side holds the defaults, and only the perspectives the project does not address are filled in from there. How much abnormality is tolerated is settled as a project agreement, not decided per implementation.
+
 ## Coverage as Supplementary Indicator
 
 Coverage measures whether code executed, not what was verified. Do not target a number. Target perspectives and priority areas.
@@ -52,17 +56,18 @@ Start from perspectives, and use coverage only to detect gaps.
 
 ### Perspective Checklist
 
-| Perspective    | What to check                                                                                                     |
-| -------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Equivalence    | Group inputs that behave the same and test one representative per group                                           |
-| Boundary       | Both sides of every boundary (min - 1 and min, max and max + 1). Add zero and empty as special values             |
-| Branch (C1)    | Every path of every if / switch                                                                                   |
-| Condition (C2) | Each operand of every compound condition, true and false                                                          |
-| Combination    | When 2+ independent conditions interact, write a decision table and cover each row                                |
-| State          | Legal transitions pass, prohibited transitions are rejected                                                       |
-| Error          | Feed invalid input / null and exercise exception paths                                                            |
-| Hazard         | Incidents the product can realistically hit, such as double-submit / timezone / permission bypass / partial state |
-| Concurrency    | Race / ordering. Apply only when the target is async / multi-threaded                                             |
+| Perspective    | What to check                                                                                                        |
+| -------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Equivalence    | Group inputs that behave the same and test one representative per group                                              |
+| Boundary       | Both sides of every boundary (min - 1 and min, max and max + 1). Add zero and empty as special values                |
+| Branch (C1)    | Every path of every if / switch                                                                                      |
+| Condition (C2) | Each operand of every compound condition, true and false                                                             |
+| Combination    | When 2+ independent conditions interact, write a decision table and cover each row                                   |
+| State          | Legal transitions pass, prohibited transitions are rejected                                                          |
+| Error          | Feed invalid input / null to exercise exception paths, and assert the error kind returned (status code, error type)  |
+| Environment    | Timeout / connection failure / rate limit / unexpected response shape. Apply only when the target calls a dependency |
+| Hazard         | Incidents the product can realistically hit, such as double-submit / timezone / permission bypass / partial state    |
+| Concurrency    | Race / ordering. Apply only when the target is async / multi-threaded                                                |
 
 ## Test Naming
 

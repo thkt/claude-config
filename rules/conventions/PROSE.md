@@ -56,7 +56,7 @@ Do the extraction the reader would otherwise have to do. Put the central claim i
 | No nesting, no double negatives | Do not nest clauses or write double negatives. Split into short affirmative sentences                                      |
 | One name per referent           | Do not give one referent several names. Receive it with a demonstrative or repeat the same word                            |
 | One action per step line        | Write each step as one sentence, and start each line with a verb                                                           |
-| No return trips to the body     | Do not write a table whose rows require going back to the body text to read                                                |
+| No return trips to the body     | Write each table row so it reads on its own                                                                                |
 
 ## Predictable Prose
 
@@ -66,13 +66,23 @@ Write so the reader can predict the next sentence's role from the previous one. 
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Announce with connectives   | A sentence turning to contrast, concession, causation, or an example announces its role with a leading connective (in contrast, therefore, for example)              |
 | Negation after the premise  | State the content directly. When negating, first give the reason the reader would assume X                                                                           |
-| Resolve raised questions    | After stating a problem, give its cause or handling; after stating an operation, give its result in the next sentence, then move on                                  |
+| Resolve raised questions    | After stating a problem, give its cause or handling in the next sentence. After stating an operation, give its result in the next sentence. Then move on             |
 | Connect with demonstratives | When the referent is unique in the previous sentence, receive it with "that" to signal continuation. When candidates are plural, rewrite the noun                    |
 | Keep the subject            | Put a subject on any sentence where whose judgment or what action changes                                                                                            |
 | Write the action            | Make the actual action the predicate for a program, file, or test. Write "the formatter duplicates the row", not "the formatter dislikes it"                         |
 | State the real condition    | Replace alive / dead / surviving with the actual condition. Write "the hook does not fire", not "the hook is dead". Established terms such as dead code are excepted |
 | Shift the temperature       | End problem sentences so the burden shows (cannot, must), and post-improvement sentences so the relief shows (becomes able to)                                       |
 | Start from the content      | Start directly from what you want to convey. Do not stage it with "the essence is" or "the only key is"                                                              |
+
+## Decide the Job Before Writing
+
+Writing without a decided job lets the headings of the nearest existing document become the structure. This section applies to documents that have no template. DR, Issue, plan, OUTCOME, commit messages, test descriptions, and code comments are out of scope.
+
+| Decide  | Directive                                                                                                                          |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Job     | State in one sentence what this document makes hold, and put it at the top of the body. When there are two, split the document     |
+| Reader  | Who reads it, and what they already know. Keep it out of the body, and let it set where the explanation starts and what is skipped |
+| Speaker | Whose voice writes it. Keep it out of the body, and let it set the subject, the politeness, and the strength of assertion          |
 
 ## Match the Familiar Form
 

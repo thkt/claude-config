@@ -37,6 +37,8 @@ Split when any threshold is exceeded. A task whose title joins two actions with 
 | Layers    | ≥3        |
 | Lines     | ≥200      |
 
+Count Files by responsibility, not by path. A file and its translation mirror count as one, and a change and the tests covering it count as one. A repository keeping a translation mirror doubles every path, so counting paths reaches the threshold at two responsibilities and splits work that belongs together.
+
 ## Rationalization Counters
 
 | Excuse                               | Counter                                                                   |
