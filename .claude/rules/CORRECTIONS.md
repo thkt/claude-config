@@ -12,11 +12,11 @@
 
 ## 外部ツールの実測挙動
 
-| 訂正・知見                                                                                                                                                                                                                                                                                                               | 対象                                              |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
-| `suppressOutput: true` は Stop hook の `additionalContext` を隠さない。掛かるのは stdout の生表示だけで、stop_hook_summary は additionalContext を無条件に「Stop hook feedback: 」として端末へ全文描画する (claude 2.1.233)。表示は注入本文を短くするしかない                                                            | `hooks/lifecycle/reflection_ask.py`               |
-| テストが `HOME` を一時ディレクトリへ差し替えて python3 を spawn すると、mise がグローバル config を not trusted と判定して shim が exit 1 になる (mise 2026.8.6)。失敗はテスト自身の assert 文言で出て実装の欠陥に見えるので、切り分けは `HOME=$(mktemp -d) python3 <script>` を直接叩いて mise の stderr を読む         | `workflows/audit/tests/audit.seam.test.js`        |
-| Amphetamine へ `start new session` を送ると、セッション継続中でも hold を同一秒で解放して張り直す。powerd の `delayDisplayOff` が TurnedOn の間に重なると画面が落ちて即ロックされる。気付く経路は `pmset -g log` の行末 `[System:]` から `PrevDisp` が消えているかの確認で、並行する `caffeinate -di` があれば維持される | `hooks/integrations/amphetamine_agent_session.py` |
+| 訂正・知見                                                                                                                                                                                                                                                                                                       | 対象                                              |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `suppressOutput: true` は Stop hook の `additionalContext` を隠さない。掛かるのは stdout の生表示だけで、stop_hook_summary は additionalContext を無条件に「Stop hook feedback: 」として端末へ全文描画する (claude 2.1.233)。表示は注入本文を短くするしかない                                                    | `hooks/lifecycle/reflection_ask.py`               |
+| テストが `HOME` を一時ディレクトリへ差し替えて python3 を spawn すると、mise がグローバル config を not trusted と判定して shim が exit 1 になる (mise 2026.8.6)。失敗はテスト自身の assert 文言で出て実装の欠陥に見えるので、切り分けは `HOME=$(mktemp -d) python3 <script>` を直接叩いて mise の stderr を読む | `workflows/audit/tests/audit.seam.test.js`        |
+| closed display mode が有効なまま Amphetamine へ `start new session` を送ると、蓋を閉じた Mac では画面が 1 秒落ちて即ロックされる。assertion の解放は原因ではなく `PrevDisp` が立ったままでも落ちるので、切り分けは CDM の有無を変えて `Display is turned off` と張り直しの同一秒一致を数える                     | `hooks/integrations/amphetamine_agent_session.py` |
 
 ## ハーネスの教訓
 

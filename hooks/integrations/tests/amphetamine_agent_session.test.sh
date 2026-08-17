@@ -20,7 +20,6 @@ cat > "$STUB_BIN/osascript" <<'STUB'
 printf '%s\n' "$*" >> "$OSASCRIPT_LOG"
 case "$*" in
   *"session time remaining"*) printf '%s\n' "${STUB_REMAINING:--3}" ;;
-  *"session is active"*) printf '%s\n' "${STUB_SESSION_ACTIVE:-true}" ;;
 esac
 exit 0
 STUB
@@ -56,7 +55,6 @@ run_hook_payload() {
     export PATH="$STUB_BIN:$PATH"
     export OSASCRIPT_LOG="$LOG"
     export STUB_REMAINING="$remaining"
-    export STUB_SESSION_ACTIVE="${STUB_SESSION_ACTIVE:-true}"
     export CLAUDE_AMPHETAMINE_STATE_DIR="$STATE_DIR"
     export CLAUDE_AMPHETAMINE_APP="$app"
     "$HOOK" "$action"
@@ -87,20 +85,9 @@ test_acquire_starts_a_session() {
   # and an infinite session would then keep the Mac awake until someone notices.
   assert_contains "asks for a finite duration" "duration:60, interval:minutes" "$(cat "$LOG")"
   assert_contains "holds the display awake" "displaySleepAllowed:false" "$(cat "$LOG")"
-  # The options record has no field for it, so it is sent as its own command.
-  assert_contains "keeps a closed lid awake" "enable closed display mode" "$(cat "$LOG")"
-  assert_eq "one marker written" "1" "$(marker_count)"
-}
-
-test_closed_display_mode_waits_for_a_running_session() {
-  echo "T-020: With no session running after the start, it sends no closed-display command"
-  local STATE_DIR LOG
-  setup
-  # Sent with no session running, the command writes the machine-wide preference instead of
-  # the session's, and that write outlives every Claude Code process.
-  STUB_SESSION_ACTIVE=false run_hook acquire session-a -3
-  assert_contains "sends start new session" "start new session" "$(cat "$LOG")"
+  # Setting closed-display mode per session drops the display for a second with the lid shut.
   assert_not_contains "no closed-display command" "closed display mode" "$(cat "$LOG")"
+  assert_eq "one marker written" "1" "$(marker_count)"
 }
 
 test_acquire_leaves_a_foreign_session_alone() {
@@ -304,7 +291,7 @@ test_release_extends_while_a_workflow_runs() {
 }
 
 test_release_closes_when_the_bg_marker_went_stale() {
-  echo "T-018: A stale bg marker sends end session and clears the marker"
+  echo "T-024: A stale bg marker sends end session and clears the marker"
   local STATE_DIR LOG stamp
   setup
   run_hook acquire session-a -3
@@ -340,6 +327,5 @@ test_background_throttles_repeat_calls
 test_background_leaves_a_foreign_session_alone
 test_release_extends_while_a_workflow_runs
 test_release_closes_when_the_bg_marker_went_stale
-test_closed_display_mode_waits_for_a_running_session
 
 report_results
