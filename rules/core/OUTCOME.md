@@ -19,7 +19,7 @@ Run each candidate outcome statement through these checks. If any fails, rewrite
 
 ## Content
 
-Behavior follows ../conventions/PROSE.md strictly. The project's reason for being and Indicators are optional, and aspirational vague terms are permitted only in these two.
+Behavior follows `../conventions/PROSE.md` strictly. The project's reason for being and Indicators are optional, and aspirational vague terms are permitted only in these two.
 
 | Section       | What                                                                                             |
 | ------------- | ------------------------------------------------------------------------------------------------ |

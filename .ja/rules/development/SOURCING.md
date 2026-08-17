@@ -20,11 +20,11 @@ framework/library の API を書くとき、学習データの記憶は固定バ
 
 ## 適用対象
 
-framework/library の public API に依存するコードを書く局面で適用する。判断はコード片の性質で決まる。
+framework/library の public API に依存するコードを書く局面で適用する。
 
 | 適用する                                                       | 適用しない                       |
 | -------------------------------------------------------------- | -------------------------------- |
-| 外部 framework / library の signature、option 名、default 値   | 言語標準ライブラリの安定 API     |
+| 外部 framework/library の signature、option 名、default 値     | 言語標準ライブラリの安定 API     |
 | バージョン依存の挙動 (lifecycle、deprecation、breaking change) | 自プロジェクト内のコード         |
 | 記憶があいまい、または最後に確認してから時間が経った API       | バージョン非依存で自明な呼び出し |
 
@@ -34,7 +34,7 @@ framework/library の public API に依存するコードを書く局面で適�
 
 1. 固定バージョンを lockfile/manifest (package.json、Cargo.toml 等) で確認し、そのバージョンの公式 docs を `scout fetch <url>` で引く。
 2. docs の signature に従って書く。記憶と docs が食い違ったら docs を正とする。
-3. 出典 URL をコメントまたはコミットに残す。動作を左右する非自明な API に限り、自明なものへの付与は過剰。URL は docs のトップでなく該当 API のセクション/行アンカーに deep-link し、後で読む者が引用元の signature へ直接着地できるようにする。
+3. 出典 URL をコメントまたはコミットに残す。動作を左右する非自明な API に限り、自明なものへの付与は過剰。URL は docs のトップでなく該当 API のセクション/行アンカーに deep-link する。
 
 ## docs が引けないとき
 

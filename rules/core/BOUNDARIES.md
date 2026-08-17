@@ -1,6 +1,6 @@
 # Boundaries
 
-For each principle in the Priority Matrix, define only the delta from its general definition (boundaries, thresholds, default corrections). General definitions are not restated here.
+Defines the delta from the general definition (boundaries, thresholds, default corrections) for each Priority Matrix principle that carries one. General definitions are not restated here.
 
 ## Progressive Enhancement
 
@@ -8,14 +8,14 @@ Make it Work → Make it Resilient (when errors occur) → Make it Fast (when sl
 
 ## Systems Thinking
 
-A sum of local optima is not a global optimum. Judge a change by its impact on the whole system that carries the outcome, not by the locality it touches.
+A sum of local optima is not a global optimum. Judge a change by its impact on the whole system that carries the outcome.
 
 - A local metric can improve while the whole stays flat when the bottleneck is elsewhere. Identify the constraint before optimizing
 - Repeated symptomatic shortcuts atrophy the capacity for fundamental solutions (Shifting the Burden). Before choosing a fix, judge whether it reduces the need for the fundamental solution or merely defers it
 
 ## Readable Code
 
-Write for your later self and one teammate who shares the context. If shrinking the code makes it read easier, that is refinement; pursue it. If shrinking leaves code only you can decode, revert it. Carry intent in names, types, and test names, and treat comments as the last resort for the why and why-not code cannot hold. Review each comment you write against ../conventions/PROSE.md § Delete Redundant Sentences and delete any line that merely restates the code below it. When a why-not holds, keep that alone rather than pairing it with the why.
+Write for your later self and one teammate who shares the context. If shrinking the code makes it read easier, that is refinement; pursue it. If shrinking leaves code only you can decode, revert it. Carry intent in names, types, and test names, and treat comments as the last resort for the why and why-not code cannot hold. Review each comment you write against `../conventions/PROSE.md` § Delete Redundant Sentences. When a why-not holds, keep that alone rather than pairing it with the why.
 
 ## DRY
 
@@ -57,7 +57,7 @@ When two fixes under the same assumption have failed, switch from fixing the err
 Outcomes need observable signals to detect drift.
 
 - Combine result indicators (what changed) with process indicators (what was done) to resist metric gaming.
-- Indicators serve the outcome, so if a number improves while the outcome does not, the indicator is wrong.
+- If a number improves while the outcome does not, the indicator is wrong.
 - Too many indicators dilute attention, so keep them thin enough to read at a glance.
 
 ## SOLID
@@ -66,7 +66,7 @@ Premature interfaces add indirection without value, so consider adding an interf
 
 ## Overeagerness
 
-Concretizes AI-Assisted Development. Build only the deliverables the task requires, and return decisions that split opinion to the user. See YAGNI and Occam's Razor.
+Concretizes AI-Assisted Development. Build only the deliverables the task requires, and return decisions that split opinion to the user.
 
 - A bug fix changes the cause site alone, and a small feature runs on the config that already exists
 - Add comments and types to the code you changed, where the logic is non-obvious
