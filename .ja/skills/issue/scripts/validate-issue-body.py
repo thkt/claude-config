@@ -20,7 +20,7 @@ FORM_SUFFIXES = (".yml", ".yaml")
 ALLOWED_EXTRA = frozenset({"Plan", "Backlog candidates"})
 
 
-def skeleton_sections(template_text):
+def skeleton_sections(template_text: str) -> list[tuple[str, bool]]:
     """"## Template" 配下、最初のコードブロックから読む (name, optional) のペア。
 
     次の見出しまでを節の範囲とする読み方はここでは取れない。骨格そのものが "## " 見出し
@@ -33,15 +33,16 @@ def skeleton_sections(template_text):
         return []
     code_match = CODE_BLOCK.search(template_text[heading_match.end() :])
     skeleton = code_match.group(1) if code_match else ""
-    sections = []
-    for name in HEADING.findall(skeleton):
+    sections: list[tuple[str, bool]] = []
+    names: list[str] = HEADING.findall(skeleton)
+    for name in names:
         optional = bool(OPTIONAL_SUFFIX.search(name))
         bare = OPTIONAL_SUFFIX.sub("", name)
         sections.append((bare, optional))
     return sections
 
 
-def form_sections(form_text):
+def form_sections(form_text: str) -> list[tuple[str, bool]]:
     """GitHub issue form (.yml) の body 要素から読む (name, optional) のペア。
 
     フォームは Web UI からの起票で label を見出しに変える。同じ label を CLI 起票の
@@ -55,7 +56,7 @@ def form_sections(form_text):
     if body_start is None:
         return []
     entries = re.split(r"^\s*- type:\s*", form_text[body_start.end() :], flags=re.MULTILINE)[1:]
-    sections = []
+    sections: list[tuple[str, bool]] = []
     for entry in entries:
         if entry.split("\n", 1)[0].strip() == "markdown":
             continue
@@ -68,11 +69,12 @@ def form_sections(form_text):
     return sections
 
 
-def body_section_names(body_text):
-    return {OPTIONAL_SUFFIX.sub("", name) for name in HEADING.findall(body_text)}
+def body_section_names(body_text: str) -> set[str]:
+    names: list[str] = HEADING.findall(body_text)
+    return {OPTIONAL_SUFFIX.sub("", name) for name in names}
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 4:
         print("Usage: validate-issue-body.py <template-file> <title> <body-file>", file=sys.stderr)
         sys.exit(1)
@@ -82,7 +84,7 @@ def main():
     template_text = template.read_text(encoding="utf-8")
     body_text = Path(body_path).read_text(encoding="utf-8")
 
-    results = {"errors": [], "warnings": [], "checks": []}
+    results: dict[str, list[str]] = {"errors": [], "warnings": [], "checks": []}
 
     title_match = TYPE_PREFIX.match(title)
     template_type = template.stem

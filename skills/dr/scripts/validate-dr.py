@@ -25,7 +25,7 @@ REQUIRED_SECTIONS = (
 )
 
 
-def count_options(lines):
+def count_options(lines: list[str]) -> int:
     """Bullets or numbered items directly under ## Considered Options."""
     in_options = False
     count = 0
@@ -40,11 +40,11 @@ def count_options(lines):
     return count
 
 
-def lint_check(path):
+def lint_check(path: Path) -> tuple[str, str]:
     """('checks' | 'warnings', message) from markdownlint-cli2, if installed."""
     if not shutil.which("markdownlint-cli2"):
         return "checks", "markdown_lint=skipped (markdownlint-cli2 not installed)"
-    candidates = [
+    candidates: list[str | None] = [
         os.environ.get("MARKDOWNLINT_CONFIG"),
         ".markdownlint.json",
         str(Path.home() / ".claude" / ".markdownlint.json"),
@@ -56,7 +56,7 @@ def lint_check(path):
     return "warnings", "markdown_lint=issues (run markdownlint-cli2 for details)"
 
 
-def main():
+def main() -> None:
     dr_file = sys.argv[1] if len(sys.argv) > 1 else ""
     path = Path(dr_file)
     if not path.is_file():
@@ -64,7 +64,7 @@ def main():
 
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines()
-    results = {"errors": [], "warnings": [], "checks": []}
+    results: dict[str, list[str]] = {"errors": [], "warnings": [], "checks": []}
 
     for section in REQUIRED_SECTIONS:
         if re.search(rf"^#{{2,3}} {re.escape(section)}\s*$", text, flags=re.MULTILINE):
@@ -77,7 +77,7 @@ def main():
     if frontmatter:
         results["checks"].append("frontmatter=present")
         for meta in ("status", "date"):
-            raw = next((l for l in frontmatter if l.startswith(f"{meta}:")), None)
+            raw = next((line for line in frontmatter if line.startswith(f"{meta}:")), None)
             if raw:
                 results["checks"].append(f"metadata:{meta}=ok [{raw}]")
             else:
@@ -87,7 +87,7 @@ def main():
     else:
         results["warnings"].append(
             "missing_frontmatter (MADR v4 supports optional YAML frontmatter"
-            " for status/date/decision-makers)"
+            + " for status/date/decision-makers)"
         )
 
     options_count = count_options(lines)

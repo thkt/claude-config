@@ -12,21 +12,27 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import TypedDict
 
 DATE_PREFIX = re.compile(r"^\d{4}-\d{2}-\d{2}-")
 
 
-def words(text):
+class Candidate(TypedDict):
+    file: str
+    shared: int
+
+
+def words(text: str) -> set[str]:
     """text を "-" 区切りで語集合にする。"""
-    return set(w for w in text.split("-") if w)
+    return {w for w in text.split("-") if w}
 
 
-def main():
+def main() -> None:
     slug = sys.argv[1] if len(sys.argv) > 1 else ""
     search_dir = sys.argv[2] if len(sys.argv) > 2 else ""
     slug_words = words(slug)
 
-    candidates = []
+    candidates: list[Candidate] = []
     directory = Path(search_dir)
     if directory.is_dir():
         for path in directory.iterdir():

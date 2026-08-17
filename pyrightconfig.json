@@ -1,4 +1,4 @@
 {
-  "extraPaths": ["hooks/_lib", "workflows/build"],
+  "extraPaths": ["hooks/_lib", "workflows/build", "skills/dr/scripts", ".ja/skills/dr/scripts"],
   "exclude": ["**/node_modules", "**/__pycache__", "plugins"]
 }

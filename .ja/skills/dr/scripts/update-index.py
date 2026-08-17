@@ -10,6 +10,7 @@ import os
 import sys
 import tempfile
 from datetime import datetime
+from pathlib import Path
 
 from dr_common import fail, guard_skill_dir, resolve_dr_dir, split_frontmatter
 
@@ -58,31 +59,31 @@ This project uses [MADR (Markdown Any Decision Records)](https://adr.github.io/m
 """
 
 
-def parse_dr(path):
+def parse_dr(path: Path) -> tuple[str, str, str]:
     """(title, status, date) from frontmatter and the first # heading."""
     frontmatter, body = split_frontmatter(path.read_text(encoding="utf-8"))
     status = next(
-        (l.removeprefix("status:").strip().strip('"')
-         for l in frontmatter if l.startswith("status:")),
+        (line.removeprefix("status:").strip().strip('"')
+         for line in frontmatter if line.startswith("status:")),
         "",
     )
     date_str = next(
-        (l.removeprefix("date:").strip().strip('"')
-         for l in frontmatter if l.startswith("date:")),
+        (line.removeprefix("date:").strip().strip('"')
+         for line in frontmatter if line.startswith("date:")),
         "",
     )
-    title = next((l[2:] for l in body if l.startswith("# ")), "")
+    title = next((line[2:] for line in body if line.startswith("# ")), "")
     return title, status or "proposed", date_str or "Not set"
 
 
-def main():
+def main() -> None:
     dr_dir = resolve_dr_dir(sys.argv[1] if len(sys.argv) > 1 else None)
     if not dr_dir.is_dir():
         fail(f"Error: directory not found: {dr_dir}")
     guard_skill_dir(dr_dir, "Set DR_DIR env var or pass an explicit DR archive path.")
 
-    rows = []
-    by_status = {key: [] for key, _ in STATUS_SECTIONS}
+    rows: list[str] = []
+    by_status: dict[str, list[tuple[str, str]]] = {key: [] for key, _ in STATUS_SECTIONS}
     for dr_file in sorted(dr_dir.rglob("[0-9][0-9][0-9][0-9]-*.md")):
         number = dr_file.name[:4]
         title, status, date_str = parse_dr(dr_file)
@@ -106,8 +107,8 @@ def main():
     index_file = dr_dir / "README.md"
     fd, temp_path = tempfile.mkstemp(dir=dr_dir)
     with os.fdopen(fd, "w", encoding="utf-8") as temp_file:
-        temp_file.write("\n".join(parts))
-    os.replace(temp_path, index_file)
+        _ = temp_file.write("\n".join(parts))
+    _ = Path(temp_path).replace(index_file)
 
     print(index_file)
 
