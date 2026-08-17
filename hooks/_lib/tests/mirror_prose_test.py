@@ -2,9 +2,9 @@
 # setUp fills these per test, which is where a unittest fixture belongs. The rule asks for a
 # class-body assignment or __init__ instead, neither of which can hold a per-test temp dir.
 # The class-body annotations still carry the types.
-"""Tests for hooks/lib/mirror_prose.py.
+"""Tests for hooks/_lib/mirror_prose.py.
 
-Run: python3 hooks/lib/tests/mirror_prose_test.py
+Run: python3 hooks/_lib/tests/mirror_prose_test.py
 
 The unit tests fix the rule against files written here. MirrorSweep runs the same rule over
 every real .ja/ file, which the edit-time hook cannot reach.

@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import cast
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
 
 from hook_payload import deny, field, parse
 

@@ -92,7 +92,7 @@ def session_id(payload_text: str, action: str) -> str | None:
     """
     import re
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
     from hook_payload import parse
 
     payload = parse(payload_text)

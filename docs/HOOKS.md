@@ -13,7 +13,7 @@ The Rust binaries are also distributed as sentinels plugins, but registration go
 
 A hook is a shell script when its work is a few checks and a fork, and Python when the logic
 is long enough to want structure or is shared with a test. `mirror_prose_guard.py` is the second
-kind: its rule lives in `lib/mirror_prose.py` and the repository-wide sweep test imports the same
+kind: its rule lives in `_lib/mirror_prose.py` and the repository-wide sweep test imports the same
 module.
 
 A test is written in the language of the hook it covers. The ones that stay in shell are those
@@ -36,12 +36,13 @@ does to it. A reader narrows by the leading word.
 | ----------- | --------------------- | --------------------------- |
 | Python hook | `<target>_<op>.py`    | `git_sandbox_guard.py`      |
 | shell hook  | `<target>-<op>.sh`    | `failure-alert.sh`          |
-| lib module  | `<noun>.py`           | `command_scan.py`           |
+| _lib module | `<noun>.py`           | `command_scan.py`           |
 | Python test | `<hook name>_test.py` | `git_sandbox_guard_test.py` |
 | shell test  | `<hook name>.test.sh` | `failure-alert.test.sh`     |
 
-Python separates with underscores, shell with hyphens. `lib/` must use underscores since it is
-imported, and the hooks themselves import none of each other, so nothing technical binds them.
+Python separates with underscores, shell with hyphens. A module under `_lib/` is imported, so
+underscores are required between its words, and the hooks themselves import none of each other,
+so nothing technical binds them.
 They match anyway because it makes the test name land on `<hook name>_test.py`, reachable from
 the hook with no conversion in between.
 
@@ -52,7 +53,7 @@ already reads as English stays as it is (`rm_to_trash`, `body_proofread`).
 Two exceptions. Something wrapping an external app whole takes `<app>_<what it manages>`, and
 `amphetamine_agent_session` keeps "only during an agent's turn" in the name. Something a single
 word covers stays one word (`statusline`). A test covering several hooks at once carries a name
-for that group (`rust-edit.test.sh` covers the pre/post pair plus `lib/rust_target.py`).
+for that group (`rust-edit.test.sh` covers the pre/post pair plus `_lib/rust_target.py`).
 
 ## Narrowing the work
 
@@ -131,7 +132,7 @@ Hooks driving an app outside Claude Code. Each one exits 0 when the app it targe
 | ---------------------------- | ----------------------------------- | ------------ | ----------------------------------------------------------- |
 | amphetamine_agent_session.py | UserPromptSubmit, PostToolUse, Stop | fail-closed  | Hold macOS awake while a turn runs, release it when it ends |
 
-### lib/
+### _lib/
 
 Shared code the hooks pull in, never registered on its own. `japanese.py` judges the language
 itself; `mirror_prose.py` inspects what sits under `.ja/`. The first is a predicate any file can

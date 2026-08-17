@@ -1,6 +1,6 @@
-"""Tests for hooks/lib/japanese.py.
+"""Tests for hooks/_lib/japanese.py.
 
-Run: python3 hooks/lib/tests/japanese_test.py
+Run: python3 hooks/_lib/tests/japanese_test.py
 
 The threshold decides which hook fires, so the boundary is the whole behaviour: one below
 leaves a file alone and one above rewrites or warns about it.

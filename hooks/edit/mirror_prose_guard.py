@@ -11,7 +11,7 @@ that check for the sweep test, which calls it without going through settings.jso
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
 
 import mirror_prose
 

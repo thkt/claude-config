@@ -11,7 +11,7 @@ Rust バイナリは sentinels プラグインとしても配布するが、登�
 | スクリプト hooks | `~/.claude/hooks/**/*.{sh,py}` | `settings.json`                  |
 | Rust バイナリ    | `brew install thkt/tap/{tool}` | `settings.json` (コマンド直登録) |
 
-hook をシェルスクリプトで書くのは、仕事が数個の判定と 1 回の fork で済むとき。構造が要るほど処理が長いか、テストと共有するときは Python で書く。`mirror_prose_guard.py` が後者で、規則そのものは `lib/mirror_prose.py` にあり、リポジトリ一括検査のテストも同じモジュールを読む。
+hook をシェルスクリプトで書くのは、仕事が数個の判定と 1 回の fork で済むとき。構造が要るほど処理が長いか、テストと共有するときは Python で書く。`mirror_prose_guard.py` が後者で、規則そのものは `_lib/mirror_prose.py` にあり、リポジトリ一括検査のテストも同じモジュールを読む。
 
 テストは hook 本体と同じ言語で書く。シェルに残すのは、スタブとして shell script を PATH へ置くものだけで、`amphetamine_agent_session` の osascript と `rust-edit` の cargo がこれにあたる。
 
@@ -21,19 +21,19 @@ Python 側では、1 つのメソッドが最初の失敗で止まると残り�
 
 ディレクトリがイベントを答えるので、ファイル名は対象と操作を答える。形は `<対象>_<操作>` で、対象はこの hook が見るもの、操作はそれに対して何をするか。読み手は先頭の語で対象を絞り込める。
 
-| 種別           | 形                  | 例                          |
-| -------------- | ------------------- | --------------------------- |
-| Python hook    | `<対象>_<操作>.py`  | `git_sandbox_guard.py`      |
-| shell hook     | `<対象>-<操作>.sh`  | `failure-alert.sh`          |
-| lib モジュール | `<名詞>.py`         | `command_scan.py`           |
-| Python テスト  | `<hook 名>_test.py` | `git_sandbox_guard_test.py` |
-| shell テスト   | `<hook 名>.test.sh` | `failure-alert.test.sh`     |
+| 種別            | 形                  | 例                          |
+| --------------- | ------------------- | --------------------------- |
+| Python hook     | `<対象>_<操作>.py`  | `git_sandbox_guard.py`      |
+| shell hook      | `<対象>-<操作>.sh`  | `failure-alert.sh`          |
+| _lib モジュール | `<名詞>.py`         | `command_scan.py`           |
+| Python テスト   | `<hook 名>_test.py` | `git_sandbox_guard_test.py` |
+| shell テスト    | `<hook 名>.test.sh` | `failure-alert.test.sh`     |
 
-Python はアンダースコアで区切り、shell はハイフンで区切る。`lib/` は import されるのでアンダースコアが必須で、hook 本体は互いに import しないため技術的な縛りは無い。それでも揃えるのは、テスト名が `<hook 名>_test.py` で一致し、hook からテストを変換なしで引けるため。
+Python はアンダースコアで区切り、shell はハイフンで区切る。`_lib/` のモジュールは import されるので語の区切りにアンダースコアが要り、hook 本体は互いに import しないため技術的な縛りは無い。それでも揃えるのは、テスト名が `<hook 名>_test.py` で一致し、hook からテストを変換なしで引けるため。
 
 操作を表す語は、名詞としても読める語 (guard, gate, fix, index, alert, rewrite) を選ぶ。`notify` のような動詞専用の語は名前として据わりが悪い。既に英語として読める動詞句 (`rm_to_trash`, `body_proofread`) はそのまま置く。
 
-例外は 2 つ。外部アプリを丸ごと扱うものは `<アプリ名>_<管理対象>` とし、`amphetamine_agent_session` は「エージェントのターン中だけ」という限定を名前に残す。1 語で足りるものは 1 語で置く (`statusline`)。複数の hook をまとめて見るテストは、その群を表す名前を持つ (`rust-edit.test.sh` は pre/post の 2 本と `lib/rust_target.py` を見る)。
+例外は 2 つ。外部アプリを丸ごと扱うものは `<アプリ名>_<管理対象>` とし、`amphetamine_agent_session` は「エージェントのターン中だけ」という限定を名前に残す。1 語で足りるものは 1 語で置く (`statusline`)。複数の hook をまとめて見るテストは、その群を表す名前を持つ (`rust-edit.test.sh` は pre/post の 2 本と `_lib/rust_target.py` を見る)。
 
 ## 実行の絞り込み
 
@@ -103,7 +103,7 @@ Claude Code の外にあるアプリを動かす hook。対象のアプリが無
 | ---------------------------- | ----------------------------------- | ----------- | ----------------------------------------------------------- |
 | amphetamine_agent_session.py | UserPromptSubmit, PostToolUse, Stop | fail-closed | ターンが走る間 macOS を起こしたままにし、終わったら解放する |
 
-### lib/
+### _lib/
 
 hook が読み込む共有コード。単体では登録しない。`japanese.py` は言語そのものを判定し、`mirror_prose.py` は `.ja/` の中身を検査する。前者はどのファイルにも使える述語で、後者はミラーだけを対象に取る。
 
