@@ -23,7 +23,7 @@ Extract the common patterns that recur across this repository's past merged PRs/
 ## Phase 1: Preconditions and onboarding
 
 1. Check for an unmerged scribe PR with `gh pr list --label scribe --state open --limit 1`. If one exists, do not overtake it; stop and report
-2. If `docs/wiki/README.md` does not exist, create it from the template in `${CLAUDE_SKILL_DIR}/templates/readme.md` and include it in the upcoming PR
+2. If `docs/wiki/README.md` does not exist, create it from the template in ${CLAUDE_SKILL_DIR}/templates/readme.md and include it in the upcoming PR
 3. If the scribe label does not exist, create it with `gh label create scribe --description "scribe による wiki 提案"`
 
 ## Phase 2: Scope
@@ -71,7 +71,7 @@ In addition, sweep the 由来 links of every page, including existing pages. Ver
 The cap is 3 pages per run, counted as promotions + updates combined; edits to `_candidates.md`, reference repairs from `§ Phase 4: Cross-check against the latest code`, and 由来 repairs from `§ Phase 5: 由来 link judgment` do not count. Beyond the cap, prioritize by evidence count and state the leftovers in the PR body. If there is no change at all, do not create a PR. Create a PR even for candidate-only additions.
 
 1. After `git fetch origin <default branch>`, create an isolated worktree and branch `scribe/<yyyymmdd-HHMMSS>` from `origin/<default branch>`
-2. Edit `docs/wiki/` inside the worktree following the skeleton in `${CLAUDE_SKILL_DIR}/templates/page.md`, and commit with the message `docs(wiki): <pattern names, ...> を追加/更新`
+2. Edit `docs/wiki/` inside the worktree following the skeleton in ${CLAUDE_SKILL_DIR}/templates/page.md, and commit with the message `docs(wiki): <pattern names, ...> を追加/更新`
 3. Push and run `gh pr create --base <default branch>`. Title `[scribe] <pattern names, ...> を追加/更新`, label scribe
 4. In the body, write the added/promoted/updated pages, candidate additions, reference-repaired/由来-repaired pages, the range of PRs/issues read and the count of research files read, the items dropped by verification, and any leftovers
 5. Remove the worktree

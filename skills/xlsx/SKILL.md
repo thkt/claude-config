@@ -32,7 +32,7 @@ The sheet list and the fill ratio come out. The fill ratio is the share of cells
 node ${CLAUDE_SKILL_DIR}/scripts/cli.js extract <xlsx> --out <dir> [--profile <name>] [--sheet <n|name>]
 ```
 
-4. Check that nothing was lost. **Do not skip this check.** A wrong layout judgment deletes cells without raising an error, so reconciliation is the only thing that reveals it.
+4. Check that nothing was lost. Do not skip this check. A wrong layout judgment deletes cells without raising an error, so reconciliation is the only thing that reveals it.
 
 ```bash
 node ${CLAUDE_SKILL_DIR}/scripts/cli.js verify <xlsx> <dir>
@@ -61,7 +61,7 @@ Reach for `generic` first on an unknown layout. Add a profile only when you want
 
 ## What decides the approach
 
-**An intermediate file is not always needed.** When a single question is all you have, name the sheet, read it with `readXlsx`, and answer on the spot. Keep Markdown files only for repeated cross-file greps, for a human reader, or for tracking diffs in git.
+A single question needs no intermediate file. Name the sheet, read it with `readXlsx`, and answer on the spot. Keep Markdown files only for repeated cross-file greps, for a human reader, or for tracking diffs in git.
 
 The fill ratio decides what conversion buys. In a design document at 2.2% fill, one sheet came to 62,668 characters as raw JSON, 14,809 as plain CSV, and 3,287 after conversion. The gap is what the empty cells would have spent in tokens.
 

@@ -46,7 +46,7 @@ Explore、ugrep、bfs、Read を並列起動する。各コマンドと生出力
 
 発見事項にはその場でソースを書く。事実は `file:line` かコマンド出力、推論は `inferred from X`、未検証は `unknown, requires X`。これが後続 Phase と出力テンプレートの言うソース記法で、他の形式は認めない。
 
-意図が Feature planning か Bug investigation なら `Agent(subagent_type: explorer-feature)` も起動する。この起動はバックグラウンドで走るので、他の探索を続けながら完了通知を待つ。返り値は `{ findings: [{ statement: string, source: string }] }` の JSON 1 object で受け取り、受け取るまで次の Phase へ進まない。この起動条件に当たるとき、または `.codegraph/` index があるときは `${CLAUDE_SKILL_DIR}/references/tactics.md` を読み、該当する手段を適用する。締めでは `${CLAUDE_SKILL_DIR}/references/verification.md` を読み、finding の種類に該当する検証を適用する。
+意図が Feature planning か Bug investigation なら `Agent(subagent_type: explorer-feature)` も起動する。この起動はバックグラウンドで走るので、他の探索を続けながら完了通知を待つ。返り値は `{ findings: [{ statement: string, source: string }] }` の JSON 1 object で受け取り、受け取るまで次の Phase へ進まない。この起動条件に当たるとき、または `.codegraph/` index があるときは ${CLAUDE_SKILL_DIR}/references/tactics.md を読み、該当する手段を適用する。締めでは ${CLAUDE_SKILL_DIR}/references/verification.md を読み、finding の種類に該当する検証を適用する。
 
 ### ドメインスコープ
 
@@ -61,7 +61,7 @@ Explore、ugrep、bfs、Read を並列起動する。各コマンドと生出力
 
 ## Phase 5: Strong Inference (Bug investigation のみ)
 
-`~/.claude/rules/core/OPERATION.md § Debug Investigation Protocol` を適用してバグを消去する。root cause を確定したら `${CLAUDE_SKILL_DIR}/references/verification.md § Same-origin sweep` を実施する。
+`~/.claude/rules/core/OPERATION.md § Debug Investigation Protocol` を適用してバグを消去する。root cause を確定したら ${CLAUDE_SKILL_DIR}/references/verification.md § Same-origin sweep を実施する。
 
 ## Phase 6: Advisor 事前統合チェック
 
@@ -83,7 +83,7 @@ Explore、ugrep、bfs、Read を並列起動する。各コマンドと生出力
 
 ## 出力
 
-`${CLAUDE_SKILL_DIR}/templates/research.md` の骨格に従ってレポートを生成し、`${CLAUDE_SESSION_ID}` を埋めて `.claude/workspace/research/YYYY-MM-DD-<slug>.md` に保存する。
+${CLAUDE_SKILL_DIR}/templates/research.md の骨格に従ってレポートを生成し、`${CLAUDE_SESSION_ID}`を埋めて`.claude/workspace/research/YYYY-MM-DD-<slug>.md` に保存する。
 
 ## 完了条件
 

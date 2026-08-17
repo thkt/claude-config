@@ -22,7 +22,7 @@ model: opus
 
 ## 生成
 
-1. `${CLAUDE_SKILL_DIR}/templates/outcome.md` を読む
+1. ${CLAUDE_SKILL_DIR}/templates/outcome.md を読む
 2. Behavior、Non-goals、Constraints の 3 項目を AskUserQuestion 1 回で各 1 問ずつ収集する。Behavior は 1 つ以上で主体を明示する
 3. 各 Behavior をアウトカムテストに通す。fail なら書き直してユーザーに再提示する
 4. テンプレートに流し込み、`.claude/OUTCOME.md` を Write。収集しない冒頭文は書かず、Indicators はセクションごと落とす

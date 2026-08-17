@@ -27,7 +27,7 @@ commit なし、Git リポジトリでない、gh 認証失敗のいずれかを
 4. UI 変更を検出 (§ UI 変更検出)
 5. テンプレートを選ぶ (§ PR テンプレート)
 6. 選んだテンプレートに従いタイトルと本文を生成 (§ タイトルルール)
-7. `${CLAUDE_SKILL_DIR}/references/prose-review.md` と、本文言語に対応する空句ファイルの基準で本文をインライン精査する。空句ファイルは日本語なら `phrases.ja.md`、英語なら `phrases.en.md`
+7. ${CLAUDE_SKILL_DIR}/references/prose-review.md と、本文言語に対応する空句ファイルの基準で本文をインライン精査する。空句ファイルは日本語なら `phrases.ja.md`、英語なら `phrases.en.md`
 8. PR をプレビューし、AskUserQuestion で `Create this PR?` と確認する
 9. UI 変更があれば Skill で `use-workflow-pageshot` を PR 本文と共に呼ぶ (§ Pageshot 統合)
 10. 現在ブランチを push (§ Push)
@@ -67,7 +67,7 @@ BASE=${BASE:-main}
 
 ## PR テンプレート
 
-- リポジトリに PR テンプレートがあればそれを利用、なければ同梱の `${CLAUDE_SKILL_DIR}/templates/pr.md` を使う
+- リポジトリに PR テンプレートがあればそれを利用、なければ同梱の ${CLAUDE_SKILL_DIR}/templates/pr.md を使う
 - case-insensitive、`.github/pull_request_template.md` > `pull_request_template.md` > `docs/pull_request_template.md` > `PULL_REQUEST_TEMPLATE/` ディレクトリの順で優先する
 - `gh pr create` はテンプレを自動適用しないので、骨格を読み取って本文に組み込む
 - UI 変更検出時にリポジトリテンプレを採用するなら、§ Pageshot 統合が要求する 2 項目を補う

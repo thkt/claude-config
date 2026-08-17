@@ -12,11 +12,11 @@ index への書き込みは採用行の追記だけで、既存行の修正は�
 
 ## 入力
 
-監査対象の index ファイルのリポジトリ相対パスは `$ARGUMENTS` で受け取る。省略なら `docs/REFERENCE_INDEX.md` とする。行フォーマットの正は `${CLAUDE_SKILL_DIR}/references/reference-index-format.md` で、glob と description と path の 3 列、`-` 行の意味、対応 glob サブセットを定める。Phase 2 以降を適用する前に一読する。
+監査対象の index ファイルのリポジトリ相対パスは `$ARGUMENTS` で受け取る。省略なら `docs/REFERENCE_INDEX.md` とする。行フォーマットの正は ${CLAUDE_SKILL_DIR}/references/reference-index-format.md で、glob と description と path の 3 列、`-` 行の意味、対応 glob サブセットを定める。Phase 2 以降を適用する前に一読する。
 
 ## Phase 1: script 実行
 
-`node ${CLAUDE_SKILL_DIR}/scripts/check-index.js <repo root> <index path>` を実行する。`<repo root>` にはリポジトリ内の任意のパス (通常は `.`) を、`<index path>` には index ファイルのパスを渡す。script は `git ls-files` 由来の tracked file 一覧と index の各行を照合し、dangling、noMatch、unsupported、unreferenced、size、exitCode を持つ JSON を標準出力に返す。
+`node ${CLAUDE_SKILL_DIR}/scripts/check-index.js <repo root> <index path>` を実行する。`<repo root>` にはリポジトリ内の任意のパス (たとえば `.`) を、`<index path>` には index ファイルのパスを渡す。script は `git ls-files` 由来の tracked file 一覧と index の各行を照合し、dangling、noMatch、unsupported、unreferenced、size、exitCode を持つ JSON を標準出力に返す。
 
 ## Phase 2: レポート提示
 

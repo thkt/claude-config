@@ -1,6 +1,6 @@
 # 検証エラーの対処
 
-`${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py` は `{errors, warnings, checks}` を JSON で標準出力に返し、`errors` が 1 件以上あれば exit 1 で終わる。エラーは下表に従って対処し、対処後に再実行する。
+${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py は `{errors, warnings, checks}` を JSON で標準出力に返し、`errors` が 1 件以上あれば exit 1 で終わる。エラーは下表に従って対処し、対処後に再実行する。
 
 | エラー                                             | 対処                                                                                                                 |
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |

@@ -48,11 +48,11 @@ argument-hint: "[decision title]"
 
 新しい DR が既存を置き換える場合。旧 DR で変わるのは `status` と `date` のみで、決定内容はそのまま保持する。
 
-1. 通常の 5 フェーズプロセスで新規 DR を作成
+1. 5 フェーズプロセスで新規 DR を作成
 2. 新規 DR の More Information で先行 DR を引用 (例: `Supersedes DR-NNNN`)
 3. 旧 DR の `status:` を `superseded by DR-NNNN` に変更
 4. 旧 DR の `date:` を当日に更新
-5. `${CLAUDE_SKILL_DIR}/scripts/update-index.py` を実行してインデックスを更新
+5. ${CLAUDE_SKILL_DIR}/scripts/update-index.py を実行してインデックスを更新
 
 ## 決定タイプ
 
@@ -73,7 +73,7 @@ argument-hint: "[decision title]"
 | 2    | Type       | 決定の意図で決定タイプを判定し、決定タイプ表から推奨トピックを選ぶ                                                                                                                                                              |
 | 3    | References | プロジェクトドキュメント、issue、外部リソースを収集                                                                                                                                                                             |
 | 4    | Validate   | 書き込み後 `${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE"` を実行。exit 0 + 空の `errors[]` で合格。`warnings[]` は参考                                                                                                 |
-| 5    | Index      | `${CLAUDE_SKILL_DIR}/scripts/update-index.py` を実行し、index README を再生成                                                                                                                                                   |
+| 5    | Index      | ${CLAUDE_SKILL_DIR}/scripts/update-index.py を実行し、index README を再生成                                                                                                                                                   |
 
 ## エラー処理
 
@@ -97,7 +97,7 @@ argument-hint: "[decision title]"
 
 | トピック | リソース                                         |
 | -------- | ------------------------------------------------ |
-| MADR     | `${CLAUDE_SKILL_DIR}/references/madr-format.md`  |
-| Fowler   | `${CLAUDE_SKILL_DIR}/references/fowler-adr.md`   |
-| Template | `${CLAUDE_SKILL_DIR}/templates/madr-template.md` |
-| Scripts  | `${CLAUDE_SKILL_DIR}/scripts/`                   |
+| MADR     | ${CLAUDE_SKILL_DIR}/references/madr-format.md  |
+| Fowler   | ${CLAUDE_SKILL_DIR}/references/fowler-adr.md   |
+| Template | ${CLAUDE_SKILL_DIR}/templates/madr-template.md |
+| Scripts  | ${CLAUDE_SKILL_DIR}/scripts/                   |

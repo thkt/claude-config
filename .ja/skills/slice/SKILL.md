@@ -55,7 +55,7 @@ slice が生む issue には `## Plan` がまだ無く、そのまま `/build` �
 
 ### テンプレート選択
 
-`gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` で `.md` を列挙する。feature 相当のテンプレートがあればそれを、無くてテンプレートが 1 つだけならそれを骨格にし、本文を読んで先頭 frontmatter の `name`、`about`、`labels`、`title` を外す。候補が無ければ `${CLAUDE_SKILL_DIR}/../issue/templates/feature.md` を使う。
+`gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` で `.md` を列挙する。feature 相当のテンプレートがあればそれを、無くてテンプレートが 1 つだけならそれを骨格にし、本文を読んで先頭 frontmatter の `name`、`about`、`labels`、`title` を外す。候補が無ければ ${CLAUDE_SKILL_DIR}/../issue/templates/feature.md を使う。
 
 どちらの骨格を選んでも `## Parent` を先頭に、`## Blocked by` を末尾に足す。当てはまらない任意節は落とす。確信度マーキングは適用しない。Phase 3 で粒度と依存をユーザーが承認済みなので、publish するスライスに未決の判断は残らない。
 

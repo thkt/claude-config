@@ -27,7 +27,7 @@ If there are no commits, the directory is not a git repository, or gh auth fails
 4. Detect UI changes (§ UI Change Detection)
 5. Select the template (§ PR Template)
 6. Generate the title and body following the selected template (§ Title Rules)
-7. Refine the body inline against `${CLAUDE_SKILL_DIR}/references/prose-review.md` plus the empty-phrase file matching the body language: `phrases.ja.md` for Japanese, `phrases.en.md` for English
+7. Refine the body inline against ${CLAUDE_SKILL_DIR}/references/prose-review.md plus the empty-phrase file matching the body language: `phrases.ja.md` for Japanese, `phrases.en.md` for English
 8. Preview the PR, then confirm via AskUserQuestion with `Create this PR?`
 9. If UI changes, invoke `use-workflow-pageshot` via Skill with the PR body (§ Pageshot Integration)
 10. Push the current branch (§ Push)
@@ -67,7 +67,7 @@ Read the diff from § Analysis Sources to judge visual impact. Logic / type / te
 
 ## PR Template
 
-- If the repository has a PR template, use it; otherwise use the bundled `${CLAUDE_SKILL_DIR}/templates/pr.md`
+- If the repository has a PR template, use it; otherwise use the bundled ${CLAUDE_SKILL_DIR}/templates/pr.md
 - Case-insensitive, in priority order `.github/pull_request_template.md` > `pull_request_template.md` > `docs/pull_request_template.md` > a `PULL_REQUEST_TEMPLATE/` directory
 - `gh pr create` does not auto-apply the template, so read the skeleton and fold it into the body
 - When a repo template is adopted and UI changes are detected, add the 2 items § Pageshot Integration requires

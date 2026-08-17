@@ -22,7 +22,7 @@ Run `${CLAUDE_SKILL_DIR}/scripts/validate-outcome.py .claude/OUTCOME.md` and ent
 
 ## Generate
 
-1. Read `${CLAUDE_SKILL_DIR}/templates/outcome.md`
+1. Read ${CLAUDE_SKILL_DIR}/templates/outcome.md
 2. Collect Behavior, Non-goals, Constraints in one AskUserQuestion call, one question per item. Behavior needs 1 or more entries with the subject named
 3. Run each Behavior through the Outcome test; rewrite failures and re-present to the user
 4. Fill the template and Write `.claude/OUTCOME.md`. Skip the opening prose, which is not collected, and drop Indicators with its heading

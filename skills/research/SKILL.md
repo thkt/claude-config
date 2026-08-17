@@ -46,7 +46,7 @@ Launch Explore / ugrep / bfs / Read in parallel. Append each command and its raw
 
 State the source for each finding in place. Facts are `file:line` or command output, inferences `inferred from X`, unverified `unknown, requires X`. This is the source notation the later Phases and the report template refer to; no other form is accepted.
 
-For Feature planning or Bug investigation intent, also invoke `Agent(subagent_type: explorer-feature)`. The spawn runs in the background, so keep the other searches going while its completion notification is pending. Take the result as a single JSON object `{ findings: [{ statement: string, source: string }] }`, and do not move to the next Phase before it arrives. When that trigger fires, or when a `.codegraph/` index exists, read `${CLAUDE_SKILL_DIR}/references/tactics.md` and apply the tactics whose trigger matches. At the close, read `${CLAUDE_SKILL_DIR}/references/verification.md` and apply the verification matching the finding's kind.
+For Feature planning or Bug investigation intent, also invoke `Agent(subagent_type: explorer-feature)`. The spawn runs in the background, so keep the other searches going while its completion notification is pending. Take the result as a single JSON object `{ findings: [{ statement: string, source: string }] }`, and do not move to the next Phase before it arrives. When that trigger fires, or when a `.codegraph/` index exists, read ${CLAUDE_SKILL_DIR}/references/tactics.md and apply the tactics whose trigger matches. At the close, read ${CLAUDE_SKILL_DIR}/references/verification.md and apply the verification matching the finding's kind.
 
 ### Domain scoping
 
@@ -61,7 +61,7 @@ Scope by Domain per the table below. Pass the roots to Explore in its prompt, ap
 
 ## Phase 5: Strong Inference (Bug investigation only)
 
-Apply `~/.claude/rules/core/OPERATION.md § Debug Investigation Protocol` to eliminate the bug, then once the root cause is confirmed, run `${CLAUDE_SKILL_DIR}/references/verification.md § Same-origin sweep`.
+Apply `~/.claude/rules/core/OPERATION.md § Debug Investigation Protocol` to eliminate the bug, then once the root cause is confirmed, run ${CLAUDE_SKILL_DIR}/references/verification.md § Same-origin sweep.
 
 ## Phase 6: Advisor Pre-Synthesis Check
 
@@ -83,7 +83,7 @@ Skip the invocation only when all conditions hold, and record the skip reason in
 
 ## Output
 
-Generate the report following the skeleton in `${CLAUDE_SKILL_DIR}/templates/research.md`, fill in `${CLAUDE_SESSION_ID}`, and save to `.claude/workspace/research/YYYY-MM-DD-<slug>.md`.
+Generate the report following the skeleton in ${CLAUDE_SKILL_DIR}/templates/research.md, fill in `${CLAUDE_SESSION_ID}`, and save to `.claude/workspace/research/YYYY-MM-DD-<slug>.md`.
 
 ## Completion Criteria
 

@@ -1,6 +1,6 @@
 ---
 name: challenge
-description: 発見した問題が本物か、提案したアイデアが使えるかを 2 フェーズで判定する。Phase 1 は OUTCOME.md と subagent 検証と advisor 判断をループで回して証拠から分岐を自力解決し、残差は不可逆分岐だけ最小限聞き他は仮定明記で進める grill。Phase 2 は引き出した素材を critic-design 2 体 (内部攻撃 / OUTCOME.md 攻撃) に渡して devil's advocate spawn する。判定は GO / NO-GO を最上段に出す。コードレビュー findings には使わない (/audit を使用)。outcome assertion にも使わない (/assert に組み込み adversarial testing がある)。
+description: 発見した問題が本物か、提案したアイデアが使えるかを 2 フェーズで判定する。Phase 1 は OUTCOME.md と並列 subagent の証拠に対し、subagent 検証と advisor 判断をループで回して設計の分岐を自力で解決する。残る分岐のうち不可逆なものだけをユーザーへ確認し、他は仮定を明記して進める。Phase 2 は critic-design の subagent 2 体 (内部攻撃 / OUTCOME.md 攻撃) を devil's advocate として起動する。判定は GO / NO-GO を最上段に出す。コードレビューの findings には使わない (/audit を使う)。outcome の assertion にも使わない (/assert に adversarial testing が組み込まれている)。
 when_to_use: devils advocate, 反論, チャレンジ, challenge, 叩いて, 穴探し, grill me, 壁打ち
 allowed-tools: Read LS Task AskUserQuestion
 model: opus

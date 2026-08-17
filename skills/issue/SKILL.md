@@ -1,6 +1,6 @@
 ---
 name: issue
-description: Generate GitHub Issue with structured title and body. Standalone; requires no upstream stage. When challenge / research artifacts exist in the conversation, they feed the body's evidence; when a /think plan draft exists, it is transferred into the `## Plan` section. Given an issue number, it transfers a plan into a filed issue that has no Plan section.
+description: Generate GitHub Issue with structured title and body. It stands alone and requires no upstream stage. When challenge / research artifacts exist in the conversation, they feed the body's evidence. When a /think plan draft exists, it is transferred into the `## Plan` section. Given an issue number, it transfers a plan into a filed issue that has no Plan section.
 when_to_use: Issue作って, Issue書いて, Issue作成, GitHub Issue, prepare for build, Plan転記
 allowed-tools: Bash(gh:*) Bash(cat:*) Bash(ugrep:*) Read AskUserQuestion
 model: opus
@@ -80,9 +80,9 @@ When two or more criteria are each independently implementable, ask via AskUserQ
 
 ## Phase 2: Refinement
 
-1. Refine the body inline against `${CLAUDE_SKILL_DIR}/references/prose-review.md` plus the empty-phrase file matching the body language: `phrases.ja.md` for Japanese, `phrases.en.md` for English. The Plan section transferred in Phase 3 is out of scope; leave it untouched
+1. Refine the body inline against ${CLAUDE_SKILL_DIR}/references/prose-review.md plus the empty-phrase file matching the body language: `phrases.ja.md` for Japanese, `phrases.en.md` for English. The Plan section transferred in Phase 3 is out of scope; leave it untouched
 2. If a challenge verdict / findings exist in the conversation, fold only what belongs in the body, once. The verdict and findings themselves never enter the body
-3. When a plan draft exists, match the body as it stands after the preceding steps against the one plan draft you pick, per `${CLAUDE_SKILL_DIR}/references/duplication-match.md`. Pick the `/think` plan draft in the conversation when there is one, otherwise the matching file under `.claude/workspace/planning/`. Without a plan draft, skip this match
+3. When a plan draft exists, match the body as it stands after the preceding steps against the one plan draft you pick, per ${CLAUDE_SKILL_DIR}/references/duplication-match.md. Pick the `/think` plan draft in the conversation when there is one, otherwise the matching file under `.claude/workspace/planning/`. Without a plan draft, skip this match
 
 ## Phase 3: Plan Transfer
 
@@ -91,7 +91,7 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 ## Phase 4: Publishing
 
 1. Present the issue preview. Collect any inline tentative marks into a tentative block. Add no new content, mirror what the body already carries, and omit the block at zero items. Then confirm via AskUserQuestion: "Create this issue?" When there is no `## Plan` section and the extent puts it on the build workflow, add "hold the filing and draft a plan via `/think`" as an option
-2. Write the body to a temp file. Run `${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>` and handle errors per `${CLAUDE_SKILL_DIR}/references/validation-errors.md`. Once it exits 0, attach labels and run `gh issue create --title "<title>" --body-file <path>`. Write `<path>` as a literal absolute path, not a variable. The hook cannot expand a variable, and the filing stops. Capture the issue URL from its output
+2. Write the body to a temp file. Run `${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>` and handle errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md. Once it exits 0, attach labels and run `gh issue create --title "<title>" --body-file <path>`. Write `<path>` as a literal absolute path, not a variable. The hook cannot expand a variable, and the filing stops. Capture the issue URL from its output
 3. If split was approved in Phase 1, suggest running /slice with the published epic number. Do not launch it automatically
 4. For an issue that is not split, suggest the next step. Where a filed issue goes is decided by its extent: a fix confined to 1-3 files goes to `/fix <number>`; 4 or more files, or a new feature, goes to the build workflow with the number. When an issue bound for the build workflow has no Plan section, it gets a plan via `/think`, transferred by `/issue <number>`, before it is handed over, and `/qualify` inspects it before the hand-off. Launch none of them automatically
 

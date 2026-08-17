@@ -12,11 +12,11 @@ Writing to the index is limited to appending accepted rows; existing rows are ne
 
 ## Input
 
-The repo-relative path of the index file under audit comes in as `$ARGUMENTS`. Empty means `docs/REFERENCE_INDEX.md`. The row format is authoritative at `${CLAUDE_SKILL_DIR}/references/reference-index-format.md`, which defines the 3 columns glob, description, and path, the meaning of a `-` row, and the supported glob subset. Read it once before applying Phase 2 and later.
+The repo-relative path of the index file under audit comes in as `$ARGUMENTS`. Empty means `docs/REFERENCE_INDEX.md`. The row format is authoritative at ${CLAUDE_SKILL_DIR}/references/reference-index-format.md, which defines the 3 columns glob, description, and path, the meaning of a `-` row, and the supported glob subset. Read it once before applying Phase 2 and later.
 
 ## Phase 1: Run the script
 
-Run `node ${CLAUDE_SKILL_DIR}/scripts/check-index.js <repo root> <index path>`. Pass any path inside the repository (usually `.`) as `<repo root>`, and the index file's path as `<index path>`. The script matches each index row against the tracked-file list from `git ls-files` and returns JSON on stdout carrying dangling, noMatch, unsupported, unreferenced, size, and exitCode.
+Run `node ${CLAUDE_SKILL_DIR}/scripts/check-index.js <repo root> <index path>`. Pass any path inside the repository (for example `.`) as `<repo root>`, and the index file's path as `<index path>`. The script matches each index row against the tracked-file list from `git ls-files` and returns JSON on stdout carrying dangling, noMatch, unsupported, unreferenced, size, and exitCode.
 
 ## Phase 2: Present the report
 

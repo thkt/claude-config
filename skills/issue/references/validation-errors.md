@@ -1,6 +1,6 @@
 # Validation errors
 
-`${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py` reports `{errors, warnings, checks}` as JSON on stdout, and exits 1 when `errors` is non-empty. Handle each error per the table below, then re-run it.
+${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py reports `{errors, warnings, checks}` as JSON on stdout, and exits 1 when `errors` is non-empty. Handle each error per the table below, then re-run it.
 
 | Error                                              | Action                                                                                                                                                            |
 | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |

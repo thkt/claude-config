@@ -62,7 +62,7 @@ gh api repos/{owner}/{repo}/pulls/{number}/comments \
 
 ## 出力
 
-`${CLAUDE_SKILL_DIR}/templates/screening-report.md` の骨格でレポートを生成し、会話に出力する。
+${CLAUDE_SKILL_DIR}/templates/screening-report.md の骨格でレポートを生成し、会話に出力する。
 
 ## ルール
 

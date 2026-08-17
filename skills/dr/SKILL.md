@@ -46,13 +46,13 @@ Run `/challenge` before setting `status` to accepted, for a DR that carves an ex
 
 ### Supersede Procedure
 
-When a new DR replaces an existing one. Only `status` and `date` change in the old DR; decision content stays as-is.
+When a new DR replaces an existing one. Only `status` and `date` change in the old DR. Decision content stays as-is.
 
-1. Create the new DR via the normal 5-Phase Process
+1. Create the new DR via the 5-Phase Process
 2. New DR's More Information cites the predecessor (e.g. `Supersedes DR-NNNN`)
 3. In the old DR, change `status:` to `superseded by DR-NNNN`
 4. Update old DR's `date:` to today
-5. Run `${CLAUDE_SKILL_DIR}/scripts/update-index.py` to refresh the index
+5. Run ${CLAUDE_SKILL_DIR}/scripts/update-index.py to refresh the index
 
 ## Decision Type
 
@@ -73,7 +73,7 @@ The decision type only affects which recommended More Information topics to incl
 | 2    | Type       | Determine the decision type by the decision's intent and pick recommended topics from the Decision Type table                                                                                                                                                                   |
 | 3    | References | Gather project docs, issues, external resources                                                                                                                                                                                                                                 |
 | 4    | Validate   | Run `${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE"` after writing. exit 0 + empty `errors[]` = pass. `warnings[]` advisory                                                                                                                                              |
-| 5    | Index      | Run `${CLAUDE_SKILL_DIR}/scripts/update-index.py` to regenerate index README                                                                                                                                                                                                    |
+| 5    | Index      | Run ${CLAUDE_SKILL_DIR}/scripts/update-index.py to regenerate index README                                                                                                                                                                                                    |
 
 ## Error Handling
 
@@ -97,7 +97,7 @@ Each script reports its failure as JSON or on stderr. Handle them per the table.
 
 | Topic    | Resource                                         |
 | -------- | ------------------------------------------------ |
-| MADR     | `${CLAUDE_SKILL_DIR}/references/madr-format.md`  |
-| Fowler   | `${CLAUDE_SKILL_DIR}/references/fowler-adr.md`   |
-| Template | `${CLAUDE_SKILL_DIR}/templates/madr-template.md` |
-| Scripts  | `${CLAUDE_SKILL_DIR}/scripts/`                   |
+| MADR     | ${CLAUDE_SKILL_DIR}/references/madr-format.md  |
+| Fowler   | ${CLAUDE_SKILL_DIR}/references/fowler-adr.md   |
+| Template | ${CLAUDE_SKILL_DIR}/templates/madr-template.md |
+| Scripts  | ${CLAUDE_SKILL_DIR}/scripts/                   |

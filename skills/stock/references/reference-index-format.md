@@ -13,11 +13,11 @@ A row is a Markdown table row with 3 columns: `glob`/`description`/`path`.
 | - | Error-handling format convention. Whether to read it is a judgment call | docs/conventions/error-handling.md |
 ```
 
-| Column      | Meaning                                                                                                                                                              |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| glob        | The condition under which this row is injected into the implementation step. Matched against the unit's target file paths. `-` is an unconditional candidate (below) |
-| description | A one-line description. Material the implementation agent uses to judge whether to read the row                                                                      |
-| path        | The repo-relative path of the reference document to have read                                                                                                        |
+| Column      | Meaning                                                                                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| glob        | The condition under which this row is injected into the implementation step. Matched against the unit's target file paths. `-` is an unconditional candidate (§ Meaning of a `-` row) |
+| description | A one-line description. Material the implementation agent uses to judge whether to read the row                                                                                       |
+| path        | The repo-relative path of the reference document to have read                                                                                                                         |
 
 ## Table constraint
 

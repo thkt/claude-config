@@ -1,6 +1,6 @@
 ---
 name: xlsx
-description: Reads xlsx / ods / csv spreadsheets that the Read tool cannot open, converts merged-cell business documents into Markdown, and verifies that no cell was lost.
+description: Read ツールで開けない xlsx / ods / csv を読み、セル結合された業務文書を Markdown へ変換し、セルの取りこぼしが無いことを検証する。
 when_to_use: .xlsx / .xls / .ods ファイルのパスが渡された, Excel の中身を読む, スプレッドシートの内容を調べる, 設計書を読む, read an Excel file, spreadsheet contents, xlsx
 allowed-tools: Bash Read
 ---
@@ -32,7 +32,7 @@ node ${CLAUDE_SKILL_DIR}/scripts/cli.js list <xlsx>
 node ${CLAUDE_SKILL_DIR}/scripts/cli.js extract <xlsx> --out <dir> [--profile <name>] [--sheet <n|name>]
 ```
 
-4. 欠落が無いか確かめる。**この確認を飛ばさない。**書式判定を誤るとエラーを出さずにセルが消えるため、消えたかどうかは照合でしか分からない。
+4. 欠落が無いか確かめる。この確認を飛ばさない。書式判定を誤るとエラーを出さずにセルが消えるため、消えたかどうかは照合でしか分からない。
 
 ```bash
 node ${CLAUDE_SKILL_DIR}/scripts/cli.js verify <xlsx> <dir>
@@ -61,7 +61,7 @@ node ${CLAUDE_SKILL_DIR}/scripts/cli.js verify <xlsx> <dir>
 
 ## 判断の基準
 
-**中間ファイルを常に作る必要はない。**単発で内容を知りたいだけなら、`readXlsx` でシートを指定して読み、その場で答える。Markdown ファイルとして残すのは、横断 grep を繰り返すとき、人が読むとき、git で差分を追うときに限る。
+単発で内容を知りたいだけなら中間ファイルは要らない。`readXlsx` でシートを指定して読み、その場で答える。Markdown ファイルとして残すのは、横断 grep を繰り返すとき、人が読むとき、git で差分を追うときに限る。
 
 整形の効果は充填率で決まる。充填率 2.2% の設計書では、1 シートあたり生の JSON が 62,668 字、素の CSV が 14,809 字、整形後が 3,287 字だった。空セルがトークンを食う分がそのまま差になる。
 

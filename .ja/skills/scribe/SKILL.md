@@ -23,7 +23,7 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Read Write Edit LS
 ## Phase 1: 前提確認とオンボーディング
 
 1. `gh pr list --label scribe --state open --limit 1` で未マージの scribe PR を確認する。あれば追い越さず、中断して報告する
-2. `docs/wiki/README.md` が無ければ `${CLAUDE_SKILL_DIR}/templates/readme.md` のテンプレートで作成し、後続の PR に含める
+2. `docs/wiki/README.md` が無ければ ${CLAUDE_SKILL_DIR}/templates/readme.md のテンプレートで作成し、後続の PR に含める
 3. scribe ラベルが無ければ `gh label create scribe --description "scribe による wiki 提案"` で作成する
 
 ## Phase 2: スコープ決定
@@ -71,7 +71,7 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Read Write Edit LS
 上限は 1 回あたり最大 3 ページで、昇格 + 更新の合計として数え、`_candidates.md` の編集、`§ Phase 4: 最新コードとの突き合わせ` の参照修理、`§ Phase 5: 由来リンクの判定` の由来修理は数えない。超過分は根拠件数の多い順に優先し、残しを PR 本文に明記する。変更が何も無ければ PR を作らない。候補追記のみでも PR を作る。
 
 1. `git fetch origin <デフォルトブランチ>` の後、`origin/<デフォルトブランチ>` から隔離 worktree とブランチ `scribe/<yyyymmdd-HHMMSS>` を作る
-2. worktree 内で `${CLAUDE_SKILL_DIR}/templates/page.md` の骨格に従って `docs/wiki/` を編集し、メッセージ `docs(wiki): <共通項名, ...> を追加/更新` でコミットする
+2. worktree 内で ${CLAUDE_SKILL_DIR}/templates/page.md の骨格に従って `docs/wiki/` を編集し、メッセージ `docs(wiki): <共通項名, ...> を追加/更新` でコミットする
 3. push して `gh pr create --base <デフォルトブランチ>` を実行する。タイトル `[scribe] <共通項名, ...> を追加/更新`、ラベル scribe
 4. 本文には追加/昇格/更新したページ、候補への追記、参照修理/由来修理したページ、読んだ PR/issue の範囲と research の件数、検証で落とした項目、打ち切った残しを書く
 5. worktree を削除する

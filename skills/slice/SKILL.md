@@ -55,7 +55,7 @@ On approval, publish in dependency order with blockers first. Create blockers fi
 
 ### Template selection
 
-Enumerate `.md` files via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'`. Take the feature-equivalent template if one exists, or the only template if there is exactly one, and strip its leading `name`, `about`, `labels`, and `title` frontmatter to get the skeleton. With no candidate, use `${CLAUDE_SKILL_DIR}/../issue/templates/feature.md`.
+Enumerate `.md` files via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'`. Take the feature-equivalent template if one exists, or the only template if there is exactly one, and strip its leading `name`, `about`, `labels`, and `title` frontmatter to get the skeleton. With no candidate, use ${CLAUDE_SKILL_DIR}/../issue/templates/feature.md.
 
 Whichever skeleton wins, add `## Parent` at the top and `## Blocked by` at the bottom. Drop the optional sections that do not apply. Confidence marking does not apply: Phase 3 already had the user approve granularity and dependencies, so a published slice carries no open decisions.
 

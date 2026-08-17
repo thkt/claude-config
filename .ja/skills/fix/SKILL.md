@@ -11,7 +11,7 @@ argument-hint: "[bug or issue description]"
 
 ## 入力
 
-`$ARGUMENTS` は次の 4 形式のいずれか。バグ説明。`/audit` が `${CLAUDE_SKILL_DIR}/../../history/` に作成した snapshot の finding ID (例: `RC-001`, `SEC-003`)。audit workflow 単体実行が返した finding そのもの。起票済み issue の番号。対象は十分に理解できている 1〜3 ファイル規模の問題に限る。Finding 直接入力に複数件が渡されたら、severity 降順に 1 件ずつ直す。影響が 4 ファイル以上に及ぶ場合は先に § エスカレーションの複数ファイル判定を確認する。
+`$ARGUMENTS` は次の 4 形式のいずれか。バグ説明。`/audit` が ${CLAUDE_SKILL_DIR}/../../history/ に作成した snapshot の finding ID (例: `RC-001`, `SEC-003`)。audit workflow 単体実行が返した finding そのもの。起票済み issue の番号。対象は十分に理解できている 1〜3 ファイル規模の問題に限る。Finding 直接入力に複数件が渡されたら、severity 降順に 1 件ずつ直す。影響が 4 ファイル以上に及ぶ場合は先に § エスカレーションの複数ファイル判定を確認する。
 
 | パターン                                        | モード           | 動作                                                                                                                                                                     |
 | ----------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -28,7 +28,7 @@ argument-hint: "[bug or issue description]"
 | Skill     | `use-context-root-cause-analysis`                    | 非自明バグへの 5 Whys                       |
 | Agent     | `generator-test`                                     | symptom + 再現手順から regression test 生成 |
 | Agent     | `resolver-build`                                     | TypeScript やビルドエラーの triage          |
-| Reference | `${CLAUDE_SKILL_DIR}/references/defense-in-depth.md` | Recurring / Systematic への多層検証         |
+| Reference | ${CLAUDE_SKILL_DIR}/references/defense-in-depth.md | Recurring / Systematic への多層検証         |
 
 ## アウトカム参照
 
@@ -66,7 +66,7 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 3. 完了通知を受け取ってから、regression test が Red であることを確認する
 4. 修正を適用
 5. regression test が Green、他のテストに regression がないことを確認
-6. Pattern が Recurring または Systematic なら `${CLAUDE_SKILL_DIR}/references/defense-in-depth.md` を適用
+6. Pattern が Recurring または Systematic なら ${CLAUDE_SKILL_DIR}/references/defense-in-depth.md を適用
 
 ## エスカレーション
 

@@ -62,7 +62,7 @@ gh api repos/{owner}/{repo}/pulls/{number}/comments \
 
 ## Output
 
-Generate the report from the `${CLAUDE_SKILL_DIR}/templates/screening-report.md` skeleton and emit it to the conversation.
+Generate the report from the ${CLAUDE_SKILL_DIR}/templates/screening-report.md skeleton and emit it to the conversation.
 
 ## Rules
 
