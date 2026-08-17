@@ -2,6 +2,8 @@
 
 Phase 2 scans file patterns. Phase 3 commit-message mining and Phase 4 document-prose extraction scan decision verbs.
 
+## Filename patterns
+
 | Filename pattern                                                     | Likely content                       |
 | -------------------------------------------------------------------- | ------------------------------------ |
 | `README.md`                                                          | Design intent, naming, prohibitions  |
