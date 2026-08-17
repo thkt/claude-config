@@ -303,7 +303,7 @@ class TestIssueBodyGate(unittest.TestCase):
         stage = Path(tempfile.mkdtemp(dir=self.root))
         (stage / "hooks" / "pre-bash").mkdir(parents=True)
         (stage / "skills" / "issue" / "templates").mkdir(parents=True)
-        _ = shutil.copytree(ROOT / "hooks" / "lib", stage / "hooks" / "lib")
+        _ = shutil.copytree(ROOT / "hooks" / "_lib", stage / "hooks" / "_lib")
         _ = shutil.copy(
             ROOT / "skills" / "issue" / "templates" / "bug.md",
             stage / "skills" / "issue" / "templates" / "bug.md",

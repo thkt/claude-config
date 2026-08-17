@@ -1,6 +1,6 @@
-"""Tests for hooks/lib/command_scan.py.
+"""Tests for hooks/_lib/command_scan.py.
 
-Run: python3 hooks/lib/tests/command_scan_test.py
+Run: python3 hooks/_lib/tests/command_scan_test.py
 """
 
 import sys

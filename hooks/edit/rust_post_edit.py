@@ -7,7 +7,7 @@ The pre-edit run cannot see what the edit itself broke.
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
 
 import rust_target
 

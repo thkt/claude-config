@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, NamedTuple
 # The heavy ones are imported where they are used, not here: this hook fires for every Bash
 # call and turns most of them away in main's first check. `json` stays up here because
 # deferring it buys nothing measurable.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
 
 if TYPE_CHECKING:
     import gh_filing
