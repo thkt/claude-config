@@ -4,7 +4,7 @@
 
 ## テンプレート
 
-`{...}` は検出事項から置換する。enum セルは、`/` 区切りの選択肢から該当値を選ぶ。DR Promotion Candidates の 3 行は challenge 判定と Final の対応例で、keep は DR、downgrade は inline-comment、drop は skip に対応する。候補ごとに該当する 1 行を書く。
+`{...}` は検出事項から置換する。enum セルは、`/` 区切りの選択肢から該当値を選ぶ。DR Promotion Candidates の 3 行は challenge 判定と Final の対応例で、候補ごとに該当する 1 行を書く。
 
 ```markdown
 # DR Gaps Audit: {YYYY-MM-DD}-{HHMMSS}
@@ -22,8 +22,6 @@
 | DR promotion candidates | {N}           |
 
 ## Source File Decisions
-
-<!-- ### は判断のあるファイルにのみ立てる。判断のないファイルは末尾の 1 行に束ねる。 -->
 
 ### {file} ({N} lines)
 

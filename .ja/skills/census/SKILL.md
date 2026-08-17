@@ -11,11 +11,11 @@ argument-hint: "[file or directory]"
 
 ## 入力
 
-`$ARGUMENTS` は監査スコープを表す任意のパス。引数なしならリポジトリ全体、ファイルパスならそのファイル単体、ディレクトリパスならその subtree に絞る。ソースファイル単体のときは Phase 2 をスキップする。スコープを限定したときは、レポート Summary の Scope 行に対象を記録する。
+`$ARGUMENTS` は監査スコープを表す任意のパス。引数なしならリポジトリ全体、ファイルパスならそのファイル単体、ディレクトリパスならその subtree に絞る。スコープを限定したときは、レポート Summary の Scope 行に対象を記録する。
 
 ## 判定基準
 
-impact/reversibility、incomplete-contract の定義、DR 化価値の経験則、challenge 観点の判定基準はすべて ${CLAUDE_SKILL_DIR}/references/decision-criteria.md にある。各 Phase はこれを基準として適用する。
+impact/reversibility、incomplete-contract の定義、DR 化価値の経験則、challenge 観点の判定基準はすべて ${CLAUDE_SKILL_DIR}/references/decision-criteria.md にある。
 
 ## Phase 1: ソースファイル列挙
 
@@ -78,17 +78,17 @@ REPORT="docs/audit/${STAMP}-dr-gaps.md"
 
 - challenge 後の `keep` 候補のみ表示し、各候補を `/dr` で起票するか `/issue` で単一の追跡 issue にまとめる
 - `downgrade` 候補はコメント強化タスクとしてリストする。`drop` 候補はレポートに記録するのみで後続にしない
-- 本 skill は発掘と候補化のみ。DR 起草は `/dr`、既存 DR の drift スキャンは `/adrift`、実コード修正と README 更新は範囲外
+- DR 起草は `/dr`、既存 DR の drift スキャンは `/adrift` が担う。実コード修正と README 更新は範囲外
 - DR が既にあるリポジトリでは `/adrift` を先に実行し、drift で拾えないギャップをこの skill で発掘する
 
 ## 完了条件
 
 以下をすべて満たしたときのみ終了する。満たせない項目は理由をレポートに記録する。
 
-| 項目           | 条件                                                                    |
-| -------------- | ----------------------------------------------------------------------- |
-| レポート       | `docs/audit/<YYYY-MM-DD>-<HHMMSS>-dr-gaps.md` が存在                    |
-| ソースファイル | レビューした各ファイルを記載。判断なしは末尾 1 行に束ねてよい           |
-| ドキュメント   | スキャンした各ドキュメントに抽出セクション。"no decisions found" でも可 |
-| タグ           | 各候補に impact と reversibility が付与                                 |
-| DR 化候補      | 末尾に一行の根拠付きでリスト                                            |
+| 項目           | 条件                                                 |
+| -------------- | ---------------------------------------------------- |
+| レポート       | `docs/audit/<YYYY-MM-DD>-<HHMMSS>-dr-gaps.md` が存在 |
+| ソースファイル | レビューした各ファイルを記載                         |
+| ドキュメント   | スキャンした各ドキュメントに抽出セクション           |
+| タグ           | 各候補に impact と reversibility が付与              |
+| DR 化候補      | 末尾に一行の根拠付きでリスト                         |

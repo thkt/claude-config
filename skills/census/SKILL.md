@@ -11,11 +11,11 @@ argument-hint: "[file or directory]"
 
 ## Input
 
-`$ARGUMENTS` is an optional path naming the audit scope. No argument means the whole repository, a file path mines that file alone, and a directory path limits the scope to that subtree. Skip Phase 2 when the target is a single source file. When scoped to a path, record the target in the report Summary's Scope row.
+`$ARGUMENTS` is an optional path naming the audit scope. No argument means the whole repository, a file path mines that file alone, and a directory path limits the scope to that subtree. When scoped to a path, record the target in the report Summary's Scope row.
 
 ## Decision Criteria
 
-Impact / reversibility, the incomplete-contract definition, the DR-worth rule of thumb, and the challenge angles all live in ${CLAUDE_SKILL_DIR}/references/decision-criteria.md. Each phase applies it as the basis for judgment.
+Impact / reversibility, the incomplete-contract definition, the DR-worth rule of thumb, and the challenge angles all live in ${CLAUDE_SKILL_DIR}/references/decision-criteria.md.
 
 ## Phase 1: Source File Listing
 
@@ -78,17 +78,17 @@ REPORT="docs/audit/${STAMP}-dr-gaps.md"
 
 - Print only the post-challenge `keep` candidates and offer `/dr` for each, or aggregate them into a single tracking issue via `/issue`
 - List `downgrade` candidates as comment-strengthening tasks. Record `drop` candidates in the report only, not as follow-up
-- This skill only mines and nominates. DR drafting goes to `/dr`, drift scan against existing DRs to `/adrift`, code changes and README updates are out of scope
+- DR drafting goes to `/dr` and the drift scan against existing DRs to `/adrift`. Code changes and README updates are out of scope
 - In a repo that already has DRs, run `/adrift` first, then use this skill to mine the gaps drift cannot see
 
 ## Completion Criteria
 
 Finish only when all of the following hold. Record the reason for any unmet item in the report.
 
-| Item        | Condition                                                                            |
-| ----------- | ------------------------------------------------------------------------------------ |
-| Report      | `docs/audit/<YYYY-MM-DD>-<HHMMSS>-dr-gaps.md` exists                                 |
-| Source file | Every reviewed file is accounted for. No-decision files may be batched into one line |
-| Document    | Every scanned document has an extraction section. "no decisions found" is acceptable |
-| Tags        | Every candidate has impact + reversibility                                           |
-| Candidates  | DR promotion candidates listed at the end with a one-line rationale                  |
+| Item        | Condition                                                           |
+| ----------- | ------------------------------------------------------------------- |
+| Report      | `docs/audit/<YYYY-MM-DD>-<HHMMSS>-dr-gaps.md` exists                |
+| Source file | Every reviewed file is accounted for                                |
+| Document    | Every scanned document has an extraction section                    |
+| Tags        | Every candidate has impact + reversibility                          |
+| Candidates  | DR promotion candidates listed at the end with a one-line rationale |

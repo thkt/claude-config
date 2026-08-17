@@ -4,7 +4,7 @@ The skeleton that `/census` Phase 6 emits. Repeat the Source File Decisions `###
 
 ## Template
 
-Substitute `{...}` from findings. For enum cells, pick the matching value from the `/`-separated choices. The three DR Promotion Candidates rows show the challenge-verdict to Final mapping: keep is DR, downgrade is inline-comment, drop is skip. Write the one matching row per candidate.
+Substitute `{...}` from findings. For enum cells, pick the matching value from the `/`-separated choices. The three DR Promotion Candidates rows show the challenge-verdict to Final mapping. Write the one matching row per candidate.
 
 ```markdown
 # DR Gaps Audit: {YYYY-MM-DD}-{HHMMSS}
@@ -22,8 +22,6 @@ Substitute `{...}` from findings. For enum cells, pick the matching value from t
 | DR promotion candidates | {N}           |
 
 ## Source File Decisions
-
-<!-- Add a ### only for files with decisions. Batch files with none into one trailing line. -->
 
 ### {file} ({N} lines)
 
