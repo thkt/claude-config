@@ -62,16 +62,13 @@ def _amph(app_command: str) -> str:
 
 def start_session() -> None:
     """The only place a session is issued: release's ownership test assumes the length."""
+    # Closed-display mode stays Amphetamine's own preference. Setting it per session drops the
+    # display for a second on every swap when the lid is shut.
     options = (
         f"duration:{SESSION_MINUTES}, interval:minutes, "
         + f"displaySleepAllowed:{DISPLAY_SLEEP_ALLOWED}"
     )
     _ = _amph(f"start new session with options {{{options}}}")
-    # The options record carries no closed-display flag, so it is set on the running session.
-    # Sent with no session running, the same command writes the machine-wide preference, which
-    # would outlive every Claude Code process.
-    if _amph("session is active") == "true":
-        _ = _amph("enable closed display mode")
 
 
 def remaining() -> int | None:
