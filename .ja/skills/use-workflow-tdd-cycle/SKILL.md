@@ -4,7 +4,6 @@ description: RGRC サイクルと Baby Steps による TDD。
 when_to_use: TDD, テスト駆動, Red-Green-Refactor, Baby Steps
 allowed-tools: Read Write Edit Bash(ugrep:*) Bash(bfs:*)
 context: fork
-background: false
 user-invocable: false
 ---
 

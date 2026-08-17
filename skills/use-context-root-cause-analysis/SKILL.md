@@ -4,7 +4,6 @@ description: Root cause analysis with 5 Whys.
 when_to_use: root cause, 5 Whys, なぜなぜ分析, 根本原因, 原因分析, symptom fix, 対症療法
 allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
 context: fork
-background: false
 user-invocable: false
 ---
 

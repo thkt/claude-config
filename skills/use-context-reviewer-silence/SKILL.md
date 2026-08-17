@@ -5,7 +5,6 @@ when_to_use: silent failure, empty catch, エラーハンドリング, 握りつ
 allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
 agent: reviewer-silence
 context: fork
-background: false
 user-invocable: false
 ---
 

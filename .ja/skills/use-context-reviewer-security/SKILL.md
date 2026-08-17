@@ -5,7 +5,6 @@ when_to_use: security, OWASP, XSS, SQL injection, prompt injection, LLM security
 allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
 agent: reviewer-security
 context: fork
-background: false
 user-invocable: false
 ---
 
@@ -41,7 +40,7 @@ LLM01 は信頼できないコンテンツを LLM に渡すアプリを対象と
 
 ## 報告
 
-重大度スケールは critical / high / medium。常に `file:line` を含める。独立した脆弱性はそれぞれ個別の finding として報告する。1 つのファイルに別個の問題が 2 つある場合 (例: path traversal と別の prompt injection)、一方を他方の注記に畳み込まず、両方を別々の finding として列挙する。
+重大度スケールは critical/high/medium。常に `file:line` を含める。独立した脆弱性はそれぞれ個別の finding として報告する。1 つのファイルに別個の問題が 2 つある場合 (例: path traversal と別の prompt injection)、一方を他方の注記に畳み込まず、両方を別々の finding として列挙する。
 
 | シグナル         | 重大度   | 必須出力                          |
 | ---------------- | -------- | --------------------------------- |

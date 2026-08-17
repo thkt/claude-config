@@ -5,7 +5,6 @@ when_to_use: 調査して, 調べて, リサーチ, investigate, 分析して, i
 allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Agent AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) Bash($HOME/.claude/skills/research/scripts/*)
 model: opus
 context: fork
-background: false
 argument-hint: "[research subject or question]"
 ---
 
