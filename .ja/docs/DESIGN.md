@@ -12,6 +12,7 @@ graph TD
         OPS[OPERATION]
         PFL[PREFLIGHT]
         OUT[OUTCOME]
+        BND[BOUNDARIES]
     end
 
     subgraph Principles["Design Principles"]
@@ -21,11 +22,15 @@ graph TD
     subgraph Development["Development Layer"]
         TEST[TESTING]
         TIDY[TIDYINGS]
+        E2E[E2E]
+        SRC[SOURCING]
         PROG[PRINCIPLES.md#Progressive Enhancement]
     end
 
     subgraph Conventions["Conventions Layer"]
         MD[MARKDOWN]
+        MIR[MIRROR]
+        WF[WORKFLOWS]
         SKILL[SKILLS]
         SUB[SUBAGENT]
         PLUG[PLUGIN]
@@ -43,11 +48,12 @@ graph TD
 
 最優先のルール。AI の暴走を防ぎ、ユーザーに状況を伝える。
 
-| ファイル                                | 意図             | 主な仕組み                                    |
-| --------------------------------------- | ---------------- | --------------------------------------------- |
-| [OPERATION](../rules/core/OPERATION.md) | 安全性の確保     | `rm` 禁止 → `mv ~/.Trash/`、破壊的操作の確認  |
-| [PREFLIGHT](../rules/core/PREFLIGHT.md) | タスク確認の統一 | Rationalization counter、分割閾値、完了の定義 |
-| [OUTCOME](../rules/core/OUTCOME.md)     | 成果状態の可視化 | Outcome test、更新トリガー                    |
+| ファイル                                  | 意図             | 主な仕組み                                    |
+| ----------------------------------------- | ---------------- | --------------------------------------------- |
+| [OPERATION](../rules/core/OPERATION.md)   | 安全性の確保     | `rm` 禁止 → `mv ~/.Trash/`、破壊的操作の確認  |
+| [PREFLIGHT](../rules/core/PREFLIGHT.md)   | タスク確認の統一 | Rationalization counter、分割閾値、完了の定義 |
+| [OUTCOME](../rules/core/OUTCOME.md)       | 成果状態の可視化 | Outcome test、更新トリガー                    |
+| [BOUNDARIES](../rules/core/BOUNDARIES.md) | 原則の適用境界   | 一般定義からの差分 (閾値、既定の修正)         |
 
 設計理由:
 
@@ -66,11 +72,13 @@ graph TD
 原則の階層:
 
 ```text
-Occam's Razor (Meta. すべての複雑性に問いを立てる)
+Foundation (Outcome-driven / Backcasting)
     ↓
-Progressive Enhancement / Readable Code / DRY (Universal)
+Critical (Occam's Razor / Progressive Enhancement / Systems Thinking)
     ↓
-TDD / SOLID / YAGNI (Contextual)
+Default (Readable Code / TDD / DRY / YAGNI Boundary ほか)
+    ↓
+Contextual (SOLID / Law of Demeter / TIDYINGS ほか)
 ```
 
 衝突解決の例:
@@ -85,11 +93,13 @@ TDD / SOLID / YAGNI (Contextual)
 
 日々の開発のための具体的な基準。
 
-| ファイル                                                        | 意図                     | 主な閾値                           |
-| --------------------------------------------------------------- | ------------------------ | ---------------------------------- |
-| [TESTING](../rules/development/TESTING.md)                      | カバレッジの観点と質     | delta-based gate、優先領域別の深度 |
-| [TIDYINGS](../rules/development/TIDYINGS.md)                    | クリーンアップの範囲制限 | 振る舞い変更なし、編集ファイル限定 |
-| [PRINCIPLES.md#Progressive Enhancement](../rules/PRINCIPLES.md) | 段階的構築               | CSS-First、Outcome-First           |
+| ファイル                                                        | 意図                     | 主な閾値                               |
+| --------------------------------------------------------------- | ------------------------ | -------------------------------------- |
+| [TESTING](../rules/development/TESTING.md)                      | カバレッジの観点と質     | delta-based gate、優先領域別の深度     |
+| [TIDYINGS](../rules/development/TIDYINGS.md)                    | クリーンアップの範囲制限 | 振る舞い変更なし、編集ファイル限定     |
+| [E2E](../rules/development/E2E.md)                              | E2E suite の範囲制限     | 主要経路に限った小さな suite           |
+| [SOURCING](../rules/development/SOURCING.md)                    | 出典に基づく API 記述    | 固定バージョンの公式ドキュメントを優先 |
+| [PRINCIPLES.md#Progressive Enhancement](../rules/PRINCIPLES.md) | 段階的構築               | CSS-First、Outcome-First               |
 
 AI 失敗パターン (インライン):
 
@@ -113,7 +123,7 @@ AI 失敗パターン (インライン):
 | ---------------------------------------------- | -------------------------- |
 | [MARKDOWN](../rules/conventions/MARKDOWN.md)   | Markdown 規約              |
 | [MIRROR](../rules/conventions/MIRROR.md)       | `.ja/` 正のミラー運用      |
-| [WORKFLOWS](../rules/conventions/WORKFLOWS.md) | Workflow script の規約     |
+| [WORKFLOWS](../rules/conventions/WORKFLOWS.md) | Workflow スクリプトの規約  |
 | [SKILLS](../rules/conventions/SKILLS.md)       | Skill 定義の標準           |
 | [SUBAGENT](../rules/conventions/SUBAGENT.md)   | サブエージェント定義の標準 |
 | [PLUGIN](../rules/conventions/PLUGIN.md)       | プラグイン制約             |
@@ -121,7 +131,7 @@ AI 失敗パターン (インライン):
 
 設計理由:
 
-- 部分読み取りの問題を避けるため、参照深度を制限 (Skills 1 階層、Rules 3 階層)
+- 参照深度を制限 (Skills 1 階層、Rules 3 階層)。階層が増えるほど読むファイルが増える
 - 翻訳内容の差を許容しつつ EN/JP の構造を揃える
 
 ### 5. Workflows Layer. ユーザー インターフェース
@@ -143,7 +153,7 @@ flowchart LR
     end
 ```
 
-Feature Development の詳細 (build の 7 stage、停止条件、統治 DR) は[COMMANDS](./COMMANDS.md)が持つ。
+Feature Development の詳細 (build の 7 つの stage、停止条件、統治 DR) は[COMMANDS](./COMMANDS.md)が持つ。
 
 ## 根底の哲学
 
@@ -171,4 +181,4 @@ Feature Development の詳細 (build の 7 stage、停止条件、統治 DR) は
 
 ---
 
-_設定の「なぜ」を説明する。「使い方」については[README.md](../README.md)を参照。_
+_「使い方」については[README.md](../README.md)を参照。_

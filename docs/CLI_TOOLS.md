@@ -51,7 +51,7 @@ The canonical reference is the use-cli-scout skill and `scout --help`. The table
 
 ### When to Use
 
-Reach for scout for anything on the web. It covers latest docs, release notes, and GitHub repo exploration, and `scout research` handles a compiled multi-page report. When scout cannot read the source, treat that API usage or claim as `unverified` (rules/development/SOURCING.md).
+Reach for scout for anything on the web. It covers latest docs, release notes, and GitHub repo exploration, and `scout research` handles a compiled multi-page report. When scout cannot read the source, treat that API usage or claim as `unverified` ([SOURCING.md](../rules/development/SOURCING.md)).
 
 ## recall
 
@@ -66,6 +66,8 @@ index).
 | Source  | [thkt/recall](https://github.com/thkt/recall)       |
 
 ### Commands
+
+The canonical reference is the use-cli-recall skill and `recall --help`. The table below is an excerpt.
 
 | Command                                   | Purpose                            |
 | ----------------------------------------- | ---------------------------------- |
@@ -90,6 +92,8 @@ Semantic search and read-only retrieval for esa posts. `settings.json` permits
 the read-only `search`, `status`, and `get` commands.
 
 ### Commands
+
+The canonical reference is `sae --help`. The table below lists the three read-only commands `settings.json` permits.
 
 | Command              | Purpose                            |
 | -------------------- | ---------------------------------- |

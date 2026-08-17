@@ -8,10 +8,10 @@ Claude AI のためのカスタムコマンド、開発原則、ワークフロ�
 
 このリポジトリは Claude AI のパーソナル設定を含み、以下を提供する。
 
-- 体系的な開発ワークフローのためのカスタムスラッシュコマンド (26 skills)
-- コードレビュー、生成、分析のための専門 AI エージェント (27 agents)
+- 体系的な開発ワークフローのためのカスタムスラッシュコマンド (28 skills)
+- コードレビュー、生成、分析のための専門 AI エージェント (28 agents)
 - AI 動作のコア原則と開発のベストプラクティス
-- 品質パイプラインフック (guardrails, formatter, gates) と dormant な reviews コマンド
+- 品質パイプラインフック (guardrails, formatter, gates) と未配線の reviews コマンド
 - 日本語サポート
 
 ## 📁 構造
@@ -24,12 +24,12 @@ Claude AI のためのカスタムコマンド、開発原則、ワークフロ�
 │   ├── core/             # AI 動作のコア原則
 │   ├── conventions/      # ドキュメント規約
 │   └── development/      # 開発パターン・方法論
-├── skills/               # スキルベースのナレッジモジュール (26 skills)
-├── agents/               # 専門 AI エージェント (27 agents)
+├── skills/               # スキルベースのナレッジモジュール (28 skills)
+├── agents/               # 専門 AI エージェント (28 agents)
 │   ├── critics/          # 発見事項への反論 (devils-advocate)
 │   ├── enhancers/        # コード改善・簡素化
 │   ├── explorers/        # コードベース探索
-│   ├── generators/       # テスト生成 (generator-test のみ)
+│   ├── generators/       # テスト・スナップショット生成
 │   ├── resolvers/        # ビルドエラー解決
 │   └── reviewers/        # コードレビュー (18 reviewers)
 ├── docs/                 # 設計ドキュメント・ガイド (decisions/ に DR)
@@ -65,7 +65,7 @@ Claude AI のためのカスタムコマンド、開発原則、ワークフロ�
 
 利用可能なプラグイン:
 
-- build: 自己完結の開発ワークフロー一式。install 時にリポジトリ全体を一度 clone し、全 skill/agent/workflow を build: namespace でロードする。/issue で起票した issue の番号を build workflow に渡す。build は Load/Revalidate/Branch/Code/Cleanup/Verify/Ship を実行して draft PR を作る。/audit と/polish は draft PR に対して人間が個別に起動する。同梱対象は planning 系 (/think,/research,/slice,/outcome)、reviewer/critic エージェント、code/audit/polish/shake/assert/adrift workflow。git 系 (/commit,/checkout,/pr) と/dr、/census も含む
+- build: 自己完結の開発ワークフロー一式。install 時にリポジトリ全体を一度 clone し、全 skill/agent/workflow を build: namespace でロードする。`/issue` で起票した issue の番号を build workflow に渡す。build は Load/Revalidate/Branch/Code/Cleanup/Verify/Ship を実行して draft PR を作る。`/audit` と `/polish` は draft PR に対して人間が個別に起動する。同梱対象は planning 系 (`/think`, `/research`, `/slice`, `/outcome`)、reviewer/critic エージェント、code/audit/polish/shake/assert/adrift workflow。git 系 (`/commit`, `/checkout`, `/pr`) と `/dr`, `/census` も含む。
 
 ### Option 2: 手動インストール (フル設定)
 
@@ -154,25 +154,32 @@ brew install guardrails formatter reviews gates
 | ---------- | ----------- | ------------------ | ------------------------------------ |
 | guardrails | PreToolUse  | Write/Edit 前      | Lint (oxlint) + セキュリティチェック |
 | formatter  | PostToolUse | Write/Edit 後      | 自動整形 (oxfmt)                     |
-| reviews    | 未配線      | 自動実行なし       | 静的解析コマンド (dormant)           |
+| reviews    | 未配線      | 自動実行なし       | 静的解析コマンド                     |
 | gates      | PostToolUse | Write/Edit/Bash 後 | 品質ゲート (knip, tsgo, madge)       |
 
 プロジェクト単位の設定は `.claude/tools.json` で行う。詳細は[thkt/tap](https://github.com/thkt/homebrew-tap)を参照。
 
 ### 外部 CLI ツール (任意)
 
-一部のコマンドはデータソース連携のために外部 CLI を使う。
+一部のコマンドはデータソース連携のために外部 CLI を使う。codegraph はリポジトリごとに `codegraph init` で `.codegraph/` を作ってから使う。
 
-| ツール  | 利用コマンド                          | 用途                 | インストール                       |
-| ------- | ------------------------------------- | -------------------- | ---------------------------------- |
-| `gh`    | `/issue`, `/pr`, `/preview`, `/build` | GitHub API アクセス  | `brew install gh && gh auth login` |
-| `scout` | Slack URL 読み込み                    | Slack メッセージ取得 | `brew install thkt/tap/scout`      |
+| ツール      | 利用コマンド                          | 用途                                                              | インストール                       |
+| ----------- | ------------------------------------- | ----------------------------------------------------------------- | ---------------------------------- |
+| `gh`        | `/issue`, `/pr`, `/preview`, `/build` | GitHub API アクセス                                               | `brew install gh && gh auth login` |
+| `scout`     | `/research`, use-cli-scout skill      | Web 検索、ページ取得、GitHub リポジトリ探索、Slack メッセージ取得 | `brew install thkt/tap/scout`      |
+| `codegraph` | `/research`, use-cli-codegraph skill  | シンボル単位の構造クエリ (呼び出し元、影響範囲)                   | `npm i -g @colbymchenry/codegraph` |
 
 Slack 読み込み: `scout fetch <slack-url>` で任意の Slack メッセージ/スレッド URL を直接読み込む。scout が設定済みなら追加設定は不要。
 
 ### 自律反復
 
 `/code` は native `/goal` コマンド (Claude Code 2.1.139+) で自律的なマルチターンループとして実行できる。プラグインのインストールは不要。
+
+```bash
+/goal all tests pass and lint is clean
+```
+
+`/code` のセッションを `/goal <condition>` で包むと、高速モデルが会話から条件の充足を判定するまで Claude が継続する。
 
 ## 📝 利用可能なコマンド
 
@@ -183,10 +190,10 @@ Slack 読み込み: `scout fetch <slack-url>` で任意の Slack メッセージ
 
 ## 🔄 標準ワークフロー
 
-### 機能開発 (Enhanced)
+### 機能開発
 
 ```txt
-/research → /think → /code → /audit
+/research → /think → /issue → build workflow → /audit · /polish
 ```
 
 ### バグ調査と修正
@@ -199,7 +206,7 @@ Slack 読み込み: `scout fetch <slack-url>` で任意の Slack メッセージ
 
 - AI 処理: 内部は英語
 - ユーザー出力: 日本語 (設定可能)
-- ドキュメント: README.md と `docs/*.md` は英語・日本語の両方を提供。`docs/wiki/*.md` の 5 件は英語のみ
+- ドキュメント: README.md と `docs/*.md` は英語・日本語の両方を提供。`docs/wiki/*.md` の 7 件は英語のみ
 
 ## 🛠️ 主要機能
 
@@ -234,7 +241,7 @@ Slack 読み込み: `scout fetch <slack-url>` で任意の Slack メッセージ
 
 ## 🤝 コントリビュート
 
-自由にこのリポジトリを fork してニーズに合わせてカスタマイズしてください。改善のためのプルリクエストも歓迎する。
+自由にこのリポジトリを fork してニーズに合わせてカスタマイズできる。改善のためのプルリクエストも歓迎する。
 
 ## 📜 ライセンス
 
@@ -243,7 +250,3 @@ MIT License. 自由に利用、改変できる。
 ## 👤 著者
 
 thkt
-
----
-
-_この設定は、品質、可読性、保守性に焦点を当てた体系的なソフトウェア開発のために Claude AI の能力を高める。_

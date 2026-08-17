@@ -2,60 +2,58 @@
 
 ## How We Use Claude
 
-過去 30 日における thkt の利用状況 (846 セッション) より。
-
-Work Type Breakdown:
-Plan / Design ██████████████░░░░░░ 70%
-Improve Quality ███░░░░░░░░░░░░░░░░░ 12%
-Build Feature ██░░░░░░░░░░░░░░░░░░ 10%
-Debug / Fix ██░░░░░░░░░░░░░░░░░░ 8%
+2026-08-17 時点の実測。過去 30 日に更新されたセッションログ 6018 件から、`<command-name>` の出現を集計した。
 
 Top Skills & Commands:
-/clear ████████████████████ 582x/month
-/exit ███████░░░░░░░░░░░░░ 200x/month
-/plugin ██░░░░░░░░░░░░░░░░░░ 69x/month
-/commit ██░░░░░░░░░░░░░░░░░░ 60x/month
-/audit █░░░░░░░░░░░░░░░░░░░ 29x/month
-/challenge █░░░░░░░░░░░░░░░░░░░ 28x/month
-/think █░░░░░░░░░░░░░░░░░░░ 22x/month
-/release-notes █░░░░░░░░░░░░░░░░░░░ 21x/month
-/polish █░░░░░░░░░░░░░░░░░░░ 18x/month
+/clear ████████████████████ 111
+/build █████░░░░░░░░░░░░░░░ 28
+/qualify ████░░░░░░░░░░░░░░░░ 23
+/polish ████░░░░░░░░░░░░░░░░ 21
+/model ███░░░░░░░░░░░░░░░░░ 14
+/compact ███░░░░░░░░░░░░░░░░░ 14
+/exit ██░░░░░░░░░░░░░░░░░░ 10
+/issue ██░░░░░░░░░░░░░░░░░░ 9
+/think █░░░░░░░░░░░░░░░░░░░ 8
+/code-review █░░░░░░░░░░░░░░░░░░░ 6
+/audit █░░░░░░░░░░░░░░░░░░░ 6
+/assert █░░░░░░░░░░░░░░░░░░░ 6
+/adrift █░░░░░░░░░░░░░░░░░░░ 6
 
-Top MCP Servers:
-heptabase ████████████████████ 28 calls
-discord ███████████████████░ 26 calls
-context7 ██░░░░░░░░░░░░░░░░░░ 3 calls
+MCP Servers: 同じ期間の呼び出しは 0 件。
 
 ## Your Setup Checklist
 
 ### Codebases
 
 - [ ] dotclaude. github.com/thkt/dotclaude (Claude Code 設定: agents, skills, hooks, rules)
-- [ ] scout. ~/GitHub/cli/scout (Web 取得 / 検索 CLI)
+- [ ] scout. ~/GitHub/cli/scout (Web 取得/検索 CLI)
 - [ ] recall. ~/GitHub/cli/recall (セッション検索)
-- [ ] shields. ~/GitHub/cli/shields (PreToolUse ガード フック)
+- [ ] shields. ~/GitHub/cli/shields (PreToolUse ガードフック。現在 settings.json 未配線)
 - [ ] guardrails. ~/GitHub/cli/guardrails (lint フック)
 - [ ] kiku. ~/GitHub/cli/kiku (Slack セマンティック検索)
 - [ ] kagami. ~/GitHub/apps/kagami (セッション追跡アプリ)
 - [ ] tally. ~/GitHub/cli/tally (エンジニアリング時間追跡)
 
-### MCP Servers to Activate
+### CLI Tools to Install
 
-- [ ] heptabase. ナレッジベース / ノート カード。heptabase.com でアクセスを取得し、`/mcp` 経由で API キーを設定する。
-- [ ] discord. 非同期 Claude 応答のための Discord bot 連携。`/discord:configure` で bot トークンを設定する。
-- [ ] context7. ライブラリ ドキュメント参照。マーケットプレイスから `/plugin` で有効化する。
+- [ ] scout. Web 検索、ページ取得、GitHub リポジトリ探索、Slack メッセージ取得。`brew install thkt/tap/scout`
+- [ ] recall. 過去セッションの横断検索。`brew install thkt/tap/recall`
+- [ ] codegraph. シンボル単位の構造クエリ。`npm i -g @colbymchenry/codegraph` の後、リポジトリごとに `codegraph init`
+- [ ] gh. GitHub API アクセス。`brew install gh && gh auth login`
 
 ### Skills to Know About
 
-- `/commit`. ステージ済み diff から Conventional Commits メッセージを生成する。手書きする代わりに編集後に実行する。
-- `/audit`. 専門 reviewer (security, type safety, silent failures 等) を編成し、現コードベースに対して実行する。
+- `/build`. Plan 節付き issue を end-to-end で実装し draft PR を作る。最もよく使う入口。
+- `/qualify`. issue を build へ渡せる状態か点検する。build 起動前に走らせる。
+- `/polish`. Codex の外部レンズによる review と cleanup。機能の落着後に slop を捕まえる。
+- `/issue`. 構造化した title と body で GitHub Issue を作る。plan があれば `## Plan` 節へ転記する。
+- `/think`. plan を生成する設計探索 (issue の Plan 節へ転記)。非自明な新機能のエントリポイント。
+- `/audit`. 専門 reviewer (security, type safety, silent failures 等) を diff に対して fan-out する。
+- `/assert`. merge 可否の独立判定。Codex を隔離 worktree で並走させる。
+- `/adrift`. DR と現行コードの乖離をスキャンする。
+- `/commit`. ステージ済み diff から Conventional Commits メッセージを生成する。手書きする代わりに編集後へ実行する。
 - `/challenge`. 提案、設計、計画への悪魔の代弁者パス。アーキテクチャ判断を確定する前に使う。
-- `/think`. plan を生成する設計探索 (issue の Plan 節へ転記)。非自明な新機能のエントリ ポイント。
-- `/polish`. 軽いレビューとクリーンアップ パス。機能の落着後に slop を捕まえる。
-- `/release-notes`. 最新の Claude Code 変更履歴を確認し、現環境に関連するものを示す。
-- `/plugin`. インストール済みプラグインを一覧表示。マーケットプレイス エントリの有効化/無効化に使う。
 - `/compact`. 使用率が 70% に近づいたらコンテキストを要約・圧縮する。長いセッションで先回り実行する。
-- `/code`. リアルタイム テスト フィードバック付きの TDD/RGRC 実装ループ。
 
 ## Team Tips
 

@@ -4,7 +4,7 @@ Skill とエージェントの設計意図と利用ガイドライン。
 
 📌 [English version](../../docs/SKILLS_AGENTS.md)
 
-## コア コンセプト
+## コアコンセプト
 
 ```mermaid
 graph LR
@@ -43,18 +43,18 @@ graph LR
 
 ### 用途
 
-Skills は「ナレッジ モジュール」。AI がタスク実行時にドメイン固有の知識を提供する。
+Skills は「ナレッジモジュール」。AI がタスク実行時にドメイン固有の知識を提供する。
 
 ### カテゴリ
 
-`/code`、`/audit`、`/polish` は `workflows/*.js` の Workflow であり、Skill ではない。User-invocable Skills は下表の 14 件。
+`/code`、`/audit`、`/polish` は `workflows/*.js` の Workflow であり、Skill ではない。User-invocable Skills は下表の 17 件。
 
-| カテゴリ       | Skills                                                                                                    | 用途                                  |
-| -------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------- |
-| Workflow       | use-workflow-tdd-cycle, use-workflow-pageshot                                                             | 多段ワークフロー定義                  |
-| Context        | use-context-reviewer-\*, use-context-root-cause-analysis                                                  | エージェント向けドメイン知識          |
-| CLI ラッパー   | use-cli-codegraph, use-cli-recall, use-cli-scout, use-cli-gcloud                                          | CLI ツール統合                        |
-| User-invocable | census, challenge, checkout, commit, dr, fix, issue, outcome, pr, preview, research, scribe, slice, think | スラッシュ コマンド エントリ ポイント |
+| カテゴリ       | Skills                                                                                                                          | 用途                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| Workflow       | use-workflow-tdd-cycle, use-workflow-pageshot                                                                                   | 多段ワークフロー定義         |
+| Context        | use-context-reviewer-\*, use-context-root-cause-analysis                                                                        | エージェント向けドメイン知識 |
+| CLI ラッパー   | use-cli-codegraph, use-cli-recall, use-cli-scout, use-cli-gcloud                                                                | CLI ツール統合               |
+| User-invocable | census, challenge, checkout, commit, dr, fix, issue, outcome, pr, preview, qualify, research, scribe, slice, stock, think, xlsx | スラッシュコマンドの入口     |
 
 ### ロード機構
 
@@ -95,7 +95,8 @@ description: TDD with RGRC cycle and Baby Steps.
 when_to_use: TDD, テスト駆動, Red-Green-Refactor, Baby Steps
 allowed-tools: Read Write Edit Bash(ugrep:*) Bash(bfs:*)
 context: fork # fork または inline
-user-invocable: false # スラッシュ コマンドとして起動可能か
+background: false
+user-invocable: false # スラッシュコマンドとして起動可能か
 ---
 ```
 
@@ -112,7 +113,7 @@ agents/
 ├── critics/        # 反論検証 (critic-audit, critic-design, critic-evidence)
 ├── enhancers/      # コード改善・結果統合 (enhancer-code, enhancer-evidence, enhancer-integration)
 ├── explorers/      # 探索 (explorer-feature)
-├── generators/     # 生成 (generator-test)
+├── generators/     # 生成 (generator-test, generator-snapshot)
 ├── resolvers/      # 問題解決 (resolver-build)
 └── reviewers/      # レビュー (18 種の専門 reviewer)
 ```
@@ -124,10 +125,10 @@ agents/
 | reviewer-accessibility | WCAG 2.2 適合                     |
 | reviewer-causation     | 5 Whys 根本原因分析               |
 | reviewer-conformance   | diff と spec の適合性             |
-| reviewer-coverage      | テスト カバレッジ品質             |
+| reviewer-coverage      | テストカバレッジ品質              |
 | reviewer-design        | deletion test による module depth |
 | reviewer-duplication   | クロスファイル DRY 分析           |
-| reviewer-efficiency    | アルゴリズム コスト、ホット パス  |
+| reviewer-efficiency    | アルゴリズムコスト、ホットパス    |
 | reviewer-operations    | エラー境界、ロギング              |
 | reviewer-progressive   | CSS-first、JS 削減                |
 | reviewer-prompt        | LLM プロンプト定義の品質          |
@@ -154,12 +155,12 @@ Task tool で:
 
 ### Skill と Agent を分ける理由
 
-| 理由             | 説明                                                        |
-| ---------------- | ----------------------------------------------------------- |
-| 関心の分離       | 知識 (Skills) と実行 (Agents) を分離                        |
-| コンテキスト管理 | エージェントは fork で動き、メイン コンテキストを汚染しない |
-| 再利用性         | Skill は複数のコマンドから参照できる                        |
-| 専門化           | エージェントは特定タスクに特化し、より深い分析を行う        |
+| 理由             | 説明                                                 |
+| ---------------- | ---------------------------------------------------- |
+| 関心の分離       | 知識 (Skills) と実行 (Agents) を分離                 |
+| コンテキスト管理 | エージェントは fork で動き、メインの文脈を汚染しない |
+| 再利用性         | Skill は複数のコマンドから参照できる                 |
+| 専門化           | エージェントは特定タスクに特化し、より深い分析を行う |
 
 ### 参照深度ルール
 
@@ -167,7 +168,7 @@ Task tool で:
 SKILL.md → reference.md (1 階層のみ)
 ```
 
-理由: Claude は深いネストを `head -100` で切り詰め、情報損失が起こる。
+理由: 階層が増えるほど読むファイルが増え、参照グラフも追いにくくなる。
 
 ## 関連
 

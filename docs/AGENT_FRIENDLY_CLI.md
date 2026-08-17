@@ -2,9 +2,14 @@
 
 Practical rules for CLIs that should work well for both humans and agents.
 
-This document captures the patterns now aligned across `xr`, `sae`, and `notch`
-as of 2026-04-02. It is intentionally opinionated. Prefer consistency over
-local cleverness.
+This document captures the input-contract and help-contract patterns now aligned
+across `xr`, `sae`, and `notch` as of 2026-04-02. It is intentionally
+opinionated. Prefer consistency over local cleverness.
+
+[DR-0060](decisions/0060-adopt-agent-friendly-cli-design-principles.md) owns the
+decision of what is mandatory. It defines three required axes (machine-readable
+/ next step / self-discovery), and this document gives the concrete input, help,
+and test shapes that satisfy them. When the two disagree, DR-0060 wins.
 
 ## Why
 
@@ -138,7 +143,9 @@ example:
 - auth prerequisites
 - output mode expectations
 
-Example root addition:
+Example root addition. This shape mirrors `xr` as it stands today. New CLIs use
+the group-specific sysexits.h subset from
+[DR-0066](decisions/0066-cli-exit-code-policy-grouped-by-error-topology.md).
 
 ```text
 Exit codes:
@@ -174,7 +181,7 @@ Rules:
 
 - Say what is missing or invalid.
 - Say how to fix it.
-- Avoid generic “invalid input” without context.
+- Avoid generic "invalid input" without context.
 - Prefer stable wording for common operator errors.
 
 Good:
@@ -235,9 +242,9 @@ notch fetch -
 ### Read-only search CLI
 
 ```text
-xr search "keyword"
-echo "keyword" | xr search
-xr search -
+sae search "keyword"
+echo "keyword" | sae search
+sae search -
 ```
 
 ### Mutation CLI with long payload
@@ -250,7 +257,7 @@ cat draft.md | sae create --name "Title" --body-file -
 
 ## Adoption Checklist
 
-Before calling a CLI “agent-friendly”, verify all of the following.
+Before calling a CLI "agent-friendly", verify all of the following.
 
 - Commands use explicit subcommands.
 - Canonical usage is visible in `--help`.

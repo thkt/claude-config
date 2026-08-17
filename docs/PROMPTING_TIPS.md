@@ -16,12 +16,11 @@ Effective prompting techniques for Claude Code.
 
 ## Context & Compute
 
-| Strategy                          | When / Why                          |
-| --------------------------------- | ----------------------------------- |
-| MCP tools ≤10 per project         | Prevents 200k→70k context shrinkage |
-| Enable only needed plugins        | Each adds token overhead            |
-| Append "use subagents" to request | Parallel processing for large tasks |
-| `/fork` before parallel work      | Isolated context, avoids pollution  |
+| Strategy                          | When / Why                                                                  |
+| --------------------------------- | --------------------------------------------------------------------------- |
+| MCP tools ≤10 per project         | Each tool definition occupies context                                       |
+| Enable only needed plugins        | Each adds token overhead                                                    |
+| Append "use subagents" to request | Parallelizes a large task and keeps its exploration out of the main session |
 
 ## Debugging
 
@@ -31,8 +30,8 @@ Effective prompting techniques for Claude Code.
 
 ## Workflow
 
-| Technique                                                                            | Effect                          |
-| ------------------------------------------------------------------------------------ | ------------------------------- |
-| /think → review with separate Claude session                                         | Improve plan quality            |
-| Switch to /think the moment something goes sideways                                  | Avoid wasting time on bad paths |
-| After every correction: "Update your CLAUDE.md so you don't make that mistake again" | Prevent recurring mistakes      |
+| Technique                                                                          | Effect                            |
+| ---------------------------------------------------------------------------------- | --------------------------------- |
+| `/think` → review with separate Claude session                                     | Improve plan quality              |
+| Switch to `/think` the moment something goes sideways                              | Avoid wasting time on bad paths   |
+| For a correction that will recur: "Leave a line in `.claude/rules/CORRECTIONS.md`" | Prevent failures on the same path |

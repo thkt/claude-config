@@ -13,7 +13,7 @@ Rust バイナリは sentinels プラグインとしても配布するが、登�
 
 hook をシェルスクリプトで書くのは、仕事が数個の判定と 1 回の fork で済むとき。構造が要るほど処理が長いか、テストと共有するときは Python で書く。`mirror_prose_guard.py` が後者で、規則そのものは `_lib/mirror_prose.py` にあり、リポジトリ一括検査のテストも同じモジュールを読む。
 
-テストは hook 本体と同じ言語で書く。シェルに残すのは、スタブとして shell script を PATH へ置くものだけで、`amphetamine_agent_session` の osascript と `rust-edit` の cargo がこれにあたる。
+テストは hook 本体と同じ言語で書く。シェルに残すのは、スタブとしてシェルスクリプトを PATH へ置くものだけで、`amphetamine_agent_session` の osascript と `rust-edit` の cargo がこれにあたる。
 
 Python 側では、1 つのメソッドが最初の失敗で止まると残りのアサーションが走らない。これは 2 つの形で起こる。複数のアサーションを並べた場合は `subTest` で 1 件ずつ包む。hook の出力を `json.loads` に直接渡した場合は、何も返さない hook で例外がメソッドごと落とすので、空を `{}` に倒してから読む。どちらも落ちる件数が静かに減るだけなので、テストは green のままになる。
 
@@ -41,33 +41,33 @@ Bash ゲートの hook はすべての Bash 呼び出しで発火し、実際の
 
 `settings.json` の `if` 条件はこの絞り込みを代われない。`cd /tmp && git commit` を取りこぼすからである。fast-exit にできるのは、追い返す呼び出しから import を外すこと。この頻度で発火する Python hook は重いモジュールを遅らせ、`re` と `subprocess` は必要とする関数の中で読む。`json` や `shutil` のような軽いモジュールと、hook が hot path で必ず通るモジュールは、遅らせても差が出ない。
 
-## イベント マップ
+## イベントマップ
 
 シェル hook は、それを発火させるイベントの名前が付いたディレクトリに置く。新しい hook の置き場は `settings.json` が決める。`security/` だけは役割で分けた例外で、破壊的なコマンドを止める仕事は Bash ゲートの他と分けて名指しする価値がある。
 
-| イベント           | Matcher            | フック                                                                                                                                                            |
-| ------------------ | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PreToolUse         | Bash               | pre-bash/package_manager_rewrite, security/npm_install_guard, security/rm_to_trash, security/git_sandbox_guard, pre-bash/body_proofread, pre-bash/issue_body_gate |
-| PreToolUse         | Write/Edit         | edit/rust_pre_edit.py, guardrails                                                                                                                                 |
-| PreToolUse         | EnterPlanMode      | deny (計画は /think へ誘導)                                                                                                                                       |
-| PreToolUse         | WebFetch/WebSearch | deny (scout CLI へ誘導)                                                                                                                                           |
-| PostToolUse        | Write/Edit         | edit/rust_post_edit.py, edit/textlint_fix.py, edit/mirror_prose_guard.py, assay, formatter, gates                                                                 |
-| PostToolUse        | Bash               | gates post-bash                                                                                                                                                   |
-| PostToolUse        | \*                 | integrations/amphetamine_agent_session background                                                                                                                 |
-| SessionStart       | \*                 | lifecycle/recall_index.py                                                                                                                                         |
-| UserPromptSubmit   | -                  | integrations/amphetamine_agent_session acquire                                                                                                                    |
-| Stop / StopFailure | -                  | lifecycle/failure-alert, lifecycle/reflection_ask.py, integrations/amphetamine_agent_session release                                                              |
-| statusLine         | -                  | lifecycle/statusline                                                                                                                                              |
+| イベント         | Matcher            | フック                                                                                                                                                            |
+| ---------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PreToolUse       | Bash               | pre-bash/package_manager_rewrite, security/npm_install_guard, security/rm_to_trash, security/git_sandbox_guard, pre-bash/body_proofread, pre-bash/issue_body_gate |
+| PreToolUse       | Write/Edit         | edit/rust_pre_edit.py, guardrails                                                                                                                                 |
+| PreToolUse       | EnterPlanMode      | deny (計画は /think へ誘導)                                                                                                                                       |
+| PreToolUse       | WebFetch/WebSearch | deny (scout CLI へ誘導)                                                                                                                                           |
+| PostToolUse      | Write/Edit         | edit/rust_post_edit.py, edit/textlint_fix.py, edit/mirror_prose_guard.py, assay, formatter, gates                                                                 |
+| PostToolUse      | Bash               | gates changed                                                                                                                                                     |
+| PostToolUse      | \*                 | integrations/amphetamine_agent_session background                                                                                                                 |
+| SessionStart     | \*                 | lifecycle/recall_index.py                                                                                                                                         |
+| UserPromptSubmit | -                  | integrations/amphetamine_agent_session acquire                                                                                                                    |
+| Stop/StopFailure | -                  | lifecycle/failure-alert, lifecycle/reflection_ask.py, integrations/amphetamine_agent_session release                                                              |
+| statusLine       | -                  | lifecycle/statusline                                                                                                                                              |
 
 ## スクリプト hooks
 
 ### pre-bash/
 
-| Hook                       | イベント         | 失敗モード  | 用途                                                                                                            |
-| -------------------------- | ---------------- | ----------- | --------------------------------------------------------------------------------------------------------------- |
-| package_manager_rewrite.py | PreToolUse(Bash) | fail-closed | パッケージ マネージャー コマンドを ni 系へ変換。マネージャー自身のフラグと bun 内蔵のテストランナーは素通しする |
-| body_proofread.py          | PreToolUse(Bash) | fail-closed | gh issue/pr create の本文と commit メッセージを校正し、起票には構造チェックを添える (advisory)                  |
-| issue_body_gate.py         | PreToolUse(Bash) | fail-closed | 本文が骨格から外れた `gh issue create` を deny する                                                             |
+| Hook                       | イベント         | 失敗モード  | 用途                                                                                                          |
+| -------------------------- | ---------------- | ----------- | ------------------------------------------------------------------------------------------------------------- |
+| package_manager_rewrite.py | PreToolUse(Bash) | fail-closed | パッケージマネージャーコマンドを ni 系へ変換。マネージャー自身のフラグと bun 内蔵のテストランナーは素通しする |
+| body_proofread.py          | PreToolUse(Bash) | fail-closed | gh issue/pr create の本文と commit メッセージを校正し、起票には構造チェックを添える (advisory)                |
+| issue_body_gate.py         | PreToolUse(Bash) | fail-closed | 本文が骨格から外れた `gh issue create` を deny する                                                           |
 
 ### edit/
 
@@ -80,17 +80,17 @@ Bash ゲートの hook はすべての Bash 呼び出しで発火し、実際の
 
 ### security/
 
-| Hook                 | イベント         | 失敗モード  | 用途                                                                                                         |
-| -------------------- | ---------------- | ----------- | ------------------------------------------------------------------------------------------------------------ |
-| npm_install_guard.py | PreToolUse(Bash) | fail-closed | ignore-scripts が有効でないパッケージ インストールをブロック。走らせる先の .npmrc をホーム側より優先して読む |
-| rm_to_trash.py       | PreToolUse(Bash) | fail-closed | rm/rmdir/unlink/shred を `mv ~/.Trash/` へ誘導                                                               |
-| git_sandbox_guard.py | PreToolUse(Bash) | fail-closed | ~/.claude で作業ツリーを書き換える git を sandbox 内で止める。読み取りだけの形は通す                         |
+| Hook                 | イベント         | 失敗モード  | 用途                                                                                                        |
+| -------------------- | ---------------- | ----------- | ----------------------------------------------------------------------------------------------------------- |
+| npm_install_guard.py | PreToolUse(Bash) | fail-closed | ignore-scripts が有効でないパッケージインストールをブロック。走らせる先の .npmrc をホーム側より優先して読む |
+| rm_to_trash.py       | PreToolUse(Bash) | fail-closed | rm/rmdir/unlink/shred を `mv ~/.Trash/` へ誘導                                                              |
+| git_sandbox_guard.py | PreToolUse(Bash) | fail-closed | ~/.claude で作業ツリーを書き換える git を sandbox 内で止める。読み取りだけの形は通す                        |
 
 ### lifecycle/
 
 | Hook              | トリガー          | 失敗モード | 用途                                                                        |
 | ----------------- | ----------------- | ---------- | --------------------------------------------------------------------------- |
-| statusline.sh     | statusLine        | fail-open  | ステータス ライン表示と、自身が持つセッション単位 state の TTL 掃除         |
+| statusline.sh     | statusLine        | fail-open  | ステータスライン表示と、自身が持つセッション単位 state の TTL 掃除          |
 | recall_index.py   | SessionStart      | fail-open  | recall のクロスセッション索引をバックグラウンド更新                         |
 | reflection_ask.py | Stop              | fail-open  | 次のセッションへ持ち越す価値のある訂正を 1 件求める                         |
 | failure-alert.sh  | Stop, StopFailure | fail-open  | 悪い終わり方をしたターンを音で知らせる。end_turn と subagent では鳴らさない |
@@ -119,7 +119,7 @@ hook が読み込む共有コード。単体では登録しない。`japanese.py
 
 ## Quality Pipeline (Rust バイナリ)
 
-編集ライフサイクルに品質強制を挟む Rust バイナリ。リポジトリは独立し、`brew install thkt/tap/{tool}` でインストールする (assay はローカル ビルド)。
+編集ライフサイクルに品質強制を挟む Rust バイナリ。リポジトリは独立し、`brew install thkt/tap/{tool}` でインストールする (assay はローカルビルド)。
 
 ```mermaid
 flowchart LR
@@ -134,12 +134,12 @@ flowchart LR
 
 PreToolUse フック。Write/Edit 適用前にコードを検証する。
 
-| 観点            | 詳細                                                   |
-| --------------- | ------------------------------------------------------ |
-| Linter          | oxlint (優先) / biome (フォールバック)                 |
-| カスタム ルール | sensitiveFile, cryptoWeak, XSS, eval など (網羅でない) |
-| ブロッキング    | あり。critical/high severity でブロック                |
-| Source          | [thkt/guardrails](https://github.com/thkt/guardrails)  |
+| 観点           | 詳細                                                   |
+| -------------- | ------------------------------------------------------ |
+| Linter         | oxlint (優先)/biome (フォールバック)                   |
+| カスタムルール | sensitiveFile, cryptoWeak, XSS, eval など (網羅でない) |
+| ブロッキング   | あり。critical/high severity でブロック                |
+| Source         | [thkt/guardrails](https://github.com/thkt/guardrails)  |
 
 ### formatter
 
@@ -147,7 +147,7 @@ PostToolUse フック。Write/Edit 後にファイルを自動整形する。
 
 | 観点         | 詳細                                                |
 | ------------ | --------------------------------------------------- |
-| Formatter    | oxfmt (優先) / biome (フォールバック) + EOF 改行    |
+| Formatter    | oxfmt (優先)/biome (フォールバック) + EOF 改行      |
 | ブロッキング | なし (常に exit 0、エラーは stderr へ)              |
 | Source       | [thkt/formatter](https://github.com/thkt/formatter) |
 
@@ -155,26 +155,26 @@ PostToolUse フック。Write/Edit 後にファイルを自動整形する。
 
 PostToolUse フック。編集のたびに品質ゲートを強制する。
 
-| 観点              | 詳細                                                                                       |
-| ----------------- | ------------------------------------------------------------------------------------------ |
-| 静的ゲート        | knip, tsgo, litmus (テスト品質), circular (循環依存)。litmus / circular はバイナリ埋め込み |
-| スクリプト ゲート | lint, type-check, test (package.json から検出)                                             |
-| ブロッキング      | ゲート失敗時に fix prompt でブロック。ツール欠落は fail-open                               |
-| Source            | [thkt/gates](https://github.com/thkt/gates)                                                |
+| 観点             | 詳細                                                                                     |
+| ---------------- | ---------------------------------------------------------------------------------------- |
+| 静的ゲート       | knip, tsgo, litmus (テスト品質), circular (循環依存)。litmus/circular はバイナリ埋め込み |
+| スクリプトゲート | lint, type-check, test (package.json から検出)                                           |
+| ブロッキング     | ゲート失敗時に fix prompt でブロック。ツール欠落は fail-open                             |
+| Source           | [thkt/gates](https://github.com/thkt/gates)                                              |
 
 ### assay
 
 PostToolUse フック。spec.md/eval-criteria.md の保存時に文書品質を検証する。
 
-| 観点     | 詳細                                             |
-| -------- | ------------------------------------------------ |
-| 対象     | spec.md, eval-criteria.md                        |
-| チェック | complete / unambiguous / verifiable / consistent |
-| 配布     | ローカル ビルド (`~/.cargo/bin/assay`)           |
+| 観点     | 詳細                                       |
+| -------- | ------------------------------------------ |
+| 対象     | spec.md, eval-criteria.md                  |
+| チェック | complete/unambiguous/verifiable/consistent |
+| 配布     | ローカルビルド (`~/.cargo/bin/assay`)      |
 
 ### プロジェクト設定
 
-guardrails/formatter/gates はプロジェクト ルートの `.claude/tools.json` を共有する。各ツールはプロジェクト単位で `"enabled": false` により無効化できる。
+guardrails/formatter/gates はプロジェクトルートの `.claude/tools.json` を共有する。各ツールはプロジェクト単位で `"enabled": false` により無効化できる。
 
 ```json
 {
@@ -186,7 +186,7 @@ guardrails/formatter/gates はプロジェクト ルートの `.claude/tools.jso
 
 ### 休止中
 
-shields (コマンド ガード、ファイル ACL、secrets チェック) と reviews (skill 実行前の静的解析コンテキスト注入) は同ファミリーのバイナリだが、意図的に settings.json から外して休止中。
+shields (コマンドガード、ファイル ACL、secrets チェック) と reviews (skill 実行前の静的解析コンテキスト注入) は同ファミリーのバイナリだが、意図的に settings.json から外して休止中。
 
 ## 設計原則
 

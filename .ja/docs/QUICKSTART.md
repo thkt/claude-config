@@ -2,20 +2,21 @@
 
 ## 1. 基本コマンド
 
-| コマンド    | 利用シーン                |
-| ----------- | ------------------------- |
-| `/fix`      | 小さなバグ、即時修正      |
-| `/code`     | TDD で新機能              |
-| `/research` | 着手前に調査              |
-| `/audit`    | コード品質レビュー        |
-| `/commit`   | コミット メッセージを作成 |
+| コマンド    | 利用シーン                      |
+| ----------- | ------------------------------- |
+| `/fix`      | 小さなバグ、1〜3 ファイルの修正 |
+| `/research` | 着手前に調査                    |
+| `/think`    | 4 ファイル以上か新機能の計画    |
+| `/issue`    | 計画を issue の Plan 節へ起票   |
+| `/audit`    | コード品質レビュー              |
+| `/commit`   | コミットメッセージを作成        |
 
 ## 2. 判断フロー
 
 ```text
 即時修正か → /fix
 先に理解が必要か → /research → /fix
-機能を作るか → /code → /audit
+機能を作るか → /research → /think → /issue → build workflow → /audit
 ```
 
 ## 3. セッション例
@@ -26,7 +27,10 @@
 
 # 機能開発
 > /research how does auth work in this codebase?
-> /code add logout functionality
+> /think add logout functionality
+> /issue
+
+# 起票した番号を build workflow へ渡し、draft PR ができてから
 > /audit
 > /commit
 ```
@@ -40,3 +44,4 @@
 ## 5. 次のステップ
 
 - 全コマンドは `/help` で確認
+- 開発フローの詳細は[COMMANDS](./COMMANDS.md)
