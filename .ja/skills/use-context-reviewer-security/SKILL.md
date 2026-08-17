@@ -1,6 +1,6 @@
 ---
 name: use-context-reviewer-security
-description: OWASP Top 10 のセキュリティ レビュー。可読性は use-context-reviewer-readability、テスト設計は use-context-reviewer-testability に使う。
+description: OWASP Top 10 のセキュリティ レビュー。可読性 (use-context-reviewer-readability)、テスト設計 (use-context-reviewer-testability) には使わない。
 when_to_use: security, OWASP, XSS, SQL injection, prompt injection, LLM security, セキュリティ, 脆弱性, cloud security, AWS, IAM, Terraform, クラウドセキュリティ, インフラ
 allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
 agent: reviewer-security
@@ -49,12 +49,23 @@ LLM01 は信頼できないコンテンツを LLM に渡すアプリを対象と
 | 可能性のある問題 | medium   | verification_hint + 修正提案      |
 | 投機的のみ       | none     | 報告しない                        |
 
+## Taint レビュー ワークフロー
+
+下表のフロントエンド taint 参照 2 本にこの手順を適用する。
+
+1. ユーザー入力・API レスポンス・URL パラメータの taint source を特定する
+2. DOM 操作・ナビゲーション・ストレージの sink までデータフローを追跡する
+3. すべての source-to-sink 経路でサニタイズまたはバリデーションが存在することを検証する
+4. サニタイズがエラー経路や条件分岐でバイパスされないことを確認する
+
 ## 参照ファイル
 
-| トピック  | 範囲             | ファイル                                                   |
-| --------- | ---------------- | ---------------------------------------------------------- |
-| Basic     | A01, A02, A07    | ${CLAUDE_SKILL_DIR}/references/owasp-basic.md              |
-| Injection | A03              | ${CLAUDE_SKILL_DIR}/references/owasp-injection.md          |
-| Advanced  | A04-A06, A08-A10 | ${CLAUDE_SKILL_DIR}/references/owasp-advanced.md           |
-| Cloud     | IAM, IaC, CI/CD  | ${CLAUDE_SKILL_DIR}/references/cloud-infrastructure.md     |
-| Frontend  | Taint analysis   | ${CLAUDE_SKILL_DIR}/references/frontend-taint-checklist.md |
+| トピック       | 範囲                                     | ファイル                                               |
+| -------------- | ---------------------------------------- | ------------------------------------------------------ |
+| Basic          | A01, A02, A07                            | ${CLAUDE_SKILL_DIR}/references/owasp-basic.md          |
+| Injection      | A03                                      | ${CLAUDE_SKILL_DIR}/references/owasp-injection.md      |
+| Advanced       | A04-A06, A08-A10                         | ${CLAUDE_SKILL_DIR}/references/owasp-advanced.md       |
+| Cloud access   | IAM、シークレット、ネットワーク          | ${CLAUDE_SKILL_DIR}/references/cloud-access-network.md |
+| Cloud 運用     | ロギング、CI/CD、CDN、バックアップ       | ${CLAUDE_SKILL_DIR}/references/cloud-operations.md     |
+| Taint (markup) | HTML と属性の sink                       | ${CLAUDE_SKILL_DIR}/references/frontend-taint-html.md  |
+| Taint (data)   | オリジン越え、ナビゲーション、ストレージ | ${CLAUDE_SKILL_DIR}/references/frontend-taint-data.md  |

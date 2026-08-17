@@ -49,12 +49,23 @@ The severity scale is critical / high / medium. Always include `file:line`. Repo
 | Possible issue      | medium   | verification_hint + suggested fix    |
 | Speculative only    | none     | Do NOT report                        |
 
+## Taint Review Workflow
+
+Apply this to the two frontend taint references below.
+
+1. Identify taint sources such as user input, API responses, and URL parameters
+2. Trace data flow to sinks such as DOM manipulation, navigation, and storage
+3. Verify sanitization or validation exists at every source-to-sink path
+4. Check that sanitization cannot be bypassed via error paths or conditional logic
+
 ## References
 
-| Topic     | Scope            | File                                                       |
-| --------- | ---------------- | ---------------------------------------------------------- |
-| Basic     | A01, A02, A07    | ${CLAUDE_SKILL_DIR}/references/owasp-basic.md              |
-| Injection | A03              | ${CLAUDE_SKILL_DIR}/references/owasp-injection.md          |
-| Advanced  | A04-A06, A08-A10 | ${CLAUDE_SKILL_DIR}/references/owasp-advanced.md           |
-| Cloud     | IAM, IaC, CI/CD  | ${CLAUDE_SKILL_DIR}/references/cloud-infrastructure.md     |
-| Frontend  | Taint analysis   | ${CLAUDE_SKILL_DIR}/references/frontend-taint-checklist.md |
+| Topic            | Scope                             | File                                                   |
+| ---------------- | --------------------------------- | ------------------------------------------------------ |
+| Basic            | A01, A02, A07                     | ${CLAUDE_SKILL_DIR}/references/owasp-basic.md          |
+| Injection        | A03                               | ${CLAUDE_SKILL_DIR}/references/owasp-injection.md      |
+| Advanced         | A04-A06, A08-A10                  | ${CLAUDE_SKILL_DIR}/references/owasp-advanced.md       |
+| Cloud access     | IAM, secrets, network             | ${CLAUDE_SKILL_DIR}/references/cloud-access-network.md |
+| Cloud operations | Logging, CI/CD, CDN, backup       | ${CLAUDE_SKILL_DIR}/references/cloud-operations.md     |
+| Taint (markup)   | HTML and attribute sinks          | ${CLAUDE_SKILL_DIR}/references/frontend-taint-html.md  |
+| Taint (data)     | Cross-origin, navigation, storage | ${CLAUDE_SKILL_DIR}/references/frontend-taint-data.md  |
