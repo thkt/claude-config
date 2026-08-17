@@ -1,6 +1,6 @@
 # /census decision criteria
 
-Used by Phase 5 tagging / ranking / `critic-design` challenge. Passed whole to `critic-design` in Phase 5b.
+Used by Phase 5 tagging / ranking / `critic-design` challenge. Passed whole to `critic-design` in Phase 5 Step 2.
 
 ## incomplete-contract
 
@@ -10,12 +10,12 @@ For example, an SSRF-safe HTTP client field is annotated "redirect disabled for 
 
 ## DR-worth rule of thumb
 
-Existing enforcement mechanisms such as lint config, the type system, and automated tests are stronger than DR text for mechanical decisions. Reserve DR for the following two categories where mechanisms cannot help.
+Reserve DR for the two categories below, where no tool can hold the line. Lint config, the type system, and automated tests reject a mechanical violation as it happens, while DR text holds only when someone reads it. A statement-of-fact config (`deny.toml`, `Cargo.toml`) is itself the single source of truth, and copying it into a DR lets the two drift apart. Write that policy as a 1-2 line comment in the config block.
 
-1. Invariants not enforceable by tools (e.g., "field X must not be used with Y" when both are same type)
-2. Public API compatibility commitments (e.g., exit code convention, JSON output schema)
-
-Statement-of-fact configs (`deny.toml` / `Cargo.toml`) are themselves the source of truth; duplicating into a DR creates drift risk. A 1-2 line policy comment in the config block usually suffices.
+| Category                           | Example                                                         |
+| ---------------------------------- | --------------------------------------------------------------- |
+| An invariant no tool can enforce   | "field X must not be used with Y" when both carry the same type |
+| A public API compatibility promise | An exit code convention, a JSON output schema                   |
 
 ## impact + reversibility criteria
 
