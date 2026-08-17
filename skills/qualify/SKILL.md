@@ -25,7 +25,7 @@ With no `## Plan` section, set the verdict to needs-plan, go to Phase 4, and end
 
 With a `## Plan` section, read build.js's own conditions at run time, apply them, and treat every violation as a blocker. Build stops on the same conditions, so every severity stays blocker.
 
-1. Locate them with `ugrep -n "const validate = |const UNIT_CAPS = |const oversizedUnits = " ~/.claude/workflows/build.js`
+1. Locate them by running ugrep over ${CLAUDE_SKILL_DIR}/../../workflows/build.js for the lines matching `const validate = |const UNIT_CAPS = |const oversizedUnits = `
 2. Read the places it hits
 3. Apply what you read to the issue's Plan section and list the violations
 

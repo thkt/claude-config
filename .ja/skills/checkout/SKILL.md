@@ -40,7 +40,7 @@ argument-hint: "[context or ticket number]"
 | perf/     | パフォーマンス    | 最適化、キャッシュ           |
 
 - 小文字とハイフン区切りで構成し、空白/アンダースコア/CamelCase は使わない
-- scope と description は 2〜4 単語で簡潔にし、update のような曖昧な語を避ける
+- scope と description は 2〜4 単語で簡潔にし、update のような曖昧な語でなく変更の対象と結果を表す語を使う
 - `$ARGUMENTS` にチケット ID があれば `<ticket>` の位置に含める。このスキルが作る名前に日付は入れない
 
 ## エラー処理

@@ -15,9 +15,9 @@ argument-hint: "[PR URL or number]"
 
 ## 実行
 
-1. PR 識別: `gh pr view $ARGUMENTS --json number,title,body,labels,files,url`。失敗したら `$ARGUMENTS` なしで再実行する
+1. `gh pr view $ARGUMENTS --json number,title,body,labels,files,url` で PR を識別する。失敗したら `$ARGUMENTS` なしで再実行する
 2. PR がない、または作業ツリーが dirty なら中止する。判定は `git status --porcelain`
-3. PR を checkout: `gh pr checkout $PR`
+3. `gh pr checkout $PR` で PR を checkout する
 4. PR コンテキストを並列収集する (§ PR コンテキスト収集)
 5. 各変更ファイルを diff hunks 外も含めて全体を読む
 6. プロセスに沿ってレビュー: 概観 → ファイルごと → 依存影響 → findings
@@ -28,7 +28,7 @@ argument-hint: "[PR URL or number]"
 gh の出力フィールドに `author` を含めない。
 
 ```bash
-# Diff
+# 差分
 gh pr diff $PR
 
 # 既存コメント

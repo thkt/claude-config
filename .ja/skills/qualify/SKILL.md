@@ -25,7 +25,7 @@ issue を build に渡す前に検分し、投入して進むか、先に手を�
 
 Plan 節があるときは、build.js の判定条件を実行時に読んで適用し、違反した項目をすべて blocker として扱う。build が同じ条件で止まるため、重大度は blocker のままにする。
 
-1. `ugrep -n "const validate = |const UNIT_CAPS = |const oversizedUnits = " ~/.claude/workflows/build.js` で位置を特定する
+1. ugrep で ${CLAUDE_SKILL_DIR}/../../workflows/build.js を探し、`const validate = |const UNIT_CAPS = |const oversizedUnits = ` に一致する行の位置を特定する
 2. Read でヒットした箇所を読む
 3. issue 本文の Plan 節を読んだ条件に当てて、違反を列挙する
 
