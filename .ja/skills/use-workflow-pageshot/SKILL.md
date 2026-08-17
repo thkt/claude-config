@@ -31,12 +31,12 @@ PR 本文は `/pr` から文字列として渡される。下表のいずれか�
 
 ## 実行
 
-| ステップ | アクション                                                                                   |
-| -------- | -------------------------------------------------------------------------------------------- |
-| 1        | 出力ディレクトリを作成。${CLAUDE_SKILL_DIR}/../../workspace/pageshot/$(date +%Y%m%d-%H%M%S)/ |
-| 2        | `agent-browser open {Preview URL}`                                                           |
-| 3        | モードに応じて Screenshot Flow または Video Flow を実行                                      |
-| 4        | 成果物の絶対パスを stdout に出力                                                             |
+| ステップ | アクション                                                                   |
+| -------- | ---------------------------------------------------------------------------- |
+| 1        | 出力ディレクトリを作成。`.claude/workspace/pageshot/$(date +%Y%m%d-%H%M%S)/` |
+| 2        | `agent-browser open {Preview URL}`                                           |
+| 3        | モードに応じて Screenshot Flow または Video Flow を実行                      |
+| 4        | 成果物の絶対パスを stdout に出力                                             |
 
 ## Screenshot Flow (1 step)
 

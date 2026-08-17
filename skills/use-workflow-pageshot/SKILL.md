@@ -31,12 +31,12 @@ Pass `--session pageshot --engine chrome` on every agent-browser call. The defau
 
 ## Execution
 
-| Step | Action                                                                                        |
-| ---- | --------------------------------------------------------------------------------------------- |
-| 1    | Create output directory: ${CLAUDE_SKILL_DIR}/../../workspace/pageshot/$(date +%Y%m%d-%H%M%S)/ |
-| 2    | `agent-browser open {Preview URL}`                                                            |
-| 3    | Run Screenshot Flow or Video Flow based on Mode                                               |
-| 4    | Print absolute path of artifact to stdout                                                     |
+| Step | Action                                                                           |
+| ---- | -------------------------------------------------------------------------------- |
+| 1    | Create the output directory `.claude/workspace/pageshot/$(date +%Y%m%d-%H%M%S)/` |
+| 2    | `agent-browser open {Preview URL}`                                               |
+| 3    | Run Screenshot Flow or Video Flow based on Mode                                  |
+| 4    | Print absolute path of artifact to stdout                                        |
 
 ## Screenshot Flow (1 step)
 

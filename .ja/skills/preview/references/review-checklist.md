@@ -6,7 +6,7 @@
 
 ### Step 1: plan の特定
 
-plan は起点となる issue の `## Plan` 節にある。ブランチや commit messages の issue 参照から `gh issue view <N>` で取得する。issue が見つからない場合、${CLAUDE_SKILL_DIR}/../../workspace/planning/で、ブランチ名や PR タイトルに一致する `*.plan.md` を探す。
+plan は起点となる issue の `## Plan` 節にある。ブランチや commit messages の issue 参照から `gh issue view <N>` で取得する。issue が見つからない場合、`.claude/workspace/planning/` で、ブランチ名や PR タイトルに一致する `*.plan.md` を探す。
 
 plan が見つからない場合、PR 説明 + commit messages を意図のソースとしてフォールバックし、U/T の行はスキップする。
 

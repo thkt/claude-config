@@ -6,7 +6,7 @@ Run before per-file review.
 
 ### Step 1: Locate the plan
 
-The plan lives in the originating issue's `## Plan` section. Fetch it via the issue reference in the branch or commit messages (`gh issue view <N>`). If no issue is found, search `${CLAUDE_SKILL_DIR}/../../workspace/planning/` for a `*.plan.md` whose name matches the branch or PR title.
+The plan lives in the originating issue's `## Plan` section. Fetch it via the issue reference in the branch or commit messages (`gh issue view <N>`). If no issue is found, search `.claude/workspace/planning/` for a `*.plan.md` whose name matches the branch or PR title.
 
 If no plan is found, fall back to PR description + commit messages as intent source and skip the U/T rows below.
 
