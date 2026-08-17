@@ -36,7 +36,7 @@ const rowsUnder = (text, heading) => {
 
 const pairs = [
   { prose: "Mark What Is Central", terse: "中心を明示する" },
-  { prose: "Predictable Prose", terse: "予測可能な散文" },
+  { prose: "Let the Reader Predict the Next Sentence", terse: "予測可能な散文" },
 ];
 
 for (const pair of pairs) {

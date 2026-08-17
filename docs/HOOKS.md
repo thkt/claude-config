@@ -40,9 +40,8 @@ does to it. A reader narrows by the leading word.
 | Python test | `<hook name>_test.py` | `git_sandbox_guard_test.py` |
 | shell test  | `<hook name>.test.sh` | `failure-alert.test.sh`     |
 
-Python separates with underscores, shell with hyphens. A module under `_lib/` is imported, so
-underscores are required between its words, and the hooks themselves import none of each other,
-so nothing technical binds them.
+Python separates with underscores, shell with hyphens. A module under `_lib/` is imported, so underscores are required between its
+words, and the hooks themselves import none of each other, so nothing technical binds them.
 They match anyway because it makes the test name land on `<hook name>_test.py`, reachable from
 the hook with no conversion in between.
 
@@ -81,7 +80,7 @@ A shell hook sits in the directory named after the event that fires it, so `sett
 | PreToolUse         | EnterPlanMode      | deny (planning is routed to /think)                                                                                                                               |
 | PreToolUse         | WebFetch/WebSearch | deny (routed to the scout CLI)                                                                                                                                    |
 | PostToolUse        | Write/Edit         | edit/rust_post_edit.py, edit/textlint_fix.py, edit/mirror_prose_guard.py, assay, formatter, gates                                                                 |
-| PostToolUse        | Bash               | gates post-bash                                                                                                                                                   |
+| PostToolUse        | Bash               | gates changed                                                                                                                                                     |
 | PostToolUse        | \*                 | integrations/amphetamine_agent_session background                                                                                                                 |
 | SessionStart       | \*                 | lifecycle/recall_index.py                                                                                                                                         |
 | UserPromptSubmit   | -                  | integrations/amphetamine_agent_session acquire                                                                                                                    |

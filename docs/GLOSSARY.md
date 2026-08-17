@@ -26,8 +26,9 @@ Key properties:
 - **Audience: future developers** - someone joining the project should
   understand past decisions by reading DRs
 - **Immutable once accepted** - superseded by new DRs, never edited
-- **4 template variants** by decision type: technology-selection,
-  architecture-pattern, deprecation, process-change
+- **One MADR template** - decision types (technology-selection,
+  architecture-pattern, deprecation, process-change) differ only by the topic
+  table inside it
 
 Location: `docs/decisions/NNNN-title.md`
 

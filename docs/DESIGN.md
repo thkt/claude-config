@@ -12,6 +12,7 @@ graph TD
         OPS[OPERATION]
         PFL[PREFLIGHT]
         OUT[OUTCOME]
+        BND[BOUNDARIES]
     end
 
     subgraph Principles["Design Principles"]
@@ -21,11 +22,15 @@ graph TD
     subgraph Development["Development Layer"]
         TEST[TESTING]
         TIDY[TIDYINGS]
+        E2E[E2E]
+        SRC[SOURCING]
         PROG[PRINCIPLES.md#Progressive Enhancement]
     end
 
     subgraph Conventions["Conventions Layer"]
         MD[MARKDOWN]
+        MIR[MIRROR]
+        WF[WORKFLOWS]
         SKILL[SKILLS]
         SUB[SUBAGENT]
         PLUG[PLUGIN]
@@ -43,11 +48,12 @@ graph TD
 
 Top-priority rules. Prevent AI runaway and keep users informed.
 
-| File                                    | Intent                   | Key Mechanism                                                        |
-| --------------------------------------- | ------------------------ | -------------------------------------------------------------------- |
-| [OPERATION](../rules/core/OPERATION.md) | Ensure safety            | `rm` prohibited → `mv ~/.Trash/`, destructive op confirmation        |
-| [PREFLIGHT](../rules/core/PREFLIGHT.md) | Task check unified       | Rationalization counters, decomposition thresholds, done definitions |
-| [OUTCOME](../rules/core/OUTCOME.md)     | Outcome state visibility | Outcome test, update triggers                                        |
+| File                                      | Intent                   | Key Mechanism                                                        |
+| ----------------------------------------- | ------------------------ | -------------------------------------------------------------------- |
+| [OPERATION](../rules/core/OPERATION.md)   | Ensure safety            | `rm` prohibited → `mv ~/.Trash/`, destructive op confirmation        |
+| [PREFLIGHT](../rules/core/PREFLIGHT.md)   | Task check unified       | Rationalization counters, decomposition thresholds, done definitions |
+| [OUTCOME](../rules/core/OUTCOME.md)       | Outcome state visibility | Outcome test, update triggers                                        |
+| [BOUNDARIES](../rules/core/BOUNDARIES.md) | Principle boundaries     | Deltas from the general definition (thresholds, default corrections) |
 
 **Why this design:**
 
@@ -66,11 +72,13 @@ Priority order and conflict resolution for design decisions.
 **Principle Hierarchy:**
 
 ```text
-Occam's Razor (Meta - questions all complexity)
+Foundation (Outcome-driven / Backcasting)
     ↓
-Progressive Enhancement / Readable Code / DRY (Universal)
+Critical (Occam's Razor / Progressive Enhancement / Systems Thinking)
     ↓
-TDD / SOLID / YAGNI (Contextual)
+Default (Readable Code / TDD / DRY / YAGNI Boundary and others)
+    ↓
+Contextual (SOLID / Law of Demeter / TIDYINGS and others)
 ```
 
 **Conflict Resolution Examples:**
@@ -89,6 +97,8 @@ Concrete standards for daily development.
 | --------------------------------------------------------------- | --------------------------------- | -------------------------------------- |
 | [TESTING](../rules/development/TESTING.md)                      | Coverage perspectives and quality | Delta-based gate, per-area depth       |
 | [TIDYINGS](../rules/development/TIDYINGS.md)                    | Scope cleanup limits              | No behavior changes, edited files only |
+| [E2E](../rules/development/E2E.md)                              | E2E suite scope limits            | Small suite limited to primary paths   |
+| [SOURCING](../rules/development/SOURCING.md)                    | Source-backed API code            | Official docs for the pinned version   |
 | [PRINCIPLES.md#Progressive Enhancement](../rules/PRINCIPLES.md) | Incremental building              | CSS-First, Outcome-First               |
 
 **AI Failure Patterns (inline):**
@@ -121,8 +131,8 @@ Consistency across documentation, plugins, and translations.
 
 **Why this design:**
 
-- Limit reference depth (Skills: 1 level, Rules: 3 levels) to avoid partial read
-  issues
+- Limit reference depth (Skills: 1 level, Rules: 3 levels); each extra level
+  adds files to read
 - Align EN/JP structure while allowing translation content differences
 
 ### 5. Workflows Layer - User Interface
@@ -174,4 +184,4 @@ Refer to:
 
 ---
 
-_Explains the "why" behind the configuration. For "how to use", see [README.md](../README.md)._
+_For "how to use", see [README.md](../README.md)._

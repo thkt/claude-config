@@ -32,5 +32,5 @@ Once an outcome is set, derive the minimal path by working backward from the ide
 | ------------- | --------------------------------------------------- | ------------------------- |
 | Feature       | New tests added                                     | Existing tests pass alone |
 | Fix           | Root cause resolved                                 | Symptom patches           |
-| Investigation | Normal case understood                              | Bug identified only       |
+| Investigation | How the path behaves without the bug                | Bug identified only       |
 | No change     | Show goal completion evidence and confirm with user | Self-judgment alone       |

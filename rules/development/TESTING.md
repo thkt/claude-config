@@ -22,7 +22,7 @@ Read the testing policy in the order the project's `.claude/rules/development/TE
 
 ## Coverage as Supplementary Indicator
 
-Coverage measures whether code executed, not what was verified. Do not target a number. Target perspectives and priority areas.
+Coverage measures whether code executed, not what was verified. Do not target a number; target perspectives and priority areas.
 
 | Level | Name               | Criterion                                               |
 | ----- | ------------------ | ------------------------------------------------------- |
@@ -75,11 +75,11 @@ Test names state the spec they verify as a condition and expected result (e.g. "
 
 ## Bug-fix reproduction test
 
-A bug fix adds one test that reproduces the bug before touching the cause, and confirms it fails (Red) before fixing. After the fix, run the full suite and confirm the reproduction test turns green with no regression left behind. That reproduction test stays as a permanent guard catching the same bug if it recurs.
+A bug fix adds one test that reproduces the bug before touching the cause, and confirms it fails (Red) before fixing. After the fix, run the full suite and confirm the reproduction test turns green with no regression left behind.
 
 ## Test double preference
 
-A dependency closer to the real thing catches integration drift. Pick by the order below, and fall to a lower tier only when a higher one cannot be used (too slow / external side effects / non-deterministic). Assert against observable behavior (return value / state change). Verifying a call itself is reserved for outbound side effects where the call is the spec (notification send / audit log, anything unobservable via return value or state); replace any other call verification with a return-value or state assert.
+A dependency closer to the real thing catches integration drift. Pick by the order below, and fall to a lower tier only when a higher one cannot be used (too slow / external side effects / non-deterministic). Assert against observable behavior (return value / state change). Verifying a call itself is reserved for outbound side effects where the call is the spec. A notification send or an audit log qualifies: neither is observable via return value or state. Replace any other call verification with a return-value or state assert.
 
 | Kind | When to use                                                                      |
 | ---- | -------------------------------------------------------------------------------- |

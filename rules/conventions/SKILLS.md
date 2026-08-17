@@ -11,7 +11,7 @@ Conventions for skill files under `skills/`.
 
 ## Naming
 
-Choose by category. Generic names like helper, utils, tools are not allowed.
+Generic names like helper, utils, tools are not allowed.
 
 | user-invocable | Binding    | Pattern               | Examples                                      |
 | -------------- | ---------- | --------------------- | --------------------------------------------- |
@@ -22,7 +22,7 @@ Choose by category. Generic names like helper, utils, tools are not allowed.
 
 ## Directory structure
 
-All skills live directly under skills/. Claude reads SKILL.md first, references only when needed. Shared fragments live directly under \_lib/.
+All skills live directly under `skills/`, and shared fragments under `_lib/`.
 
 ```text
 skills/
@@ -35,17 +35,18 @@ skills/
 
 ## YAML Frontmatter
 
-| Field          | Required | Notes                                                                            |
-| -------------- | -------- | -------------------------------------------------------------------------------- |
-| name           | Yes      | Lowercase + hyphens, ≤64 chars                                                   |
-| description    | Yes      | Third person, ≤1024 chars                                                        |
-| when_to_use    | No       | EN/JP trigger phrases                                                            |
-| allowed-tools  | No       | Space-separated                                                                  |
-| agent          | No       | Links to an agent under `agents/`                                                |
-| context        | No       | fork = sub-agent, inline = main                                                  |
-| user-invocable | No       | Default true. false hides from the / menu (internal skills)                      |
-| model          | No       | Model override for execution (e.g. opus). Inherits the invoking model when unset |
-| argument-hint  | No       | Argument hint shown in the / menu (e.g. `"[decision title]"`)                    |
+| Field                    | Notes                                                                            |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| name                     | Required. Lowercase + hyphens, ≤64 chars                                         |
+| description              | Required. Third person, ≤1024 chars                                              |
+| when_to_use              | EN/JP trigger phrases                                                            |
+| allowed-tools            | Space-separated                                                                  |
+| agent                    | Links to an agent under `agents/`                                                |
+| context                  | fork = sub-agent, inline = main                                                  |
+| user-invocable           | Default true. false hides it from the / menu                                     |
+| disable-model-invocation | true stops model-side invocation, leaving only the / route                       |
+| model                    | Model override for execution (e.g. opus). Inherits the invoking model when unset |
+| argument-hint            | Argument hint shown in the / menu (e.g. `"[decision title]"`)                    |
 
 ## Reference notation
 
@@ -60,7 +61,7 @@ Write reference paths inside SKILL.md, scripts/, templates/, references/ with ba
 
 ## Argument variables
 
-Skill input arguments expand at invocation time. Use `$ARGUMENTS` to capture multi-word free text and `$ARGUMENTS[0]` to get the first word explicitly.
+Skill input arguments expand at invocation time.
 
 | Variable        | Returns                       | Example (args=`alpha beta gamma`) |
 | --------------- | ----------------------------- | --------------------------------- |
@@ -70,14 +71,12 @@ Skill input arguments expand at invocation time. Use `$ARGUMENTS` to capture mul
 
 ## Size limits
 
-| Rule            | Threshold | Action                      |
-| --------------- | --------- | --------------------------- |
-| SKILL.md body   | 200 lines | Split into reference files  |
-| Reference files | 200 lines | Consider splitting by topic |
+- A SKILL.md body and a reference file both cap at 100 lines
+- Over the cap, a SKILL.md body splits into reference files and a reference file splits by topic
 
 ## Craft
 
-Quality axes beyond the frontmatter and size rules above. A skill can satisfy every mechanical rule and still read poorly.
+A skill can satisfy every mechanical rule and still read poorly.
 
 | Axis                        | Pass condition                                                           | Fail signal                                                        |
 | --------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------ |

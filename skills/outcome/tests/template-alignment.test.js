@@ -47,11 +47,16 @@ test("the template headings stay English and match across both languages", () =>
 
 // The three Indicators rows are the categories rules/core/OUTCOME.md § Content defines. A dropped
 // row leaves the writer unable to recall the category that vanished from the template.
+//
+// The separator differs per language: textlint closes the spaces around a slash on the .ja side,
+// and a shared string would push that spelling back onto the English prose.
+const indicatorList = { ja: "Time/Error rate/Value", en: "Time / Error rate / Value" };
+
 test("the Indicators categories match between the template and the rules", () => {
   for (const [lang, path] of Object.entries(rules)) {
     const doc = readFileSync(path, "utf8");
     assert.ok(
-      doc.includes("Time / Error rate / Value"),
+      doc.includes(indicatorList[lang]),
       `${lang}: the rules list Time, Error rate, and Value`,
     );
   }
@@ -101,7 +106,11 @@ test("assert.js decides whether an outcome exists from validate-outcome.py's sta
       `${lang}: it carries the script path`,
     );
     assert.match(src, /\$\{OUTCOME_VALIDATOR\}/, `${lang}: the bootstrap prompt runs the script`);
-    assert.doesNotMatch(src, /all items are TBD|全項 TBD/, `${lang}: no eyeball check for TBD remains`);
+    assert.doesNotMatch(
+      src,
+      /all items are TBD|全項 TBD/,
+      `${lang}: no eyeball check for TBD remains`,
+    );
   }
 });
 
@@ -115,7 +124,11 @@ test("the digest targets are Behavior, Non-goals, and Constraints everywhere", (
   };
   for (const [lang, path] of Object.entries(asserts)) {
     const src = readFileSync(path, "utf8");
-    assert.match(src, /Behavior \/ Non-goals \/ Constraints/, `${lang}: assert.js's digest wording`);
+    assert.match(
+      src,
+      /Behavior \/ Non-goals \/ Constraints/,
+      `${lang}: assert.js's digest wording`,
+    );
   }
   for (const [lang, path] of Object.entries(challenge)) {
     const doc = readFileSync(path, "utf8");

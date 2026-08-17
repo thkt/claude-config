@@ -12,11 +12,11 @@ paths:
 
 # Markdown Conventions
 
-Conventions for Markdown files under `.claude/`.
+Conventions for Markdown files under `.claude/`. Anything inside a code block or inline code is out of scope.
 
 ## File scope
 
-Which conventions apply depends on the reader. Scope is judged by the path without the `.ja/` prefix.
+Scope is judged by the path without the `.ja/` prefix.
 
 | Scope        | Paths                                                                     |
 | ------------ | ------------------------------------------------------------------------- |
@@ -25,7 +25,7 @@ Which conventions apply depends on the reader. Scope is judged by the path witho
 
 ## Symbols
 
-In `.ja` prose the textlint hook collapses the spaces around `/`. When a collapsed enumeration of Latin-letter words would read as a path, list it with commas instead, and keep established compounds like `CI/CD` and `try/catch` as they are. Wrap slash commands like `/fix` in inline code, so that hook cannot glue them to the preceding word.
+In `.ja` the textlint hook collapses the spaces around `/`. List a Latin-letter enumeration with commas when the collapsed form reads as a path, keep `CI/CD` and `try/catch` as they are, and wrap slash commands like `/fix` in inline code.
 
 | Symbol | Use                                           | Example                             |
 | ------ | --------------------------------------------- | ----------------------------------- |
@@ -39,7 +39,7 @@ In `.ja` prose the textlint hook collapses the spaces around `/`. When a collaps
 
 ## Inline code
 
-Judge backtick use by whether removal causes misreading. Being a literal or an identifier is not a reason to wrap, and if removal causes no misreading, leave it unwrapped. Angle-brackets like `<branch>` are the exception.
+Judge by whether removal causes misreading. Angle-brackets like `<branch>` are the exception.
 
 | Keep                                                         | Remove                                                       |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -62,24 +62,26 @@ Judge backtick use by whether removal causes misreading. Being a literal or an i
 | Emoji in prose                          | LLM-facing | Remove. User-visible emoji are the exception                                   |
 | Unicode decoration                      | Prose      | Use ASCII                                                                      |
 
-## Reference depth
+## References
 
-| Scope      | Max levels |
-| ---------- | ---------- |
-| Skills     | 1          |
-| Rules/Docs | 3          |
+Depth goes 1 level in Skills and 3 levels in Rules / Docs.
 
-## Section vocabulary
-
-For a skill with a sequential procedure, the top-level sequential unit is always `## Phase N`. Reserve `Step` for a second tier that subdivides one Phase (such as a numbered column inside a single Phase's table). A non-sequential prep or reference section keeps its own name (Input, Setup, Output) and is not a Phase. Independent enumerated checks (dimensions, categories) are not Phases either.
-
-## Forbidden references
-
-| Pattern               | Reason                                        |
+| Forbidden pattern     | Reason                                        |
 | --------------------- | --------------------------------------------- |
 | Circular (A → B → A)  | Creates unresolvable dependencies             |
 | Already in CLAUDE.md  | Globally loaded files don't need re-reference |
 | Speculative reference | Reference only what the current context reads |
+
+## Section vocabulary
+
+For a skill with a sequential procedure, the top-level sequential unit is `## Phase N`.
+
+| Target                        | Vocabulary                                                      |
+| ----------------------------- | --------------------------------------------------------------- |
+| Top-level sequential unit     | `Phase N`                                                       |
+| Second tier inside a Phase    | `Step`. Such as a numbered column inside a single Phase's table |
+| Non-sequential prep/reference | Its own name (Input, Setup, Output). Not a Phase                |
+| Independent enumerated checks | The dimension or category name. Not a Phase                     |
 
 ## Removing duplicate instructions
 
@@ -90,7 +92,3 @@ For a skill with a sequential procedure, the top-level sequential unit is always
 | Another always-loaded `rules/` file                | Delete the compressed restatement, keep the table that carries the criteria |
 | Anything whose removal relaxes a threshold or gate | Keep until a false positive shows up in practice                            |
 | A duplicate that works as a reverse index          | Keep it. The path from situation to principle exists only in the index      |
-
-## Out of scope
-
-- Inside code blocks / inline code

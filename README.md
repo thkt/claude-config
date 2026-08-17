@@ -9,10 +9,10 @@ development principles, and workflow optimizations.
 
 This repository contains personal configurations for Claude AI, including:
 
-- Custom slash commands for systematic development workflows (26 skills)
-- Specialized AI agents for code review, generation, and analysis (27 agents)
+- Custom slash commands for systematic development workflows (28 skills)
+- Specialized AI agents for code review, generation, and analysis (28 agents)
 - Core AI operation principles and development best practices
-- Quality pipeline hooks (guardrails, formatter, gates) and the dormant reviews
+- Quality pipeline hooks (guardrails, formatter, gates) and the unwired reviews
   command
 - Japanese language support
 
@@ -26,12 +26,12 @@ This repository contains personal configurations for Claude AI, including:
 │   ├── core/             # Core AI operation principles
 │   ├── conventions/      # Documentation conventions
 │   └── development/      # Development patterns & methodologies
-├── skills/               # Skill-based knowledge modules (26 skills)
-├── agents/               # Specialized AI agents (27 agents)
+├── skills/               # Skill-based knowledge modules (28 skills)
+├── agents/               # Specialized AI agents (28 agents)
 │   ├── critics/          # Finding challengers (devils-advocate)
 │   ├── enhancers/        # Code enhancers & simplifiers
 │   ├── explorers/        # Codebase exploration agents
-│   ├── generators/       # Test generation (generator-test only)
+│   ├── generators/       # Test & snapshot generation
 │   ├── resolvers/        # Build error resolvers
 │   └── reviewers/        # Code review agents (18 reviewers)
 ├── docs/                  # Design docs & guides (DRs under decisions/)
@@ -171,7 +171,7 @@ brew install guardrails formatter reviews gates
 | ---------- | ----------- | --------------------- | --------------------------------- |
 | guardrails | PreToolUse  | Before Write/Edit     | Lint (oxlint) + security checks   |
 | formatter  | PostToolUse | After Write/Edit      | Auto-format (oxfmt)               |
-| reviews    | Not wired   | No automatic run      | Dormant static-analysis command   |
+| reviews    | Not wired   | No automatic run      | Static-analysis command           |
 | gates      | PostToolUse | After Write/Edit/Bash | Quality gates (knip, tsgo, madge) |
 
 Per-project configuration is done via `.claude/tools.json`. See
@@ -179,12 +179,14 @@ Per-project configuration is done via `.claude/tools.json`. See
 
 ### External CLI Tools (Optional)
 
-Some commands use external CLI tools for data source integration:
+Some commands use external CLI tools for data source integration. codegraph
+needs `codegraph init` per repository to create `.codegraph/` before use.
 
-| Tool    | Required By                           | Purpose             | Install                            |
-| ------- | ------------------------------------- | ------------------- | ---------------------------------- |
-| `gh`    | `/issue`, `/pr`, `/preview`, `/build` | GitHub API access   | `brew install gh && gh auth login` |
-| `scout` | Slack URL reading                     | Slack message fetch | `brew install thkt/tap/scout`      |
+| Tool        | Required By                           | Purpose                                                      | Install                            |
+| ----------- | ------------------------------------- | ------------------------------------------------------------ | ---------------------------------- |
+| `gh`        | `/issue`, `/pr`, `/preview`, `/build` | GitHub API access                                            | `brew install gh && gh auth login` |
+| `scout`     | `/research`, use-cli-scout skill      | Web search, page fetch, GitHub repo exploration, Slack fetch | `brew install thkt/tap/scout`      |
+| `codegraph` | `/research`, use-cli-codegraph skill  | Symbol-level structure queries (callers, impact)             | `npm i -g @colbymchenry/codegraph` |
 
 **Slack reading**: `scout fetch <slack-url>` reads any Slack message/thread URL
 directly. No additional setup needed if scout is configured.
@@ -210,10 +212,10 @@ See the complete command reference:
 
 ## 🔄 Standard Workflows
 
-### Feature Development (Enhanced)
+### Feature Development
 
 ```txt
-/research → /think → /code → /audit
+/research → /think → /issue → build workflow → /audit · /polish
 ```
 
 ### Bug Investigation & Fix
@@ -226,7 +228,7 @@ See the complete command reference:
 
 - **AI Processing**: English internally
 - **User Output**: Japanese (configurable)
-- **Documentation**: README.md and `docs/*.md` are available in English and Japanese; the five `docs/wiki/*.md` files are English-only
+- **Documentation**: README.md and `docs/*.md` are available in English and Japanese; the seven `docs/wiki/*.md` files are English-only
 
 ## 🛠️ Key Features
 
@@ -275,8 +277,3 @@ MIT License - Feel free to use and modify as needed.
 ## 👤 Author
 
 thkt
-
----
-
-_This configuration enhances Claude AI's capabilities for systematic software
-development with a focus on quality, readability, and maintainability._

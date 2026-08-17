@@ -50,14 +50,14 @@ Skills are "knowledge modules" that provide domain-specific knowledge when AI ex
 ### Categories
 
 `/code`, `/audit`, and `/polish` are workflows under `workflows/*.js`, not
-Skills. The User-invocable row lists all 14 current Skills.
+Skills. The User-invocable row lists all 17 current Skills.
 
-| Category       | Skills                                                                                                    | Purpose                          |
-| -------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| Workflow       | use-workflow-tdd-cycle, use-workflow-pageshot                                                             | Multi-phase workflow definitions |
-| Context        | use-context-reviewer-\*, use-context-root-cause-analysis                                                  | Domain knowledge for agents      |
-| CLI wrapper    | use-cli-codegraph, use-cli-recall, use-cli-scout, use-cli-gcloud                                          | CLI tool integration             |
-| User-invocable | census, challenge, checkout, commit, dr, fix, issue, outcome, pr, preview, research, scribe, slice, think | Slash command entry points       |
+| Category       | Skills                                                                                                                          | Purpose                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| Workflow       | use-workflow-tdd-cycle, use-workflow-pageshot                                                                                   | Multi-phase workflow definitions |
+| Context        | use-context-reviewer-\*, use-context-root-cause-analysis                                                                        | Domain knowledge for agents      |
+| CLI wrapper    | use-cli-codegraph, use-cli-recall, use-cli-scout, use-cli-gcloud                                                                | CLI tool integration             |
+| User-invocable | census, challenge, checkout, commit, dr, fix, issue, outcome, pr, preview, qualify, research, scribe, slice, stock, think, xlsx | Slash command entry points       |
 
 ### Loading Mechanism
 
@@ -98,6 +98,7 @@ description: TDD with RGRC cycle and Baby Steps.
 when_to_use: TDD, テスト駆動, Red-Green-Refactor, Baby Steps
 allowed-tools: Read Write Edit Bash(ugrep:*) Bash(bfs:*)
 context: fork # fork or inline
+background: false
 user-invocable: false # Whether invocable as slash command
 ---
 ```
@@ -116,7 +117,7 @@ agents/
 ├── critics/        # Critical verification (critic-audit, critic-design, critic-evidence)
 ├── enhancers/      # Code improvement + synthesis (enhancer-code, enhancer-evidence, enhancer-integration)
 ├── explorers/      # Exploration (explorer-feature)
-├── generators/     # Generation (generator-test)
+├── generators/     # Generation (generator-test, generator-snapshot)
 ├── resolvers/      # Problem resolution (resolver-build)
 └── reviewers/      # Review (18 specialized reviewers)
 ```
@@ -130,12 +131,12 @@ agents/
 | reviewer-conformance   | Diff-vs-spec conformance          |
 | reviewer-coverage      | Test coverage quality             |
 | reviewer-design        | Module depth via deletion test    |
-| reviewer-react-pattern | React design patterns             |
 | reviewer-duplication   | Cross-file DRY analysis           |
 | reviewer-efficiency    | Algorithmic cost, hot paths       |
 | reviewer-operations    | Error boundaries, logging         |
 | reviewer-progressive   | CSS-first, JS reduction           |
 | reviewer-prompt        | LLM prompt definition quality     |
+| reviewer-react-pattern | React design patterns             |
 | reviewer-readability   | Code structure, readability       |
 | reviewer-resilience    | Resilience weakness analysis      |
 | reviewer-reuse         | Existing code reuse opportunities |
@@ -171,7 +172,7 @@ Task tool with:
 SKILL.md → reference.md (1 level only)
 ```
 
-Reason: Claude truncates deep nesting with `head -100`, causing information loss.
+Reason: each extra level adds files to read and makes the reference graph harder to follow.
 
 ## Related
 

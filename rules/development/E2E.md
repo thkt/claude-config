@@ -13,7 +13,9 @@ E2E verifies a user's path through the whole system from a browser, and it costs
 
 ## What belongs in E2E
 
-One question decides it. Is that break only visible when the whole system runs? When a lower layer can catch it, write it there and leave the E2E suite as is.
+One question decides it. Is that break only visible when the whole system runs?
+
+The principle of limiting E2E to primary paths holds only when the layer you hand the rest to exists. Before limiting, confirm that layer exists in this project. When it does not, build the lower layer.
 
 | What you want to verify                            | Layer it belongs to |
 | -------------------------------------------------- | ------------------- |
@@ -21,24 +23,22 @@ One question decides it. Is that break only visible when the whole system runs? 
 | Validation branches, conditional display switching | Component test      |
 | Calculation, decision, transformation logic        | Unit test           |
 
-The principle of limiting E2E to primary paths holds only when the layer you hand the rest to exists. Before limiting, confirm that layer exists in this project. When it does not, build the lower layer instead of limiting.
-
 ## Confirming what is covered
 
 E2E coverage accumulates along the terrain of what is easy to write, not the terrain of risk. Controls visible on the screen from the start get covered, while elements that appear on state (error banners, confirmation dialogs, empty states) and paths that are heavy to set up (authentication, external SDKs) stay blank.
 
-Confirm at the level of a case, not the name of a layer. Do not settle for "unit tests exist"; name a case such as "an unverified user logging in sees the resend UI" and check the filename of the test that guards it. When no filename can be named, treat it as uncovered.
+Confirm at the level of a case. Do not settle for "unit tests exist"; name a case such as "an unverified user logging in sees the resend UI" and check the filename of the test that guards it. When no filename can be named, treat it as uncovered.
 
 ## Where the suite runs
 
 It splits on whether CI can boot the whole stack. When it can, run per PR; when a deployed environment is required, run as the release check.
 
+When running after deploy, select the scenarios per environment. Run scenarios that create data or call external services against staging, and limit production to a read-oriented smoke. Write this limit into the tests themselves rather than the pipeline config, so it survives a pipeline change.
+
 | Precondition                       | Trigger                     | Retries | Handling of a failure                            |
 | ---------------------------------- | --------------------------- | ------- | ------------------------------------------------ |
 | CI can boot the whole stack        | Per PR                      | 0       | Fix it in that PR when it fails                  |
 | A deployed environment is required | After deploy, release check | Enabled | Feed into halting the rollout or rolling it back |
-
-When running after deploy, select the scenarios per environment. Run scenarios that create data or call external services against staging, and limit production to a read-oriented smoke. Write this limit into the tests themselves rather than the pipeline config, so it survives a pipeline change.
 
 ## Waiting and assertion discipline
 
@@ -75,7 +75,7 @@ Log in once per role in setup, save it to `storageState`, and let each test load
 
 ## The screen and permission matrix
 
-Confirming that every primary screen renders for each permission is a matrix, so do not write it cell by cell. Define the screen list with the permissions that may view each one as data, and generate the tests in a loop. From the same list, verify both directions: a permitted role sees the screen's heading, and a non-permitted role lands on the fallback. Adding a screen or a permission is a one-line change to the list, and exposure to the wrong permission fails in the same suite.
+Confirming that every primary screen renders for each permission is a matrix, so do not write it cell by cell. Define the screen list with the permissions that may view each one as data, and generate the tests in a loop. From the same list, verify both directions: a permitted role sees the screen's heading, and a non-permitted role lands on the fallback.
 
 ## The boundary with external services
 

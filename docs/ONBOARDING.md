@@ -2,29 +2,24 @@
 
 ## How We Use Claude
 
-Based on thkt's usage over the last 30 days (846 sessions):
-
-Work Type Breakdown:
-Plan / Design ██████████████░░░░░░ 70%
-Improve Quality ███░░░░░░░░░░░░░░░░░ 12%
-Build Feature ██░░░░░░░░░░░░░░░░░░ 10%
-Debug / Fix ██░░░░░░░░░░░░░░░░░░ 8%
+Measured on 2026-08-17, by counting `<command-name>` occurrences across the 6018 session logs touched in the last 30 days.
 
 Top Skills & Commands:
-/clear ████████████████████ 582x/month
-/exit ███████░░░░░░░░░░░░░ 200x/month
-/plugin ██░░░░░░░░░░░░░░░░░░ 69x/month
-/commit ██░░░░░░░░░░░░░░░░░░ 60x/month
-/audit █░░░░░░░░░░░░░░░░░░░ 29x/month
-/challenge █░░░░░░░░░░░░░░░░░░░ 28x/month
-/think █░░░░░░░░░░░░░░░░░░░ 22x/month
-/release-notes █░░░░░░░░░░░░░░░░░░░ 21x/month
-/polish █░░░░░░░░░░░░░░░░░░░ 18x/month
+/clear ████████████████████ 111
+/build █████░░░░░░░░░░░░░░░ 28
+/qualify ████░░░░░░░░░░░░░░░░ 23
+/polish ████░░░░░░░░░░░░░░░░ 21
+/model ███░░░░░░░░░░░░░░░░░ 14
+/compact ███░░░░░░░░░░░░░░░░░ 14
+/exit ██░░░░░░░░░░░░░░░░░░ 10
+/issue ██░░░░░░░░░░░░░░░░░░ 9
+/think █░░░░░░░░░░░░░░░░░░░ 8
+/code-review █░░░░░░░░░░░░░░░░░░░ 6
+/audit █░░░░░░░░░░░░░░░░░░░ 6
+/assert █░░░░░░░░░░░░░░░░░░░ 6
+/adrift █░░░░░░░░░░░░░░░░░░░ 6
 
-Top MCP Servers:
-heptabase ████████████████████ 28 calls
-discord ███████████████████░ 26 calls
-context7 ██░░░░░░░░░░░░░░░░░░ 3 calls
+MCP Servers: zero calls over the same window.
 
 ## Your Setup Checklist
 
@@ -33,29 +28,32 @@ context7 ██░░░░░░░░░░░░░░░░░░ 3 calls
 - [ ] dotclaude - github.com/thkt/dotclaude (Claude Code config: agents, skills, hooks, rules)
 - [ ] scout - ~/GitHub/cli/scout (web fetch / search CLI)
 - [ ] recall - ~/GitHub/cli/recall (session search)
-- [ ] shields - ~/GitHub/cli/shields (PreToolUse guard hook)
+- [ ] shields - ~/GitHub/cli/shields (PreToolUse guard hook; currently unwired in settings.json)
 - [ ] guardrails - ~/GitHub/cli/guardrails (lint hook)
 - [ ] kiku - ~/GitHub/cli/kiku (Slack semantic search)
 - [ ] kagami - ~/GitHub/apps/kagami (session tracking app)
 - [ ] tally - ~/GitHub/cli/tally (engineering time tracking)
 
-### MCP Servers to Activate
+### CLI Tools to Install
 
-- [ ] heptabase - Knowledge base / note cards. Get access at heptabase.com; configure API key via `/mcp`.
-- [ ] discord - Discord bot integration for async Claude responses. Run `/discord:configure` to set up your bot token.
-- [ ] context7 - Library documentation lookup. Enable via `/plugin` from the marketplace.
+- [ ] scout - Web search, page fetch, GitHub repo exploration, Slack fetch. `brew install thkt/tap/scout`
+- [ ] recall - Full-text search across past sessions. `brew install thkt/tap/recall`
+- [ ] codegraph - Symbol-level structure queries. `npm i -g @colbymchenry/codegraph`, then `codegraph init` per repository
+- [ ] gh - GitHub API access. `brew install gh && gh auth login`
 
 ### Skills to Know About
 
-- `/commit` - Generates a Conventional Commits message from staged diff. Run after edits instead of writing commit messages manually.
-- `/audit` - Orchestrates multiple specialized reviewers (security, type safety, silent failures, etc.) against the current codebase.
-- `/challenge` - Devil's advocate pass on a proposal, design, or plan. Use before committing to an architecture decision.
+- `/build` - Implements a plan-backed issue end-to-end and opens a draft PR. The most-used entry point.
+- `/qualify` - Checks whether an issue is ready to hand to build. Run it before launching build.
+- `/polish` - External-lens (Codex) review and cleanup. Use after a feature lands to catch slop.
+- `/issue` - Files a GitHub Issue with a structured title and body; transfers a plan into the `## Plan` section when one exists.
 - `/think` - Design exploration that produces a plan (transferred to the issue's Plan section). Entry point for any non-trivial new feature.
-- `/polish` - Light review + cleanup pass. Use after a feature lands to catch slop before the next PR.
-- `/release-notes` - Surfaces the latest Claude Code changelog and flags anything relevant to the current environment.
-- `/plugin` - Lists installed plugins; use to enable/disable marketplace entries.
+- `/audit` - Fans specialized reviewers (security, type safety, silent failures, etc.) out over a diff.
+- `/assert` - Independent merge-readiness verdict, running Codex in an isolated worktree.
+- `/adrift` - Scans for drift between DRs and the current code.
+- `/commit` - Generates a Conventional Commits message from the staged diff. Run after edits instead of writing them manually.
+- `/challenge` - Devil's advocate pass on a proposal, design, or plan. Use before committing to an architecture decision.
 - `/compact` - Summarizes and compresses context when usage approaches 70%. Run proactively on long sessions.
-- `/code` - TDD/RGRC implementation loop with real-time test feedback.
 
 ## Team Tips
 

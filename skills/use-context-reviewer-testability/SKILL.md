@@ -5,7 +5,6 @@ when_to_use: テスト容易性, モック, mock-friendly, DI
 allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
 agent: reviewer-testability
 context: fork
-background: false
 user-invocable: false
 ---
 
