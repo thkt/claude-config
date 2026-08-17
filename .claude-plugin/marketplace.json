@@ -15,7 +15,7 @@
     {
       "name": "build",
       "source": { "source": "github", "repo": "thkt/dotclaude" },
-      "description": "End-to-end autonomous build. File an issue with /issue (optionally after /challenge, /research, and /think), hand the issue number to the build workflow, and get a draft PR after Load / Code / Audit / Polish / Ship. Bundles the full reviewer and critic agent set, the code / audit / polish / shake / assert / adrift workflows, and the planning and git skills (/think, /research, /commit, /pr).",
+      "description": "End-to-end autonomous build. File an issue with /issue (optionally after /challenge, /research, and /think), hand the issue number to the build workflow, and get a draft PR after Load / Revalidate / Branch / Code / Cleanup / Verify / Ship. Heavy assurance (/audit, /polish) is human-invoked on that draft PR. Bundles the full reviewer and critic agent set, the code / audit / polish / shake / assert / adrift workflows, the planning skills (/think, /research, /slice, /outcome), the git skills (/commit, /checkout, /pr), and /dr, /census.",
       "version": "4.1.0",
       "author": {
         "name": "thkt",
