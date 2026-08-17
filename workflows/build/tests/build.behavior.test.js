@@ -2,7 +2,7 @@
 // loop, the fail-close branches, the phase order, and a snapshot of the stopped values.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflow } from "../../_lib/run-workflow.js";
@@ -712,12 +712,12 @@ test("a plan sitting exactly at the caps of 3 files and 4 tests does not stop an
 // alone drops nothing at run time, so this static match forces both to follow in the same commit.
 const thinkSkill = join(here, "..", "..", "..", "skills", "think", "SKILL.md");
 
-test("the UNIT_CAPS numbers and the seam exemption match the unit-cap wording in /think SKILL.md", () => {
-  const caps = readFileSync(buildJs, "utf8").match(
+test("the UNIT_CAPS numbers and the seam exemption match the unit-cap wording in /think SKILL.md", async () => {
+  const caps = (await readFile(buildJs, "utf8")).match(
     /const UNIT_CAPS = \{ files: (\d+), tests: (\d+) \};/,
   );
   assert.ok(caps, "the UNIT_CAPS numbers are readable from build.js");
-  const skill = readFileSync(thinkSkill, "utf8");
+  const skill = await readFile(thinkSkill, "utf8");
   assert.ok(
     skill.includes(`caps are ${caps[1]} files and ${caps[2]} tests`),
     `SKILL.md states the caps as ${caps[1]} files and ${caps[2]} tests`,
@@ -729,8 +729,8 @@ test("the UNIT_CAPS numbers and the seam exemption match the unit-cap wording in
 // The reference_module.kind vocabulary /think Phase 3 teaches copies EXTRACT_SCHEMA's enum into
 // prose. What is matched is the enum token itself appearing in both language templates rather
 // than the English wording, the same static cross-check shape as the UNIT_CAPS match.
-test("the kind words in the templates match build.js's enum", () => {
-  const source = readFileSync(buildJs, "utf8");
+test("the kind words in the templates match build.js's enum", async () => {
+  const source = await readFile(buildJs, "utf8");
   const enumMatch = source.match(/kind:\s*\{\s*type:\s*"string",\s*enum:\s*\[([^\]]+)\]/);
   assert.ok(enumMatch, "build.js's kind enum is readable");
   const kinds = enumMatch[1].split(",").map((s) => s.trim().replace(/^"|"$/g, ""));
@@ -740,7 +740,7 @@ test("the kind words in the templates match build.js's enum", () => {
     ja: join(here, "..", "..", "..", ".ja", "skills", "think", "templates", "plan.md"),
   };
   for (const [lang, path] of Object.entries(templates)) {
-    const doc = readFileSync(path, "utf8");
+    const doc = await readFile(path, "utf8");
     assert.ok(
       doc.includes(expectedToken),
       `${lang}: the kind enum token ${expectedToken} matches build.js's enum`,
@@ -1308,8 +1308,8 @@ test("with the per-unit commits on, the Ship prompt instructs a remainder commit
   );
 });
 
-test("the snapshot of the stopped value set matches 13 values exactly and holds no remnant of the audit route", () => {
-  const source = readFileSync(buildJs, "utf8");
+test("the snapshot of the stopped value set matches 13 values exactly and holds no remnant of the audit route", async () => {
+  const source = await readFile(buildJs, "utf8");
   const stopped = new Set();
   for (const m of source.matchAll(/stopped:\s*"([^"]+)"/g)) stopped.add(m[1]);
   assert.deepEqual(

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { initRepo } from "./_git-fixture.js";
@@ -71,7 +71,7 @@ test("appending to an existing index does not duplicate the header and keeps the
   ]);
 });
 
-test("checking an index written with --apply reads the accepted row back with no drift", () => {
+test("checking an index written with --apply reads the accepted row back with no drift", async () => {
   const dir = initRepo("apply");
   const indexPath = join(dir, "docs", "REFERENCE_INDEX.md");
   const rows = [{ glob: "src/*.tsx", description: "conventions", path: "docs/component.md" }];
@@ -79,7 +79,7 @@ test("checking an index written with --apply reads the accepted row back with no
   execFileSync("node", [scriptPath, "--apply", indexPath, JSON.stringify(rows)], { cwd: dir });
 
   // The written table goes straight back through the check to confirm the row reads as one data row.
-  const written = readFileSync(indexPath, "utf8");
+  const written = await readFile(indexPath, "utf8");
   const report = JSON.parse(
     execFileSync(
       "node",

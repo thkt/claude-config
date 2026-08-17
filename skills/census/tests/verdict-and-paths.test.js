@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,29 +19,36 @@ const templates = {
 };
 const agent = join(root, "agents", "critics", "critic-design.md");
 
-// Two vocabularies of verdict exist. keep / downgrade / drop is census's own accept-or-reject
-// decision, defined in decision-criteria.md, while confirmed / weakened / needs_revision is what
-// critic-design returns. Making the agent return census's words would put the agent definition
-// and the Task prompt in conflict.
-test("census's accept-or-reject words stay unmixed with critic-design's verdicts", () => {
-  const CENSUS = ["keep", "downgrade", "drop"];
+// A short parse would leave the next test matching nothing.
+const agentVerdicts = async () => {
+  const doc = await readFile(agent, "utf8");
+  const found = [...doc.matchAll(/^\| (confirmed|weakened|needs_revision) +\|/gm)].map((m) => m[1]);
+  assert.equal(found.length, 3, `three agent verdicts are readable (${found.join(", ")})`);
+  return found;
+};
+
+test("the criteria define census's own accept-or-reject words", async () => {
   for (const [lang, path] of Object.entries(criteria)) {
-    const doc = readFileSync(path, "utf8");
-    for (const word of CENSUS) {
+    const doc = await readFile(path, "utf8");
+    for (const word of ["keep", "downgrade", "drop"]) {
       assert.match(doc, new RegExp(`\`${word}\``), `${lang}: the criteria define ${word}`);
     }
   }
-  const verdicts = [
-    ...readFileSync(agent, "utf8").matchAll(/^\| (confirmed|weakened|needs_revision) +\|/gm),
-  ].map((m) => m[1]);
-  assert.equal(verdicts.length, 3, `three agent verdicts are readable (${verdicts.join(", ")})`);
+});
 
+test("the skill takes the verdicts critic-design's own definition returns", async () => {
+  const verdicts = await agentVerdicts();
   for (const [lang, path] of Object.entries(skills)) {
-    assert.ok(existsSync(path), `${path} exists`);
-    const doc = readFileSync(path, "utf8");
+    const doc = await readFile(path, "utf8");
     for (const verdict of verdicts) {
       assert.match(doc, new RegExp(verdict), `${lang}: it takes the agent's ${verdict}`);
     }
+  }
+});
+
+test("the skill does not make critic-design return census's words", async () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = await readFile(path, "utf8");
     assert.doesNotMatch(
       doc,
       /(returns one of `keep`|`keep`\/`downgrade`\/`drop` のいずれかの)/,
@@ -50,41 +57,37 @@ test("census's accept-or-reject words stay unmixed with critic-design's verdicts
   }
 });
 
-// ${CLAUDE_SKILL_DIR} expands in the skill body alone. Passed to a subagent it arrives literal,
-// the Read fails, and challenge runs with no decision criteria.
-test("the path handed to a subagent is absolute", () => {
+// A hardcoded ~/.claude path names the dev tree, the wrong copy when census runs from a plugin.
+test("the criteria path handed to a subagent names this skill's own copy", async () => {
   for (const [lang, path] of Object.entries(skills)) {
-    const doc = readFileSync(path, "utf8");
-    const spawn = doc.split(/### 5b/)[1] || "";
-    assert.ok(spawn.length > 0, `${lang}: Phase 5b is readable`);
+    const doc = await readFile(path, "utf8");
+    const spawn = doc.split(/### Step 2: Devil's Advocate/)[1] || "";
+    assert.ok(spawn.length > 0, `${lang}: the challenge step is readable`);
     assert.match(
       spawn,
-      /~\/\.claude\/skills\/census\/references\/decision-criteria\.md/,
-      `${lang}: an absolute path`,
+      /\$\{CLAUDE_SKILL_DIR\}\/references\/decision-criteria\.md/,
+      `${lang}: the criteria path is skill-relative`,
     );
-    assert.doesNotMatch(
-      spawn,
-      /\$\{CLAUDE_SKILL_DIR\}\/references/,
-      `${lang}: no skill variable is handed to the subagent`,
-    );
+    assert.doesNotMatch(spawn, /~\/\.claude\/skills\//, `${lang}: no hardcoded dev-tree path`);
   }
 });
 
-// MARKDOWN.md § Do not forbids a paragraph immediately after a table. The tally goes before it.
-test("the tally row sits before the DR Promotion Candidates table", () => {
+// MARKDOWN.md § Do not forbids a paragraph immediately after a table.
+test("the tally row sits before the DR Promotion Candidates table", async () => {
   for (const [lang, path] of Object.entries(templates)) {
-    const doc = readFileSync(path, "utf8");
+    const doc = await readFile(path, "utf8");
     const tally = doc.indexOf("keep {N} / downgrade {N} / drop {N}");
     const table = doc.indexOf("| #   | Candidate");
     assert.ok(tally >= 0 && table >= 0, `${lang}: both the tally row and the table are present`);
     assert.ok(tally < table, `${lang}: the tally sits before the table`);
   }
+});
+
+// One pattern accepting either wording would pass when .ja carries the English phrase.
+test("each language states the ordering in its own prose", async () => {
+  const phrase = { ja: /直前に/, en: /right before/ };
   for (const [lang, path] of Object.entries(skills)) {
-    const doc = readFileSync(path, "utf8");
-    assert.match(
-      doc,
-      /(直前に|right before)/,
-      `${lang}: the instruction also says to put it before`,
-    );
+    const doc = await readFile(path, "utf8");
+    assert.match(doc, phrase[lang], `${lang}: the instruction also says to put it before`);
   }
 });

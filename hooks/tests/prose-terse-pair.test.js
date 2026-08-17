@@ -13,13 +13,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..");
 
-const prose = readFileSync(join(root, "rules", "conventions", "PROSE.md"), "utf8");
-const terse = readFileSync(join(root, "output-styles", "terse.md"), "utf8");
+const prose = await readFile(join(root, "rules", "conventions", "PROSE.md"), "utf8");
+const terse = await readFile(join(root, "output-styles", "terse.md"), "utf8");
 
 // Counts the body rows alone, dropping the heading row and the separator (| --- |).
 const rowsUnder = (text, heading) => {
@@ -40,7 +40,7 @@ const pairs = [
 ];
 
 for (const pair of pairs) {
-  test(`${pair.prose} and ${pair.terse} hold the same number of rows`, () => {
+  test(`${pair.prose} and ${pair.terse} hold the same number of rows`, async () => {
     const left = rowsUnder(prose, pair.prose);
     const right = rowsUnder(terse, pair.terse);
     assert.ok(left > 0, `${pair.prose} holds no rows`);

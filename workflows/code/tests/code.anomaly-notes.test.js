@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,7 +14,7 @@ const sites = {
 // tool result" as an instruction to enumerate the evidence into one stretch of prose. The PR
 // body renders an anomaly with its newlines collapsed onto one line, leaving the reader unable
 // to find where the conclusion ends.
-test("the no-red notes hold one conclusion sentence and move the grounds to evidence", () => {
+test("the no-red notes hold one conclusion sentence and move the grounds to evidence", async () => {
   const split = {
     ja: /結論を 1 文で書く/,
     en: /the conclusion in one sentence/,
@@ -24,7 +24,7 @@ test("the no-red notes hold one conclusion sentence and move the grounds to evid
     en: /Keep the supporting facts out of notes and put them in evidence/,
   };
   for (const [name, path] of Object.entries(sites)) {
-    const src = readFileSync(path, "utf8");
+    const src = await readFile(path, "utf8");
     assert.match(src, split[name], `${name}: notes holds one conclusion sentence`);
     assert.match(src, separate[name], `${name}: the grounds go to evidence`);
   }
@@ -32,7 +32,7 @@ test("the no-red notes hold one conclusion sentence and move the grounds to evid
 
 // The schema description alone loses to the Red retry's "examine it closely", and the course of
 // that examination flows into notes. The division is stated on the prompt side as well.
-test("the Red prompt states the division between notes and evidence", () => {
+test("the Red prompt states the division between notes and evidence", async () => {
   const split = {
     ja: [
       /結論を notes に 1 文で、根拠を evidence に 1 項目 1 行で書く/,
@@ -44,15 +44,15 @@ test("the Red prompt states the division between notes and evidence", () => {
     ],
   };
   for (const [name, path] of Object.entries(sites)) {
-    const src = readFileSync(path, "utf8");
+    const src = await readFile(path, "utf8");
     assert.match(src, split[name][0], `${name}: Red states the division`);
     assert.match(src, split[name][1], `${name}: the Red retry states the division`);
   }
 });
 
-test("the no-red anomaly carries evidence into the PR", () => {
+test("the no-red anomaly carries evidence into the PR", async () => {
   for (const [name, path] of Object.entries(sites)) {
-    const src = readFileSync(path, "utf8");
+    const src = await readFile(path, "utf8");
     assert.match(
       src,
       /"red_confirmed", "test_files", "notes", "evidence"/,
