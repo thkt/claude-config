@@ -206,9 +206,9 @@ test("T-004 a body whose section order differs from the skeleton does not become
 });
 
 // Template source ranks a repository's own .github/ISSUE_TEMPLATE/<type>.md second, ahead of the
-// skill's templates. That file is the raw body with no "## Template" fence, so reading only the
-// fenced skeleton returned no sections and faulted every heading of a correct body as
-// unknown_section. validation-errors.md then tells the writer to delete those correct sections.
+// skill's templates. That file carries no "## Template" fence, so reading only the fenced skeleton
+// finds no section and faults every heading of a correct body as unknown_section. Following
+// validation-errors.md from there deletes sections that were right.
 test("T-012 a repository .md template is read as the skeleton and does not close the section set", () => {
   const dir = mkdtempSync(join(tmpdir(), "issue-repo-template-"));
   try {

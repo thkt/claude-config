@@ -335,8 +335,7 @@ class RenderTest(unittest.TestCase):
 
 class LabelTest(unittest.TestCase):
     def test_every_label_key_is_rendered(self) -> None:
-        # A label whose producer is gone renders nothing, so no output assertion catches it.
-        # The assumptions section survived that way after its only input was retired.
+        # A label whose producer is gone renders nothing, so no assertion on the output catches it.
         src = SCRIPT.read_text(encoding="utf-8")
         body = src[src.index("LABELS = {") :]
         body = body[body.index("}\n\n") :]

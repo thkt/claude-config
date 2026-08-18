@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,28 +14,17 @@ const skills = {
   ja: join(root, ".ja", "skills", "issue", "SKILL.md"),
   en: join(root, "skills", "issue", "SKILL.md"),
 };
-const builds = {
-  ja: join(root, ".ja", "workflows", "build.js"),
-  en: join(root, "workflows", "build.js"),
-};
+// Narrows a document to one Phase, so a match cannot land in a neighbouring Phase.
+const section = (doc, heading, next) => doc.slice(doc.indexOf(heading), doc.indexOf(next));
+const phase2 = (doc) => section(doc, "## Phase 2", "## Phase 3");
 
-// Extraction that narrows the target to Phase 2's body alone.
-function extractPhase2(doc) {
-  return doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
-}
-
-function extractPhase(doc, heading, next) {
-  return doc.slice(doc.indexOf(heading), doc.indexOf(next));
-}
-
-// qualify's needs-plan and build's no-plan both point at "draft the plan with /think and transfer
-// it with /issue". /issue can only file a new issue, so without an existing-issue mode that
-// instruction stays unexecutable.
 const qualifies = {
   ja: join(root, ".ja", "skills", "qualify", "SKILL.md"),
   en: join(root, "skills", "qualify", "SKILL.md"),
 };
 
+// qualify's needs-plan tells the reader to transfer a plan with /issue. Without a route taking an
+// issue number, that instruction has nothing to run.
 test("transferring a Plan into an existing issue exists in both languages and qualify's needs-plan points at it", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
@@ -62,7 +51,6 @@ test("transferring a Plan into an existing issue exists in both languages and qu
 
 test("the feature template carries an optional Accessibility section scoped to UI-touching issues", () => {
   for (const [lang, path] of Object.entries(targets)) {
-    assert.ok(existsSync(path), `${path} exists`);
     const doc = readFileSync(path, "utf8");
     assert.match(doc, /^## Accessibility \((optional|任意)\)/m, `${lang}: the optional section`);
     if (lang === "ja") {
@@ -88,7 +76,6 @@ const matchRefs = {
 // reference.
 test("each language's duplication-match.md defines the match target as a duplication of the same knowledge", () => {
   for (const [lang, path] of Object.entries(matchRefs)) {
-    assert.ok(existsSync(path), `${path} exists`);
     const matchRef = readFileSync(path, "utf8");
     const [target, criterion, independent] =
       lang === "ja"
@@ -172,12 +159,12 @@ test("each language's duplication-match.md states the reference runs from the bo
 // appending an item slip through, so the last item itself is pinned as the match.
 test("in each language's SKILL.md the match sits as Phase 2's last step", () => {
   for (const [lang, path] of Object.entries(skills)) {
-    const phase2 = extractPhase2(readFileSync(path, "utf8"));
+    const refine = phase2(readFileSync(path, "utf8"));
     const [challenge, matching] =
       lang === "ja"
         ? [/challenge の verdict/, /plan 下書きがあれば/]
         : [/challenge verdict/, /When a plan draft exists/];
-    const items = [...phase2.matchAll(/^\d+\. .*/gm)].map((m) => m[0]);
+    const items = [...refine.matchAll(/^\d+\. .*/gm)].map((m) => m[0]);
     assert.ok(items.length >= 2, `${lang}: Phase 2 carries numbered steps`);
     assert.ok(
       items.some((item) => challenge.test(item)),
@@ -235,18 +222,18 @@ test("each language's duplication-match.md states that on a conflict the plan is
 
 test("each language's SKILL.md states the match is skipped when there is no plan draft", () => {
   for (const [lang, path] of Object.entries(skills)) {
-    const phase2 = extractPhase2(readFileSync(path, "utf8"));
+    const refine = phase2(readFileSync(path, "utf8"));
     if (lang === "ja") {
-      assert.match(phase2, /(plan 下書きが)?無ければ/, "ja: the mention of having no plan draft");
-      assert.match(phase2, /照合を省く/, "ja: the mention of skipping the match");
+      assert.match(refine, /(plan 下書きが)?無ければ/, "ja: the mention of having no plan draft");
+      assert.match(refine, /照合を省く/, "ja: the mention of skipping the match");
     } else {
       assert.match(
-        phase2,
+        refine,
         /no plan draft|plan draft[\s\S]{0,10}absent|without (a plan draft|one)/i,
         "en: the mention of no plan draft",
       );
       assert.match(
-        phase2,
+        refine,
         /skip[\s\S]{0,20}match|omit[\s\S]{0,20}match/i,
         "en: the mention of skipping the match",
       );
@@ -254,10 +241,8 @@ test("each language's SKILL.md states the match is skipped when there is no plan
   }
 });
 
-// Phase 2 matches the body against a plan draft and Phase 3 transfers one. Each stating its own
-// selection rule let Phase 2 pick the conversation's draft while Phase 3 read a file, so the issue
-// carried a plan that was never matched. The rule sits with the match itself, and SKILL.md points
-// at it rather than restating it.
+// Phase 2 matches against a plan draft and Phase 3 transfers one. With the selection rule stated
+// in both places they can pick different drafts, and the issue carries a plan nothing matched.
 test("the plan draft is selected in one place", () => {
   for (const lang of ["ja", "en"]) {
     const skill = readFileSync(skills[lang], "utf8");
@@ -273,7 +258,7 @@ test("the plan draft is selected in one place", () => {
       `${lang}: duplication-match.md names the planning path once`,
     );
     assert.match(
-      extractPhase2(skill),
+      phase2(skill),
       lang === "ja" ? /どの下書きを選ぶか/ : /which draft to match against/,
       `${lang}: Phase 2 sends the selection to the reference`,
     );
@@ -283,7 +268,7 @@ test("the plan draft is selected in one place", () => {
 test("Phase 1's steps reach the minor-bug branch", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
-    const phase1 = extractPhase(doc, "## Phase 1", "###");
+    const phase1 = section(doc, "## Phase 1", "###");
     const steps = [...phase1.matchAll(/^\d+\. .*/gm)].map((m) => m[0]);
     assert.ok(steps.length >= 5, `${lang}: Phase 1 carries numbered steps (${steps.length})`);
     assert.ok(
@@ -298,9 +283,7 @@ test("Phase 1's steps reach the minor-bug branch", () => {
 // changes rather than in one list up front, so a step added later carries its own.
 test("the number route leaves the existing body's prose alone", () => {
   for (const [lang, path] of Object.entries(skills)) {
-    const steps = [...extractPhase2(readFileSync(path, "utf8")).matchAll(/^\d+\. .*/gm)].map(
-      (m) => m[0],
-    );
+    const steps = [...phase2(readFileSync(path, "utf8")).matchAll(/^\d+\. .*/gm)].map((m) => m[0]);
     const [route, skipped, approval] =
       lang === "ja"
         ? [/番号経路/, /行わない/, /承認/]
@@ -315,7 +298,8 @@ test("the number route leaves the existing body's prose alone", () => {
   }
 });
 
-// One wording for both routes told the user a filing was about to happen when the run was an edit.
+// The number route edits an existing issue, so a single wording announces a filing that is not
+// happening.
 test("the confirmation names both routes", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
@@ -324,8 +308,7 @@ test("the confirmation names both routes", () => {
   }
 });
 
-// The Japanese body cited the English heading "Template source", which exists in neither the
-// Japanese file nor as a Japanese heading, so a reader following it landed nowhere.
+// A citation naming a heading the same file does not carry sends the reader nowhere.
 test("the validator step cites a heading its own language carries", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
@@ -339,9 +322,8 @@ test("the validator step cites a heading its own language carries", () => {
 });
 
 // A build-sized issue needs its plan before the body is written. With the plan arriving later,
-// Phase 2's duplication match runs once against a body carrying no Plan and again after the
-// transfer. The proposal used to sit at Phase 4's confirmation, three steps past the point where
-// the extent is already known.
+// Phase 2's duplication match runs twice: once against a body carrying no Plan, once after the
+// transfer.
 test("Phase 1 proposes /think before the body is generated", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const phase1 = readFileSync(path, "utf8").split("## Phase 1")[1].split("###")[0];
@@ -355,9 +337,8 @@ test("Phase 1 proposes /think before the body is generated", () => {
   }
 });
 
-// A check with no treatment reads as a step but changes nothing. fix and challenge both state
-// what to do when OUTCOME.md is absent and when the work falls outside it; issue said only
-// "confirm it serves the outcome" and stopped there.
+// A check with no treatment reads as a step but changes nothing. fix and challenge both state what
+// to do when OUTCOME.md is absent and when the work falls outside it.
 test("the outcome check states what to do on both branches", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const phase1 = readFileSync(path, "utf8").split("## Phase 1")[1].split("###")[0];

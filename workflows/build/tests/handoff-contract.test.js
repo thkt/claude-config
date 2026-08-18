@@ -32,10 +32,9 @@ const skillDocs = () => {
   return docs;
 };
 
-// build hands an issue with no ## Plan section back as no-plan. When the skill doing the
-// handoff does not say so, whoever followed that instruction stops at the Load stage. When
-// this behavior was restored, slice was fixed while issue and fix were missed. A missed
-// wording drops nothing at runtime, so this static match catches the next omission.
+// build hands an issue with no ## Plan section back as no-plan. When the skill doing the handoff
+// does not say so, whoever followed that instruction stops at the Load stage. A missing wording
+// drops nothing at runtime, so only a static match catches it.
 test("the handoff instruction names the Plan section on the same line", () => {
   const docs = skillDocs();
   assert.ok(docs.length > 0, "the skill SKILL.md files are readable");
