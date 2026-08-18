@@ -24,6 +24,10 @@ function extractPhase2(doc) {
   return doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
 }
 
+function extractPhase(doc, heading, next) {
+  return doc.slice(doc.indexOf(heading), doc.indexOf(next));
+}
+
 // issue writes the tentative marker into the body, build's extract agent collects it as an
 // assumption, and ship surfaces it on the draft PR as something to veto. The marker is build's
 // extraction keyword, so it stays English whatever the body's language, following SKILL.md L20's
@@ -47,7 +51,10 @@ test("the tentative marker is tentative in both languages and build's extract pr
     assert.match(src, /Premises/, `${lang}: build.js's extract prompt names the Premises section`);
   }
   for (const [lang, path] of Object.entries(targets)) {
-    assert.ok(!readFileSync(path, "utf8").includes("(仮:"), `${lang}: the template says tentative too`);
+    assert.ok(
+      !readFileSync(path, "utf8").includes("(仮:"),
+      `${lang}: the template says tentative too`,
+    );
   }
 });
 
@@ -67,7 +74,11 @@ test("transferring a Plan into an existing issue exists in both languages and qu
       lang === "ja" ? /issue 番号か URL だけを受け取ったとき/ : /only an issue number or URL/,
       `${lang}: a branch taking a bare number is present`,
     );
-    assert.match(doc, /gh issue edit <ref> --body-file/, `${lang}: a step writing back into the body is present`);
+    assert.match(
+      doc,
+      /gh issue edit <ref> --body-file/,
+      `${lang}: a step writing back into the body is present`,
+    );
   }
   for (const [lang, path] of Object.entries(qualifies)) {
     const doc = readFileSync(path, "utf8");
@@ -115,7 +126,11 @@ test("the feature template carries an optional Accessibility section scoped to U
       assert.match(doc, /操作系と満たす基準/, "ja: the intent of input modes plus criteria");
     } else {
       assert.match(doc, /UI-touching issues only/, "en: the UI-only condition");
-      assert.match(doc, /input modes and the criteria/, "en: the intent of input modes plus criteria");
+      assert.match(
+        doc,
+        /input modes and the criteria/,
+        "en: the intent of input modes plus criteria",
+      );
     }
   }
 });
@@ -189,11 +204,23 @@ test("each language's duplication-match.md states the reference runs from the bo
   for (const [lang, path] of Object.entries(matchRefs)) {
     const matchRef = readFileSync(path, "utf8");
     if (lang === "ja") {
-      assert.match(matchRef, /参照は本文から `## Plan` へ向ける/, "ja: the direction of the reference");
+      assert.match(
+        matchRef,
+        /参照は本文から `## Plan` へ向ける/,
+        "ja: the direction of the reference",
+      );
       assert.match(matchRef, /本文の節はそのあとに生まれる/, "ja: why the direction is fixed");
     } else {
-      assert.match(matchRef, /reference runs from the body to `## Plan`/i, "en: the direction of the reference");
-      assert.match(matchRef, /sections come into existence after it/i, "en: why the direction is fixed");
+      assert.match(
+        matchRef,
+        /reference runs from the body to `## Plan`/i,
+        "en: the direction of the reference",
+      );
+      assert.match(
+        matchRef,
+        /sections come into existence after it/i,
+        "en: why the direction is fixed",
+      );
     }
   }
 });
@@ -222,7 +249,11 @@ test("each language's duplication-match.md states the duplicated body side is re
   for (const [lang, path] of Object.entries(matchRefs)) {
     const matchRef = readFileSync(path, "utf8");
     if (lang === "ja") {
-      assert.match(matchRef, /## Plan[\s\S]{0,20}参照/, "ja: replacement with a reference to the Plan");
+      assert.match(
+        matchRef,
+        /## Plan[\s\S]{0,20}参照/,
+        "ja: replacement with a reference to the Plan",
+      );
       assert.match(
         matchRef,
         /見出しが何をする変更かを述べる 1 行/,
@@ -230,7 +261,11 @@ test("each language's duplication-match.md states the duplicated body side is re
       );
     } else {
       assert.match(matchRef, /## Plan[\s\S]{0,20}reference/i, "en: reference to Plan");
-      assert.match(matchRef, /one line that states what change/i, "en: the rule of leaving one line per heading");
+      assert.match(
+        matchRef,
+        /one line that states what change/i,
+        "en: the rule of leaving one line per heading",
+      );
     }
   }
 });
@@ -240,7 +275,11 @@ test("each language's duplication-match.md states that on a conflict the plan is
     const matchRef = readFileSync(path, "utf8");
     if (lang === "ja") {
       assert.match(matchRef, /食い違う/, "ja: the mention of a conflict");
-      assert.match(matchRef, /plan を正として/, "ja: the policy of taking the plan as authoritative");
+      assert.match(
+        matchRef,
+        /plan を正として/,
+        "ja: the policy of taking the plan as authoritative",
+      );
     } else {
       assert.match(matchRef, /conflict/i, "en: the mention of a conflict");
       assert.match(
@@ -270,5 +309,57 @@ test("each language's SKILL.md states the match is skipped when there is no plan
         "en: the mention of skipping the match",
       );
     }
+  }
+});
+
+// Phase 2 matches the body against a plan draft and Phase 3 transfers one. Each stating its own
+// selection rule let Phase 2 pick the conversation's draft while Phase 3 read a file, so the issue
+// carried a plan that was never matched. The path appears once, and that once is in Phase 2.
+test("the plan draft is selected in one place", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    const hits = doc.split(".claude/workspace/planning").length - 1;
+    assert.equal(hits, 1, `${lang}: the planning path is named once (${hits})`);
+    assert.ok(
+      extractPhase2(doc).includes(".claude/workspace/planning"),
+      `${lang}: the one mention sits in Phase 2, where the match picks the draft`,
+    );
+  }
+});
+
+// A subsection no step reaches is a subsection nobody runs. The minor-bug branch decides whether
+// to file at all, and it sat under Phase 1 with all five steps pointing elsewhere.
+test("Phase 1's steps reach the minor-bug branch", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    const phase1 = extractPhase(doc, "## Phase 1", "###");
+    const steps = [...phase1.matchAll(/^\d+\. .*/gm)].map((m) => m[0]);
+    assert.ok(steps.length >= 5, `${lang}: Phase 1 carries numbered steps (${steps.length})`);
+    assert.ok(
+      steps.some((step) => step.includes("/fix")),
+      `${lang}: a step offers /fix instead of filing`,
+    );
+  }
+});
+
+// The number route edits an issue somebody else wrote. Running the prose refinement on it rewrites
+// their words for a request that only asked to transfer a plan.
+test("the number route leaves the existing body's prose alone", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const heading = lang === "ja" ? "## 入力" : "## Input";
+    const input = extractPhase(readFileSync(path, "utf8"), heading, "## Phase 1");
+    const [refinement, approval] =
+      lang === "ja" ? [/推敲.*行わない/, /承認/] : [/refinement.*do not run/, /approv/i];
+    assert.match(input, refinement, `${lang}: the refinement is stated as not running`);
+    assert.match(input, approval, `${lang}: editing the body waits on approval`);
+  }
+});
+
+// One wording for both routes told the user a filing was about to happen when the run was an edit.
+test("the confirmation names both routes", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    assert.match(doc, /Create this issue\?/, `${lang}: the new-filing wording`);
+    assert.match(doc, /Update this issue\?/, `${lang}: the number-route wording`);
   }
 });

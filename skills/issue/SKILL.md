@@ -9,13 +9,11 @@ argument-hint: "[issue description | issue number]"
 
 # /issue - GitHub Issue Generator
 
-A standalone issue-creation skill. When `/challenge` / `/research` / `/think` artifacts exist in the conversation context, use them: the `/challenge` verdict for the posting judgment, `/research` findings as the body's evidence, and `/think`'s plan draft transferred into the `## Plan` section. The human decides which stages an issue goes through.
-
 ## Input
 
 `$ARGUMENTS` is the issue description. If empty, prompt for it via AskUserQuestion.
 
-When it carries only an issue number or URL, transfer a plan into that filed issue. Take the body from `gh issue view <ref> --json title,body` as the already-drafted body, start at Phase 2, and replace Phase 4's creation with `gh issue edit <ref> --body-file <path>`, skipping body validation. Without a plan draft, suggest running `/think` and stop; an issue that already has a `## Plan` goes to `/qualify` for inspection.
+When it carries only an issue number or URL, transfer a plan into that filed issue. Take the body from `gh issue view <ref> --json title,body` and start at Phase 2's duplication match. The body is someone else's writing, so the prose refinement and the challenge fold-in do not run. The match stops at detecting the duplication, and the body is edited only once AskUserQuestion approves it. Without approval the body stays as it is and only the Plan sections are added. Phase 4 replaces creation with `gh issue edit <ref> --body-file <path>`. Body validation does not run, because which skeleton the issue was filed from is unknown. Without a plan draft, suggest running `/think` and stop; an issue that already has a `## Plan` goes to `/qualify` for inspection.
 
 ## Language
 
@@ -25,9 +23,10 @@ Read `language` from `~/.claude/settings.json` and translate the issue body and 
 
 1. Read `.claude/OUTCOME.md` if present and check that the issue serves the outcome
 2. Detect the type from the description
-3. For feature / bug, if the Why is not readable from the description, pin it down through wall-bouncing
-4. Select the template, generate the title + body, and mark fixed / tentative per the confidence-marking criteria
-5. Assess whether the issue is epic-sized and should split
+3. For a bug, judge whether it is minor, and offer fixing it with `/fix` instead of filing when it is
+4. For feature / bug, if the Why is not readable from the description, pin it down through wall-bouncing
+5. Select the template, generate the title + body, and mark fixed / tentative per the confidence-marking criteria
+6. Assess whether the issue is epic-sized and should split
 
 ### Type detection
 
@@ -82,15 +81,15 @@ When two or more criteria are each independently implementable, ask via AskUserQ
 
 1. Refine the body inline against ${CLAUDE_SKILL_DIR}/references/prose-review.md plus the empty-phrase file matching the body language: `phrases.ja.md` for Japanese, `phrases.en.md` for English. The Plan section transferred in Phase 3 is out of scope; leave it untouched
 2. If a challenge verdict / findings exist in the conversation, fold only what belongs in the body, once. The verdict and findings themselves never enter the body
-3. When a plan draft exists, match the body as it stands after the preceding steps against the one plan draft you pick, per ${CLAUDE_SKILL_DIR}/references/duplication-match.md. Pick the `/think` plan draft in the conversation when there is one, otherwise the matching file under `.claude/workspace/planning/`. Without a plan draft, skip this match
+3. When a plan draft exists, match the body as it stands after the preceding steps against the one plan draft you pick, per ${CLAUDE_SKILL_DIR}/references/duplication-match.md. Pick the `/think` plan draft in the conversation when there is one, otherwise the `*.plan.md` under `.claude/workspace/planning/` that matches the issue title and carries the newest modification time. Without a plan draft, skip this match
 
 ## Phase 3: Plan Transfer
 
-Run this phase only when a /think plan draft exists; otherwise omit the section entirely. Among the `*.plan.md` files under `.claude/workspace/planning/` matching the issue title, read the one with the newest modification time, and transfer both the `## Plan` and `## Backlog candidates` sections into the body as-is. Format and verification are owned by /think at write-out time and by build's Load validate; do not touch the transferred content.
+Run this phase only when a /think plan draft exists; otherwise omit the section entirely. Read the plan draft Phase 2 picked for the match, and transfer both the `## Plan` and `## Backlog candidates` sections into the body as-is. Format and verification are owned by /think at write-out time and by build's Load validate; do not touch the transferred content.
 
 ## Phase 4: Publishing
 
-1. Present the issue preview. Collect any inline tentative marks into a tentative block. Add no new content, mirror what the body already carries, and omit the block at zero items. Then confirm via AskUserQuestion: "Create this issue?" When there is no `## Plan` section and the extent puts it on the build workflow, add "hold the filing and draft a plan via `/think`" as an option
+1. Present the issue preview. Collect any inline tentative marks into a tentative block. Add no new content, mirror what the body already carries, and omit the block at zero items. Then confirm via AskUserQuestion, asking "Create this issue?" for a new filing and "Update this issue?" on the number route. When there is no `## Plan` section and the extent puts it on the build workflow, add "hold the filing and draft a plan via `/think`" as an option
 2. Write the body to a temp file. Run `${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>` and handle errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md. Once it exits 0, attach labels and run `gh issue create --title "<title>" --body-file <path>`. Write `<path>` as a literal absolute path, not a variable. The hook cannot expand a variable, and the filing stops. Capture the issue URL from its output
 3. If split was approved in Phase 1, suggest running /slice with the published epic number. Do not launch it automatically
 4. For an issue that is not split, suggest the next step. Where a filed issue goes is decided by its extent: a fix confined to 1-3 files goes to `/fix <number>`; 4 or more files, or a new feature, goes to the build workflow with the number. When an issue bound for the build workflow has no Plan section, it gets a plan via `/think`, transferred by `/issue <number>`, before it is handed over, and `/qualify` inspects it before the hand-off. Launch none of them automatically

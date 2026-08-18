@@ -9,13 +9,11 @@ argument-hint: "[issue description | issue number]"
 
 # /issue - GitHub Issue 生成
 
-単独で成立する起票スキル。会話コンテキストに `/challenge`/`/research`/`/think` の成果物があれば、`/challenge` の verdict は起票判断に、`/research` の発見は本文の根拠に使い、`/think` の plan 下書きは `## Plan` 節へ移設する。どの段を通すかは人間が決める。
-
 ## 入力
 
 `$ARGUMENTS` は Issue 説明。空なら AskUserQuestion で説明を尋ねる。
 
-issue 番号か URL だけを受け取ったときは、起票済み issue へ plan を転記する。`gh issue view <ref> --json title,body` で取った本文を起草済みとみなして Phase 2 から始め、Phase 4 の起票を `gh issue edit <ref> --body-file <path>` に置き換え、本文検証は行わない。plan 下書きが無ければ `/think` の実行を提案して止まり、`## Plan` を既に持つ issue は `/qualify` の検分に回す。
+issue 番号か URL だけを受け取ったときは、起票済み issue へ plan を転記する。`gh issue view <ref> --json title,body` で本文を取り、Phase 2 の重複照合から始める。人が書いた本文は保持するので、推敲と challenge の反映は行わない。照合は重複の検出までとし、AskUserQuestion で承認されたときだけ本文を編集する。承認しなければ本文はそのままで、Plan 節だけが増える。Phase 4 は起票を `gh issue edit <ref> --body-file <path>` に置き換える。骨格ファイルが分からないので本文検証は行わない。plan 下書きが無ければ `/think` の実行を提案して止まり、`## Plan` を既に持つ issue は `/qualify` の検分に回す。
 
 ## 言語
 
@@ -25,9 +23,10 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 
 1. `.claude/OUTCOME.md` があれば読み、issue が outcome に資するか確認する
 2. 説明から種別を検出する
-3. feature か bug で、Why が説明から読み取れない場合、壁打ちで詰める
-4. テンプレートを選び、タイトルと本文を生成し、確定/仮を確信度マーキングの基準でマークする
-5. epic 規模で分割すべきか判定する
+3. bug なら軽微かを判定し、軽微なら起票せず `/fix` で直す選択肢を出す
+4. feature か bug で、Why が説明から読み取れない場合、壁打ちで詰める
+5. テンプレートを選び、タイトルと本文を生成し、確定/仮を確信度マーキングの基準でマークする
+6. epic 規模で分割すべきか判定する
 
 ### 種別判定
 
@@ -82,15 +81,15 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 
 1. ${CLAUDE_SKILL_DIR}/references/prose-review.md と、本文言語に対応する空句ファイルの基準で本文をインライン精査する。空句ファイルは日本語なら `phrases.ja.md`、英語なら `phrases.en.md`。Phase 3 で移設する Plan 節は対象外とし、手を入れない
 2. 会話に challenge の verdict と findings があれば、本文に折り込むべき指摘だけ 1 回反映する。verdict と findings 自体は本文に入れない
-3. plan 下書きがあれば、前項までの編集を終えた本文を、選んだ plan 下書き 1 つと ${CLAUDE_SKILL_DIR}/references/duplication-match.md の手順で照合する。会話に `/think` のものがあればそれを、無ければ `.claude/workspace/planning/` の該当ファイルを選ぶ。plan 下書きが無ければ、この照合を省く
+3. plan 下書きがあれば、前項までの編集を終えた本文を、選んだ plan 下書き 1 つと ${CLAUDE_SKILL_DIR}/references/duplication-match.md の手順で照合する。会話に `/think` のものがあればそれを、無ければ `.claude/workspace/planning/` の `*.plan.md` から issue のタイトルに一致するもののうち更新時刻が最も新しい 1 件を選ぶ。plan 下書きが無ければ、この照合を省く
 
 ## Phase 3: Plan 移設
 
-/think の plan 下書きがあるときだけ実施し、無ければ節ごと省略する。`.claude/workspace/planning/` の `*.plan.md` のうち issue のタイトルに一致するものを取り、その中で更新時刻が最も新しい 1 件を Read し、`## Plan` と `## Backlog candidates` の両節をそのまま本文へ移設する。書式と検証は `/think` の書き出し時と build の Load validate が担い、移設した内容には手を入れない。
+/think の plan 下書きがあるときだけ実施し、無ければ節ごと省略する。Phase 2 の照合で選んだ plan 下書きを Read し、`## Plan` と `## Backlog candidates` の両節をそのまま本文へ移設する。書式と検証は `/think` の書き出し時と build の Load validate が担い、移設した内容には手を入れない。
 
 ## Phase 4: 起票
 
-1. Issue プレビューを提示する。インライン仮マークがあれば仮ブロックに集約する。新規内容は足さず本文が持つものを写し、0 件なら省略する。最後に AskUserQuestion で `Create this issue?` と確認する。`## Plan` 節が無く build workflow に渡す規模なら、選択肢に「起票を保留して `/think` で plan を作る」を足す
+1. Issue プレビューを提示する。インライン仮マークがあれば仮ブロックに集約する。新規内容は足さず本文が持つものを写し、0 件なら省略する。最後に AskUserQuestion で確認する。新規起票は `Create this issue?`、番号経路は `Update this issue?` と尋ねる。`## Plan` 節が無く build workflow に渡す規模なら、選択肢に「起票を保留して `/think` で plan を作る」を足す
 2. 本文を一時ファイルに書き出す。`${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <Template source で選んだ骨格ファイル> <title> <body-file>` を実行し、エラーは ${CLAUDE_SKILL_DIR}/references/validation-errors.md に従って対処する。exit 0 になったらラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票する。`<path>` は変数でなくリテラルの絶対パスで書く。hook は変数を展開できず、起票が止まる。出力から Issue URL を取得する
 3. Phase 1 で分割を承認していれば、起票した epic 番号を添えて `/slice` の実行を提案する。自動では起動しない
 4. 分割しない issue には次の手を提案する。起票済み issue の渡し先は影響範囲で決め、1〜3 ファイルに収まる修正なら `/fix <番号>`、4 ファイル以上または新機能なら build workflow に番号を渡す。build workflow に渡す issue が Plan 節を持たないなら、`/think` で plan を作り `/issue <番号>` で転記してから渡し、渡す前の検分には `/qualify` を使う。いずれも自動では起動しない
