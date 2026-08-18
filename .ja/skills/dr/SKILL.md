@@ -25,15 +25,15 @@ argument-hint: "[decision title]"
 
 ## プロセス
 
-| Step | 工程       | 内容                                                                                                                                                                 |
-| ---- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Pre-Check  | ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE" を実行する。返り値から使うのは `dr_dir` と `filename` (書き込み先)、`date` (frontmatter)、`similar_drs` (重複判定) |
-| 2    | Type       | 決定の意図で決定タイプを判定し、推奨トピックを選ぶ (§ 決定タイプ)                                                                                                    |
-| 3    | References | プロジェクトドキュメント、issue、外部リソースを収集する                                                                                                              |
-| 4    | Draft      | ${CLAUDE_SKILL_DIR}/templates/madr-template.md を `dr_dir` 配下に `filename` で写し、収集した内容で埋める (§ YAML Frontmatter)                                       |
-| 5    | Challenge  | 既存 DR の原則に例外を作る、または既存 DR を supersede する場合だけ `/challenge` を通し、verdict と成立条件を More Information に 1 行で残す                         |
-| 6    | Validate   | ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE" を実行する。exit 0 なら合格。落ちた項目は `errors[]` に入り、`warnings[]` は参考                               |
-| 7    | Index      | ${CLAUDE_SKILL_DIR}/scripts/update-index.py を実行し、`dr_dir/README.md` を再生成する                                                                                |
+| Step | 工程       | 内容                                                                                                                                                                                                                                                                             |
+| ---- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Pre-Check  | ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE" を実行する。返り値から使うのは `dr_dir` と `filename` (書き込み先)、`date` (frontmatter)、`similar_drs` (重複判定)                                                                                                             |
+| 2    | Type       | 決定の意図で決定タイプを判定し、推奨トピックを選ぶ (§ 決定タイプ)                                                                                                                                                                                                                |
+| 3    | References | プロジェクトドキュメント、issue、外部リソースを収集する                                                                                                                                                                                                                          |
+| 4    | Draft      | ${CLAUDE_SKILL_DIR}/templates/madr-template.md を `dr_dir` 配下に `filename` で写し、収集した内容で埋める。任意セクションの取捨は ${CLAUDE_SKILL_DIR}/references/madr-format.md、決定を説明し切る要素は ${CLAUDE_SKILL_DIR}/references/fowler-adr.md にある (§ YAML Frontmatter) |
+| 5    | Challenge  | 既存 DR の原則に例外を作る、または既存 DR を supersede する場合だけ `/challenge` を通し、verdict と成立条件を More Information に 1 行で残す                                                                                                                                     |
+| 6    | Validate   | ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE" を実行する。exit 0 なら合格。落ちた項目は `errors[]` に入り、`warnings[]` は参考                                                                                                                                           |
+| 7    | Index      | ${CLAUDE_SKILL_DIR}/scripts/update-index.py を実行し、`dr_dir/README.md` を再生成する                                                                                                                                                                                            |
 
 ## 決定タイプ
 
@@ -78,10 +78,3 @@ status が proposed なら本文を直接編集し、Validate と Index を実�
 | 保存先に SKILL.md があると報告 | skill ディレクトリを指しているので `DR_DIR` を DR 置き場へ向け直す      |
 | `similar_drs` が非空           | 重複候補を提示し、続行するか更新へ切り替えるかを確認 (§ 既存 DR の更新) |
 | `errors[]` が非空              | 返った項目を直し、Validate をやり直す                                   |
-
-## 参照
-
-| トピック | リソース                                      |
-| -------- | --------------------------------------------- |
-| MADR     | ${CLAUDE_SKILL_DIR}/references/madr-format.md |
-| Fowler   | ${CLAUDE_SKILL_DIR}/references/fowler-adr.md  |

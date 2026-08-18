@@ -25,15 +25,15 @@ Proceed to the process only when all three conditions below hold. When one is mi
 
 ## Process
 
-| Step | Stage      | Actions                                                                                                                                                                                            |
-| ---- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Pre-Check  | Run ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE". What it consumes from the return is `dr_dir` and `filename` (where to write), `date` (frontmatter), and `similar_drs` (duplicate check)     |
-| 2    | Type       | Determine the decision type by the decision's intent and pick its recommended topics (§ Decision Type)                                                                                             |
-| 3    | References | Gather project docs, issues, external resources                                                                                                                                                    |
-| 4    | Draft      | Copy ${CLAUDE_SKILL_DIR}/templates/madr-template.md into `dr_dir` under the name `filename` and fill it from what was gathered (§ YAML Frontmatter)                                                |
-| 5    | Challenge  | Only for a DR that carves an exception into an existing DR's principle or supersedes one, run `/challenge` and record the verdict and the condition it holds under as one line in More Information |
-| 6    | Validate   | Run ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE". exit 0 passes. What failed lands in `errors[]`, and `warnings[]` is advisory                                                            |
-| 7    | Index      | Run ${CLAUDE_SKILL_DIR}/scripts/update-index.py to regenerate `dr_dir/README.md`                                                                                                                   |
+| Step | Stage      | Actions                                                                                                                                                                                                                                                                                                                                    |
+| ---- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1    | Pre-Check  | Run ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE". What it consumes from the return is `dr_dir` and `filename` (where to write), `date` (frontmatter), and `similar_drs` (duplicate check)                                                                                                                                             |
+| 2    | Type       | Determine the decision type by the decision's intent and pick its recommended topics (§ Decision Type)                                                                                                                                                                                                                                     |
+| 3    | References | Gather project docs, issues, external resources                                                                                                                                                                                                                                                                                            |
+| 4    | Draft      | Copy ${CLAUDE_SKILL_DIR}/templates/madr-template.md into `dr_dir` under the name `filename` and fill it from what was gathered. Which optional sections to keep is in ${CLAUDE_SKILL_DIR}/references/madr-format.md, and what it takes to explain a decision fully is in ${CLAUDE_SKILL_DIR}/references/fowler-adr.md (§ YAML Frontmatter) |
+| 5    | Challenge  | Only for a DR that carves an exception into an existing DR's principle or supersedes one, run `/challenge` and record the verdict and the condition it holds under as one line in More Information                                                                                                                                         |
+| 6    | Validate   | Run ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE". exit 0 passes. What failed lands in `errors[]`, and `warnings[]` is advisory                                                                                                                                                                                                    |
+| 7    | Index      | Run ${CLAUDE_SKILL_DIR}/scripts/update-index.py to regenerate `dr_dir/README.md`                                                                                                                                                                                                                                                           |
 
 ## Decision Type
 
@@ -78,10 +78,3 @@ Each script reports its failure as JSON or on stderr. Handle them per the table.
 | Reported as an archive holding SKILL.md | It points at a skill directory, so redirect `DR_DIR` to the archive                                      |
 | `similar_drs` is non-empty              | Present the duplicates and confirm whether to proceed or switch to an update (§ Updating an Existing DR) |
 | `errors[]` comes back non-empty         | Fix what it names and run Validate again                                                                 |
-
-## References
-
-| Topic  | Resource                                      |
-| ------ | --------------------------------------------- |
-| MADR   | ${CLAUDE_SKILL_DIR}/references/madr-format.md |
-| Fowler | ${CLAUDE_SKILL_DIR}/references/fowler-adr.md  |
