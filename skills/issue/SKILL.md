@@ -24,7 +24,7 @@ Read `language` from `~/.claude/settings.json` and translate the issue body and 
 1. Read `.claude/OUTCOME.md` if present and check that the issue serves the outcome
 2. Detect the type from the description
 3. For a bug, judge whether it is minor, and offer fixing it with `/fix` instead of filing when it is
-4. For feature / bug, if the Why is not readable from the description, pin it down through wall-bouncing
+4. For feature / bug, if the Why is not readable from the description, pin it down per ${CLAUDE_SKILL_DIR}/references/why-wall-bouncing.md
 5. Select the template and generate the title and body. Settle an open decision through AskUserQuestion and an unverified fact through Read or ugrep. Neither goes into the body as a guess
 6. Count the independently implementable criteria, and ask about splitting when two or more exist
 
@@ -46,16 +46,6 @@ Minor names a bug that meets all three criteria below. An intermittent bug with 
 - The change fits within 1 file
 - The reproduction steps are settled
 - No cross-codebase investigation is needed
-
-### Why wall-bouncing
-
-Establish the issue's Why before drafting the body. One question per message, attaching the answer you expect as the hypothesis in the recommended option. Questions the codebase can answer are explored via Read / ugrep before asking. Once the three points below are readable from the description, or you can predict the answers to the questions you would ask next, stop asking and move to drafting.
-
-| Question                                    | Where it lands in the body |
-| ------------------------------------------- | -------------------------- |
-| Who needs this?                             | What & Why                 |
-| What pain exists, and what is the evidence? | What & Why                 |
-| What measurable result counts as success?   | Acceptance Criteria        |
 
 ### Template source
 
@@ -85,12 +75,16 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 
 1. Present the issue preview. Add no new content and mirror what the body already carries. Then confirm via AskUserQuestion, asking "Create this issue?" for a new filing and "Update this issue?" on the number route. When there is no `## Plan` section and the extent puts it on the build workflow, add "hold the filing and draft a plan via `/think`" as an option
 2. Write the body to a temp file and run ${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>. Handle errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md and rerun once they are fixed. On the number route this step does not run, because which skeleton the issue was filed from is unknown
-3. Once it exits 0, attach labels, run `gh issue create --title "<title>" --body-file <path>`, and capture the issue URL from its output. The number route skips validation and writes back with `gh issue edit <ref> --body-file <path>`. Write `<path>` as a literal absolute path, not a variable, because the hook cannot expand one and the filing stops
-4. If split was approved in Phase 1, suggest running /slice with the published epic number. Do not launch it automatically
-5. For an issue that is not split, suggest the next step. Where it goes is decided by its extent, and a fix confined to 1-3 files goes to `/fix <number>`
-6. A change touching 4 or more files, or a new feature, goes to the build workflow with the number. The build workflow hands an issue with no `## Plan` section back as no-plan, so draft one with `/think` and transfer it with `/issue <number>` first
-7. `/qualify` inspects it before the hand-off. Launch none of the destinations above automatically
+3. Once it exits 0, attach labels, run `gh issue create --title "<title>" --body-file <path>`, and capture the issue URL from its output. The number route skips validation and writes back with `gh issue edit <ref> --body-file <path>`
+4. Pick the destination from the table below and suggest it. Launch none of them automatically
 
-### Labels
+| Destination     | Condition                                                                                                                                                                                                |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/slice`        | Split was approved in Phase 1. Pass the published epic number                                                                                                                                            |
+| `/fix <number>` | A fix confined to 1-3 files                                                                                                                                                                              |
+| build workflow  | 4 or more files, or a new feature. Pass the number. The build workflow hands an issue with no `## Plan` section back as no-plan, so draft one with `/think` and transfer it with `/issue <number>` first |
+| `/qualify`      | Inspection wanted before the hand-off to the build workflow. It reads whether the `## Plan` section is fit to implement                                                                                  |
 
-`priority:*` is required, set to critical / high / medium / low by impact. Other labels follow the repository's conventions.
+### Publishing constraints
+
+Write `<path>` as a literal absolute path, not a variable, because the hook cannot expand one and the filing stops. `priority:*` is required, set to critical / high / medium / low by impact. Other labels follow the repository's conventions.

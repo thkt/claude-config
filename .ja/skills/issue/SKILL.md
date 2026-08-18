@@ -24,7 +24,7 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 1. `.claude/OUTCOME.md` があれば読み、issue が outcome に資するか確認する
 2. 説明から種別を検出する
 3. bug なら軽微かを判定し、軽微なら起票せず `/fix` で直す選択肢を出す
-4. feature か bug で、Why が説明から読み取れない場合、壁打ちで詰める
+4. feature か bug で、Why が説明から読み取れない場合、${CLAUDE_SKILL_DIR}/references/why-wall-bouncing.md の手順で詰める
 5. テンプレートを選び、タイトルと本文を生成する。未決の判断は AskUserQuestion で決め、未検証の事実は Read や ugrep で確かめる。どちらも推測のまま本文に書かない
 6. 独立して実装可能な criteria が 2 つ以上あるか数え、あれば分割を問う
 
@@ -46,16 +46,6 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 - 変更が 1 ファイルに収まる
 - 再現手順が確定している
 - コードベースの横断調査が不要
-
-### Why 壁打ち
-
-issue の Why を、本文起草の前に確立する。1 メッセージにつき 1 質問し、期待する答えを仮説として推奨回答に添える。コードベースで解決できる疑問は、問う前に Read や ugrep で探索する。次の 3 点が説明から読み取れるか、次に問う質問の答えを予測できるようになったら、質問をやめて起草に進む。
-
-| 質問                                   | 本文での置き場      |
-| -------------------------------------- | ------------------- |
-| 誰がこれを必要としているか             | What & Why          |
-| どんな痛みが存在し、その根拠は何か     | What & Why          |
-| 計測可能な結果として何を成功とみなすか | Acceptance Criteria |
 
 ### テンプレート選択
 
@@ -83,14 +73,18 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 
 ## Phase 4: 起票
 
-1. Issue プレビューを提示する。新規内容は足さず本文が持つものを写す。最後に AskUserQuestion で確認する。新規起票は `Create this issue?`、番号経路は `Update this issue?` と尋ねる。`## Plan` 節が無く build workflow に渡す規模なら、選択肢に「起票を保留して `/think` で plan を作る」を足す
+1. Issue プレビューを提示する。新規内容は足さず本文が持つものを写す。AskUserQuestion で確認し、新規起票は `Create this issue?`、番号経路は `Update this issue?` と尋ねる。`## Plan` 節が無く build workflow に渡す規模なら、選択肢に「起票を保留して `/think` で plan を作る」を足す
 2. 本文を一時ファイルに書き出し、${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <テンプレート選択で選んだ骨格ファイル> <title> <body-file> を実行する。エラーは ${CLAUDE_SKILL_DIR}/references/validation-errors.md に従って対処し、直したら再実行する。番号経路は骨格ファイルが分からないので行わない
-3. exit 0 になったらラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票し、出力から Issue URL を取得する。番号経路は検証を経ずに `gh issue edit <ref> --body-file <path>` で書き戻す。`<path>` は変数でなくリテラルの絶対パスで書く。hook は変数を展開できず、起票が止まる
-4. Phase 1 で分割を承認していれば、起票した epic 番号を添えて `/slice` の実行を提案する。自動では起動しない
-5. 分割しない issue には次の手を提案する。渡し先は影響範囲で決め、1〜3 ファイルに収まる修正なら `/fix <番号>` へ渡す
-6. 4 ファイル以上または新機能なら build workflow に番号を渡す。build workflow は `## Plan` 節の無い issue を no-plan で差し戻す。節が無ければ `/think` と `/issue <番号>` で先に用意する
-7. 渡す前の検分には `/qualify` を使う。ここで挙げた渡し先はいずれも自動では起動しない
+3. exit 0 になったらラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票し、出力から Issue URL を取得する。番号経路は検証を経ずに `gh issue edit <ref> --body-file <path>` で書き戻す
+4. 下表から渡し先を選んで提案する。いずれも自動では起動しない
 
-### ラベル
+| 渡し先         | 条件                                                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/slice`       | Phase 1 で分割を承認済み。起票した epic 番号を添える                                                                                                          |
+| `/fix <番号>`  | 1〜3 ファイルに収まる修正                                                                                                                                     |
+| build workflow | 4 ファイル以上か新機能。番号を渡す。build workflow は `## Plan` 節の無い issue を no-plan で差し戻すので、無ければ `/think` と `/issue <番号>` で先に用意する |
+| `/qualify`     | build workflow へ渡す前に検分したいとき。`## Plan` 節が実装に足るかを見る                                                                                     |
 
-`priority:*` は必須で、影響度に応じて critical、high、medium、low から選ぶ。それ以外のラベルはリポジトリの慣例に合わせる。
+### 起票の制約
+
+`<path>` は変数でなくリテラルの絶対パスで書く。hook が変数を展開できず起票が止まるため。`priority:*` は必須で、影響度に応じて critical、high、medium、low から選ぶ。それ以外のラベルはリポジトリの慣例に合わせる。
