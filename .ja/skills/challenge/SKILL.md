@@ -57,12 +57,12 @@ Phase 1 の素材を critic-design 2 体に敵対的に当て、穴を探す。
 
 ### Step 1: 2 体を起動する
 
-各 Pass の攻撃対象と起動プロンプトの中身は下表が定める。outcome を確定できなければ outcome の Pass は省略する。
+両方の起動プロンプトに、対象のタイトル、引き継ぎ、設計ドキュメント (`ARCHITECTURE.md` など) のパスを入れる。Pass ごとに違う部分は下表が定める。
 
-| Pass                    | 攻撃対象                                        | 起動プロンプトへ入れる                                                     |
-| ----------------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
-| critic-design (内部)    | 提案そのもの。隠れた弱点と破綻の経路を出す      | 対象のタイトル、引き継ぎ、設計ドキュメント (`ARCHITECTURE.md` など) のパス |
-| critic-design (outcome) | outcome への適合と non-goal / constraint の侵害 | 対象のタイトル、引き継ぎ、設計ドキュメントのパス、`outcome_ref`            |
+| Pass                    | 攻撃対象                                        | 追加の入力                                  |
+| ----------------------- | ----------------------------------------------- | ------------------------------------------- |
+| critic-design (内部)    | 提案そのもの。隠れた弱点と破綻の経路を出す      | なし                                        |
+| critic-design (outcome) | outcome への適合と non-goal / constraint の侵害 | `outcome_ref`。無ければこの Pass を省略する |
 
 1. critic-design を Agent で 2 体並列に起動する。subagent_type は critic-design
 2. 両者の完了を待つ。返り値は agent 定義どおり verdict (confirmed/weakened/needs_revision) と weaknesses (viewpoint、severity、finding、evidence、disconfirming probe を持つ項目の配列)

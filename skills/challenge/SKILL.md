@@ -57,12 +57,12 @@ Land the Phase 1 material on two critic-design, adversarially probing for holes.
 
 ### Step 1: Spawn the two
 
-The table below decides what each Pass attacks and what goes into its spawn prompt. Omit the outcome Pass when no outcome is available.
+Both spawn prompts carry the target title, the handoff, and the path of any design document (`ARCHITECTURE.md` and the like). The table below decides what differs per Pass.
 
-| Pass                     | Target of the attack                                                       | Into the spawn prompt                                                                           |
-| ------------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| critic-design (internal) | The proposal on its own terms. Surface hidden weaknesses and failure paths | The target title, the handoff, the path of any design document (`ARCHITECTURE.md` and the like) |
-| critic-design (outcome)  | Outcome fit and non-goal / constraint breaches                             | The target title, the handoff, the design document path, `outcome_ref`                          |
+| Pass                     | Target of the attack                                                       | Extra input                                      |
+| ------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------ |
+| critic-design (internal) | The proposal on its own terms. Surface hidden weaknesses and failure paths | None                                             |
+| critic-design (outcome)  | Outcome fit and non-goal / constraint breaches                             | `outcome_ref`. Omit this Pass when there is none |
 
 1. Spawn two critic-design via Agent in parallel. subagent_type is critic-design
 2. Wait for both. Each returns what its agent definition specifies: verdict (confirmed / weakened / needs_revision) and weaknesses (items carrying viewpoint, severity, finding, evidence, disconfirming probe)
