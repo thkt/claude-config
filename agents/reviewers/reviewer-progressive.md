@@ -1,7 +1,7 @@
 ---
 name: reviewer-progressive
 description: CSS-first approach review. Identify JS overuse.
-tools: Read, LS, mcp__mdn__*, Bash(ugrep:*), Bash(bfs:*)
+tools: Read, LS, Bash(git:*), mcp__mdn__*, Bash(ugrep:*), Bash(bfs:*)
 model: sonnet
 memory: project
 background: true

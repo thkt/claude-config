@@ -41,7 +41,7 @@ Record each finding under these five items.
 
 ### Step 1: From source
 
-Two streams feed this step, the code itself and the git history. Census runs `git log --follow --format='%h %s' -- <file>` over the history and extracts commits containing decision verbs. The history side sits with census because reviewer tools differ by language and some, such as reviewer-rust, carry no git. The decision verb list is in ${CLAUDE_SKILL_DIR}/references/detection-targets.md. For the code, spawn the reviewer subagent matching each source file's language via Task and have it answer the following.
+Two streams feed this step, the code itself and the git history. Census runs `git log --follow --format='%h %s' -- <file>` over the history once and extracts commits containing decision verbs. The decision verb list is in ${CLAUDE_SKILL_DIR}/references/detection-targets.md. For the code, spawn the reviewer subagent matching each source file's language via Task and have it answer the following.
 
 - Why does this file have this granularity and shape
 - Does it carry invariants or contracts unreadable from the code

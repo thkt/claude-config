@@ -1,7 +1,7 @@
 ---
 name: reviewer-rust
 description: Rust idiom and safety review. Ownership, error handling, lifetime, trait design, async/blocking, unsafe code, type design, API surface.
-tools: Read, LS, Bash(ugrep:*), Bash(bfs:*), Bash(cargo clippy:*), Bash(cargo check:*), Bash(cargo metadata:*), Bash(cargo tree:*)
+tools: Read, LS, Bash(git:*), Bash(ugrep:*), Bash(bfs:*), Bash(cargo clippy:*), Bash(cargo check:*), Bash(cargo metadata:*), Bash(cargo tree:*)
 model: opus
 memory: project
 background: true

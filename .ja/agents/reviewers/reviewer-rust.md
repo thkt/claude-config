@@ -1,7 +1,7 @@
 ---
 name: reviewer-rust
 description: Rust の慣用句と安全性レビュー。所有権、エラー処理、ライフタイム、trait 設計、async/blocking、unsafe コード、型設計、API surface。
-tools: Read, LS, Bash(ugrep:*), Bash(bfs:*), Bash(cargo clippy:*), Bash(cargo check:*), Bash(cargo metadata:*), Bash(cargo tree:*)
+tools: Read, LS, Bash(git:*), Bash(ugrep:*), Bash(bfs:*), Bash(cargo clippy:*), Bash(cargo check:*), Bash(cargo metadata:*), Bash(cargo tree:*)
 model: opus
 memory: project
 background: true
