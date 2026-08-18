@@ -2,7 +2,7 @@
 name: checkout
 description: Git の変更を解析し、適切な名前で新しいブランチを作成する。
 when_to_use: ブランチ作成, ブランチ切って, ブランチ名, branch name
-allowed-tools: Bash(git:*) AskUserQuestion
+allowed-tools: Bash(git:*)
 model: haiku
 argument-hint: "[context or ticket number]"
 ---
@@ -16,9 +16,8 @@ argument-hint: "[context or ticket number]"
 ## 実行
 
 1. `git status` と `git diff HEAD` を並列で実行し、変更内容を読む。`git diff` だけではステージ済みの変更が見えない
-2. 変更内容と `$ARGUMENTS` から、ブランチ名候補を 3 つ生成する (§ ブランチ命名)
-3. `AskUserQuestion` で各候補に選定理由を添えて提示し、ユーザーに 1 つ選ばせる
-4. `git checkout -b <選択した名前>` で新しいブランチを作成する
+2. 変更内容と `$ARGUMENTS` から、ブランチ名を 1 つ決める (§ ブランチ命名)
+3. `git checkout -b <決めた名前>` で新しいブランチを作成する
 
 ## ブランチ命名
 
@@ -50,7 +49,7 @@ type ごとのトリガーは下表が定める。
 | エラー               | アクション                   |
 | -------------------- | ---------------------------- |
 | 変更なし             | 変更がない旨を報告           |
-| ブランチ既存         | 代替名を出して選び直させる   |
+| ブランチ既存         | 別の名前を決めて作り直す     |
 | git リポジトリでない | git リポジトリでない旨を報告 |
 
 ## 出力

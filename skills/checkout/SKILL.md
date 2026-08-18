@@ -2,7 +2,7 @@
 name: checkout
 description: Analyze Git changes and create a new branch with an appropriate name.
 when_to_use: ブランチ作成, ブランチ切って, ブランチ名, branch name
-allowed-tools: Bash(git:*) AskUserQuestion
+allowed-tools: Bash(git:*)
 model: haiku
 argument-hint: "[context or ticket number]"
 ---
@@ -16,9 +16,8 @@ argument-hint: "[context or ticket number]"
 ## Execution
 
 1. Run `git status` and `git diff HEAD` in parallel to read the changes. Plain `git diff` hides staged changes
-2. Generate 3 branch name candidates from the changes and `$ARGUMENTS` (§ Branch Naming)
-3. Present each candidate with a selection reason via `AskUserQuestion` and let the user pick one
-4. Create the new branch via `git checkout -b <selected name>`
+2. Settle on one branch name from the changes and `$ARGUMENTS` (§ Branch Naming)
+3. Create the new branch via `git checkout -b <the settled name>`
 
 ## Branch Naming
 
@@ -47,11 +46,11 @@ The table below decides the trigger for each type.
 
 ## Error Handling
 
-| Error             | Action                                               |
-| ----------------- | ---------------------------------------------------- |
-| No changes        | Report there are no changes                          |
-| Branch exists     | Offer alternative names and have the user pick again |
-| No git repository | Report it is not a git repo                          |
+| Error             | Action                                         |
+| ----------------- | ---------------------------------------------- |
+| No changes        | Report there are no changes                    |
+| Branch exists     | Settle on another name and create that instead |
+| No git repository | Report it is not a git repo                    |
 
 ## Output
 
