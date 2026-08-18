@@ -23,7 +23,7 @@ graph LR
         CMD[Command] --> S1
         CMD --> A1
         CTX[Context] -.-> S2
-        TASK[Task Tool] --> A2
+        AGENT[Agent Tool] --> A2
     end
 ```
 
@@ -33,13 +33,13 @@ graph LR
 `git commit`. Skill state and output therefore depend on the permitted tools and
 procedure.
 
-| Aspect         | Skills                         | Agents        |
-| -------------- | ------------------------------ | ------------- |
-| **Role**       | Knowledge base or procedure    | Executor (Do) |
-| **Invocation** | Auto-load or command reference | Via Task tool |
-| **Context**    | Main or fork                   | Always fork   |
-| **State**      | Read-only or mutable           | Mutable       |
-| **Output**     | Information, files, or actions | Artifacts     |
+| Aspect         | Skills                         | Agents         |
+| -------------- | ------------------------------ | -------------- |
+| **Role**       | Knowledge base or procedure    | Executor (Do)  |
+| **Invocation** | Auto-load or command reference | Via Agent tool |
+| **Context**    | Main or fork                   | Always fork    |
+| **State**      | Read-only or mutable           | Mutable        |
+| **Output**     | Information, files, or actions | Artifacts      |
 
 ## Skills
 
@@ -107,7 +107,7 @@ user-invocable: false # Whether invocable as slash command
 
 ### Purpose
 
-Agents are "specialized executors" spawned via the Task tool to autonomously
+Agents are "specialized executors" spawned via the Agent tool to autonomously
 perform specific analysis or generation tasks.
 
 ### Categories
@@ -145,10 +145,10 @@ agents/
 | reviewer-silence       | Silent failure detection          |
 | reviewer-testability   | Testable code design              |
 
-### Invocation via Task Tool
+### Invocation via Agent Tool
 
 ```markdown
-Task tool with:
+Agent tool with:
 
 - subagent_type: "reviewer-security"
 - prompt: "Review the authentication module for vulnerabilities"

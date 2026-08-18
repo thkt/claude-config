@@ -22,7 +22,7 @@ From a reported symptom and repro steps, generate failing tests that reproduce t
 | Effect        | Description                                     |
 | ------------- | ----------------------------------------------- |
 | File creation | Writes test files to the project test directory |
-| Entry point   | `/fix` skill, or Task prompt                    |
+| Entry point   | `/fix` skill, or Agent prompt                   |
 
 ## Input
 

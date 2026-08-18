@@ -2,7 +2,7 @@
 name: use-context-reviewer-security
 description: OWASP Top 10 のセキュリティ レビュー。可読性 (use-context-reviewer-readability)、テスト設計 (use-context-reviewer-testability) には使わない。
 when_to_use: security, OWASP, XSS, SQL injection, prompt injection, LLM security, セキュリティ, 脆弱性, cloud security, AWS, IAM, Terraform, クラウドセキュリティ, インフラ
-allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Read Agent Bash(ugrep:*) Bash(bfs:*)
 agent: reviewer-security
 context: fork
 user-invocable: false

@@ -25,7 +25,7 @@ audit 実行の JSON payload を一時ファイルに書き出し、`snapshot.py
 
 ## Input
 
-Task の spawn prompt 経由で、marker で囲まれた payload とスクリプトパスを受け取る。
+Agent の spawn prompt 経由で、marker で囲まれた payload とスクリプトパスを受け取る。
 
 | フィールド  | 型            | 例                                      |
 | ----------- | ------------- | --------------------------------------- |
@@ -52,7 +52,7 @@ Task の spawn prompt 経由で、marker で囲まれた payload とスクリプ
 
 ## Output
 
-Task 完了時に、`snapshot.py` の stdout から以下のフィールドをそのまま返す。
+Agent 完了時に、`snapshot.py` の stdout から以下のフィールドをそのまま返す。
 
 | フィールド | 型     | 値                                                                                      |
 | ---------- | ------ | --------------------------------------------------------------------------------------- |

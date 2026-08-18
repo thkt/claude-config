@@ -23,7 +23,7 @@ graph LR
         CMD[Command] --> S1
         CMD --> A1
         CTX[Context] -.-> S2
-        TASK[Task Tool] --> A2
+        AGENT[Agent Tool] --> A2
     end
 ```
 
@@ -34,7 +34,7 @@ graph LR
 | 観点         | Skills                              | Agents           |
 | ------------ | ----------------------------------- | ---------------- |
 | 役割         | ナレッジベースまたは手順 (What/How) | 実行者 (Do)      |
-| 起動         | 自動ロードまたはコマンド参照        | Task ツール経由  |
+| 起動         | 自動ロードまたはコマンド参照        | Agent ツール経由 |
 | コンテキスト | メイン または fork                  | 常に fork        |
 | 状態         | 読み取りまたは変更                  | 可変             |
 | 出力         | 情報、ファイル、または実行結果      | アーティファクト |
@@ -104,7 +104,7 @@ user-invocable: false # スラッシュコマンドとして起動可能か
 
 ### 用途
 
-エージェントは「専門実行者」。Task ツール経由で起動し、特定の分析や生成タスクを自律的に行う。
+エージェントは「専門実行者」。Agent ツール経由で起動し、特定の分析や生成タスクを自律的に行う。
 
 ### カテゴリ
 
@@ -141,10 +141,10 @@ agents/
 | reviewer-silence       | サイレント失敗の検出              |
 | reviewer-testability   | テスト可能なコード設計            |
 
-### Task ツールでの起動
+### Agent ツールでの起動
 
 ```markdown
-Task tool で:
+Agent tool で:
 
 - subagent_type: "reviewer-security"
 - prompt: "Review the authentication module for vulnerabilities"

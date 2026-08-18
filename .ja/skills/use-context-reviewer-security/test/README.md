@@ -31,7 +31,7 @@ test/
 測定は blind protocol で行う。dispatch prompt にラベル・期待値・脆弱性ヒントを含めると Recall が汚染される (2026-06-04 判明、旧ベースライン無効化)。
 
 1. cases を一時ディレクトリに中立名でコピー (case-01.ts のように連番、vuln/safe を交互に)。`./db` などフレームワーク規約名は文脈なので保持
-2. reviewer-security agent を Task tool で起動。prompt には対象パス・出力フォーマット・cross-file ペアの関連性のみ記載。「vuln」「safe」「テスト」「期待」の語と各ファイルの脆弱性説明は禁止
+2. reviewer-security agent を Agent tool で起動。prompt には対象パス・出力フォーマット・cross-file ペアの関連性のみ記載。「vuln」「safe」「テスト」「期待」の語と各ファイルの脆弱性説明は禁止
 3. 照合基準を dispatch 前に固定する。後出しで基準を動かさない
 4. 結果を `expected.json` と照合し `results/YYYY-MM-DD-*.json` に記録
 

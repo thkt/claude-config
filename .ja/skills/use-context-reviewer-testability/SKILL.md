@@ -2,7 +2,7 @@
 name: use-context-reviewer-testability
 description: テスト可能なコード設計のレビュー。セキュリティ (use-context-reviewer-security)、可読性 (use-context-reviewer-readability) には使わない。
 when_to_use: テスト容易性, モック, mock-friendly, DI
-allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Read Agent Bash(ugrep:*) Bash(bfs:*)
 agent: reviewer-testability
 context: fork
 user-invocable: false

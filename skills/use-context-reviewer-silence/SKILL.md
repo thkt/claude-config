@@ -2,7 +2,7 @@
 name: use-context-reviewer-silence
 description: Silent failure detection. Do NOT use for security (use-context-reviewer-security) or readability (use-context-reviewer-readability).
 when_to_use: silent failure, empty catch, エラーハンドリング, 握りつぶし, swallowed error
-allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Read Agent Bash(ugrep:*) Bash(bfs:*)
 agent: reviewer-silence
 context: fork
 user-invocable: false

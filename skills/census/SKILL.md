@@ -2,7 +2,7 @@
 name: census
 description: Discover design decisions that exist in code but have no DR, and produce a DR promotion candidate list ranked by impact and reversibility. Pairs with adrift, which scans existing DRs for drift against code.
 when_to_use: 判断未記録の発掘, undocumented decisions, DR候補発掘, ADR候補発掘, 設計判断棚卸し, decision archaeology, design rationale audit
-allowed-tools: Read Write LS Bash(date:*) Bash(python3:*) Bash(ugrep:*) Bash(git:*) Task AskUserQuestion
+allowed-tools: Read Write LS Bash(date:*) Bash(python3:*) Bash(ugrep:*) Bash(git:*) Agent AskUserQuestion
 model: opus
 argument-hint: "[file or directory]"
 ---
@@ -33,7 +33,7 @@ Record findings under the table columns in ${CLAUDE_SKILL_DIR}/templates/report-
 
 ### Step 1: From source
 
-Two streams feed this step, the code itself and the git history. Census runs `git log --follow --format='%h %s' -- <file>` over the history once and extracts commits containing decision verbs. The decision verb list is in ${CLAUDE_SKILL_DIR}/references/detection-targets.md. For the code, spawn the reviewer subagent matching each source file's language via Task and have it answer the following.
+Two streams feed this step, the code itself and the git history. Census runs `git log --follow --format='%h %s' -- <file>` over the history once and extracts commits containing decision verbs. The decision verb list is in ${CLAUDE_SKILL_DIR}/references/detection-targets.md. For the code, spawn the reviewer subagent matching each source file's language via Agent and have it answer the following.
 
 - Why does this file have this granularity and shape
 - Does it carry invariants or contracts unreadable from the code
@@ -62,7 +62,7 @@ Assign impact and reversibility to each candidate. Read the table top to bottom 
 
 ### Step 2: Devil's Advocate Challenge
 
-1. Spawn `critic-design` via Task with the initial promotion candidate list and ${CLAUDE_SKILL_DIR}/references/decision-criteria.md
+1. Spawn `critic-design` via Agent with the initial promotion candidate list and ${CLAUDE_SKILL_DIR}/references/decision-criteria.md
 2. Take the verdict (confirmed / weakened / needs_revision) and weaknesses the agent returns. Its own definition decides what comes back
 3. Match those weaknesses against each candidate and assign keep / downgrade / drop from the table in the criteria file
 4. Record the assignment alongside the initial ranking

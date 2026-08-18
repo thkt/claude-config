@@ -2,7 +2,7 @@
 name: think
 description: Design exploration with adversarial critique by critic-design. Assembles the surviving approach into a structured plan, self-checks it, and returns it to the caller. The issue's Plan section is the plan's only persistent home. Do NOT use for codebase investigation without planning intent (use /research instead).
 when_to_use: 計画して, 設計して, アプローチ検討, 方針決め, planning, design exploration
-allowed-tools: Read Write LS Task AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(test:*) Bash(git cat-file:*) Bash(git show:*) Bash(git rev-parse:*)
+allowed-tools: Read Write LS Agent AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(test:*) Bash(git cat-file:*) Bash(git show:*) Bash(git rev-parse:*)
 model: opus
 argument-hint: "[task description]"
 ---

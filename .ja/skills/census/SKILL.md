@@ -2,7 +2,7 @@
 name: census
 description: コードに存在するが DR の無い設計判断を発掘し、impact と reversibility でランク付けした DR 化候補リストを生成する。既存 DR とコードの drift スキャンを担う adrift と組む。
 when_to_use: 判断未記録の発掘, undocumented decisions, DR候補発掘, ADR候補発掘, 設計判断棚卸し, decision archaeology, design rationale audit
-allowed-tools: Read Write LS Bash(date:*) Bash(python3:*) Bash(ugrep:*) Bash(git:*) Task AskUserQuestion
+allowed-tools: Read Write LS Bash(date:*) Bash(python3:*) Bash(ugrep:*) Bash(git:*) Agent AskUserQuestion
 model: opus
 argument-hint: "[file or directory]"
 ---
@@ -33,7 +33,7 @@ source は ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py を python3 で実�
 
 ### Step 1: source から
 
-コード内部と git 履歴の 2 系統から集める。git 履歴は `/census` 自身が `git log --follow --format='%h %s' -- <file>` を 1 回実行し、決定動詞を含む commit を抽出する。決定動詞の一覧は ${CLAUDE_SKILL_DIR}/references/detection-targets.md にある。コード内部は各ソースファイルの言語に合う reviewer subagent を Task で起動し、次に答えさせる。
+コード内部と git 履歴の 2 系統から集める。git 履歴は `/census` 自身が `git log --follow --format='%h %s' -- <file>` を 1 回実行し、決定動詞を含む commit を抽出する。決定動詞の一覧は ${CLAUDE_SKILL_DIR}/references/detection-targets.md にある。コード内部は各ソースファイルの言語に合う reviewer subagent を Agent で起動し、次に答えさせる。
 
 - なぜこのファイルはこの粒度・形になっているか
 - コードから読み取れない不変条件や契約を担っているか
@@ -62,7 +62,7 @@ Phase 2 の全候補を既存 DR と相互参照する。覆われた候補は�
 
 ### Step 2: Devil's Advocate Challenge
 
-1. `critic-design` を Task で起動し、初期の昇格候補リストと ${CLAUDE_SKILL_DIR}/references/decision-criteria.md を渡す
+1. `critic-design` を Agent で起動し、初期の昇格候補リストと ${CLAUDE_SKILL_DIR}/references/decision-criteria.md を渡す
 2. agent が返す verdict (confirmed/weakened/needs_revision) と weaknesses を受け取る。返す内容は agent 自身の定義が決める
 3. weaknesses を候補ごとに突き合わせ、判定基準ファイルの keep/downgrade/drop 表で各候補を判定する
 4. 判定を初期ランク付けと並べて記録する

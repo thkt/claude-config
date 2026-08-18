@@ -20,7 +20,7 @@ Resolve build/type errors with the smallest possible diff, fixing the root cause
 
 ## Input
 
-Receive execution parameters via the Task spawn prompt. If the caller has not decomposed them into structured fields, read build_command, target_files, and max_iterations from the text. If build_command is not stated, infer the project's default build command (tsc --noEmit).
+Receive execution parameters via the Agent spawn prompt. If the caller has not decomposed them into structured fields, read build_command, target_files, and max_iterations from the text. If build_command is not stated, infer the project's default build command (tsc --noEmit).
 
 | Field          | Type     | Example              |
 | -------------- | -------- | -------------------- |
@@ -69,7 +69,7 @@ Receive execution parameters via the Task spawn prompt. If the caller has not de
 
 ## Output
 
-Return the following fields on Task completion. Reporting Build clean with no errors is also a valid result, not an error.
+Return the following fields on Agent completion. Reporting Build clean with no errors is also a valid result, not an error.
 
 | Field  | Type   | Value                                                                                                                    |
 | ------ | ------ | ------------------------------------------------------------------------------------------------------------------------ |

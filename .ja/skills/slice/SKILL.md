@@ -2,7 +2,7 @@
 name: slice
 description: 計画 / spec / PRD を独立して着手可能な tracer-bullet 垂直スライス issue 群に分解し、依存順で GitHub に公開する。各 issue は全レイヤーを貫く 1 本の細い縦串。1 件の要求を起票するだけなら使わない (代わりに /issue)。
 when_to_use: 計画を issue に分解, plan を issue 化, spec を issue 群に, vertical slice, tracer bullet, issue 分割, slice
-allowed-tools: Bash(gh:*) Bash(ugrep:*) Bash(bfs:*) Read LS Task AskUserQuestion
+allowed-tools: Bash(gh:*) Bash(ugrep:*) Bash(bfs:*) Read LS Agent AskUserQuestion
 model: opus
 argument-hint: "[plan / spec / PRD / issue ref]"
 ---

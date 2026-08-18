@@ -18,7 +18,7 @@ background: true
 
 ## 入力
 
-verification_hint を任意で含む発見事項を、Task spawn プロンプト経由で受け取る。呼び出し元が構造化フィールドとして分解していない場合は、finding_id、location (file:line)、evidence、reasoning、verification_hint (あれば) をテキストから読み取る。入力が空の場合は空の verifications を注記付きで返す。
+verification_hint を任意で含む発見事項を、Agent spawn プロンプト経由で受け取る。呼び出し元が構造化フィールドとして分解していない場合は、finding_id、location (file:line)、evidence、reasoning、verification_hint (あれば) をテキストから読み取る。入力が空の場合は空の verifications を注記付きで返す。
 
 ## 検証観点
 
@@ -62,7 +62,7 @@ Step 3 と Step 4 は発見事項 1 件につき Read / 検索を合わせて 5 
 
 ## アウトプット
 
-Task 完了時に以下のフィールドを返す。verifications が空でも有効な結果であり、エラーではない。
+Agent 完了時に以下のフィールドを返す。verifications が空でも有効な結果であり、エラーではない。
 
 | Field         | Type   | Value                                                                                                       |
 | ------------- | ------ | ----------------------------------------------------------------------------------------------------------- |

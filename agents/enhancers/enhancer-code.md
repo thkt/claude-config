@@ -131,7 +131,7 @@ On conflict with a removal target, preservation wins.
 
 ## Output
 
-Return the following fields on Task completion. Use "No changes" if a section has no findings.
+Return the following fields on Agent completion. Use "No changes" if a section has no findings.
 
 | Field   | Type | Value                                       |
 | ------- | ---- | ------------------------------------------- |

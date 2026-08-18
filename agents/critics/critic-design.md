@@ -83,7 +83,7 @@ Apply the following per probe result in Step 7.
 
 ## Output
 
-Return the following fields via Task completion.
+Return the following fields via Agent completion.
 
 | Field      | Type | Value                                                                                                                                                          |
 | ---------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -2,7 +2,7 @@
 name: slice
 description: Break a plan / spec / PRD into independently-grabbable tracer-bullet vertical-slice issues and publish them to GitHub in dependency order. Each issue is one thin slice cutting through every layer. Do NOT use to file a single request (use /issue instead).
 when_to_use: break plan into issues, plan to issues, spec to issues, vertical slice, tracer bullet, split into issues, slice
-allowed-tools: Bash(gh:*) Bash(ugrep:*) Bash(bfs:*) Read LS Task AskUserQuestion
+allowed-tools: Bash(gh:*) Bash(ugrep:*) Bash(bfs:*) Read LS Agent AskUserQuestion
 model: opus
 argument-hint: "[plan / spec / PRD / issue ref]"
 ---
