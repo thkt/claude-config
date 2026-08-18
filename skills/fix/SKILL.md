@@ -13,12 +13,12 @@ argument-hint: "[bug or issue description]"
 
 The shape of `$ARGUMENTS` decides the entry point. Scope is limited to small, well-understood issues of 1-3 files. When several findings are handed over directly, fix them one at a time, highest severity first. When the impact spans 4+ files, check the multi-file trigger in § Escalation first.
 
-| Pattern                                       | What it reads                                                                                                    | Enters at      |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------- |
-| Finding with file / line / severity / summary | Return value of the audit workflow, as a single JSON finding or as text. Use file:line as the RCA starting point | Triage         |
-| `/^#?[0-9]+$/`                                | The body via `gh issue view <number>`. Why and the repro steps become the bug description, Premises the givens   | Build Check    |
-| empty                                         | The bug description, asked through AskUserQuestion                                                               | Outcome Anchor |
-| otherwise                                     | The text itself, as a bug description                                                                            | Outcome Anchor |
+| Pattern                                       | What it reads                                      | Enters at      |
+| --------------------------------------------- | -------------------------------------------------- | -------------- |
+| Finding with file / line / severity / summary | The return value of the audit workflow             | Triage         |
+| `/^#?[0-9]+$/`                                | The body via `gh issue view <number>`              | Build Check    |
+| empty                                         | The bug description, asked through AskUserQuestion | Outcome Anchor |
+| otherwise                                     | The text itself, as a bug description              | Outcome Anchor |
 
 ## Outcome Anchor
 
