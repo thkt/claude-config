@@ -60,9 +60,13 @@ Phase 2 の全候補を既存 DR と相互参照する。覆われた候補は�
 
 ### Step 1: タグ付けと初期ランク付け
 
-各候補に impact と reversibility を付与する。DR 化候補は `(impact = H) AND (reversibility = low OR medium)` を満たすもの。
+各候補に impact と reversibility を付与する。昇格させるかは下表を上から順に判定し、最初に該当した扱いを採る。
 
-`incomplete-contract=Yes` の検出事項は `documented?` の値に関わらず昇格する。それ以外の検出事項は記録するが昇格しない。
+| 条件                                               | 扱い                               |
+| -------------------------------------------------- | ---------------------------------- |
+| `incomplete-contract=Yes`                          | 昇格する。`documented?` は問わない |
+| `(impact = H) AND (reversibility = low OR medium)` | 昇格する                           |
+| それ以外                                           | 記録するが昇格しない               |
 
 ### Step 2: Devil's Advocate Challenge
 

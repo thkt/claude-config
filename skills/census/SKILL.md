@@ -60,9 +60,13 @@ Cross-reference every Phase 2 candidate against the existing DRs. Drop the cover
 
 ### Step 1: Tagging and initial ranking
 
-Assign impact and reversibility to each candidate. A DR promotion candidate satisfies `(impact = H) AND (reversibility = low OR medium)`.
+Assign impact and reversibility to each candidate. Read the table top to bottom and take the first row that matches to decide whether it is promoted.
 
-A finding with `incomplete-contract=Yes` is promoted whatever `documented?` says. Every other finding is recorded but not promoted.
+| Condition                                          | Treatment                            |
+| -------------------------------------------------- | ------------------------------------ |
+| `incomplete-contract=Yes`                          | Promote, whatever `documented?` says |
+| `(impact = H) AND (reversibility = low OR medium)` | Promote                              |
+| Anything else                                      | Record it, but do not promote        |
 
 ### Step 2: Devil's Advocate Challenge
 
