@@ -75,6 +75,18 @@ test("the repository is confirmed before the commit", () => {
   );
 });
 
+// A step citing a section the file no longer carries sends the reader nowhere.
+test("every section a step cites exists", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    const cited = [...doc.matchAll(/§ ([^,)]+)/g)].map((m) => m[1].trim());
+    assert.equal(cited.length, 2, `${lang}: the generate step cites two sections`);
+    for (const name of cited) {
+      assert.match(doc, new RegExp(`^## ${name}$`, "m"), `${lang}: ## ${name} exists`);
+    }
+  }
+});
+
 // allowed-tools enumerates what is pre-approved. A command the steps use but the list omits brings
 // a confirmation prompt at run time.
 test("allowed-tools covers every command the steps use", () => {

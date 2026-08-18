@@ -41,8 +41,8 @@ The table below decides the trigger for each type.
 
 ## Error Handling
 
-| Error             | Action                                         |
-| ----------------- | ---------------------------------------------- |
-| No changes        | Report there are no changes                    |
-| Branch exists     | Settle on another name and create that instead |
-| No git repository | Report it is not a git repo                    |
+| Error             | Treatment                                                  |
+| ----------------- | ---------------------------------------------------------- |
+| No changes        | Do not create a branch; report that there are no changes   |
+| Branch exists     | Settle on another name and create that instead             |
+| No git repository | Do not create a branch; report that this is not a git repo |
