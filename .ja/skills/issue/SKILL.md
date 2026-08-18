@@ -2,7 +2,7 @@
 name: issue
 description: 構造化されたタイトルと本文で GitHub Issue を生成する。単独で成立し、前段を要求しない。challenge / research の成果物が会話にあれば本文の根拠に使う。/think の plan 下書きがあれば `## Plan` 節へ移設する。issue 番号を渡すと、起票済みで Plan 節を持たない issue へ plan を転記する。
 when_to_use: Issue作って, Issue書いて, Issue作成, GitHub Issue, build に渡す準備, Plan転記
-allowed-tools: Bash(gh:*) Bash(cat:*) Bash(ugrep:*) Read AskUserQuestion
+allowed-tools: Bash(gh:*) Bash(cat:*) Bash(ugrep:*) Read LS AskUserQuestion
 model: opus
 argument-hint: "[issue description | issue number]"
 ---
@@ -74,7 +74,7 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 
 ## Phase 4: 起票
 
-1. Issue プレビューを提示する。新規内容は足さず本文が持つものを写す。AskUserQuestion で確認し、新規起票は `Create this issue?`、番号経路は `Update this issue?` と尋ねる
+1. Issue プレビューを提示する。新規内容は足さず本文が持つものを写す。番号経路は本文全体でなく、変える節と足す節だけを並べる。AskUserQuestion で確認し、新規起票は `Create this issue?`、番号経路は `Update this issue?` と尋ねる
 2. `cat` の heredoc で本文を一時ファイルへ書き出し、${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <テンプレート選択で選んだ骨格ファイル> <title> <body-file> を実行する。エラーは ${CLAUDE_SKILL_DIR}/references/validation-errors.md に従って対処し、直したら再実行する。番号経路は骨格ファイルが分からないので行わない
 3. exit 0 になったらラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票し、出力から Issue URL を取得する。番号経路は検証を経ずに `gh issue edit <ref> --body-file <path>` で書き戻す
 4. 下表から渡し先を選んで提案する。いずれも自動では起動しない
@@ -88,4 +88,4 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 
 ### 起票の制約
 
-`<path>` は変数でなくリテラルの絶対パスで書く。hook が変数を展開できず起票が止まるため。`priority:*` は必須で、影響度に応じて critical、high、medium、low から選ぶ。骨格が priority の節を持つときは、その値とラベルを揃える。それ以外のラベルはリポジトリの慣例に合わせる。
+`<path>` は変数でなくリテラルの絶対パスで書く。hook が変数を展開できず起票が止まるため。`priority:*` は必須で、影響度に応じて critical、high、medium、low から選ぶ。骨格が priority の節を持つときは、その値とラベルを揃える。番号経路も同じで、本文の値とラベルが食い違っていれば `gh issue edit --add-label` で揃える。それ以外のラベルはリポジトリの慣例に合わせる。

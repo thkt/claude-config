@@ -2,7 +2,7 @@
 name: issue
 description: Generate GitHub Issue with structured title and body. It stands alone and requires no upstream stage. When challenge / research artifacts exist in the conversation, they feed the body's evidence. When a /think plan draft exists, it is transferred into the `## Plan` section. Given an issue number, it transfers a plan into a filed issue that has no Plan section.
 when_to_use: Issue作って, Issue書いて, Issue作成, GitHub Issue, prepare for build, Plan転記
-allowed-tools: Bash(gh:*) Bash(cat:*) Bash(ugrep:*) Read AskUserQuestion
+allowed-tools: Bash(gh:*) Bash(cat:*) Bash(ugrep:*) Read LS AskUserQuestion
 model: opus
 argument-hint: "[issue description | issue number]"
 ---
@@ -74,7 +74,7 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 
 ## Phase 4: Publishing
 
-1. Present the issue preview. Add no new content and mirror what the body already carries. Then confirm via AskUserQuestion, asking "Create this issue?" for a new filing and "Update this issue?" on the number route.
+1. Present the issue preview. Add no new content and mirror what the body already carries. The number route lists the sections it changes and the ones it adds, not the whole body. Then confirm via AskUserQuestion, asking "Create this issue?" for a new filing and "Update this issue?" on the number route.
 2. Write the body to a temp file with a `cat` heredoc and run ${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>. Handle errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md and rerun once they are fixed. On the number route this step does not run, because which skeleton the issue was filed from is unknown
 3. Once it exits 0, attach labels, run `gh issue create --title "<title>" --body-file <path>`, and capture the issue URL from its output. The number route skips validation and writes back with `gh issue edit <ref> --body-file <path>`
 4. Pick the destination from the table below and suggest it. Launch none of them automatically
@@ -88,4 +88,4 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 
 ### Publishing constraints
 
-Write `<path>` as a literal absolute path, not a variable, because the hook cannot expand one and the filing stops. `priority:*` is required, set to critical / high / medium / low by impact. When the skeleton carries a priority section, the label matches the value written there. Other labels follow the repository's conventions.
+Write `<path>` as a literal absolute path, not a variable, because the hook cannot expand one and the filing stops. `priority:*` is required, set to critical / high / medium / low by impact. When the skeleton carries a priority section, the label matches the value written there. The number route does the same: when the body's value and the label disagree, align them with `gh issue edit --add-label`. Other labels follow the repository's conventions.

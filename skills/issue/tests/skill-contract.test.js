@@ -365,3 +365,18 @@ test("the prose review settles guesses after the body is drafted", () => {
     assert.match(doc, settle, `${lang}: the structure table checks for a guess left in the body`);
   }
 });
+
+// Picking the plan draft means listing a directory. With no listing tool in allowed-tools the
+// instruction has nothing to run: Read errors on a directory and ugrep reports names without
+// order. Selecting by the filename's date rather than mtime keeps LS sufficient.
+test("the selection rule stays within the tools the skill is allowed", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    assert.match(readFileSync(path, "utf8"), /^allowed-tools:.*\bLS\b/m, `${lang}: LS is allowed`);
+  }
+  for (const [lang, path] of Object.entries(matchRefs)) {
+    const doc = readFileSync(path, "utf8");
+    assert.match(doc, /\bLS\b/, `${lang}: the rule names the listing tool`);
+    const mtime = lang === "ja" ? /更新時刻/ : /modification time/;
+    assert.doesNotMatch(doc, mtime, `${lang}: it does not select on a time no allowed tool reads`);
+  }
+});
