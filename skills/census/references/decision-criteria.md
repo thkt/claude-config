@@ -6,7 +6,7 @@ Used by Phase 4 tagging / ranking / `critic-design` challenge. Passed whole to `
 
 A finding is `incomplete-contract` when code carries a comment stating what is true but not what must remain true. It relies on the reader inferring "and this should stay this way," common with security invariants and design rationale. For example, an SSRF-safe HTTP client field is annotated "redirect disabled for SSRF" but carries no rule saying "future commands handling user URLs MUST use this client".
 
-Only a DR can supply the missing forward-looking rule. Treat such a finding as a strong DR candidate regardless of `documented?` value.
+The missing forward-looking rule cannot be read off the code, so it is lost unless someone writes it down. Promote such a finding regardless of `documented?` value. Whether a DR or a stronger comment supplies it is for the challenge to decide.
 
 ## DR-worth rule of thumb
 
