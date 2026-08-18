@@ -41,7 +41,7 @@ source は ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py を python3 で実�
 
 ### Step 1: source から
 
-コード内部と git 履歴の 2 系統から集める。git 履歴は `/census` 自身が `git log --follow --format='%h %s' -- <file>` を実行し、決定動詞を含む commit を抽出する。これを census が担うのは reviewer に git アクセスが無いため。決定動詞の一覧は ${CLAUDE_SKILL_DIR}/references/detection-targets.md にある。コード内部は各ソースファイルの言語に合う reviewer subagent を Task で起動し、次に答えさせる。
+コード内部と git 履歴の 2 系統から集める。git 履歴は `/census` 自身が `git log --follow --format='%h %s' -- <file>` を実行し、決定動詞を含む commit を抽出する。履歴側を census が担うのは、reviewer の tools が言語ごとに異なり、reviewer-rust のように git を持たないものがあるため。決定動詞の一覧は ${CLAUDE_SKILL_DIR}/references/detection-targets.md にある。コード内部は各ソースファイルの言語に合う reviewer subagent を Task で起動し、次に答えさせる。
 
 - なぜこのファイルはこの粒度・形になっているか
 - コードから読み取れない不変条件や契約を担っているか
