@@ -10,7 +10,7 @@ Driven by the Pattern field `use-context-root-cause-analysis` returns. That skil
 | ---------- | ------------------------------------------------------------ |
 | Isolated   | Skip                                                         |
 | Recurring  | Apply layers 1-2 (entry point and business logic) at minimum |
-| Systematic | Apply every layer and escalate to `/research`                |
+| Systematic | Apply every layer                                            |
 
 ## Layers
 
@@ -28,7 +28,7 @@ Of the layers the Pattern selected, add only those whose condition holds.
 1. Trace data flow from where the bad value originates to where it is consumed
 2. Map all checkpoints data passes through
 3. Select layers by Pattern. The mapping is in § When to Apply
-4. Add validation at each selected layer
+4. Add validation at the mapped checkpoints that fall on the selected layers
 5. Test each layer independently by bypassing one and confirming another catches it
 
 ## Verification

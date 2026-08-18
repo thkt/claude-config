@@ -51,15 +51,15 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 
 ## Non-obvious
 
-根本原因分析の起点は経路で変わる。下表に無い経路はバグ説明から始める。
+RCA の起点は経路で変わる。下表に無い経路はバグ説明から始める。
 
-| 経路                                                      | 根本原因分析の扱い                                               |
+| 経路                                                      | RCA の扱い                                                       |
 | --------------------------------------------------------- | ---------------------------------------------------------------- |
 | finding をそのまま渡した                                  | その file:line と summary を起点として渡す                       |
 | issue 番号を渡し、本文が原因を file:line まで特定している | 省く。その原因を Root cause として引き継ぎ、Pattern だけ判定する |
 
-1. `Skill("use-context-root-cause-analysis")` を起動して根本原因分析を実行する
-2. `Agent(subagent_type: generator-test)` で regression test を生成する。渡すのは symptom、再現手順、分析が出した root cause
+1. `Skill("use-context-root-cause-analysis")` を起動して RCA を実行する
+2. `Agent(subagent_type: generator-test)` で regression test を生成する。渡すのは symptom、再現手順、RCA が出した root cause
 3. 生成の完了を待ち、regression test が Red であることを確認する
 4. 修正を適用する
 5. regression test が Green で、他のテストに regression がないことを確認する
