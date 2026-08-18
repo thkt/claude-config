@@ -11,24 +11,23 @@ argument-hint: "[bug or issue description]"
 
 ## 入力
 
-`$ARGUMENTS` は次の 4 形式のいずれか。バグ説明。`/audit` が ${CLAUDE_SKILL_DIR}/../../history/ に作成した snapshot の finding ID (例: `RC-001`, `SEC-003`)。audit workflow 単体実行が返した finding そのもの。起票済み issue の番号。対象は十分に理解できている 1〜3 ファイル規模の問題に限る。Finding 直接入力に複数件が渡されたら、severity 降順に 1 件ずつ直す。影響が 4 ファイル以上に及ぶ場合は先に § エスカレーションの複数ファイル判定を確認する。
+`$ARGUMENTS` は次の 4 形式のいずれか。バグ説明。`/audit` が $HOME/.claude/history/ に作成した snapshot の finding ID (例: `RC-001`, `SEC-003`)。audit workflow 単体実行が返した finding そのもの。起票済み issue の番号。対象は十分に理解できている 1〜3 ファイル規模の問題に限る。Finding 直接入力に複数件が渡されたら、severity 降順に 1 件ずつ直す。影響が 4 ファイル以上に及ぶ場合は先に § エスカレーションの複数ファイル判定を確認する。
 
-| パターン                                        | モード           | 動作                                                                                                                                                                     |
-| ----------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/^[A-Z][A-Z0-9]*-[0-9]+$/`                     | Finding ID 解決  | snapshot を読み findings[] の ID 一致を探す。severity と summary を保持し Outcome Anchor とビルドチェックを省いてトリアージへ。不在ならエラー提示 + Standard Flow 提案   |
-| file / line / severity / summary を含む finding | Finding 直接入力 | audit workflow の返り値。JSON 1 件、または file:line + severity + summary のテキスト。file:line を RCA の起点に使い、Outcome Anchor とビルドチェックを省いてトリアージへ |
-| `/^#?[0-9]+$/`                                  | Issue 引き継ぎ   | `gh issue view <番号>` で本文を読む。Why と再現手順をバグ説明に、Premises を前提に使う。Outcome Anchor を省いてビルドチェックへ                                          |
-| 空                                              | Fix プロンプト   | AskUserQuestion で Fix type を Bug fix / Error message / Test failure から、Description を Other の自由記述で尋ねて実行                                                  |
-| その他                                          | Standard Flow    | バグ説明とみなし Outcome Anchor から実行                                                                                                                                 |
+| パターン                                        | モード           | 動作                                                                                                                                                                                                                                       |
+| ----------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/^[A-Z][A-Z0-9]*-[0-9]+$/`                     | Finding ID 解決  | $HOME/.claude/history/ の最新 snapshot を読み findings[] の ID 一致を探す。severity と summary を保持し Outcome Anchor とビルドチェックを省いてトリアージへ。不在なら見つからない旨を伝え、バグ説明として Standard Flow で続けるか確認する |
+| file / line / severity / summary を含む finding | Finding 直接入力 | audit workflow の返り値。JSON 1 件、または file:line + severity + summary のテキスト。file:line を RCA の起点に使い、Outcome Anchor とビルドチェックを省いてトリアージへ                                                                   |
+| `/^#?[0-9]+$/`                                  | Issue 引き継ぎ   | `gh issue view <番号>` で本文を読む。Why と再現手順をバグ説明に、Premises を前提に使う。Outcome Anchor を省いてビルドチェックへ                                                                                                            |
+| 空                                              | Fix プロンプト   | AskUserQuestion で Fix type を Bug fix / Error message / Test failure から、Description を Other の自由記述で尋ね、得た内容をバグ説明として Standard Flow へ渡す                                                                           |
+| その他                                          | Standard Flow    | バグ説明とみなし Outcome Anchor から実行                                                                                                                                                                                                   |
 
 ## 委譲マップ
 
-| 種別      | 委譲先                                               | 目的                                        |
-| --------- | ---------------------------------------------------- | ------------------------------------------- |
-| Skill     | `use-context-root-cause-analysis`                    | 非自明バグへの 5 Whys                       |
-| Agent     | `generator-test`                                     | symptom + 再現手順から regression test 生成 |
-| Agent     | `resolver-build`                                     | TypeScript やビルドエラーの triage          |
-| Reference | ${CLAUDE_SKILL_DIR}/references/defense-in-depth.md | Recurring / Systematic への多層検証         |
+| 種別  | 委譲先                            | 目的                                        |
+| ----- | --------------------------------- | ------------------------------------------- |
+| Skill | `use-context-root-cause-analysis` | 非自明バグへの 5 Whys                       |
+| Agent | `generator-test`                  | symptom + 再現手順から regression test 生成 |
+| Agent | `resolver-build`                  | TypeScript やビルドエラーの triage          |
 
 ## アウトカム参照
 
@@ -57,7 +56,7 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 ## Obvious
 
 1. 最小限の修正を適用
-2. 影響コードをカバーするテストがあれば実行
+2. テストを実行し、他のテストに regression がないことを確認する
 
 ## Non-obvious
 
@@ -70,7 +69,7 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 
 ## エスカレーション
 
-客観的トリガーで分岐し、自己評価による信頼度判断はしない。エスカレーションなしで 4 回目の修正を試みない。Issue 引き継ぎ経路から委譲するときは、起票済みの issue に `## Plan` 節があることを確かめてから番号を build workflow に渡す。
+客観的トリガーで分岐し、自己評価による信頼度判断はしない。Issue 引き継ぎ経路から委譲するときは、起票済みの issue に `## Plan` 節があることを確かめてから番号を build workflow に渡す。
 
 | トリガー                          | 動作                                                              |
 | --------------------------------- | ----------------------------------------------------------------- |
@@ -96,4 +95,4 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 - [ ] 全テスト pass
 - [ ] RCA から Pattern フィールドを記録 (Non-obvious パス)
 - [ ] defense-in-depth を適用 (Recurring/Systematic のみ)
-- [ ] Finding ID 経由なら再 audit を提案 (Finding ID/Finding 直接入力パス)
+- [ ] 再 audit を提案 (Finding ID/Finding 直接入力パス)

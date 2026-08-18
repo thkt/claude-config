@@ -11,24 +11,23 @@ argument-hint: "[bug or issue description]"
 
 ## Input
 
-`$ARGUMENTS` holds one of four forms: a bug description, a finding ID from a `/audit` snapshot in ${CLAUDE_SKILL_DIR}/../../history/ (e.g., `RC-001`, `SEC-003`), a finding returned by a standalone audit workflow run, or the number of a filed issue. Scope is limited to small, well-understood issues of 1-3 files. When Direct Finding Input carries multiple findings, fix them one at a time in descending severity order. When the impact spans 4+ files, check the multi-file trigger in § Escalation first.
+`$ARGUMENTS` holds one of four forms: a bug description, a finding ID from a `/audit` snapshot in $HOME/.claude/history/ (e.g., `RC-001`, `SEC-003`), a finding returned by a standalone audit workflow run, or the number of a filed issue. Scope is limited to small, well-understood issues of 1-3 files. When Direct Finding Input carries multiple findings, fix them one at a time in descending severity order. When the impact spans 4+ files, check the multi-file trigger in § Escalation first.
 
-| Pattern                                       | Mode                  | Action                                                                                                                                                                                                                                  |
-| --------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/^[A-Z][A-Z0-9]*-[0-9]+$/`                   | Finding ID Resolution | Read the latest snapshot from ${CLAUDE_SKILL_DIR}/../../history/ and find the ID match in findings[]. Carry severity and summary, skip Outcome Anchor and Build Check, enter Triage. If absent, present error + suggest Standard Flow |
-| Finding with file / line / severity / summary | Direct Finding Input  | Return value of the audit workflow: a single JSON finding, or text carrying file:line + severity + summary. Use file:line as the RCA starting point, skip Outcome Anchor and Build Check, enter Triage                                  |
-| `/^#?[0-9]+$/`                                | Issue Handoff         | Read the body with `gh issue view <number>`. Use Why and the repro steps as the bug description, Premises as the givens. Skip Outcome Anchor and enter Build Check                                                                      |
-| empty                                         | Fix Prompt            | Ask via AskUserQuestion for Fix type from Bug fix / Error message / Test failure and Description as free text via Other, then execute                                                                                                   |
-| otherwise                                     | Standard Flow         | Treat as a bug description and run from Outcome Anchor                                                                                                                                                                                  |
+| Pattern                                       | Mode                  | Action                                                                                                                                                                                                                                                                             |
+| --------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/^[A-Z][A-Z0-9]*-[0-9]+$/`                   | Finding ID Resolution | Read the latest snapshot from $HOME/.claude/history/ and find the ID match in findings[]. Carry severity and summary, skip Outcome Anchor and Build Check, enter Triage. If absent, say it was not found and confirm whether to continue as a bug description on the Standard Flow |
+| Finding with file / line / severity / summary | Direct Finding Input  | Return value of the audit workflow: a single JSON finding, or text carrying file:line + severity + summary. Use file:line as the RCA starting point, skip Outcome Anchor and Build Check, enter Triage                                                                             |
+| `/^#?[0-9]+$/`                                | Issue Handoff         | Read the body with `gh issue view <number>`. Use Why and the repro steps as the bug description, Premises as the givens. Skip Outcome Anchor and enter Build Check                                                                                                                 |
+| empty                                         | Fix Prompt            | Ask via AskUserQuestion for Fix type from Bug fix / Error message / Test failure and Description as free text via Other, then hand what came back to the Standard Flow as the bug description                                                                                      |
+| otherwise                                     | Standard Flow         | Treat as a bug description and run from Outcome Anchor                                                                                                                                                                                                                             |
 
 ## Delegation Map
 
-| Type      | Target                                               | Purpose                                           |
-| --------- | ---------------------------------------------------- | ------------------------------------------------- |
-| Skill     | `use-context-root-cause-analysis`                    | 5 Whys for non-obvious bugs                       |
-| Agent     | `generator-test`                                     | Regression test from symptom + repro steps        |
-| Agent     | `resolver-build`                                     | TypeScript or build error triage                  |
-| Reference | ${CLAUDE_SKILL_DIR}/references/defense-in-depth.md | Multi-layer validation for Recurring / Systematic |
+| Type  | Target                            | Purpose                                    |
+| ----- | --------------------------------- | ------------------------------------------ |
+| Skill | `use-context-root-cause-analysis` | 5 Whys for non-obvious bugs                |
+| Agent | `generator-test`                  | Regression test from symptom + repro steps |
+| Agent | `resolver-build`                  | TypeScript or build error triage           |
 
 ## Outcome Anchor
 
@@ -57,7 +56,7 @@ Obvious skips both RCA and regression test generation, so it is limited to findi
 ## Obvious
 
 1. Apply minimal fix
-2. Run tests covering affected code if any exist
+2. Run the tests and confirm no other test regressed
 
 ## Non-obvious
 
@@ -70,7 +69,7 @@ Obvious skips both RCA and regression test generation, so it is limited to findi
 
 ## Escalation
 
-Branch on objective triggers, not confidence self-assessment. Do not attempt fix #4 without escalating. When delegating from the Issue Handoff path, confirm the filed issue carries a `## Plan` section, then hand the build workflow its number.
+Branch on objective triggers, not confidence self-assessment. When delegating from the Issue Handoff path, confirm the filed issue carries a `## Plan` section, then hand the build workflow its number.
 
 | Trigger                        | Action                                                                        |
 | ------------------------------ | ----------------------------------------------------------------------------- |
