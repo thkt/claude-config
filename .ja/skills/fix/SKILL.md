@@ -59,11 +59,11 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 | issue 番号を渡し、本文が原因を file:line まで特定している | 省く。その原因を Root cause として引き継ぎ、Pattern だけ判定する |
 
 1. `Skill("use-context-root-cause-analysis")` を起動して 5 Whys を実行する
-2. `Agent(subagent_type: generator-test)` で regression test を生成する。渡すのは symptom、再現手順、step 1 の root cause。この起動はバックグラウンドで走り、結果は完了通知で届く
-3. 完了通知を受け取ってから、regression test が Red であることを確認する
+2. `Agent(subagent_type: generator-test)` で regression test を生成する。渡すのは symptom、再現手順、5 Whys が出した root cause
+3. 生成の完了を待ち、regression test が Red であることを確認する
 4. 修正を適用する
 5. regression test が Green で、他のテストに regression がないことを確認する
-6. Pattern が Recurring または Systematic なら ${CLAUDE_SKILL_DIR}/references/defense-in-depth.md を適用する
+6. Pattern に応じて ${CLAUDE_SKILL_DIR}/references/defense-in-depth.md を適用する
 
 ## エスカレーション
 

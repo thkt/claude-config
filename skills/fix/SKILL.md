@@ -59,11 +59,11 @@ Where the 5 Whys starts depends on the route. A route absent from the table star
 | An issue number whose body names the cause down to a file:line | Skip it. Carry that cause as the Root cause and judge only the Pattern |
 
 1. Run 5 Whys via `Skill("use-context-root-cause-analysis")`
-2. `Agent(subagent_type: generator-test)` for the regression test. Pass symptom, repro steps, and the root cause from step 1. The spawn runs in the background and its result arrives as a completion notification
-3. Verify the regression test is Red once the completion notification arrives
+2. `Agent(subagent_type: generator-test)` for the regression test. Pass symptom, repro steps, and the root cause the 5 Whys produced
+3. Wait for the generation to finish, then verify the regression test is Red
 4. Apply fix
 5. Verify regression test is Green and no other tests regressed
-6. If Pattern is Recurring or Systematic, apply ${CLAUDE_SKILL_DIR}/references/defense-in-depth.md
+6. Apply ${CLAUDE_SKILL_DIR}/references/defense-in-depth.md according to the Pattern
 
 ## Escalation
 

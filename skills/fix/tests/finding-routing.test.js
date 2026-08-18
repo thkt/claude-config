@@ -63,12 +63,12 @@ test("what is handed to generator-test matches the agent's Input", () => {
   assert.match(agent, /When a root cause is passed/, "the agent states what root_cause is for");
   assert.match(
     readFileSync(skills.ja, "utf8"),
-    /渡すのは symptom、再現手順、step 1 の root cause/,
+    /渡すのは symptom、再現手順、5 Whys が出した root cause/,
     "ja: all three are passed",
   );
   assert.match(
     readFileSync(skills.en, "utf8"),
-    /Pass symptom, repro steps, and the root cause from step 1/,
+    /Pass symptom, repro steps, and the root cause the 5 Whys produced/,
     "en: all three are passed",
   );
 });
