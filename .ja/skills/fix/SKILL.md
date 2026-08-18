@@ -51,7 +51,14 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 
 ## Non-obvious
 
-1. `Skill("use-context-root-cause-analysis")` を起動して 5 Whys を実行する。finding をそのまま渡した経路なら、その file:line と summary を 5 Whys の起点として渡す。Symptom/Root cause/Pattern を出力する。issue 番号を渡した経路で本文が原因を file:line まで特定しているときは 5 Whys を省き、その原因を Root cause として引き継いで Pattern だけ判定する。
+5 Whys の起点は経路で変わる。下表に無い経路はバグ説明から始める。
+
+| 経路                                                      | 5 Whys の扱い                                                    |
+| --------------------------------------------------------- | ---------------------------------------------------------------- |
+| finding をそのまま渡した                                  | その file:line と summary を起点として渡す                       |
+| issue 番号を渡し、本文が原因を file:line まで特定している | 省く。その原因を Root cause として引き継ぎ、Pattern だけ判定する |
+
+1. `Skill("use-context-root-cause-analysis")` を起動して 5 Whys を実行する
 2. `Agent(subagent_type: generator-test)` で regression test を生成する。渡すのは symptom、再現手順、step 1 の root cause。この起動はバックグラウンドで走り、結果は完了通知で届く
 3. 完了通知を受け取ってから、regression test が Red であることを確認する
 4. 修正を適用する
