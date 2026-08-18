@@ -69,6 +69,8 @@ test("the handoff is the closing Step of Phase 1", () =>
     assert.match(phase1, /^\| outcome_ref /m, `${lang}: the handoff table sits inside Phase 1`);
     const steps = [...phase1.matchAll(/^### Step (\d+):/gm)].map((m) => Number(m[1]));
     assert.deepEqual(steps, [1, 2], `${lang}: Phase 1 runs Step 1 then Step 2`);
+    const phase2 = doc.slice(doc.indexOf("## Phase 2"));
+    assert.match(phase2, /`outcome_ref`/, `${lang}: Phase 2 reads the field the handoff defines`);
   }));
 
 // Renaming a field on one side alone leaves the NO-GO rule matching nothing, while the schema and

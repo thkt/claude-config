@@ -17,7 +17,7 @@ Judge the proposal in two phases, so the next decision starts from a verified GO
 
 ## Phase 1: Grill
 
-Verify the proposal from evidence on its own, then return only the unsettled questions to the user.
+Verify the proposal from evidence, then return only the unsettled questions to the user.
 
 ### Step 1: Settle the questions with evidence
 
@@ -33,7 +33,7 @@ Every judgment below is decided by the table, never by advisor confidence.
 2. List the open questions in the proposal and sort them by the table
 3. Run the verification loop. subagents verify the answers in parallel while advisor re-checks the sorting and names the next evidence
 4. Break when more evidence no longer changes the sorting. Cap 3 rounds. Send whatever the loop left unsettled to the unsettled pile
-5. Apply the table to the verified facts and take the treatment that matches. This is the only branch that skips Phase 2
+5. Apply the table to the verified facts. When the treatment skips Phase 2, drop straight to the Output
 6. Have advisor attach a hypothesis plus reversibility and blast-radius to each unsettled question, then route them by the table
 
 ### Step 2: Build the handoff
@@ -42,7 +42,7 @@ Aggregate the Step 1 findings into the shape below. Phase 2 takes this and nothi
 
 | Field            | Source                                                                                                                              |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| approach         | one-line summary of the proposal core                                                                                               |
+| approach         | one-line summary of what the proposal does                                                                                          |
 | decisions        | settled architecture-level decisions, excluding terminology checks and scope minutiae                                               |
 | trade-offs       | surfaced trade-offs                                                                                                                 |
 | referenced_files | files read                                                                                                                          |
@@ -50,7 +50,7 @@ Aggregate the Step 1 findings into the shape below. Phase 2 takes this and nothi
 
 ## Phase 2: Devil
 
-Land the Phase 1 material on two critic-design, adversarially probing for holes.
+Land the handoff on two critic-design, adversarially probing for holes.
 
 ### Step 1: Spawn the two
 
@@ -79,6 +79,6 @@ Reconcile the weaknesses, drop the overlap, and aggregate the assumptions into V
 
 | Section          | Content                                                                                                                           |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Verdict          | One GO / NO-GO line. Note the condition on a conditional GO, and the matched condition on a NO-GO                                 |
+| Verdict          | One GO / NO-GO line. Note what must hold on a conditional GO, and which verdict-table row matched on a NO-GO                      |
 | Why              | Fact-verification results, the two critic-design verdicts, and every unsettled question advanced on assumption with reversibility |
 | Actionable items | Top 3 concrete actions of keep / remove / revise                                                                                  |
