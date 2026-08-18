@@ -61,6 +61,16 @@ test("the Phase 2 Pass table matches the steps", () =>
     assert.doesNotMatch(phase2, /^\| advisor /m, `${lang}: no Pass that never starts is listed`);
   }));
 
+// A handoff sitting outside Phase 1 reads as a stage of its own, and one placed after Phase 2
+// would leave the spawn step reading fields nothing has filled yet.
+test("the handoff is the closing Step of Phase 1", () =>
+  eachLanguage((doc, lang) => {
+    const phase1 = doc.slice(doc.indexOf("## Phase 1"), doc.indexOf("## Phase 2"));
+    assert.match(phase1, /^\| outcome_ref /m, `${lang}: the handoff table sits inside Phase 1`);
+    const steps = [...phase1.matchAll(/^### Step (\d+):/gm)].map((m) => Number(m[1]));
+    assert.deepEqual(steps, [1, 2], `${lang}: Phase 1 runs Step 1 then Step 2`);
+  }));
+
 // Renaming a field on one side alone leaves the NO-GO rule matching nothing, while the schema and
 // the rule both still read as correct prose.
 test("the NO-GO rule names the VERDICT_SCHEMA fields it reads", () =>
