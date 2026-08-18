@@ -1,6 +1,6 @@
 ---
 name: fix
-description: 開発環境で小さなバグや軽微な改善を素早く修正する。起票済み issue の番号を渡せば、1〜3 ファイルに収まる修正はそのまま引き継ぐ。新機能実装や 4 ファイル以上の変更には使わない (/think と /issue で Plan 節を作り build workflow に渡す)。
+description: 開発環境で 1〜3 ファイルに収まるバグ修正を実行する。起票済み issue の番号を渡せば、その修正はそのまま引き継ぐ。新機能実装や 4 ファイル以上の変更には使わない (/think と /issue で Plan 節を作り build workflow に渡す)。
 when_to_use: バグ修正, 直して, 修正して, fix bug, 不具合
 allowed-tools: Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit Read LS Agent AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
 model: opus
@@ -46,7 +46,7 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 
 ## Obvious
 
-1. 最小限の修正を適用
+1. 最小限の修正を適用する
 2. テストを実行し、他のテストに regression がないことを確認する
 
 ## Non-obvious
@@ -54,9 +54,9 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 1. `Skill("use-context-root-cause-analysis")` を起動して 5 Whys を実行する。Finding 直接入力経由なら、finding の file:line と summary を 5 Whys の起点として渡す。Symptom/Root cause/Pattern を出力する。Issue Handoff 経由で issue 本文が原因を file:line まで特定しているときは 5 Whys を省き、その原因を Root cause として引き継いで Pattern だけ判定する。
 2. `Agent(subagent_type: generator-test)` で regression test を生成する。渡すのは symptom、再現手順、step 1 の root cause。この起動はバックグラウンドで走り、結果は完了通知で届く
 3. 完了通知を受け取ってから、regression test が Red であることを確認する
-4. 修正を適用
-5. regression test が Green、他のテストに regression がないことを確認
-6. Pattern が Recurring または Systematic なら ${CLAUDE_SKILL_DIR}/references/defense-in-depth.md を適用
+4. 修正を適用する
+5. regression test が Green で、他のテストに regression がないことを確認する
+6. Pattern が Recurring または Systematic なら ${CLAUDE_SKILL_DIR}/references/defense-in-depth.md を適用する
 
 ## エスカレーション
 

@@ -1,6 +1,6 @@
 ---
 name: fix
-description: Rapidly fix small bugs and minor improvements in development environment. Hand it a filed issue number and a fix confined to 1-3 files carries straight through. Do NOT use for new feature implementation or changes spanning 4 or more files (write the plan via /think and /issue, then hand the number to the build workflow).
+description: Fix bugs confined to 1-3 files in a development environment. Hand it a filed issue number and that fix carries straight through. Do NOT use for new feature implementation or changes spanning 4 or more files (write the plan via /think and /issue, then hand the number to the build workflow).
 when_to_use: バグ修正, 直して, 修正して, fix bug, 不具合
 allowed-tools: Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit Read LS Agent AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
 model: opus

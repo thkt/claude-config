@@ -16,12 +16,12 @@ Driven by the Pattern field from `use-context-root-cause-analysis` (5 Whys outpu
 
 Of the layers the Pattern selected, add only those whose condition holds.
 
-| Layer | Type                  | Purpose              | Applies when                        | Example                              |
-| ----- | --------------------- | -------------------- | ----------------------------------- | ------------------------------------ |
-| 1     | Entry point           | Reject invalid input | External input is involved          | Throw if required param is empty     |
-| 2     | Business logic        | Data makes sense     | Domain invariants can be violated   | Validate entity state after mutation |
-| 3     | Environment guards    | Context-safe         | Ops have environment-dependent risk | Refuse destructive ops in test env   |
-| 4     | Debug instrumentation | Forensics            | Failure is hard to reproduce        | Log with stack trace before risky op |
+| Layer | Type                  | Purpose               | Applies when                        | Example                              |
+| ----- | --------------------- | --------------------- | ----------------------------------- | ------------------------------------ |
+| 1     | Entry point           | Reject invalid input  | External input is involved          | Throw if required param is empty     |
+| 2     | Business logic        | Hold the invariant    | Domain invariants can be violated   | Validate entity state after mutation |
+| 3     | Environment guards    | Catch a wrong context | Ops have environment-dependent risk | Refuse destructive ops in test env   |
+| 4     | Debug instrumentation | Forensics             | Failure is hard to reproduce        | Log with stack trace before risky op |
 
 ## Applying the Pattern
 
