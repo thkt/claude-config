@@ -20,14 +20,6 @@ The shape of `$ARGUMENTS` decides the entry point. Scope is limited to small, we
 | empty                                         | Fix Prompt           | Fix type from Bug fix / Error message / Test failure and Description as free text via Other, asked through AskUserQuestion | Outcome Anchor |
 | otherwise                                     | Standard Flow        | The text itself, as a bug description                                                                                      | Outcome Anchor |
 
-## Delegation Map
-
-| Type  | Target                            | Purpose                                    |
-| ----- | --------------------------------- | ------------------------------------------ |
-| Skill | `use-context-root-cause-analysis` | 5 Whys for non-obvious bugs                |
-| Agent | `generator-test`                  | Regression test from symptom + repro steps |
-| Agent | `resolver-build`                  | TypeScript or build error triage           |
-
 ## Outcome Anchor
 
 Read `.claude/OUTCOME.md` before Build Check. If absent, generate the stub via /outcome. Confirm the bug or fix lives inside the outcome state. If outside, § Escalation.

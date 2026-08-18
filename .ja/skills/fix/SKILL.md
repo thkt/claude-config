@@ -20,14 +20,6 @@ argument-hint: "[bug or issue description]"
 | 空                                              | Fix プロンプト   | AskUserQuestion で Fix type を Bug fix / Error message / Test failure から、Description を Other の自由記述で尋ねる | アウトカム参照 |
 | その他                                          | Standard Flow    | バグ説明とみなす                                                                                                    | アウトカム参照 |
 
-## 委譲マップ
-
-| 種別  | 委譲先                            | 目的                                        |
-| ----- | --------------------------------- | ------------------------------------------- |
-| Skill | `use-context-root-cause-analysis` | 非自明バグへの 5 Whys                       |
-| Agent | `generator-test`                  | symptom + 再現手順から regression test 生成 |
-| Agent | `resolver-build`                  | TypeScript やビルドエラーの triage          |
-
 ## アウトカム参照
 
 ビルドチェックの前に `.claude/OUTCOME.md` を読む。不在なら `/outcome` で stub を生成。バグまたは修正が outcome 状態の中にあるか確認する。範囲外なら § エスカレーション。
