@@ -25,15 +25,15 @@ Proceed to the process only when all three conditions below hold. When one is mi
 
 ## Process
 
-| Step | Stage      | Actions                                                                                                                                                                                                         |
-| ---- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Pre-Check  | Run ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE". It returns `number`, `date`, `dr_dir`, `filename`, and `similar_drs`                                                                                     |
-| 2    | Type       | Determine the decision type by the decision's intent and pick its recommended topics (§ Decision Type)                                                                                                          |
-| 3    | References | Gather project docs, issues, external resources                                                                                                                                                                 |
-| 4    | Draft      | Copy ${CLAUDE_SKILL_DIR}/templates/madr-template.md into `dr_dir` under the name `filename` and fill it from what was gathered, carrying `number` and `date` into the body and frontmatter (§ YAML Frontmatter) |
-| 5    | Challenge  | Only for a DR that carves an exception into an existing DR's principle or supersedes one, run `/challenge` and record the verdict and the condition it holds under as one line in More Information              |
-| 6    | Validate   | Run ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE". exit 0 with an empty `errors[]` passes. `warnings[]` is advisory                                                                                     |
-| 7    | Index      | Run ${CLAUDE_SKILL_DIR}/scripts/update-index.py to regenerate the index README                                                                                                                                  |
+| Step | Stage      | Actions                                                                                                                                                                                            |
+| ---- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Pre-Check  | Run ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE". It returns `number`, `date`, `dr_dir`, `filename`, and `similar_drs`                                                                        |
+| 2    | Type       | Determine the decision type by the decision's intent and pick its recommended topics (§ Decision Type)                                                                                             |
+| 3    | References | Gather project docs, issues, external resources                                                                                                                                                    |
+| 4    | Draft      | Copy ${CLAUDE_SKILL_DIR}/templates/madr-template.md into `dr_dir` under the name `filename` and fill it from what was gathered (§ YAML Frontmatter)                                                |
+| 5    | Challenge  | Only for a DR that carves an exception into an existing DR's principle or supersedes one, run `/challenge` and record the verdict and the condition it holds under as one line in More Information |
+| 6    | Validate   | Run ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE". exit 0 with an empty `errors[]` passes. `warnings[]` is advisory                                                                        |
+| 7    | Index      | Run ${CLAUDE_SKILL_DIR}/scripts/update-index.py to regenerate the index README                                                                                                                     |
 
 ## Decision Type
 
