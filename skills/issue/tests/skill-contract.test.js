@@ -28,36 +28,6 @@ function extractPhase(doc, heading, next) {
   return doc.slice(doc.indexOf(heading), doc.indexOf(next));
 }
 
-// issue writes the tentative marker into the body, build's extract agent collects it as an
-// assumption, and ship surfaces it on the draft PR as something to veto. The marker is build's
-// extraction keyword, so it stays English whatever the body's language, following SKILL.md L20's
-// "extraction keywords stay English". Without matching wording, a tentative note vanishes from the
-// PR silently.
-test("the tentative marker is tentative in both languages and build's extract prompt names it too", () => {
-  for (const [lang, path] of Object.entries(skills)) {
-    assert.ok(existsSync(path), `${path} exists`);
-    const doc = readFileSync(path, "utf8");
-    assert.ok(doc.includes("(tentative:"), `${lang}: SKILL.md writes (tentative:`);
-    assert.ok(!doc.includes("(仮:"), `${lang}: no Japanese marker remains in SKILL.md`);
-    assert.match(doc, /Premises/, `${lang}: SKILL.md mentions the Premises section`);
-  }
-  for (const [lang, path] of Object.entries(builds)) {
-    assert.ok(existsSync(path), `${path} exists`);
-    const src = readFileSync(path, "utf8");
-    assert.ok(
-      src.includes("(tentative: ...)"),
-      `${lang}: build.js's extract prompt names (tentative: ...)`,
-    );
-    assert.match(src, /Premises/, `${lang}: build.js's extract prompt names the Premises section`);
-  }
-  for (const [lang, path] of Object.entries(targets)) {
-    assert.ok(
-      !readFileSync(path, "utf8").includes("(仮:"),
-      `${lang}: the template says tentative too`,
-    );
-  }
-});
-
 // qualify's needs-plan and build's no-plan both point at "draft the plan with /think and transfer
 // it with /issue". /issue can only file a new issue, so without an existing-issue mode that
 // instruction stays unexecutable.
@@ -87,32 +57,6 @@ test("transferring a Plan into an existing issue exists in both languages and qu
       lang === "ja" ? /`\/issue <番号>`/ : /`\/issue <number>`/,
       `${lang}: needs-plan points at the form passing a number`,
     );
-  }
-});
-
-// chore and docs carry no Premises section. Without the template mentioning the tentative marker,
-// the inline-only style SKILL.md assigned to those two never reaches generation time.
-const TEMPLATE_TYPES = ["feature", "bug", "chore", "docs"];
-
-test("all four templates carry the tentative marker format and where its criteria live", () => {
-  for (const lang of ["ja", "en"]) {
-    for (const type of TEMPLATE_TYPES) {
-      const dir = lang === "ja" ? [root, ".ja"] : [root];
-      const doc = readFileSync(join(...dir, "skills", "issue", "templates", `${type}.md`), "utf8");
-      assert.match(doc, /\(tentative: <[^>]+>\)/, `${lang}/${type}: the tentative marker format`);
-      assert.match(
-        doc,
-        lang === "ja" ? /SKILL\.md § 確信度マーキング/ : /SKILL\.md § Confidence marking/,
-        `${lang}/${type}: where the criteria live`,
-      );
-      if (type === "chore" || type === "docs") {
-        assert.match(
-          doc,
-          lang === "ja" ? /Premises 節を持たないので/ : /no Premises section here/,
-          `${lang}/${type}: the inline-only note`,
-        );
-      }
-    }
   }
 });
 
@@ -167,18 +111,16 @@ const COUNTERPARTS = {
   ja: [
     ["Approach", "unit の contract"],
     ["Testing Decisions", "T-NNN"],
-    ["Premises", "前提"],
     ["In scope", "files"],
   ],
   en: [
     ["Approach", "unit contract"],
     ["Testing Decisions", "T-NNN"],
-    ["Premises", "Preconditions"],
     ["In scope", "files"],
   ],
 };
 
-test("each language's duplication-match.md lists the four overlapping pairs and the Acceptance Criteria exception", () => {
+test("each language's duplication-match.md lists the three overlapping pairs and the Acceptance Criteria exception", () => {
   for (const [lang, path] of Object.entries(matchRefs)) {
     const matchRef = readFileSync(path, "utf8");
     for (const [section, counterpart] of COUNTERPARTS[lang]) {

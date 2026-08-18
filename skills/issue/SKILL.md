@@ -17,7 +17,7 @@ When it carries only an issue number or URL, transfer a plan into that filed iss
 
 ## Language
 
-Read `language` from `~/.claude/settings.json` and translate the issue body and templates into that language. If unset, default to English. Only identifiers, code, commands, and proper nouns stay in English; do not mix loose English words that have a plain equivalent in the configured language into the prose. Template-derived headings and Plan-section extraction keywords stay in English.
+Read `language` from `~/.claude/settings.json` and translate the issue body and templates into that language. If unset, default to English. Template-derived headings and Plan-section extraction keywords stay in English.
 
 ## Phase 1: Drafting
 
@@ -25,8 +25,8 @@ Read `language` from `~/.claude/settings.json` and translate the issue body and 
 2. Detect the type from the description
 3. For a bug, judge whether it is minor, and offer fixing it with `/fix` instead of filing when it is
 4. For feature / bug, if the Why is not readable from the description, pin it down through wall-bouncing
-5. Select the template, generate the title + body, and mark fixed / tentative per the confidence-marking criteria
-6. Assess whether the issue is epic-sized and should split
+5. Select the template and generate the title and body. Settle an open decision through AskUserQuestion and an unverified fact through Read or ugrep. Neither goes into the body as a guess
+6. Count the independently implementable criteria, and ask about splitting when two or more exist
 
 ### Type detection
 
@@ -41,7 +41,7 @@ Default to `feature` if unclear. The title takes a bracketed prefix of the capit
 
 ### The /fix route for minor bugs
 
-What this decides is whether to file at all. A bug meeting all three criteria below is minor, and handling it directly via /fix without filing is an option. When filing anyway, add a footer note to the body, "minor; may be handled via /fix". An intermittent bug with the root cause unidentified does not qualify.
+Minor names a bug that meets all three criteria below. An intermittent bug with the root cause unidentified does not qualify. For a minor bug, offer handling it directly via /fix without filing, and when filing anyway add a footer note to the body, "minor; may be handled via /fix".
 
 - The change fits within 1 file
 - The reproduction steps are settled
@@ -63,16 +63,6 @@ List the entries via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLA
 
 For a `.yml`, each `body` entry's `attributes.label` becomes a section name and only those with `validations.required` true are required. A form states the minimum the web UI makes someone fill in, so a CLI filing that adds sections to it is not deviating. For a `.md`, strip the leading frontmatter fields `name` / `about` / `labels` / `title` for the skeleton.
 
-### Confidence marking
-
-Requirements the user decided stay unmarked. Add an inline `(tentative: <action at pickup>)` only to decisions the user left open and facts not yet verified. Do not write an uncertain HOW at all.
-
-| Point                | Content                                                                                                    |
-| -------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Marker language      | Stays `tentative` whatever language the body is in, as build's extraction keyword                          |
-| Issue-level premises | feature and bug put them in the Premises section; chore and docs mark them inline                          |
-| Downstream handling  | build extracts them as assumptions and surfaces them on the draft PR as veto targets the user can overturn |
-
 ### Split assessment
 
 When two or more criteria are each independently implementable, ask via AskUserQuestion whether to split, offering "keep as one issue" or "split into an epic and child issues". Do not count fine-grained checks that only verify one deliverable; they stay within one issue. Never auto-split, since publishing N issues is hard to unwind. On approval, publish this issue as the epic and run the rest of the flow unchanged on it.
@@ -89,7 +79,7 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 
 ## Phase 4: Publishing
 
-1. Present the issue preview. Collect any inline tentative marks into a tentative block. Add no new content, mirror what the body already carries, and omit the block at zero items. Then confirm via AskUserQuestion, asking "Create this issue?" for a new filing and "Update this issue?" on the number route. When there is no `## Plan` section and the extent puts it on the build workflow, add "hold the filing and draft a plan via `/think`" as an option
+1. Present the issue preview. Add no new content and mirror what the body already carries. Then confirm via AskUserQuestion, asking "Create this issue?" for a new filing and "Update this issue?" on the number route. When there is no `## Plan` section and the extent puts it on the build workflow, add "hold the filing and draft a plan via `/think`" as an option
 2. Write the body to a temp file and run ${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>. Handle errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md and rerun once they are fixed. On the number route this step does not run, because which skeleton the issue was filed from is unknown
 3. Once it exits 0, attach labels, run `gh issue create --title "<title>" --body-file <path>`, and capture the issue URL from its output. The number route skips validation and writes back with `gh issue edit <ref> --body-file <path>`. Write `<path>` as a literal absolute path, not a variable, because the hook cannot expand one and the filing stops. `priority:*` is required, set to critical / high / medium / low by impact, and other labels follow the repository's conventions
 4. If split was approved in Phase 1, suggest running /slice with the published epic number. Do not launch it automatically

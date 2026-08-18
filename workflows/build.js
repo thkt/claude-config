@@ -3,7 +3,7 @@ export const meta = {
   description:
     "Autonomous end-to-end build. Taking an issue with a Plan section refined via /think + /issue as input, Load (verbatim fetch -> deterministic id collection -> extract -> validate + id cross-check) / Revalidate / Branch / Code / Cleanup / Verify / Ship run headlessly as deterministic script stages. Code commits each unit separately with the plan's instruction in trailers, and Verify / Ship work from the branch point captured at Branch rather than from HEAD. A plan-less issue stops as no-plan and is handed back for refinement. Correctness checking is a comparison against the plan's own anchors (preconditions, files scope, T-NNN statements, conformance), not an open-ended defect hunt; heavy assurance (/audit, /polish review) is human-invoked on the draft PR.",
   whenToUse:
-    'Implementation of a plan-backed issue. Pass {issue, repo, base?} as args, where issue is a number ("123" / "#123") or URL, repo is the absolute path of the target repository, and base (optional) is both the PR base branch and the starting point of a fresh checkout (for the epic-branch aggregation flow); args without repo stop early as no-repo. An issue without a ## Plan section stops early as no-plan, so write its ## Plan via /think + /issue and relaunch. Step away and come back to a draft PR with recorded assumptions, conformance findings, and deterministic verify results; out-of-scope backlog candidates are returned in the workflow result for you to file via /issue. If in-flight steering is needed, drive the phases interactively.',
+    'Implementation of a plan-backed issue. Pass {issue, repo, base?} as args, where issue is a number ("123" / "#123") or URL, repo is the absolute path of the target repository, and base (optional) is both the PR base branch and the starting point of a fresh checkout (for the epic-branch aggregation flow); args without repo stop early as no-repo. An issue without a ## Plan section stops early as no-plan, so write its ## Plan via /think + /issue and relaunch. Step away and come back to a draft PR with conformance findings and deterministic verify results; out-of-scope backlog candidates are returned in the workflow result for you to file via /issue. If in-flight steering is needed, drive the phases interactively.',
   phases: [
     { title: "Load" },
     { title: "Revalidate" },
@@ -218,7 +218,6 @@ const PLAN_SCHEMA = obj(
   [
     "outcome",
     "decisions",
-    "assumptions",
     "units",
     "test_command",
     "preconditions",
@@ -231,11 +230,6 @@ const PLAN_SCHEMA = obj(
         "One-line description of the done state (implementation-independent, observable)",
     },
     decisions: { type: "array", items: { type: "string" } },
-    assumptions: {
-      type: "array",
-      items: { type: "string" },
-      description: "Best-guess residuals recorded in the issue. The user's veto targets on the PR",
-    },
     units: {
       type: "array",
       items: obj(["id", "goal", "files", "contract", "tests", "seam"], {
@@ -376,7 +370,6 @@ const plan = await agent(
     `Extract a structured plan from the ## Plan section of the following GitHub issue body. Do not re-plan, summarize, or fill in gaps; structure exactly what is written. ` +
       `Preserve every unit id (U-NNN) and test id (T-NNN) from the body. ` +
       `preconditions is the list of {path, pattern} of existing code the plan presupposes; backlog_candidates are out-of-scope candidates written in the issue. Empty arrays if absent from the body.\n` +
-      `assumptions come from the whole body, not just the ## Plan section: collect every inline \`(tentative: ...)\` mark and every line of a Premises section. The marker stays English whatever language the body is written in. Empty array if the body carries none.\n` +
       `seam is true only for a unit the body marks \`seam: true\`; every other unit is false. Do not infer it from the unit's content.\n` +
       `reference_module: the body writes it as \`null (reason)\` prose. Turn that into an object rather than a bare null, pick kind per its enum description, and copy the reason verbatim. When kind is module, copy path/files/instances/conventions from the body too. Emit a bare null only when the body's reference_module carries no reason at all. Omit the field when the body has no reference_module line.\n` +
       `root_cause: copy verbatim if the body states one (e.g. a Root Cause / 原因 line). Omit the field if the body states none.\n\n${fencedBody}`,
@@ -1004,19 +997,13 @@ phase("Ship");
 
 // Translate + compress only the informational free-text; safety facts and structured
 // fields stay untouched. Operate on copies so the sources are not mutated.
-const shipAssumptions = [...(plan.assumptions || [])];
 const shipAnomalies = (code.anomalies || []).map((a) => ({ ...a }));
 const shipConformance = conf.spec_found ? conf.findings.map((f) => ({ ...f })) : [];
 
-// Writing back goes through set(), never touching structured fields. kind splits how
-// hard the text is compressed: a finding's detail can lose prose because location /
-// spec_line carry its evidence separately, while an assumption is what a human vetoes
-// against, so a coarser assumption leaves nothing to judge.
+// Writing back goes through set(), never touching structured fields. kind splits how hard the
+// text is compressed: a finding's detail can lose prose because location / spec_line carry its
+// evidence separately.
 const slots = [];
-shipAssumptions.forEach((t, i) => {
-  if (typeof t === "string" && t.trim())
-    slots.push({ text: t, kind: "assumption", set: (v) => (shipAssumptions[i] = v) });
-});
 for (const f of shipConformance)
   if (f.detail && f.detail.trim())
     slots.push({ text: f.detail, kind: "finding", set: (v) => (f.detail = v) });
@@ -1048,7 +1035,7 @@ if (slots.length) {
   const translated = await agent(
     anchor(
       `Read \`language\` from \`$HOME/.claude/settings.json\` (english if unset). ` +
-        `The following JSON array is the free-text of the PR body's informational sections (assumptions / conformance / anomaly). Translate each element's \`text\` into \`language\`. Run this step even for english.\n` +
+        `The following JSON array is the free-text of the PR body's informational sections (conformance / anomaly). Translate each element's \`text\` into \`language\`. Run this step even for english.\n` +
         `Strict:\n` +
         `- Keep file:line, paths, numbers, counts, severity labels, identifiers, and code fragments verbatim.\n` +
         `- Carry every claim in the input across, no more and no fewer. Re-splitting the sentences drops none of them.\n` +
@@ -1056,7 +1043,7 @@ if (slots.length) {
         `- The claim, the evidence for it, and a separate observation each get their own sentence. A sentence carrying a verbatim element is exempt from the word limit.\n` +
         `- Do not chain clauses with em-dashes. Lead with a connective or split the sentence.\n` +
         `- For an element whose \`kind\` is \`finding\`, keep the claim and the pointer to its evidence, within 4 sentences.\n` +
-        `- For an element whose \`kind\` is \`assumption\` or \`anomaly\`, no sentence-count limit applies. A human vetoes against it.\n` +
+        `- For an element whose \`kind\` is \`anomaly\`, no sentence-count limit applies. It is the only record of what the run did unexpectedly.\n` +
         `- Return \`translations\` with every element carrying the input \`id\`; order is free but each id must match the input.\n` +
         `Input:\n${JSON.stringify(slots.map((s, i) => ({ id: i, kind: s.kind, text: s.text })))}`,
     ),
@@ -1095,7 +1082,6 @@ if (manualHeading) {
 
 const shipPayload = {
   issue: issueNumber,
-  assumptions: shipAssumptions,
   scope_deviations: scopeDeviations,
   untouched_plan_files: untouchedPlanFiles,
   missing_tests: missingTests,
@@ -1184,7 +1170,6 @@ return {
   cleanup_tests_pass: cleanup.tests_pass,
   unit_commits: unitCommits.length,
   backlog_candidates: backlogCandidates,
-  assumptions: plan.assumptions,
   pr_url: ship.pr_url,
   committed: ship.committed,
 };

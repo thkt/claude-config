@@ -148,18 +148,14 @@ test("each language's SKILL.md carries a displayed-field row at severity blocker
   }
 });
 
-// Adding a row to the axis table happens in both languages at once, per MIRROR.md. Growing one
-// side alone breaks the mirror.
+// Adding or dropping a row happens in both languages at once, per MIRROR.md. Changing one side
+// alone breaks the mirror. Whether a particular row exists is pinned by the tests above; counting
+// against a fixed baseline instead broke whenever an unrelated row was retired.
 test("the axis table row count matches across both languages", () => {
-  const BASELINE_ROWS = 7; // the Phase 3 axis table row count before the displayed-field row was added
   const counts = {};
   for (const [lang, path] of Object.entries(skills)) {
-    const doc = readFileSync(path, "utf8");
-    counts[lang] = getPhase3DataRows(doc).length;
-    assert.ok(
-      counts[lang] > BASELINE_ROWS,
-      `${lang}: the displayed-field row has been added to Phase 3's axis table`,
-    );
+    counts[lang] = getPhase3DataRows(readFileSync(path, "utf8")).length;
+    assert.ok(counts[lang] > 0, `${lang}: Phase 3's axis table is readable`);
   }
   assert.equal(counts.ja, counts.en, "the axis table row count matches across both languages");
 });

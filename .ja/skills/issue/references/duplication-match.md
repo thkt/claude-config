@@ -10,5 +10,4 @@ Phase 2 で plan 下書きがあるときだけ使う。本文と `## Plan` で�
 | ----------------- | ---------------- |
 | Approach          | unit の contract |
 | Testing Decisions | T-NNN            |
-| Premises          | 前提             |
 | Scope の In scope | files            |

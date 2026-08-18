@@ -208,7 +208,6 @@ const PLAN_SCHEMA = obj(
   [
     "outcome",
     "decisions",
-    "assumptions",
     "units",
     "test_command",
     "preconditions",
@@ -220,11 +219,6 @@ const PLAN_SCHEMA = obj(
       description: "done 状態の 1 行 (実装非依存、観測可能)",
     },
     decisions: { type: "array", items: { type: "string" } },
-    assumptions: {
-      type: "array",
-      items: { type: "string" },
-      description: "issue に記録された仮置きの残差。PR 上でユーザーが覆せる veto 対象",
-    },
     units: {
       type: "array",
       items: obj(["id", "goal", "files", "contract", "tests", "seam"], {
@@ -359,7 +353,6 @@ const plan = await agent(
     `以下の GitHub issue 本文の ## Plan 節から構造化 plan を抽出する。再計画 / 要約 / 補完をせず、書かれているものをそのまま構造化する。` +
       `本文の unit id (U-NNN) と test id (T-NNN) をすべて保持する。` +
       `preconditions は plan が前提にする既存コードの {path, pattern} の一覧、backlog_candidates は issue に書かれたスコープ外候補。本文に無ければ空配列。\n` +
-      `assumptions は ## Plan 節に限らず本文全体から集める。インラインの \`(tentative: ...)\` のマークと Premises 節の各行がすべて対象。マーカーは本文がどの言語でも英語のまま。本文に無ければ空配列。\n` +
       `seam は本文が \`seam: true\` と記した unit だけ true、他はすべて false。unit の内容から推測しない。\n` +
       `reference_module: 本文は \`null (理由)\` の散文で書く。null に潰さず object に変換し、kind は schema の enum 説明に従って選び、reason は原文のまま写す。kind が module のときは path/files/instances/conventions も本文から写す。本文の reference_module に理由が一切無いときだけ素の null を出す。本文に reference_module の行が無ければフィールドを省く。\n` +
       `root_cause: 本文が記載していれば (Root Cause / 原因の行など) 原文のまま写す。本文に記載が無ければフィールドを省く。\n\n${fencedBody}`,
@@ -968,18 +961,12 @@ phase("Ship");
 
 // 情報系セクションの自由記述だけを対象言語へ翻訳 + 圧縮する。安全系の事実と構造化
 // フィールドは触らない。元を変異させないようコピーに対して操作する。
-const shipAssumptions = [...(plan.assumptions || [])];
 const shipAnomalies = (code.anomalies || []).map((a) => ({ ...a }));
 const shipConformance = conf.spec_found ? conf.findings.map((f) => ({ ...f })) : [];
 
 // 書き戻しは set() 経由に限り、構造化フィールドへ触れない。kind は圧縮の強さを
-// 分ける。finding の detail は根拠を location / spec_line が別に持つので削れるが、
-// assumption は人間が veto を判断する材料なので粒度を落とすと判断できなくなる。
+// 分ける。finding の detail は根拠を location / spec_line が別に持つので削れる。
 const slots = [];
-shipAssumptions.forEach((t, i) => {
-  if (typeof t === "string" && t.trim())
-    slots.push({ text: t, kind: "assumption", set: (v) => (shipAssumptions[i] = v) });
-});
 for (const f of shipConformance)
   if (f.detail && f.detail.trim())
     slots.push({ text: f.detail, kind: "finding", set: (v) => (f.detail = v) });
@@ -1010,7 +997,7 @@ if (slots.length) {
   const translated = await agent(
     anchor(
       `\`$HOME/.claude/settings.json\` から \`language\` を読む (未設定なら english)。` +
-        `以下の JSON 配列は PR body の情報系セクション (assumptions / conformance / anomaly) の自由記述。各要素の \`text\` を \`language\` へ翻訳する。english でもこの step を実行する。\n` +
+        `以下の JSON 配列は PR body の情報系セクション (conformance / anomaly) の自由記述。各要素の \`text\` を \`language\` へ翻訳する。english でもこの step を実行する。\n` +
         `厳守:\n` +
         `- file:line、パス、数値、件数、severity ラベル、識別子、コード片は逐語で保持する。\n` +
         `- 入力にある主張を過不足なく訳す。文の割り方を変えても主張は減らさない。\n` +
@@ -1018,7 +1005,7 @@ if (slots.length) {
         `- 根拠、実証した結果、別件の指摘は、それぞれ別の文にする。逐語で保持する要素を含む文は、字数の上限の対象外。\n` +
         `- em-dash (—) で節を連ねない。接続詞を置くか文を割る。\n` +
         `- \`kind\` が \`finding\` の要素は、主張と根拠の指し先だけを残して 4 文以内にする。\n` +
-        `- \`kind\` が \`assumption\` または \`anomaly\` の要素には文数の上限を課さない。人間が veto を判断する材料になる。\n` +
+        `- \`kind\` が \`anomaly\` の要素には文数の上限を課さない。run が想定外に何をしたかの唯一の記録になる。\n` +
         `- すべての要素に入力の \`id\` を付けて \`translations\` を返す。順序は自由だが id は入力と一致させる。\n` +
         `入力:\n${JSON.stringify(slots.map((s, i) => ({ id: i, kind: s.kind, text: s.text })))}`,
     ),
@@ -1055,7 +1042,6 @@ if (manualHeading) {
 
 const shipPayload = {
   issue: issueNumber,
-  assumptions: shipAssumptions,
   scope_deviations: scopeDeviations,
   untouched_plan_files: untouchedPlanFiles,
   missing_tests: missingTests,
@@ -1143,7 +1129,6 @@ return {
   cleanup_tests_pass: cleanup.tests_pass,
   unit_commits: unitCommits.length,
   backlog_candidates: backlogCandidates,
-  assumptions: plan.assumptions,
   pr_url: ship.pr_url,
   committed: ship.committed,
 };

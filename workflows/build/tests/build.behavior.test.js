@@ -33,7 +33,6 @@ const bodyFor = (unitIds, testIds) =>
 const makePlan = (overrides = {}) => ({
   outcome: "sample outcome",
   decisions: [],
-  assumptions: ["assumption-1"],
   units: [
     {
       id: "U-001",
@@ -1424,14 +1423,11 @@ test("conformance findings surface as their own axis and stay unmixed with the d
   );
 });
 
-// The free-form text in the tail's informational sections (assumptions / conformance / anomaly)
-// comes out of the reviewer in English, so it is translated and compressed just before Ship. These
-// verify that the translation lands in shipPayload and rides the ship prompt (the PR body
-// payload).
+// The free-form text in the tail's informational sections (conformance / anomaly) comes out of the
+// reviewer in English, so it is translated and compressed just before Ship. These verify that the
+// translation lands in shipPayload and rides the ship prompt (the PR body payload).
 test("the translate-tail output lands in shipPayload and rides the ship prompt", async () => {
-  const plan = makePlan({
-    assumptions: ["assume in EN"],
-  });
+  const plan = makePlan();
   const { calls } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -1442,6 +1438,13 @@ test("the translate-tail output lands in shipPayload and rides the ship prompt",
           { category: "missing", spec_line: "L1", location: "a.js:1", detail: "conf in EN" },
         ],
       },
+      code: {
+        completed: ["U-001"],
+        anomalies: [{ unit: "U-001", kind: "no-red", notes: "anomaly in EN" }],
+        commits: [{ unit: "U-001", subject: "feat: sample subject" }],
+        tests_pass: true,
+        gates_pass: true,
+      },
       // The input array is the prompt's last line, independent of any language marker. Each
       // {id,text} comes back with its text wrapped in JA<...> and its id kept.
       translate: (prompt) => {
@@ -1451,7 +1454,7 @@ test("the translate-tail output lands in shipPayload and rides the ship prompt",
     }),
   });
 
-  // The translate agent runs once because the slots are non-empty (assumption + conformance)
+  // The translate agent runs once because the slots are non-empty (conformance + anomaly)
   const translateCalls = agentCallsOf(calls, "translate");
   assert.equal(translateCalls.length, 1, "the translate-tail agent runs once");
 
@@ -1463,17 +1466,17 @@ test("the translate-tail output lands in shipPayload and rides the ship prompt",
     "the translated conformance detail rides the ship prompt",
   );
   assert.ok(
-    shipCalls[0].prompt.includes("JA<assume in EN>"),
-    "the translated assumption rides the ship prompt",
+    shipCalls[0].prompt.includes("JA<anomaly in EN>"),
+    "the translated anomaly note rides the ship prompt",
   );
 });
 
 // How hard the compression goes differs by kind. A finding's detail can be cut because location
-// and spec_line hold the grounds separately, while an assumption is what a human weighs a veto
-// against and becomes undecidable once its granularity drops. Without kind in the input, the
-// prompt's compression instruction lands on no element at all.
+// and spec_line hold the grounds separately, while an anomaly's note is the only record of what
+// the run did unexpectedly. Without kind in the input, the prompt's compression instruction lands
+// on no element at all.
 test("the translate-tail input carries a kind per slot", async () => {
-  const plan = makePlan({ assumptions: ["assume A"] });
+  const plan = makePlan();
   const { calls } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -1498,15 +1501,14 @@ test("the translate-tail input carries a kind per slot", async () => {
   assert.deepEqual(
     input.map((o) => ({ kind: o.kind, text: o.text })),
     [
-      { kind: "assumption", text: "assume A" },
       { kind: "finding", text: "conf B" },
       { kind: "anomaly", text: "anomaly C" },
     ],
-    "assumption, finding, and anomaly are passed with their kind",
+    "finding and anomaly are passed with their kind",
   );
   assert.ok(
     translateCalls[0].prompt.includes("`finding`") &&
-      translateCalls[0].prompt.includes("`assumption`"),
+      translateCalls[0].prompt.includes("`anomaly`"),
     "the prompt carries a compression instruction per kind",
   );
 });
@@ -1515,7 +1517,7 @@ test("the translate-tail input carries a kind per slot", async () => {
 // write-back likelier to fail its match. One missing entry ships the whole tail in English.
 // evidence itself passes straight through to shipPayload without translation.
 test("an anomaly's evidence stays out of the translate-tail slots", async () => {
-  const plan = makePlan({ assumptions: [] });
+  const plan = makePlan();
   const { calls } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -1558,9 +1560,7 @@ test("an anomaly's evidence stays out of the translate-tail slots", async () => 
 // Even when the translation comes back with its ids reordered, the consumer matches on id and
 // writes each one back into the right slot.
 test("a reordered translate-tail translation still lands in the right slot by id", async () => {
-  const plan = makePlan({
-    assumptions: ["assume A"],
-  });
+  const plan = makePlan();
   const { calls } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -1568,6 +1568,13 @@ test("a reordered translate-tail translation still lands in the right slot by id
       conformance: {
         spec_found: true,
         findings: [{ category: "missing", spec_line: "L1", location: "a.js:1", detail: "conf B" }],
+      },
+      code: {
+        completed: ["U-001"],
+        anomalies: [{ unit: "U-001", kind: "no-red", notes: "anomaly A" }],
+        commits: [{ unit: "U-001", subject: "feat: sample subject" }],
+        tests_pass: true,
+        gates_pass: true,
       },
       // Returns the entries reversed with their ids kept; a position-based consumer would mix them up
       translate: (prompt) => {
@@ -1584,8 +1591,8 @@ test("a reordered translate-tail translation still lands in the right slot by id
     "even reversed, the conformance detail carries its own translation",
   );
   assert.ok(
-    shipCalls[0].prompt.includes("JA<assume A>"),
-    "even reversed, the assumption carries its own translation",
+    shipCalls[0].prompt.includes("JA<anomaly A>"),
+    "even reversed, the anomaly note carries its own translation",
   );
 });
 

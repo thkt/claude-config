@@ -10,5 +10,4 @@ When they conflict, treat the plan as the source of truth and correct the body, 
 | ----------------- | ---------------- |
 | Approach          | unit contract    |
 | Testing Decisions | T-NNN            |
-| Premises          | Preconditions    |
 | Scope, In scope   | files            |

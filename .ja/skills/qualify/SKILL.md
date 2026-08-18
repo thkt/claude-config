@@ -42,7 +42,6 @@ issue の書式が `/issue` の出力形式に沿うか、plan の前提が現�
 | title の種別         | `[Feature]` / `[Bug]` / `[Docs]` / `[Chore]` のいずれかで始まる                                                                                                          | advice  |
 | What & Why           | 誰の何の痛みかと、その根拠が書かれている                                                                                                                                 | advice  |
 | AC の検証可能性      | 各項目が観測可能な結果を述べ、達成を外部の観察者が判定できる                                                                                                             | blocker |
-| tentative マーク     | 未決の判断に `(tentative: <着手時のアクション>)` が付く                                                                                                                  | advice  |
 | priority ラベル      | `priority:critical` / `high` / `medium` / `low` のいずれかが付く                                                                                                         | advice  |
 | preconditions の実在 | 各 {path, pattern} が現在のコードで見つかる                                                                                                                              | advice  |
 | 新規作成の衝突       | contract が新規作成と読める files が、まだ存在しない                                                                                                                     | blocker |

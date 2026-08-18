@@ -4,7 +4,7 @@ When /issue classifies the request as feature, it generates the title and body f
 
 ## Template
 
-`{...}` is replaced with content at generation. Sections marked `(optional)` are omitted, heading and all, when there is nothing to say. Fixed items (the ask, AC, decided constraints) stay unmarked. Tentative items (AI-inferred HOW, an open decision) carry a `(tentative: <action at pickup>)` mark. The criteria live in SKILL.md § Confidence marking.
+`{...}` is replaced with content at generation. Sections marked `(optional)` are omitted, heading and all, when there is nothing to say.
 
 ```markdown
 ## What & Why
@@ -25,19 +25,15 @@ When /issue classifies the request as feature, it generates the title and body f
 ## Accessibility (optional)
 
 - {UI-touching issues only. Expected input modes and the criteria to meet: "all operations complete with keyboard only" / "errors are announced to screen readers via aria-live"}
-- {Why the chosen direction (optional): "use native <dialog>; focus management comes standard (tentative: decide at pickup)"}
+- {Why the chosen direction (optional): "use native <dialog>; focus management comes standard"}
 
 ## Approach (optional)
 
-- {Tentative implementation direction, a starting point rather than a fixed requirement: "place under OrderService to match existing structure (tentative: decide at pickup)"}
+- {The decided implementation direction: "place under OrderService to match existing structure"}
 
 ## Constraints (optional)
 
 - {Technical constraints, prohibited approaches, dependencies}
-
-## Premises (optional)
-
-- {Unverified assumption the work depends on, with a recheck marker: "Design ref: <link>. Confirm latest before starting" / "Target files are candidates as of writing; recheck on pickup"}
 
 ## Testing Decisions
 
@@ -55,7 +51,6 @@ When /issue classifies the request as feature, it generates the title and body f
 | Acceptance Criteria | When user clicks Export, a .csv downloads            | CSV export works correctly                               |
 | Scope - Out of      | Excel format is out of scope                         | (omitted)                                                |
 | Accessibility       | All operations complete with keyboard only           | Omitted despite UI changes, or bare "make it accessible" |
-| Approach            | match OrderService structure; decide at pickup       | Inferred HOW stated as a fixed requirement               |
+| Approach            | Match the OrderService structure                     | A HOW nobody has decided                                 |
 | Constraints         | Must not add new dependencies                        | (omitted when there are known constraints)               |
-| Premises            | Figma node 9-2191; confirm latest before starting    | Unverified design stated as fact                         |
 | Testing Decisions   | Test the CSV serializer; mirror tests/orders.test.ts | TBD or skipped without rationale                         |
