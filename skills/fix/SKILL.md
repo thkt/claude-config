@@ -13,13 +13,12 @@ argument-hint: "[bug or issue description]"
 
 The shape of `$ARGUMENTS` decides the entry point. Scope is limited to small, well-understood issues of 1-3 files. When Direct Finding Input carries multiple findings, fix them one at a time in descending severity order. When the impact spans 4+ files, check the multi-file trigger in § Escalation first.
 
-| Pattern                                       | Mode                  | What it reads                                                                                                                                                                                       | Enters at      |
-| --------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| `/^[A-Z][A-Z0-9]*-[0-9]+$/`                   | Finding ID Resolution | The ID match in findings[] of the latest snapshot under $HOME/.claude/history/, carrying severity and summary. If absent, say it was not found and confirm whether to continue as a bug description | Triage         |
-| Finding with file / line / severity / summary | Direct Finding Input  | Return value of the audit workflow, as a single JSON finding or as text. Use file:line as the RCA starting point                                                                                    | Triage         |
-| `/^#?[0-9]+$/`                                | Issue Handoff         | The body via `gh issue view <number>`. Why and the repro steps become the bug description, Premises the givens                                                                                      | Build Check    |
-| empty                                         | Fix Prompt            | Fix type from Bug fix / Error message / Test failure and Description as free text via Other, asked through AskUserQuestion                                                                          | Outcome Anchor |
-| otherwise                                     | Standard Flow         | The text itself, as a bug description                                                                                                                                                               | Outcome Anchor |
+| Pattern                                       | Mode                 | What it reads                                                                                                              | Enters at      |
+| --------------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| Finding with file / line / severity / summary | Direct Finding Input | Return value of the audit workflow, as a single JSON finding or as text. Use file:line as the RCA starting point           | Triage         |
+| `/^#?[0-9]+$/`                                | Issue Handoff        | The body via `gh issue view <number>`. Why and the repro steps become the bug description, Premises the givens             | Build Check    |
+| empty                                         | Fix Prompt           | Fix type from Bug fix / Error message / Test failure and Description as free text via Other, asked through AskUserQuestion | Outcome Anchor |
+| otherwise                                     | Standard Flow        | The text itself, as a bug description                                                                                      | Outcome Anchor |
 
 ## Delegation Map
 
@@ -46,12 +45,12 @@ Detect the build command from package.json or project config and run it.
 
 Obvious skips both RCA and regression test generation, so it is limited to findings with low misfix risk.
 
-| Input                 | Condition                                                      | Path        |
-| --------------------- | -------------------------------------------------------------- | ----------- |
-| Bug desc              | Single location identified + 1-3 line fix + no similar pattern | Obvious     |
-| Bug desc              | Intermittent, multiple repro conditions, or unknown root cause | Non-obvious |
-| finding (ID / direct) | severity low / medium and a 1-3 line fix                       | Obvious     |
-| finding (ID / direct) | severity critical / high, or the fix is non-obvious            | Non-obvious |
+| Input                | Condition                                                      | Path        |
+| -------------------- | -------------------------------------------------------------- | ----------- |
+| Bug desc             | Single location identified + 1-3 line fix + no similar pattern | Obvious     |
+| Bug desc             | Intermittent, multiple repro conditions, or unknown root cause | Non-obvious |
+| Direct Finding Input | severity low / medium and a 1-3 line fix                       | Obvious     |
+| Direct Finding Input | severity critical / high, or the fix is non-obvious            | Non-obvious |
 
 ## Obvious
 
@@ -60,7 +59,7 @@ Obvious skips both RCA and regression test generation, so it is limited to findi
 
 ## Non-obvious
 
-1. Run 5 Whys via `Skill("use-context-root-cause-analysis")`. If via Finding ID or Direct Finding Input, pass the finding's file:line and summary as the 5 Whys starting point. Output Symptom / Root cause / Pattern. When an Issue Handoff body already names the cause down to a file:line, skip the 5 Whys, carry that cause as the Root cause, and judge only the Pattern.
+1. Run 5 Whys via `Skill("use-context-root-cause-analysis")`. If via Direct Finding Input, pass the finding's file:line and summary as the 5 Whys starting point. Output Symptom / Root cause / Pattern. When an Issue Handoff body already names the cause down to a file:line, skip the 5 Whys, carry that cause as the Root cause, and judge only the Pattern.
 2. `Agent(subagent_type: generator-test)` for the regression test. Pass symptom, repro steps, and the root cause from step 1. The spawn runs in the background and its result arrives as a completion notification
 3. Verify the regression test is Red once the completion notification arrives
 4. Apply fix
@@ -95,4 +94,4 @@ Not done until every item holds. A parenthesized item is required only when it a
 - [ ] All tests pass
 - [ ] Pattern field recorded from RCA (Non-obvious path)
 - [ ] defense-in-depth applied (Recurring / Systematic only)
-- [ ] Re-audit suggested (Finding ID / Direct Finding Input path)
+- [ ] Re-audit suggested (Direct Finding Input path)

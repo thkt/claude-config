@@ -13,27 +13,13 @@ const schema = join(root, "agents", "_lib", "finding-schema.md");
 const integrator = join(root, "agents", "enhancers", "enhancer-integration.md");
 const generator = join(root, "agents", "generators", "generator-test.md");
 
-// The registry in finding-schema.md decides the ID prefixes. Some carry digits, A11Y among them,
-// so a regex admitting letters alone drops the Finding ID and falls to the Standard Flow. It
-// raises no error and quietly runs the Outcome Anchor and the Build Check.
-test("the Finding ID regex admits every prefix in the registry", () => {
-  const registry = readFileSync(schema, "utf8");
-  const prefixes = [...registry.matchAll(/^\| ([A-Z0-9]+) {2,}\| reviewer-/gm)].map((m) => m[1]);
-  assert.ok(prefixes.includes("A11Y"), "the registry carries a prefix with digits");
-  assert.ok(prefixes.length >= 10, `the prefixes are readable from the registry (${prefixes.length})`);
-
+// DR-0099 retired the Finding ID route: the audit snapshot stopped carrying a per-finding id, so
+// resolving one against ~/.claude/history/ matched nothing.
+test("no route resolves a finding through the snapshot history", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
-    const found = doc.match(/`\/(\^\[[^`]+?)\/`/);
-    assert.ok(found, `${lang}: the Finding ID regex is readable from SKILL.md`);
-    const pattern = new RegExp(found[1]);
-    for (const prefix of prefixes) {
-      assert.match(`${prefix}-001`, pattern, `${lang}: ${prefix}-001 passes as a Finding ID`);
-    }
-    assert.doesNotMatch("just a bug description", pattern, `${lang}: prose does not become a Finding ID`);
-    // This keeps it from clashing with the issue handoff input. Without demanding a letter in the
-    // prefix, 1-2 would match both rows.
-    assert.doesNotMatch("1-2", pattern, `${lang}: a digits-only prefix does not become a Finding ID`);
+    assert.doesNotMatch(doc, /history\//, `${lang}: it does not read the snapshot history`);
+    assert.doesNotMatch(doc, /Finding ID/, `${lang}: no Finding ID route remains`);
   }
 });
 
@@ -109,8 +95,8 @@ test("the handoff from issue to fix lines up on both sides", () => {
     const routes = doc.split("\n\n").find((block) => block.startsWith("| "));
     assert.equal(
       routes.split("\n").length - 2,
-      5,
-      `${lang}: the input table lists five routes`,
+      4,
+      `${lang}: the input table lists four routes`,
     );
     assert.match(
       doc.split("---")[1],
