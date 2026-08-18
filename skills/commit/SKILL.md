@@ -67,7 +67,3 @@ mv "$TMPDIR/commit-msg.txt" ~/.Trash/ 2>/dev/null || true
 | No git repository                  | Do not commit; report that this is not a git repo                      |
 | Repository is not the one intended | Do not commit; report the `git rev-parse --show-toplevel` output       |
 | Pre-commit failed                  | Report the hook output as it stands. The user decides whether to retry |
-
-## Output
-
-Report the executed commit in one line.

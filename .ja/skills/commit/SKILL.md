@@ -67,7 +67,3 @@ mv "$TMPDIR/commit-msg.txt" ~/.Trash/ 2>/dev/null || true
 | git リポジトリでない   | コミットせず、その旨を報告する                                       |
 | リポジトリが意図と違う | コミットせず、`git rev-parse --show-toplevel` の出力を報告する       |
 | pre-commit 失敗        | フックの出力をそのまま報告する。直して再実行するかはユーザーが決める |
-
-## 出力
-
-実行したコミットを 1 行で報告する。
