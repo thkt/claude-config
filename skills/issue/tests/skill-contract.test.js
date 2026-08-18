@@ -354,3 +354,17 @@ test("Phase 1 proposes /think before the body is generated", () => {
     assert.ok(think < body, `${lang}: /think is proposed first (${think} < ${body})`);
   }
 });
+
+// A check with no treatment reads as a step but changes nothing. fix and challenge both state
+// what to do when OUTCOME.md is absent and when the work falls outside it; issue said only
+// "confirm it serves the outcome" and stopped there.
+test("the outcome check states what to do on both branches", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const phase1 = readFileSync(path, "utf8").split("## Phase 1")[1].split("###")[0];
+    const step = [...phase1.matchAll(/^\d+\. .*/gm)].map((m) => m[0])[0];
+    assert.match(step, /OUTCOME\.md/, `${lang}: the first step reads OUTCOME.md`);
+    assert.match(step, /\/outcome/, `${lang}: it says where a missing file comes from`);
+    const outside = lang === "ja" ? /外側なら/ : /falls outside/;
+    assert.match(step, outside, `${lang}: it states the treatment for work outside the outcome`);
+  }
+});

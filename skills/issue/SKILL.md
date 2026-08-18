@@ -21,7 +21,7 @@ Read `language` from `~/.claude/settings.json` and translate the issue body and 
 
 ## Phase 1: Drafting
 
-1. Read `.claude/OUTCOME.md` if present and check that the issue serves the outcome
+1. Read `.claude/OUTCOME.md`, and generate the stub via `/outcome` when it is absent. Confirm the issue lives inside the outcome state. When it falls outside, ask via AskUserQuestion whether to redefine the non-goal or split it off as its own task
 2. Detect the type from the description
 3. For a bug, judge whether it is minor, and offer fixing it with `/fix` instead of filing when it is
 4. For feature / bug, if the Why is not readable from the description, pin it down per ${CLAUDE_SKILL_DIR}/references/why-wall-bouncing.md

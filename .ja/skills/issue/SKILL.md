@@ -21,7 +21,7 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 
 ## Phase 1: 起草
 
-1. `.claude/OUTCOME.md` があれば読み、issue が outcome に資するか確認する
+1. `.claude/OUTCOME.md` を読み、無ければ `/outcome` で stub を生成する。issue が outcome state の内側にあるか確認する。外側なら、非ゴールの再定義か別タスクへの分割かを AskUserQuestion で問う
 2. 説明から種別を検出する
 3. bug なら軽微かを判定し、軽微なら起票せず `/fix` で直す選択肢を出す
 4. feature か bug で、Why が説明から読み取れない場合、${CLAUDE_SKILL_DIR}/references/why-wall-bouncing.md の手順で詰める
