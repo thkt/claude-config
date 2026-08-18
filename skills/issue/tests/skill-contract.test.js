@@ -67,6 +67,11 @@ test("the feature template carries an optional Accessibility section scoped to U
   }
 });
 
+const reviewRefs = {
+  ja: join(root, ".ja", "skills", "issue", "references", "prose-review.md"),
+  en: join(root, "skills", "issue", "references", "prose-review.md"),
+};
+
 const matchRefs = {
   ja: join(root, ".ja", "skills", "issue", "references", "duplication-match.md"),
   en: join(root, "skills", "issue", "references", "duplication-match.md"),
@@ -347,5 +352,16 @@ test("the outcome check states what to do on both branches", () => {
     assert.match(step, /\/outcome/, `${lang}: it says where a missing file comes from`);
     const outside = lang === "ja" ? /外側なら/ : /falls outside/;
     assert.match(step, outside, `${lang}: it states the treatment for work outside the outcome`);
+  }
+});
+
+// Phase 1 tells the writer to settle an open decision before it reaches the body, but the sentence
+// sits inside the step that also generates the body, so a guess written mid-draft passes it. The
+// body-level check is what catches one afterwards.
+test("the prose review settles guesses after the body is drafted", () => {
+  for (const [lang, path] of Object.entries(reviewRefs)) {
+    const doc = readFileSync(path, "utf8");
+    const settle = lang === "ja" ? /推測は AskUserQuestion か Read で潰して/ : /Settle a guess via/;
+    assert.match(doc, settle, `${lang}: the structure table checks for a guess left in the body`);
   }
 });

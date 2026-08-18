@@ -4,12 +4,13 @@ Write for a teammate who shares context and can open the linked docs. The issue 
 
 ## Structure
 
-| Check          | Question                                                                                                                              |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Problem stated | Is the problem or request in 1-3 lines at the top?                                                                                    |
-| Concreteness   | Bug: are reproduction steps concrete? Feature: is the use case concrete? Is the expected outcome not left to inference?               |
-| Delta focus    | Does it skip what the code shows and stay on why and done conditions? What does not fit gets cut, or moved to another issue or a link |
-| Section fit    | Does each section carry only what its heading asks?                                                                                   |
+| Check          | Question                                                                                                                                   |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Problem stated | Is the problem or request in 1-3 lines at the top?                                                                                         |
+| Concreteness   | Bug: are reproduction steps concrete? Feature: is the use case concrete? Is the expected outcome not left to inference?                    |
+| Delta focus    | Does it skip what the code shows and stay on why and done conditions? What does not fit gets cut, or moved to another issue or a link      |
+| Section fit    | Does each section carry only what its heading asks?                                                                                        |
+| Settled only   | Does every statement name a decision someone made or a fact someone verified? Settle a guess via AskUserQuestion or Read before writing it |
 
 ## Redundancy patterns
 

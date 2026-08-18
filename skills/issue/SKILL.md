@@ -88,4 +88,4 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 
 ### Publishing constraints
 
-Write `<path>` as a literal absolute path, not a variable, because the hook cannot expand one and the filing stops. `priority:*` is required, set to critical / high / medium / low by impact. Other labels follow the repository's conventions.
+Write `<path>` as a literal absolute path, not a variable, because the hook cannot expand one and the filing stops. `priority:*` is required, set to critical / high / medium / low by impact. When the skeleton carries a priority section, the label matches the value written there. Other labels follow the repository's conventions.
