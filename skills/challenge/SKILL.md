@@ -32,7 +32,7 @@ Every judgment below is decided by the table, never by advisor confidence.
 1. Read `.claude/OUTCOME.md`. If absent, infer the outcome from $ARGUMENTS and the conversation and confirm it via AskUserQuestion. The Phase 2 outcome attack uses it as its evaluation axis, so settle it rather than leaving it out
 2. List the open questions in the proposal and sort them by the table
 3. Run the verification loop. subagents check facts in parallel while advisor re-checks the sorting and names the next evidence
-4. Break when more evidence no longer changes the sorting. Cap 3 rounds
+4. Break when more evidence no longer changes the sorting. Cap 3 rounds. Send whatever the loop left unsettled to the unsettled pile
 5. Apply the table to the verified facts. Skip Phase 2 if the core is overturned
 6. Have advisor attach a hypothesis plus reversibility and blast-radius to each unsettled question, then route them by the table
 
