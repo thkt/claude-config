@@ -11,28 +11,28 @@ argument-hint: "[decision title]"
 
 ## Input
 
-Take the decision title from `$ARGUMENTS` and shape it into a specific action like "Adopt X for Y". If empty, confirm New decision / Update existing via AskUserQuestion; for Update existing, list recent DRs in `<git-root>/docs/decisions/` for selection (§ Updating an Existing DR). To change the storage location, set the `DR_DIR` env var before running.
+Take the decision title from `$ARGUMENTS` and shape it into a specific action like "Adopt X for Y". Keep it 5-64 characters and free of `/:*?"<>|`. If empty, confirm New decision / Update existing via AskUserQuestion; for Update existing, list recent DRs in `<git-root>/docs/decisions/` for selection (§ Updating an Existing DR). To change the storage location, set the `DR_DIR` env var before running.
 
 ## Adoption Gate
 
 Proceed to the process only when all three conditions below hold. When one is missing, skip the DR and apply the table top to bottom, leaving the decision where the first matching row says.
 
-| #   | Condition                                                                                        | Where it goes when missing                        |
-| --- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
-| 1   | Hard to reverse. Changing the decision later carries meaningful cost                             | A `CONTEXT.md` entry or an equivalent design note |
-| 2   | Surprising without context. A future reader will ask "why this way?"                             | A `CONTEXT.md` entry or an equivalent design note |
-| 3   | Result of a real trade-off. Genuine alternatives existed and one was picked for specific reasons | The commit message body                           |
+| Condition                                                                                        | Where it goes when missing                        |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| Hard to reverse. Changing the decision later carries meaningful cost                             | A `CONTEXT.md` entry or an equivalent design note |
+| Surprising without context. A future reader will ask "why this way?"                             | A `CONTEXT.md` entry or an equivalent design note |
+| Result of a real trade-off. Genuine alternatives existed and one was picked for specific reasons | The commit message body                           |
 
 ## Process
 
 | Step | Stage      | Actions                                                                                                                                                                                            |
 | ---- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Pre-Check  | Run ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE". It returns `number`, `date`, `dr_dir`, `filename`, and `similar_drs`                                                                        |
+| 1    | Pre-Check  | Run ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE". What it consumes from the return is `dr_dir` and `filename` (where to write), `date` (frontmatter), and `similar_drs` (duplicate check)     |
 | 2    | Type       | Determine the decision type by the decision's intent and pick its recommended topics (§ Decision Type)                                                                                             |
 | 3    | References | Gather project docs, issues, external resources                                                                                                                                                    |
 | 4    | Draft      | Copy ${CLAUDE_SKILL_DIR}/templates/madr-template.md into `dr_dir` under the name `filename` and fill it from what was gathered (§ YAML Frontmatter)                                                |
 | 5    | Challenge  | Only for a DR that carves an exception into an existing DR's principle or supersedes one, run `/challenge` and record the verdict and the condition it holds under as one line in More Information |
-| 6    | Validate   | Run ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE". exit 0 with an empty `errors[]` passes. `warnings[]` is advisory                                                                        |
+| 6    | Validate   | Run ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE". exit 0 passes. What failed lands in `errors[]`, and `warnings[]` is advisory                                                            |
 | 7    | Index      | Run ${CLAUDE_SKILL_DIR}/scripts/update-index.py to regenerate the index README                                                                                                                     |
 
 ## Decision Type

@@ -11,29 +11,29 @@ argument-hint: "[decision title]"
 
 ## 入力
 
-決定タイトルは `$ARGUMENTS` で受け取り、"Adopt X for Y" のような具体的なアクションに整える。空なら AskUserQuestion で New decision/Update existing を確認し、Update existing なら `<git-root>/docs/decisions/` の既存 DR から選択させる (§ 既存 DR の更新)。保存先の変更は `DR_DIR` 環境変数を設定して実行する。
+決定タイトルは `$ARGUMENTS` で受け取り、"Adopt X for Y" のような具体的なアクションに整える。5〜64 文字に収め、`/:*?"<>|` は含めない。空なら AskUserQuestion で New decision/Update existing を確認し、Update existing なら `<git-root>/docs/decisions/` の既存 DR から選択させる (§ 既存 DR の更新)。保存先の変更は `DR_DIR` 環境変数を設定して実行する。
 
 ## 採用ゲート
 
 下表の 3 条件すべてが成り立つときだけプロセスへ進む。欠けるときは DR を作らず、上から順に当てて最初に該当した記録先へ決定を残す。
 
-| #   | 条件                                                                            | 欠けたときの記録先                        |
-| --- | ------------------------------------------------------------------------------- | ----------------------------------------- |
-| 1   | 覆しにくい。後から決定を変えるには相応のコストがかかる                          | `CONTEXT.md` エントリか相当する設計ノート |
-| 2   | 文脈がないと意外に見える。将来の読み手が「なぜこの形にしたのか」と疑問を持つ    | `CONTEXT.md` エントリか相当する設計ノート |
-| 3   | 実在するトレードオフの結果。本物の代替案が存在し、特定の理由で 1 つを選んでいる | コミットメッセージ本文                    |
+| 条件                                                                            | 欠けたときの記録先                        |
+| ------------------------------------------------------------------------------- | ----------------------------------------- |
+| 覆しにくい。後から決定を変えるには相応のコストがかかる                          | `CONTEXT.md` エントリか相当する設計ノート |
+| 文脈がないと意外に見える。将来の読み手が「なぜこの形にしたのか」と疑問を持つ    | `CONTEXT.md` エントリか相当する設計ノート |
+| 実在するトレードオフの結果。本物の代替案が存在し、特定の理由で 1 つを選んでいる | コミットメッセージ本文                    |
 
 ## プロセス
 
-| Step | 工程       | 内容                                                                                                                                         |
-| ---- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Pre-Check  | ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE" を実行する。返り値は `number`、`date`、`dr_dir`、`filename`、`similar_drs`                 |
-| 2    | Type       | 決定の意図で決定タイプを判定し、推奨トピックを選ぶ (§ 決定タイプ)                                                                            |
-| 3    | References | プロジェクトドキュメント、issue、外部リソースを収集する                                                                                      |
-| 4    | Draft      | ${CLAUDE_SKILL_DIR}/templates/madr-template.md を `dr_dir` 配下に `filename` で写し、収集した内容で埋める (§ YAML Frontmatter)               |
-| 5    | Challenge  | 既存 DR の原則に例外を作る、または既存 DR を supersede する場合だけ `/challenge` を通し、verdict と成立条件を More Information に 1 行で残す |
-| 6    | Validate   | ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE" を実行する。exit 0 かつ `errors[]` が空で合格。`warnings[]` は参考                     |
-| 7    | Index      | ${CLAUDE_SKILL_DIR}/scripts/update-index.py を実行し、index README を再生成する                                                              |
+| Step | 工程       | 内容                                                                                                                                                                 |
+| ---- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Pre-Check  | ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE" を実行する。返り値から使うのは `dr_dir` と `filename` (書き込み先)、`date` (frontmatter)、`similar_drs` (重複判定) |
+| 2    | Type       | 決定の意図で決定タイプを判定し、推奨トピックを選ぶ (§ 決定タイプ)                                                                                                    |
+| 3    | References | プロジェクトドキュメント、issue、外部リソースを収集する                                                                                                              |
+| 4    | Draft      | ${CLAUDE_SKILL_DIR}/templates/madr-template.md を `dr_dir` 配下に `filename` で写し、収集した内容で埋める (§ YAML Frontmatter)                                       |
+| 5    | Challenge  | 既存 DR の原則に例外を作る、または既存 DR を supersede する場合だけ `/challenge` を通し、verdict と成立条件を More Information に 1 行で残す                         |
+| 6    | Validate   | ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE" を実行する。exit 0 なら合格。落ちた項目は `errors[]` に入り、`warnings[]` は参考                               |
+| 7    | Index      | ${CLAUDE_SKILL_DIR}/scripts/update-index.py を実行し、index README を再生成する                                                                                      |
 
 ## 決定タイプ
 

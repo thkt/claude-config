@@ -21,9 +21,8 @@ const formats = {
 const preCheck = join(root, "skills", "dr", "scripts", "pre-check.py");
 const validate = join(root, "skills", "dr", "scripts", "validate-dr.py");
 
-// The keys pre-check.py returns come alive only once SKILL.md names where they go. Without naming
-// number and filename, the auto-numbering result is thrown away and the agent invents the
-// filename itself.
+// A key SKILL.md never names is a key the agent never reads. Without filename the auto-numbering
+// is thrown away and the agent invents a name of its own.
 test("SKILL.md uses pre-check.py's output keys", () => {
   const src = readFileSync(preCheck, "utf8");
   const block = src.slice(src.indexOf("print(json.dumps({"));
@@ -31,7 +30,9 @@ test("SKILL.md uses pre-check.py's output keys", () => {
   assert.ok(keys.includes("filename"), `the output keys are readable (${keys.join(", ")})`);
   assert.ok(keys.length >= 6, `six or more keys are present (${keys.length})`);
 
-  const consumed = ["number", "filename", "dr_dir", "similar_drs", "date"];
+  // number rides inside filename, slug inside both, and status is always "ok", so none of the
+  // three reaches the body.
+  const consumed = ["filename", "dr_dir", "similar_drs", "date"];
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
     for (const key of consumed) {
