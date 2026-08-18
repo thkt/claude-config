@@ -41,7 +41,7 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 
 ### 軽微 bug の導線
 
-軽微とは、次の 3 基準をすべて満たす bug を指す。原因未特定の間欠 bug は該当しない。軽微なら起票せず `/fix` で直接対応する選択肢を出し、起票する場合も本文フッターに「軽微につき `/fix` で対応してもよい」と注記する。
+軽微とは、次の 3 基準をすべて満たす bug を指す。原因未特定の間欠 bug は該当しない。軽微なら起票せず `/fix` で直接対応する選択肢を出す。起票する場合も本文フッターに「軽微につき `/fix` で対応してもよい」と注記する。
 
 - 変更が 1 ファイルに収まる
 - 再現手順が確定している
@@ -59,9 +59,13 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 
 ### テンプレート選択
 
-`gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` で列挙し、種別に対応するものを次の順で骨格に取る。`<type>.yml` (issue form) > `<type>.md` > skill ディレクトリ直下の `templates/<type>.md`。リポジトリ自身のテンプレートを先に取るのは、Web UI からの起票がそれを使うため。CLI 起票がそれを無視すると、同じ種別の issue が 1 つの tracker に 2 通りの形で並ぶ。
+`gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` で列挙し、種別に対応するものを下表の上から順に骨格へ取る。リポジトリ自身のものを先に取るのは、Web UI からの起票がそれを使うため。無視すると同じ種別の issue が 1 つの tracker に 2 通りの形で並ぶ。上 2 つは Web UI が埋めさせる最小要件なので、CLI 起票が節を足すのは逸脱ではない。
 
-`.yml` は各 `body` 要素の `attributes.label` が骨格の節名になり、`validations.required` が真のものだけが必須になる。form は Web UI が埋めさせる最小要件なので、CLI 起票がそこへ節を足すのは逸脱ではない。`.md` は先頭 frontmatter の `name`/`about`/`labels`/`title` を外して骨格にする。
+| 骨格                           | 節名の取り方                                                                      |
+| ------------------------------ | --------------------------------------------------------------------------------- |
+| リポジトリの `<type>.yml`      | 各 `body` 要素の `attributes.label`。必須は `validations.required` が真のものだけ |
+| リポジトリの `<type>.md`       | 先頭 frontmatter の `name`/`about`/`labels`/`title` を外した本文                  |
+| skill の `templates/<type>.md` | `## テンプレート` 内のコードフェンス                                              |
 
 ### 分割判定
 
@@ -71,7 +75,7 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 
 1. ${CLAUDE_SKILL_DIR}/references/prose-review.md と、本文言語に対応する空句ファイルの基準で本文をインライン精査する。空句ファイルは日本語なら `phrases.ja.md`、英語なら `phrases.en.md`。Phase 3 で移設する Plan 節は対象外とし、手を入れない。番号経路では行わない
 2. 会話に challenge の verdict と findings があれば、折り込むべき指摘だけを 1 回反映する。verdict と findings 自体は本文に入れない。番号経路では行わない
-3. plan 下書きがあれば、前項までの編集を終えた本文を、選んだ plan 下書き 1 つと ${CLAUDE_SKILL_DIR}/references/duplication-match.md の手順で照合する。会話に `/think` のものがあればそれを選ぶ。無ければ `.claude/workspace/planning/` の `*.plan.md` のうち issue のタイトルに一致し、更新時刻が最も新しい 1 件を選ぶ。plan 下書きが無ければ、この照合を省く。番号経路では検出で止め、AskUserQuestion で承認されたときだけ本文を編集する
+3. plan 下書きがあれば、前項までの編集を終えた本文を ${CLAUDE_SKILL_DIR}/references/duplication-match.md の手順で照合する。どの下書きを選ぶかもそこに従う。無ければこの照合を省く。番号経路では検出で止め、AskUserQuestion で承認されたときだけ本文を編集する
 
 ## Phase 3: Plan 移設
 
@@ -81,6 +85,12 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 
 1. Issue プレビューを提示する。新規内容は足さず本文が持つものを写す。最後に AskUserQuestion で確認する。新規起票は `Create this issue?`、番号経路は `Update this issue?` と尋ねる。`## Plan` 節が無く build workflow に渡す規模なら、選択肢に「起票を保留して `/think` で plan を作る」を足す
 2. 本文を一時ファイルに書き出し、${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <テンプレート選択で選んだ骨格ファイル> <title> <body-file> を実行する。エラーは ${CLAUDE_SKILL_DIR}/references/validation-errors.md に従って対処し、直したら再実行する。番号経路は骨格ファイルが分からないので行わない
-3. exit 0 になったらラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票し、出力から Issue URL を取得する。番号経路は検証を経ずに `gh issue edit <ref> --body-file <path>` で書き戻す。`<path>` は変数でなくリテラルの絶対パスで書く。hook は変数を展開できず、起票が止まる。`priority:*` は必須で、影響度に応じて critical、high、medium、low から選ぶ。それ以外のラベルはリポジトリの慣例に合わせる
+3. exit 0 になったらラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票し、出力から Issue URL を取得する。番号経路は検証を経ずに `gh issue edit <ref> --body-file <path>` で書き戻す。`<path>` は変数でなくリテラルの絶対パスで書く。hook は変数を展開できず、起票が止まる
 4. Phase 1 で分割を承認していれば、起票した epic 番号を添えて `/slice` の実行を提案する。自動では起動しない
-5. 分割しない issue には次の手を提案する。渡し先は影響範囲で決める。1〜3 ファイルに収まる修正なら `/fix <番号>` へ渡す。4 ファイル以上または新機能なら build workflow に番号を渡す。build workflow は `## Plan` 節の無い issue を no-plan で差し戻す。節が無ければ `/think` と `/issue <番号>` で先に用意する。渡す前の検分には `/qualify` を使う。いずれも自動では起動しない
+5. 分割しない issue には次の手を提案する。渡し先は影響範囲で決め、1〜3 ファイルに収まる修正なら `/fix <番号>` へ渡す
+6. 4 ファイル以上または新機能なら build workflow に番号を渡す。build workflow は `## Plan` 節の無い issue を no-plan で差し戻す。節が無ければ `/think` と `/issue <番号>` で先に用意する
+7. 渡す前の検分には `/qualify` を使う。ここで挙げた渡し先はいずれも自動では起動しない
+
+### ラベル
+
+`priority:*` は必須で、影響度に応じて critical、high、medium、low から選ぶ。それ以外のラベルはリポジトリの慣例に合わせる。

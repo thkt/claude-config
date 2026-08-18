@@ -1,6 +1,6 @@
 # Duplication match
 
-Used in Phase 2 only when a plan draft exists. The target is every place the body and `## Plan` carry the same knowledge. Two places carry the same knowledge when editing one forces the other to change; what can change independently stays in both.
+Used in Phase 2 only when a plan draft exists. Match against the `/think` draft in the conversation when there is one. Otherwise take the `*.plan.md` under `.claude/workspace/planning/` that matches the issue title and carries the newest modification time. The target is every place the body and `## Plan` carry the same knowledge. Two places carry the same knowledge when editing one forces the other to change; what can change independently stays in both.
 
 Replace the duplicated body side with a `## Plan` reference. The reference runs from the body to `## Plan`. Three things stay in the body after the replacement. One line that states what change that heading covers, the rejection reason with its file:line grounds, and the pain description.
 

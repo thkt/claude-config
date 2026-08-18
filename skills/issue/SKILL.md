@@ -59,9 +59,13 @@ Establish the issue's Why before drafting the body. One question per message, at
 
 ### Template source
 
-List the entries via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` and take the skeleton for the type in this order: `<type>.yml` (issue form) > `<type>.md` > `templates/<type>.md` directly under the skill directory. The repository's own template comes first because that is what a web-UI filing uses; a CLI filing that ignores it leaves two shapes of the same issue type in one tracker.
+List the entries via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` and take the skeleton for the type by working down the table. The repository's own comes first because that is what a web-UI filing uses; ignoring it leaves two shapes of the same issue type in one tracker. The top two state the minimum the web UI makes someone fill in, so a CLI filing that adds sections is not deviating.
 
-For a `.yml`, each `body` entry's `attributes.label` becomes a section name and only those with `validations.required` true are required. A form states the minimum the web UI makes someone fill in, so a CLI filing that adds sections to it is not deviating. For a `.md`, strip the leading frontmatter fields `name` / `about` / `labels` / `title` for the skeleton.
+| Skeleton                          | Where the section names come from                                                          |
+| --------------------------------- | ------------------------------------------------------------------------------------------ |
+| The repository's `<type>.yml`     | Each `body` entry's `attributes.label`. Required only where `validations.required` is true |
+| The repository's `<type>.md`      | The body with the leading frontmatter `name` / `about` / `labels` / `title` stripped       |
+| The skill's `templates/<type>.md` | The code fence under `## Template`                                                         |
 
 ### Split assessment
 
@@ -71,7 +75,7 @@ When two or more criteria are each independently implementable, ask via AskUserQ
 
 1. Refine the body inline against ${CLAUDE_SKILL_DIR}/references/prose-review.md plus the empty-phrase file matching the body language: `phrases.ja.md` for Japanese, `phrases.en.md` for English. The Plan section transferred in Phase 3 is out of scope; leave it untouched. On the number route this step does not run
 2. If a challenge verdict / findings exist in the conversation, fold in only the points that belong in the body, once. The verdict and findings themselves never enter the body. On the number route this step does not run
-3. When a plan draft exists, match the body as it stands after the preceding steps against the one plan draft you pick, per ${CLAUDE_SKILL_DIR}/references/duplication-match.md. Pick the `/think` plan draft in the conversation when there is one. Otherwise pick the `*.plan.md` under `.claude/workspace/planning/` that matches the issue title and carries the newest modification time. Without a plan draft, skip this match. On the number route the match stops at detection, and the body is edited only once AskUserQuestion approves it
+3. When a plan draft exists, match the body as it stands after the preceding steps per ${CLAUDE_SKILL_DIR}/references/duplication-match.md, which also decides which draft to match against. Without one, skip this match. On the number route the match stops at detection, and the body is edited only once AskUserQuestion approves it
 
 ## Phase 3: Plan Transfer
 
@@ -81,6 +85,12 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 
 1. Present the issue preview. Add no new content and mirror what the body already carries. Then confirm via AskUserQuestion, asking "Create this issue?" for a new filing and "Update this issue?" on the number route. When there is no `## Plan` section and the extent puts it on the build workflow, add "hold the filing and draft a plan via `/think`" as an option
 2. Write the body to a temp file and run ${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>. Handle errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md and rerun once they are fixed. On the number route this step does not run, because which skeleton the issue was filed from is unknown
-3. Once it exits 0, attach labels, run `gh issue create --title "<title>" --body-file <path>`, and capture the issue URL from its output. The number route skips validation and writes back with `gh issue edit <ref> --body-file <path>`. Write `<path>` as a literal absolute path, not a variable, because the hook cannot expand one and the filing stops. `priority:*` is required, set to critical / high / medium / low by impact, and other labels follow the repository's conventions
+3. Once it exits 0, attach labels, run `gh issue create --title "<title>" --body-file <path>`, and capture the issue URL from its output. The number route skips validation and writes back with `gh issue edit <ref> --body-file <path>`. Write `<path>` as a literal absolute path, not a variable, because the hook cannot expand one and the filing stops
 4. If split was approved in Phase 1, suggest running /slice with the published epic number. Do not launch it automatically
-5. For an issue that is not split, suggest the next step. Where a filed issue goes is decided by its extent. A fix confined to 1-3 files goes to `/fix <number>`. A change touching 4 or more files, or a new feature, goes to the build workflow with the number. The build workflow hands an issue with no `## Plan` section back as no-plan. Draft one with `/think` and transfer it with `/issue <number>` before handing over. `/qualify` inspects it before the hand-off. Launch none of them automatically
+5. For an issue that is not split, suggest the next step. Where it goes is decided by its extent, and a fix confined to 1-3 files goes to `/fix <number>`
+6. A change touching 4 or more files, or a new feature, goes to the build workflow with the number. The build workflow hands an issue with no `## Plan` section back as no-plan, so draft one with `/think` and transfer it with `/issue <number>` first
+7. `/qualify` inspects it before the hand-off. Launch none of the destinations above automatically
+
+### Labels
+
+`priority:*` is required, set to critical / high / medium / low by impact. Other labels follow the repository's conventions.

@@ -237,12 +237,12 @@ test("each language's SKILL.md states the match is skipped when there is no plan
   for (const [lang, path] of Object.entries(skills)) {
     const phase2 = extractPhase2(readFileSync(path, "utf8"));
     if (lang === "ja") {
-      assert.match(phase2, /plan 下書きが無ければ/, "ja: the mention of having no plan draft");
+      assert.match(phase2, /(plan 下書きが)?無ければ/, "ja: the mention of having no plan draft");
       assert.match(phase2, /照合を省く/, "ja: the mention of skipping the match");
     } else {
       assert.match(
         phase2,
-        /no plan draft|plan draft[\s\S]{0,10}absent|without a plan draft/i,
+        /no plan draft|plan draft[\s\S]{0,10}absent|without (a plan draft|one)/i,
         "en: the mention of no plan draft",
       );
       assert.match(
@@ -256,21 +256,30 @@ test("each language's SKILL.md states the match is skipped when there is no plan
 
 // Phase 2 matches the body against a plan draft and Phase 3 transfers one. Each stating its own
 // selection rule let Phase 2 pick the conversation's draft while Phase 3 read a file, so the issue
-// carried a plan that was never matched. The path appears once, and that once is in Phase 2.
+// carried a plan that was never matched. The rule sits with the match itself, and SKILL.md points
+// at it rather than restating it.
 test("the plan draft is selected in one place", () => {
-  for (const [lang, path] of Object.entries(skills)) {
-    const doc = readFileSync(path, "utf8");
-    const hits = doc.split(".claude/workspace/planning").length - 1;
-    assert.equal(hits, 1, `${lang}: the planning path is named once (${hits})`);
-    assert.ok(
-      extractPhase2(doc).includes(".claude/workspace/planning"),
-      `${lang}: the one mention sits in Phase 2, where the match picks the draft`,
+  for (const lang of ["ja", "en"]) {
+    const skill = readFileSync(skills[lang], "utf8");
+    const ref = readFileSync(matchRefs[lang], "utf8");
+    assert.equal(
+      skill.split(".claude/workspace/planning").length - 1,
+      0,
+      `${lang}: SKILL.md does not restate where the drafts live`,
+    );
+    assert.equal(
+      ref.split(".claude/workspace/planning").length - 1,
+      1,
+      `${lang}: duplication-match.md names the planning path once`,
+    );
+    assert.match(
+      extractPhase2(skill),
+      lang === "ja" ? /どの下書きを選ぶか/ : /which draft to match against/,
+      `${lang}: Phase 2 sends the selection to the reference`,
     );
   }
 });
 
-// A subsection no step reaches is a subsection nobody runs. The minor-bug branch decides whether
-// to file at all, and it sat under Phase 1 with all five steps pointing elsewhere.
 test("Phase 1's steps reach the minor-bug branch", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
