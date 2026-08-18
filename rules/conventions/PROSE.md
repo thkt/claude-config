@@ -38,32 +38,34 @@ Models do not generalize an instruction from one item to another, nor do they in
 
 Do the extraction the reader would otherwise have to do.
 
-| Rule                            | Directive                                                                                                                  |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Length ceilings                 | Cap a sentence at 25 words and a paragraph at 150. Split at subject-predicate pairs, or turn it into a table or list       |
-| Lead with the center            | Put the section's most important claim in its first sentence. Do not make the reader extract the point                     |
-| Emphasize only the center       | Emphasize the central claim alone. Emphasizing several places leaves the reader unable to tell which one is central        |
-| No forward references           | Do not write "as described below" or "see below for details". Write it in place, or move it behind a link                  |
-| Split condition from conclusion | Do not put a condition and a conclusion in one sentence. Write the conclusion first and the condition in the next sentence |
-| No nested clauses               | Do not nest clauses. Split into short affirmative sentences                                                                |
-| One action per step line        | Write each step as one sentence, and start each line with a verb                                                           |
-| No return trips to the body     | Write each table row so it reads on its own                                                                                |
+| Rule                            | Directive                                                                                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Length ceilings                 | Cap a sentence at 25 words and a paragraph at 150. Split at subject-predicate pairs, or turn it into a table or list                                          |
+| Lead with the center            | Put the section's most important claim in its first sentence. Do not make the reader extract the point                                                        |
+| Emphasize only the center       | Emphasize the central claim alone. Emphasizing several places leaves the reader unable to tell which one is central                                           |
+| No forward references           | Do not write "as described below" or "see below for details". Write it in place, or move it behind a link                                                     |
+| Split condition from conclusion | Do not put a condition and a conclusion in one sentence. Write the conclusion first and the condition in the next sentence                                    |
+| No nested clauses               | Do not nest clauses. Split into short affirmative sentences                                                                                                   |
+| One action per step line        | Write each step as one sentence, and start each line with a verb                                                                                              |
+| No return trips to the body     | Write each table row so it reads on its own                                                                                                                   |
+| Intent, operation, judgment     | Do not mix the three in one section. Put the operation in steps and the judgment in a condition-and-treatment table, and lead with the intent in one sentence |
 
 ## Let the Reader Predict the Next Sentence
 
 Do not leave the relation between sentences to the reader's guess; show it at the head and the end of each sentence.
 
-| Rule                        | Directive                                                                                                                                                            |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Announce with connectives   | A sentence turning to contrast, concession, causation, or an example announces its role with a leading connective (in contrast, therefore, for example)              |
-| Negation after the premise  | State the content directly. Avoid double negatives, and when negating, first give the reason the reader would assume X                                               |
-| Resolve raised questions    | After stating a problem, give its cause or handling in the next sentence. After stating an operation, give its result in the next sentence. Then move on             |
-| Connect with demonstratives | When the referent is unique in the previous sentence, receive it with "that"; when candidates are plural, rewrite the noun. Never give one referent several names    |
-| Keep the subject            | Put a subject on any sentence where whose judgment or what action changes                                                                                            |
-| Write the action            | Make the actual action the predicate for a program, file, or test. Write "the formatter duplicates the row", not "the formatter dislikes it"                         |
-| State the real condition    | Replace alive / dead / surviving with the actual condition. Write "the hook does not fire", not "the hook is dead". Established terms such as dead code are excepted |
-| Shift the temperature       | End problem sentences so the burden shows (cannot, must), and post-improvement sentences so the relief shows (becomes able to)                                       |
-| Start from the content      | Start directly from what you want to convey. Do not stage it with "the essence is" or "the only key is"                                                              |
+| Rule                         | Directive                                                                                                                                                                         |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Announce with connectives    | A sentence turning to contrast, concession, causation, or an example announces its role with a leading connective (in contrast, therefore, for example)                           |
+| Negation after the premise   | State the content directly. Avoid double negatives, and when negating, first give the reason the reader would assume X                                                            |
+| Prohibition with replacement | Do not stop at "do not write X". Give the replacing operation on the same row or in the next sentence. A detection table pairing the pattern with a Fix column already meets this |
+| Resolve raised questions     | After stating a problem, give its cause or handling in the next sentence. After stating an operation, give its result in the next sentence. Then move on                          |
+| Connect with demonstratives  | When the referent is unique in the previous sentence, receive it with "that"; when candidates are plural, rewrite the noun. Never give one referent several names                 |
+| Keep the subject             | Put a subject on any sentence where whose judgment or what action changes                                                                                                         |
+| Write the action             | Make the actual action the predicate for a program, file, or test. Write "the formatter duplicates the row", not "the formatter dislikes it"                                      |
+| State the real condition     | Replace alive / dead / surviving with the actual condition. Write "the hook does not fire", not "the hook is dead". Established terms such as dead code are excepted              |
+| Shift the temperature        | End problem sentences so the burden shows (cannot, must), and post-improvement sentences so the relief shows (becomes able to)                                                    |
+| Start from the content       | Start directly from what you want to convey. Do not stage it with "the essence is" or "the only key is"                                                                           |
 
 ## Decide Before Writing
 
