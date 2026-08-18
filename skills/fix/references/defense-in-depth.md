@@ -4,7 +4,7 @@ Add checks at every layer the failure could pass through, so different code path
 
 ## When to Apply
 
-Driven by the Pattern field `use-context-root-cause-analysis` returns. What each value means is defined in that skill's Pattern Enum.
+Driven by the Pattern field `use-context-root-cause-analysis` returns. That skill decides each value (§ Deciding the Pattern).
 
 | Pattern    | Action                                                       |
 | ---------- | ------------------------------------------------------------ |

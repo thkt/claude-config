@@ -4,7 +4,7 @@
 
 ## 適用タイミング
 
-`use-context-root-cause-analysis` が返す Pattern フィールドで決まる。各値の定義はその skill の Pattern Enum にある。
+`use-context-root-cause-analysis` が返す Pattern フィールドで決まる。各値の判定はその skill が定める (§ Pattern の判定)。
 
 | Pattern    | 動作                                                        |
 | ---------- | ----------------------------------------------------------- |

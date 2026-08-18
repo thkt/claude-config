@@ -54,6 +54,25 @@ test("fix does not branch on a field absent from the snapshot", () => {
   }
 });
 
+// defense-in-depth sends the reader into another skill's section, so a rename there leaves the
+// pointer resolving to nothing.
+test("the section defense-in-depth cites exists in the analysis skill", () => {
+  const rca = {
+    ja: join(root, ".ja", "skills", "use-context-root-cause-analysis", "SKILL.md"),
+    en: join(root, "skills", "use-context-root-cause-analysis", "SKILL.md"),
+  };
+  const depth = {
+    ja: join(root, ".ja", "skills", "fix", "references", "defense-in-depth.md"),
+    en: join(root, "skills", "fix", "references", "defense-in-depth.md"),
+  };
+  for (const lang of ["ja", "en"]) {
+    const cited = readFileSync(depth[lang], "utf8").match(/\(§ ([^)]+)\)/);
+    assert.ok(cited, `${lang}: defense-in-depth cites a section`);
+    const heading = new RegExp(`^## ${cited[1]}$`, "m");
+    assert.match(readFileSync(rca[lang], "utf8"), heading, `${lang}: ## ${cited[1]} exists`);
+  }
+});
+
 // generator-test takes root_cause as optional and binds it to the behavior once passed. fix's
 // Non-obvious path obtains the root cause at step 1, so not passing it leaves that optional
 // permanently empty.
