@@ -69,14 +69,11 @@ Where the 5 Whys starts depends on the route. A route absent from the table star
 
 Branch on objective triggers, not confidence self-assessment. When delegating from the issue-number route, confirm the filed issue carries a `## Plan` section, then hand the build workflow its number.
 
-| Trigger                        | Action                                                                        |
-| ------------------------------ | ----------------------------------------------------------------------------- |
-| RCA cannot identify root cause | Escalate to `/research`                                                       |
-| Tests still fail after fix     | Re-analyze root cause. After 3 failures, escalate to `/research`              |
-| Multi-file impact (4+ files)   | Write the Plan via `/think` and `/issue`, then delegate to build              |
-| New feature scope              | Write the Plan via `/think` and `/issue`, then delegate to build              |
-| Pattern = Systematic           | Escalate to `/research`                                                       |
-| Fix outside OUTCOME.md scope   | Confirm with user; redefine Non-goals or write the Plan and delegate to build |
+| Destination        | Trigger                                                                                                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `/research`        | RCA cannot identify a root cause. Pattern is Systematic. Tests still fail on the third fix (re-analyze on the first two) |
+| The build workflow | The impact spans 4+ files. The scope is a new feature. Write the Plan via `/think` and `/issue` before handing it over   |
+| Ask the user       | The fix falls outside OUTCOME.md scope. Decide whether to redefine Non-goals or write the Plan and delegate to build     |
 
 ## Error Handling
 
