@@ -28,6 +28,10 @@ REQUIRED_SECTIONS = (
 # madr-format が推奨セクションとして扱うので、error でなく warning で出す。
 RECOMMENDED_SECTIONS = ("Reassessment Triggers",)
 
+# update-index.py は status.startswith() で By Status へ振り分けるため、lifecycle 外の値は
+# どの節にも入らず索引から落ちる。落ちたことは索引にも出ないので、warning でなく error で返す。
+STATUS_VALUES = re.compile(r"proposed|accepted|rejected|deprecated|superseded by DR-\d{4}")
+
 
 def count_options(lines: list[str]) -> int:
     """Considered Options 見出しの直下にある bullet または番号付き item を数える。"""
@@ -91,6 +95,9 @@ def main() -> None:
             raw = next((line for line in frontmatter if line.startswith(f"{meta}:")), None)
             if raw:
                 results["checks"].append(f"metadata:{meta}=ok [{raw}]")
+                value = raw.split(":", 1)[1].strip().strip('"')
+                if meta == "status" and not STATUS_VALUES.fullmatch(value):
+                    results["errors"].append(f"invalid_status:{value}")
             else:
                 results["warnings"].append(
                     f"missing_metadata:{meta} (recommended in MADR v4 frontmatter)"

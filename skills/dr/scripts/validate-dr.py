@@ -28,6 +28,10 @@ REQUIRED_SECTIONS = (
 # nothing to read. madr-format files it as recommended, so this warns rather than errors.
 RECOMMENDED_SECTIONS = ("Reassessment Triggers",)
 
+# update-index.py buckets By Status with status.startswith(), so a value outside the lifecycle
+# lands in no section and drops out of the index. The drop is invisible, so this errors.
+STATUS_VALUES = re.compile(r"proposed|accepted|rejected|deprecated|superseded by DR-\d{4}")
+
 
 def count_options(lines: list[str]) -> int:
     """Bullets or numbered items directly under the Considered Options heading."""
@@ -91,6 +95,9 @@ def main() -> None:
             raw = next((line for line in frontmatter if line.startswith(f"{meta}:")), None)
             if raw:
                 results["checks"].append(f"metadata:{meta}=ok [{raw}]")
+                value = raw.split(":", 1)[1].strip().strip('"')
+                if meta == "status" and not STATUS_VALUES.fullmatch(value):
+                    results["errors"].append(f"invalid_status:{value}")
             else:
                 results["warnings"].append(
                     f"missing_metadata:{meta} (recommended in MADR v4 frontmatter)"

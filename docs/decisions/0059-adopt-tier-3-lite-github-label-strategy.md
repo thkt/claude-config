@@ -1,5 +1,5 @@
 ---
-status: Accepted
+status: "accepted"
 date: 2026-05-02
 deciders: thkt
 consulted: critic-design (DA), claude-code research agent

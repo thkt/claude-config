@@ -1,12 +1,12 @@
 ---
-status: "superseded"
+status: "deprecated"
 date: 2026-04-07
 decision-makers: thkt
 ---
 
 # LLMによるクロスセッション知識合成wikiプラグインの構築
 
-> Superseded 2026-07-09: wiki プラグインは初版1コミット（2026-06-19）のまま enabledPlugins にも SessionEnd hook にも配線されず、`.wiki` データも生成されない死蔵状態だった。クロスセッション知識合成の構想は kagami へ引き継ぐ方針。wiki 本体（`~/GitHub/plugins/wiki/`、リモートなしのローカルのみ）は非採用として参照用に残置する。下記の Decision Outcome は kagami 設計時の設計資産として保持する。なお本文は Stop hook を前提に書かれているが、実装は SessionEnd hook で行われた（Stop hook は毎ターン発火するため）。
+> Deprecated 2026-07-09: wiki プラグインは初版1コミット（2026-06-19）のまま enabledPlugins にも SessionEnd hook にも配線されず、`.wiki` データも生成されない死蔵状態だった。クロスセッション知識合成の構想は kagami へ引き継ぐ方針。wiki 本体（`~/GitHub/plugins/wiki/`、リモートなしのローカルのみ）は非採用として参照用に残置する。下記の Decision Outcome は kagami 設計時の設計資産として保持する。なお本文は Stop hook を前提に書かれているが、実装は SessionEnd hook で行われた（Stop hook は毎ターン発火するため）。
 
 ## Context and Problem Statement
 

@@ -14,11 +14,15 @@ const templates = pair("templates", "madr-template.md");
 const formats = pair("references", "madr-format.md");
 const preChecks = pair("scripts", "pre-check.py");
 const validates = pair("scripts", "validate-dr.py");
+const indexes = pair("scripts", "update-index.py");
 
 const outputKeys = (src) => {
   const block = src.slice(src.indexOf("print(json.dumps({"));
   return [...block.matchAll(/^\s{8}"(\w+)":/gm)].map((m) => m[1]);
 };
+const statusValues = (src) =>
+  (src.match(/^STATUS_VALUES = re\.compile\(r"([^"]+)"\)/m)?.[1] ?? "").split("|");
+const indexSections = (src) => [...src.matchAll(/^\s{4}\("(\w+)", "\w+"\),$/gm)].map((m) => m[1]);
 const requiredSections = (src) => [...src.matchAll(/^\s{4}"([^"]+)",$/gm)].map((m) => m[1]);
 const recommendedSections = (src) =>
   [...(src.match(/^RECOMMENDED_SECTIONS = \(([^)]*)\)/m)?.[1] ?? "").matchAll(/"([^"]+)"/g)].map(
@@ -174,4 +178,27 @@ test("every recommended section reaches the template, the body, and the format r
       assert.ok(!optional.includes(section), `${lang}: ${section} is not filed as optional`);
     });
   }
+});
+
+// update-index.py buckets By Status with status.startswith(), so a status value no section key
+// matches lands in no group and drops out of the index with nothing reported. Two DRs were lost
+// that way ("Accepted" capitalised, and a free-text retirement note) before validate-dr.py
+// started rejecting values outside the lifecycle.
+test("every status value has a section in update-index.py and a row in madr-format", async () => {
+  const values = statusValues(await readFile(validates.en, "utf8"));
+  assert.ok(values.length >= 5, `the status values are readable (${values.join(" / ")})`);
+  const ja = statusValues(await readFile(validates.ja, "utf8"));
+  assert.deepEqual(ja, values, "both copies accept the same values");
+  const sections = indexSections(await readFile(indexes.en, "utf8"));
+  assert.ok(sections.length >= 5, `the index sections are readable (${sections.join(", ")})`);
+  for (const value of values) {
+    const key = value.split(" ")[0];
+    assert.ok(sections.includes(key), `update-index.py buckets ${key} (${sections.join(", ")})`);
+  }
+  await eachLanguage(formats, (doc, lang) => {
+    for (const value of values) {
+      const row = value.replace("\\d{4}", "NNNN");
+      assert.match(doc, new RegExp(`^\\| ${row} `, "m"), `${lang}: the lifecycle lists ${row}`);
+    }
+  });
 });

@@ -8,10 +8,10 @@ This directory contains important decisions about the project.
 |--------|-------|--------|------|
 | [0001](0001-code-command-responsibility-separation.md) | ADR 0001: code.md コマンドの責任分離 | accepted | 2025-12-16 |
 | [0002](0002-fix-modularization-and-tdd-commonization.md) | ADR 0002: /fix モジュール化とTDD共通化 | accepted | 2025-12-24 |
-| [0003](0003-marketplace.md) | Marketplace構造の維持 | superseded by 0083-collapse-marketplace-to-single-build-plugin.md | 2026-01-03 |
+| [0003](0003-marketplace.md) | Marketplace構造の維持 | superseded by DR-0083 | 2026-01-03 |
 | [0004](0004-skill-centric-architecture-restructuring.md) | ADR 0004: スキル中心アーキテクチャへの再構成 | accepted | Not set |
 | [0005](0005-documentation-role-separation.md) | ADR-0005: ドキュメントの役割分離とAI最適化 | accepted | Not set |
-| [0006](0006-adopt-deterministic-script-pattern.md) | Adopt Deterministic Script Pattern | superseded by ADR-0042 | 2026-01-27 |
+| [0006](0006-adopt-deterministic-script-pattern.md) | Adopt Deterministic Script Pattern | superseded by DR-0042 | 2026-01-27 |
 | [0007](0007-configuration-optimization.md) | ADR-0007: Claude Code 設定の最適化 | proposed | Not set |
 | [0008](0008-audience-optimized-templates.md) | ADR-0008: 読み手別テンプレート最適化の採用 | accepted | Not set |
 | [0009](0009-externalize-idr-as-rust-binary.md) | IDR生成システムの外部リポジトリ化（Rustバイナリ） | accepted | 2026-02-07 |
@@ -34,15 +34,15 @@ This directory contains important decisions about the project.
 | [0026](0026-recognize-spec-code-convergence-in-llm-instructions.md) | ADR-0026: LLM指示設計における仕様-コード収束則を認識する | accepted | 2026-03-20 |
 | [0027](0027-centralize-plugin-definitions-in-sentinels.md) | ADR-0027: プラグイン定義を sentinels リポに集約する | proposed | 2026-03-20 |
 | [0028](0028-build-test-quality-gate-with-oxc-parser.md) | ADR 0028: oxc_parser によるテスト品質ゲート litmus の構築 | proposed | 2026-03-20 |
-| [0029](0029-integrate-e2e-test-generation-into-spec-driven-workflow.md) | ADR 0029: Spec 駆動 E2E テスト生成のワークフロー統合 | superseded by ADR-0082 | 2026-07-05 |
+| [0029](0029-integrate-e2e-test-generation-into-spec-driven-workflow.md) | ADR 0029: Spec 駆動 E2E テスト生成のワークフロー統合 | superseded by DR-0082 | 2026-07-05 |
 | [0030](0030-build-session-monitor-tui-mado.md) | ADR 0030: Claude Code セッション監視 TUI mado の構築 | proposed | 2026-03-22 |
 | [0031](0031-adopt-local-embedding-ort-ruri-v3.md) | ADR-0031: ort + Ruri v3 によるローカル embedding 基盤の構築 | proposed | 2026-03-22 |
 | [0032](0032-build-esa-semantic-search-cli-sae.md) | ADR-0032: Build esa semantic search CLI (sae) | proposed | 2026-03-23 |
 | [0033](0033-add-recursive-unwrap-stack-to-shields.md) | ADR-0033: shields に Recursive Unwrap Stack を追加 | proposed | 2026-03-24 |
-| [0034](0034-automate-backlog-lifecycle-with-remote-trigger.md) | ADR-0034: LaunchAgent によるバックログライフサイクル自動化 | superseded | 2026-03-24 |
+| [0034](0034-automate-backlog-lifecycle-with-remote-trigger.md) | ADR-0034: LaunchAgent によるバックログライフサイクル自動化 | deprecated | 2026-03-24 |
 | [0034](0034-extract-shared-embedding-crate-ruri-core.md) | ADR-0034: embedding + storage ユーティリティの共有クレート化 (rurico) | proposed | 2026-03-24 |
 | [0035](0035-audit-verify-convergence-signal-and-reconciliation-ownership.md) | Record convergence signals in audit/verify dedup and move reconciliation into enhancer-evidence | accepted | 2026-04-04 |
-| [0036](0036-build-llm-wiki-plugin-for-cross-session-knowledge-synthesis.md) | LLMによるクロスセッション知識合成wikiプラグインの構築 | superseded | 2026-04-07 |
+| [0036](0036-build-llm-wiki-plugin-for-cross-session-knowledge-synthesis.md) | LLMによるクロスセッション知識合成wikiプラグインの構築 | deprecated | 2026-04-07 |
 | [0037](0037-align-sae-filter-helpers-for-amici-extraction.md) | ADR-0037: sae フィルタヘルパーを amici 抽出前提で yomu パターンに揃える | accepted | 2026-04-10 |
 | [0038](0038-add-stencils-as-sixth-posttooluse-hook-for-pattern-cataloging.md) | ADR-0038: hook pipelineに stencils を追加しコードパターンをカタログ化する | proposed | 2026-04-13 |
 | [0039](0039-add-tempos-pretooluse-tdd-hook-with-litmus-library-integration.md) | ADR-0039: PreToolUse hook に tempos を追加し litmus library 統合で TDD リズムを強制する | proposed | 2026-04-13 |
@@ -58,14 +58,14 @@ This directory contains important decisions about the project.
 | [0049](0049-consolidate-skill-to-skill-wrapper-pairs.md) | ADR-0049: Consolidate skill-to-skill wrapper pairs | accepted | 2026-04-21 |
 | [0050](0050-consolidate-fix-via-skill-delegation.md) | ADR-0050: Consolidate /fix via skill delegation; retire fix-workflow.md | accepted | 2026-04-21 |
 | [0051](0051-consolidate-formatting-audits-into-sow-spec-reviewer.md) | ADR-0051: Consolidate formatting-audits skill into reviewer-spec agent | accepted | 2026-04-23 |
-| [0052](0052-unify-skill-naming-with-use-prefix-for-cli-wrappers.md) | ADR-0052: Unify skill naming with `use-*` prefix for CLI wrapper skills | superseded by ADR-0055 | 2026-04-23 |
-| [0053](0053-adopt-ctx-prefix-for-agent-only-skills.md) | Adopt ctx- prefix for agent-only skills | superseded by ADR-0055 | 2026-04-24 |
-| [0054](0054-adopt-workflow-prefix-for-workflow-skills.md) | Adopt workflow- prefix for workflow skills | superseded by ADR-0055 | 2026-04-24 |
+| [0052](0052-unify-skill-naming-with-use-prefix-for-cli-wrappers.md) | ADR-0052: Unify skill naming with `use-*` prefix for CLI wrapper skills | superseded by DR-0055 | 2026-04-23 |
+| [0053](0053-adopt-ctx-prefix-for-agent-only-skills.md) | Adopt ctx- prefix for agent-only skills | superseded by DR-0055 | 2026-04-24 |
+| [0054](0054-adopt-workflow-prefix-for-workflow-skills.md) | Adopt workflow- prefix for workflow skills | superseded by DR-0055 | 2026-04-24 |
 | [0055](0055-consolidate-user-invocable-false-skills-under-use-prefix.md) | ADR-0055: Consolidate user-invocable:false skills under unified use- prefix with role subcategories | accepted | 2026-04-24 |
 | [0056](0056-remove-redundant-cli-wrapper-skills.md) | ADR-0056: Remove redundant CLI wrapper skills (use-cli-git/gh/npm) | accepted | 2026-04-29 |
-| [0057](0057-make-evaluator-test-a-pure-measurement-agent.md) | Make evaluator-test a Pure Measurement Agent | retired 2026-07-05. evaluator-test agent removed; Spec-conformance role moved to reviewer-conformance wired into build.js Audit | 2026-05-01 |
+| [0057](0057-make-evaluator-test-a-pure-measurement-agent.md) | Make evaluator-test a Pure Measurement Agent | deprecated | 2026-05-01 |
 | [0058](0058-inline-single-consumer-agent-context-skills-into-agents.md) | Inline single-consumer agent context skills into agents | accepted | 2026-05-01 |
-| [0059](0059-adopt-tier-3-lite-github-label-strategy.md) | Adopt Tier 3 lite GitHub label strategy across personal projects | Accepted | 2026-05-02 |
+| [0059](0059-adopt-tier-3-lite-github-label-strategy.md) | Adopt Tier 3 lite GitHub label strategy across personal projects | accepted | 2026-05-02 |
 | [0060](0060-adopt-agent-friendly-cli-design-principles.md) | Adopt Agent-Friendly CLI Design Principles | accepted | 2026-05-03 |
 | [0061](0061-adopt-meta-edit-declaration-pattern-as-a-new-sentinel.md) | Adopt meta-edit declaration pattern as a new sentinel | accepted | 2026-05-03 |
 | [0062](0062-replace-absolute-coverage-thresholds-with-delta-based-gate.md) | Replace absolute coverage thresholds with delta-based gate | accepted | 2026-05-06 |
@@ -76,7 +76,7 @@ This directory contains important decisions about the project.
 | [0067](0067-define-boundary-between-rules-adr-and-claudemd.md) | Define boundary between RULES, ADR, and CLAUDE.md | accepted | 2026-05-13 |
 | [0068](0068-stop-hook-knowledge-reflection-subagent-and-mechanical.md) | Adopt Stop hook Knowledge Reflection with subagent extraction and mechanical activity log | accepted | 2026-05-14 |
 | [0069](0069-adopt-yomu-indirect-prompt-injection-defense.md) | Adopt Indirect Prompt Injection Defense Design for yomu | accepted | 2026-05-19 |
-| [0070](0070-rename-audit-undocumented-skill-to-audit-adr-gaps.md) | ADR-0070: Rename audit-undocumented skill to audit-adr-gaps | superseded by ADR-0075 | 2026-06-13 |
+| [0070](0070-rename-audit-undocumented-skill-to-audit-adr-gaps.md) | ADR-0070: Rename audit-undocumented skill to audit-adr-gaps | superseded by DR-0075 | 2026-06-13 |
 | [0071](0071-think-assert-no-source-enforcement.md) | ADR-0071: think と assert の no-source 状態の統一原則と enforcement 非対称 | accepted | 2026-06-01 |
 | [0072](0072-discontinue-yomu-and-unify-code-search-on-ugrep.md) | ADR-0072: yomu 利用停止とコード検索の ugrep/bfs 統一 | accepted | 2026-06-09 |
 | [0073](0073-adopt-ja-as-canonical-source-for-mirror.md) | ADR-0073: .ja を意図の正とするミラー運用への転換 | accepted | 2026-06-10 |
@@ -92,7 +92,7 @@ This directory contains important decisions about the project.
 | [0083](0083-collapse-marketplace-to-single-build-plugin.md) | Marketplace を単一 build plugin に集約する | accepted | 2026-07-07 |
 | [0084](0084-retire-issue-gate-and-hand-issue-flow-orchestration-to-human.md) | ADR-0084: issue-gate を廃止し issue フローのオーケストレーションを人間に返す | accepted | 2026-07-13 |
 | [0085](0085-replace-builds-audit-fan-out-with-selection-based-verification.md) | ADR-0085: build の audit fan-out を選択ベース検証に置換する | accepted | 2026-07-14 |
-| [0086](0086-draft-plans-for-plan-less-issues-in-build.md) | ADR-0086: Plan 節なし issue の plan を build 内で自律生成する | superseded by 0089-retire-build-plan-drafting-and-hand-plan-less-issues-back.md | 2026-07-14 |
+| [0086](0086-draft-plans-for-plan-less-issues-in-build.md) | ADR-0086: Plan 節なし issue の plan を build 内で自律生成する | superseded by DR-0089 | 2026-07-14 |
 | [0087](0087-enforce-unit-size-caps-with-regeneration-in-build.md) | ADR-0087: unit サイズ上限を build に決定論強制し、超過時は再生成 + fail-closed で処理する | accepted | 2026-07-22 |
 | [0088](0088-commit-each-unit-in-build-with-plan-anchors-as-trailers.md) | ADR-0088: build の実装を unit ごとにコミットし、plan のアンカーを trailer に載せる | accepted | 2026-07-25 |
 | [0089](0089-retire-build-plan-drafting-and-hand-plan-less-issues-back.md) | ADR-0089: Plan 節なし issue の plan 自律生成をやめ、build は issue へ差し戻す | accepted | 2026-07-27 |
@@ -165,6 +165,7 @@ This directory contains important decisions about the project.
 - **0055**: ADR-0055: Consolidate user-invocable:false skills under unified use- prefix with role subcategories
 - **0056**: ADR-0056: Remove redundant CLI wrapper skills (use-cli-git/gh/npm)
 - **0058**: Inline single-consumer agent context skills into agents
+- **0059**: Adopt Tier 3 lite GitHub label strategy across personal projects
 - **0060**: Adopt Agent-Friendly CLI Design Principles
 - **0061**: Adopt meta-edit declaration pattern as a new sentinel
 - **0062**: Replace absolute coverage thresholds with delta-based gate
@@ -203,13 +204,17 @@ This directory contains important decisions about the project.
 - **0099**: Retire fix's Finding ID route in favor of Direct Finding Input
 - **0100**: Replace 5 Whys with hypothesis elimination in root cause analysis
 
+### Deprecated
+
+- **0034**: ADR-0034: LaunchAgent によるバックログライフサイクル自動化
+- **0036**: LLMによるクロスセッション知識合成wikiプラグインの構築
+- **0057**: Make evaluator-test a Pure Measurement Agent
+
 ### Superseded
 
 - **0003**: Marketplace構造の維持
 - **0006**: Adopt Deterministic Script Pattern
 - **0029**: ADR 0029: Spec 駆動 E2E テスト生成のワークフロー統合
-- **0034**: ADR-0034: LaunchAgent によるバックログライフサイクル自動化
-- **0036**: LLMによるクロスセッション知識合成wikiプラグインの構築
 - **0052**: ADR-0052: Unify skill naming with `use-*` prefix for CLI wrapper skills
 - **0053**: Adopt ctx- prefix for agent-only skills
 - **0054**: Adopt workflow- prefix for workflow skills
