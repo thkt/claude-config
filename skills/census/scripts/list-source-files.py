@@ -14,7 +14,6 @@ PRUNE = {"target", "node_modules", ".git"}
 
 
 def source_files(root: str) -> Iterator[Path]:
-    """Every file under root whose extension is in EXTS, with PRUNE directories skipped."""
     for dirpath, dirnames, filenames in os.walk(root):
         # Rebinding dirnames leaves os.walk pruning nothing.
         dirnames[:] = [d for d in dirnames if d not in PRUNE]
@@ -24,7 +23,6 @@ def source_files(root: str) -> Iterator[Path]:
 
 
 def count_lines(path: Path) -> int | None:
-    """Line count, or None when the file cannot be read."""
     try:
         with path.open("rb") as fh:
             return sum(1 for _ in fh)

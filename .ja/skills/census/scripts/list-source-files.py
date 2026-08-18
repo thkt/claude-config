@@ -14,7 +14,6 @@ PRUNE = {"target", "node_modules", ".git"}
 
 
 def source_files(root: str) -> Iterator[Path]:
-    """root 配下で拡張子が EXTS に含まれるファイル。PRUNE のディレクトリは辿らない。"""
     for dirpath, dirnames, filenames in os.walk(root):
         # dirnames への再代入では os.walk が枝刈りを見ない。
         dirnames[:] = [d for d in dirnames if d not in PRUNE]
@@ -24,7 +23,6 @@ def source_files(root: str) -> Iterator[Path]:
 
 
 def count_lines(path: Path) -> int | None:
-    """行数。読めなければ None。"""
     try:
         with path.open("rb") as fh:
             return sum(1 for _ in fh)

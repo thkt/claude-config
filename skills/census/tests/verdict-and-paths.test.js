@@ -28,15 +28,15 @@ const agentVerdicts = async () => {
   return found;
 };
 
-// Collect -> mine -> cross-reference -> judge -> emit. A phase inserted or dropped on one language
-// side alone would leave the two skills running different flows under one name.
+// A phase inserted or dropped on one language side alone would leave the two skills running
+// different flows under one name.
 test("both languages run the same five phases in the same order", () =>
   eachLanguage(skills, (doc, lang) => {
     const numbers = [...doc.matchAll(/^## Phase (\d+):/gm)].map((m) => Number(m[1]));
     assert.deepEqual(numbers, [1, 2, 3, 4, 5], `${lang}: phases run 1 through 5 in order`);
   }));
 
-// The DR cross-reference used to run once per stream, so a change to the rule had two homes.
+// Two homes for the cross-reference rule would let one drift from the other.
 test("the DR cross-reference has a single home", () =>
   eachLanguage(skills, (doc, lang) => {
     const mentions = [...doc.matchAll(/DR-covered \(excluded\)/g)];
@@ -96,8 +96,7 @@ test("the criteria path handed to a subagent names this skill's own copy", () =>
     assert.doesNotMatch(spawn, /~\/\.claude\/skills\//, `${lang}: no hardcoded dev-tree path`);
   }));
 
-// Phase 2 hands the recording format to the template, so a column dropped there would leave
-// the mining step with no shape to fill.
+// A column dropped from the template would leave the mining step with no shape to fill.
 test("the template carries the columns the mining step records", () =>
   eachLanguage(templates, (doc, lang) => {
     const header = doc.split("\n").find((line) => line.includes("Incomplete-contract?")) || "";
