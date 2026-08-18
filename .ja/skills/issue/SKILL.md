@@ -25,8 +25,9 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 2. 説明から種別を検出する
 3. bug なら軽微かを判定し、軽微なら起票せず `/fix` で直す選択肢を出す
 4. feature か bug で、Why が説明から読み取れない場合、${CLAUDE_SKILL_DIR}/references/why-wall-bouncing.md の手順で詰める
-5. テンプレートを選び、タイトルと本文を生成する。未決の判断は AskUserQuestion で決め、未検証の事実は Read や ugrep で確かめる。どちらも推測のまま本文に書かない
-6. 独立して実装可能な criteria が 2 つ以上あるか数え、あれば分割を問う
+5. 独立して実装可能な criteria が 2 つ以上あるか数え、あれば分割を問う
+6. 分割しない issue が build workflow へ渡す規模で、plan 下書きも無ければ `/think` の実行を提案する
+7. テンプレートを選び、タイトルと本文を生成する。未決の判断は AskUserQuestion で決め、未検証の事実は Read や ugrep で確かめる。どちらも推測のまま本文に書かない
 
 ### 種別判定
 
@@ -55,7 +56,7 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 | ------------------------------ | --------------------------------------------------------------------------------- |
 | リポジトリの `<type>.yml`      | 各 `body` 要素の `attributes.label`。必須は `validations.required` が真のものだけ |
 | リポジトリの `<type>.md`       | 先頭 frontmatter の `name`/`about`/`labels`/`title` を外した本文                  |
-| skill の `templates/<type>.md` | `## Template` 内のコードフェンス                                              |
+| skill の `templates/<type>.md` | `## Template` 内のコードフェンス                                                  |
 
 ### 分割判定
 
@@ -73,7 +74,7 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 
 ## Phase 4: 起票
 
-1. Issue プレビューを提示する。新規内容は足さず本文が持つものを写す。AskUserQuestion で確認し、新規起票は `Create this issue?`、番号経路は `Update this issue?` と尋ねる。`## Plan` 節が無く build workflow に渡す規模なら、選択肢に「起票を保留して `/think` で plan を作る」を足す
+1. Issue プレビューを提示する。新規内容は足さず本文が持つものを写す。AskUserQuestion で確認し、新規起票は `Create this issue?`、番号経路は `Update this issue?` と尋ねる
 2. `cat` の heredoc で本文を一時ファイルへ書き出し、${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <テンプレート選択で選んだ骨格ファイル> <title> <body-file> を実行する。エラーは ${CLAUDE_SKILL_DIR}/references/validation-errors.md に従って対処し、直したら再実行する。番号経路は骨格ファイルが分からないので行わない
 3. exit 0 になったらラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票し、出力から Issue URL を取得する。番号経路は検証を経ずに `gh issue edit <ref> --body-file <path>` で書き戻す
 4. 下表から渡し先を選んで提案する。いずれも自動では起動しない

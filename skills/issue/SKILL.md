@@ -25,8 +25,9 @@ Read `language` from `~/.claude/settings.json` and translate the issue body and 
 2. Detect the type from the description
 3. For a bug, judge whether it is minor, and offer fixing it with `/fix` instead of filing when it is
 4. For feature / bug, if the Why is not readable from the description, pin it down per ${CLAUDE_SKILL_DIR}/references/why-wall-bouncing.md
-5. Select the template and generate the title and body. Settle an open decision through AskUserQuestion and an unverified fact through Read or ugrep. Neither goes into the body as a guess
-6. Count the independently implementable criteria, and ask about splitting when two or more exist
+5. Count the independently implementable criteria, and ask about splitting when two or more exist
+6. When an issue that is not split is bound for the build workflow and no plan draft exists, suggest running `/think`
+7. Select the template and generate the title and body. Settle an open decision through AskUserQuestion and an unverified fact through Read or ugrep. Neither goes into the body as a guess
 
 ### Type detection
 
@@ -73,7 +74,7 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 
 ## Phase 4: Publishing
 
-1. Present the issue preview. Add no new content and mirror what the body already carries. Then confirm via AskUserQuestion, asking "Create this issue?" for a new filing and "Update this issue?" on the number route. When there is no `## Plan` section and the extent puts it on the build workflow, add "hold the filing and draft a plan via `/think`" as an option
+1. Present the issue preview. Add no new content and mirror what the body already carries. Then confirm via AskUserQuestion, asking "Create this issue?" for a new filing and "Update this issue?" on the number route.
 2. Write the body to a temp file with a `cat` heredoc and run ${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>. Handle errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md and rerun once they are fixed. On the number route this step does not run, because which skeleton the issue was filed from is unknown
 3. Once it exits 0, attach labels, run `gh issue create --title "<title>" --body-file <path>`, and capture the issue URL from its output. The number route skips validation and writes back with `gh issue edit <ref> --body-file <path>`
 4. Pick the destination from the table below and suggest it. Launch none of them automatically

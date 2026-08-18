@@ -337,3 +337,20 @@ test("the validator step cites a heading its own language carries", () => {
     assert.match(doc, new RegExp(`^### ${cited}$`, "m"), `${lang}: ### ${cited} exists`);
   }
 });
+
+// A build-sized issue needs its plan before the body is written. With the plan arriving later,
+// Phase 2's duplication match runs once against a body carrying no Plan and again after the
+// transfer. The proposal used to sit at Phase 4's confirmation, three steps past the point where
+// the extent is already known.
+test("Phase 1 proposes /think before the body is generated", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const phase1 = readFileSync(path, "utf8").split("## Phase 1")[1].split("###")[0];
+    const steps = [...phase1.matchAll(/^\d+\. .*/gm)].map((m) => m[0]);
+    const think = steps.findIndex((step) => step.includes("/think"));
+    const generates = lang === "ja" ? /本文を生成/ : /generate the title and body/;
+    const body = steps.findIndex((step) => generates.test(step));
+    assert.ok(think >= 0, `${lang}: a step suggests /think`);
+    assert.ok(body >= 0, `${lang}: a step generates the body`);
+    assert.ok(think < body, `${lang}: /think is proposed first (${think} < ${body})`);
+  }
+});
