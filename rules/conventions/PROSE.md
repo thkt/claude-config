@@ -6,23 +6,24 @@ Write software-development prose with words whose baseline the reader can recons
 
 The right column lists examples, not limited to these.
 
-| Target form                                                        | Words to rewrite                                                               |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| State the condition and the expected result                        | 正しく / 正常 / 異常 / correct / normal / abnormal                             |
-| State the default value or the precondition                        | 通常 / 一般的 / 標準的 / usual / ordinary / standard / general                 |
-| State the concrete value or behavior                               | 期待値 / 意図どおり / 仕様どおり / as intended / as specified                  |
-| Name the actual operation, such as transform, validate, or persist | 処理する / 処理 / process                                                      |
-| Name the contents, such as user name or order list                 | データ / 情報 / data / information                                             |
-| List the conditions you verified                                   | 問題なく / without issues                                                      |
-| State the concrete operation and its criteria                      | 適切に / きちんと / appropriately / properly                                   |
-| State the concrete property or operation                           | 堅牢 / 活用する / 掘り下げる / robust / leverage / delve                       |
-| Use verbs naming the real operation and result                     | Abstract verbs such as 効く / 重ねる / 支える / works / layers / supports      |
-| Restore the phrase with particles and verbs                        | Compressed nouns such as 変更影響 / 文脈保持. Established technical terms stay |
-| Drop the phrase and state what it refers to                        | Literal translation of another language's idiom. Established phrases stay      |
-| State the concrete number or threshold                             | 大量 / 少量 / large amount / small amount                                      |
-| State the concrete size or comparison target                       | 大きい / 小さい / large / small                                                |
-| State the scope and the sort key                                   | 最新 / 最古 / latest / oldest                                                  |
-| State the measured value and the threshold                         | 速い / 遅い / fast / slow                                                      |
+| Target form                                                        | Words to rewrite                                                                                            |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| State the condition and the expected result                        | 正しく / 正常 / 異常 / correct / normal / abnormal                                                          |
+| State the default value or the precondition                        | 通常 / 一般的 / 標準的 / usual / ordinary / standard / general                                              |
+| State the concrete value or behavior                               | 期待値 / 意図どおり / 仕様どおり / as intended / as specified                                               |
+| Name the actual operation, such as transform, validate, or persist | 処理する / 処理 / process                                                                                   |
+| Name the contents, such as user name or order list                 | データ / 情報 / data / information                                                                          |
+| List the conditions you verified                                   | 問題なく / without issues                                                                                   |
+| State the concrete operation and its criteria                      | 適切に / きちんと / appropriately / properly                                                                |
+| State the concrete property or operation                           | 堅牢 / 活用する / 掘り下げる / robust / leverage / delve                                                    |
+| Use verbs naming the real operation and result                     | Abstract verbs such as 効く / 重ねる / 支える / works / layers / supports                                   |
+| Restore the phrase with particles and verbs                        | Compressed nouns such as 変更影響 / 文脈保持. Established technical terms stay                              |
+| Drop the phrase and state what it refers to                        | Literal translation of another language's idiom. Established phrases stay                                   |
+| Use the target language's own word                                 | A foreign word in the prose that has a plain equivalent. Identifiers, code, commands, and proper nouns stay |
+| State the concrete number or threshold                             | 大量 / 少量 / large amount / small amount                                                                   |
+| State the concrete size or comparison target                       | 大きい / 小さい / large / small                                                                             |
+| State the scope and the sort key                                   | 最新 / 最古 / latest / oldest                                                                               |
+| State the measured value and the threshold                         | 速い / 遅い / fast / slow                                                                                   |
 
 ## State Scope Explicitly
 
@@ -45,6 +46,7 @@ Do the extraction the reader would otherwise have to do.
 | Emphasize only the center       | Emphasize the central claim alone. Emphasizing several places leaves the reader unable to tell which one is central                                                                                                                                            |
 | No forward references           | Do not write "as described below" or "see below for details". Write it in place, or move it behind a link                                                                                                                                                      |
 | Split condition from conclusion | Do not put a condition and a conclusion in one sentence. Write the conclusion first and the condition in the next sentence                                                                                                                                     |
+| One claim per sentence          | Do not pack a decision, its rationale, and its references into one sentence or one paragraph. Cut the sentence where the claim changes                                                                                                                         |
 | No nested clauses               | Do not nest clauses. Split into short affirmative sentences                                                                                                                                                                                                    |
 | One action per step line        | Write each step as one sentence, and start each line with a verb                                                                                                                                                                                               |
 | No return trips to the body     | Write each table row so it reads on its own                                                                                                                                                                                                                    |
@@ -97,3 +99,5 @@ Delete a sentence a reader can already read off the adjacent code, table, or hea
 | Filler section         | Built only from restatement of other sections or generalities. Removing it leaves the claims unchanged |
 | Redundant summary      | Re-stating at the end what the body already said                                                       |
 | Boilerplate frame      | Placed to fill a template, carrying nothing specific to this document                                  |
+| Hedge stacking         | Two or more hedges in one sentence, such as "might potentially" or "could possibly"                    |
+| Filler phrase          | A pleasantry aimed at the reader, such as "Looking forward to your thoughts"                           |

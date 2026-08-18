@@ -27,7 +27,7 @@ commit なし、Git リポジトリでない、gh 認証失敗のいずれかを
 4. UI 変更を検出 (§ UI 変更検出)
 5. テンプレートを選ぶ (§ PR テンプレート)
 6. 選んだテンプレートに従いタイトルと本文を生成 (§ タイトルルール)
-7. ${CLAUDE_SKILL_DIR}/references/prose-review.md と、本文言語に対応する空句ファイルの基準で本文をインライン精査する。空句ファイルは日本語なら `phrases.ja.md`、英語なら `phrases.en.md`
+7. ${CLAUDE_SKILL_DIR}/references/prose-review.md の基準で本文をインライン精査する
 8. PR をプレビューし、AskUserQuestion で `Create this PR?` と確認する
 9. UI 変更があれば Skill で `use-workflow-pageshot` を PR 本文と共に呼ぶ (§ Pageshot 統合)
 10. 現在ブランチを push (§ Push)

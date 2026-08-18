@@ -63,7 +63,7 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 
 ## Phase 2: 推敲
 
-1. ${CLAUDE_SKILL_DIR}/references/prose-review.md と、本文言語に対応する ${CLAUDE_SKILL_DIR}/references/phrases.<lang>.md の基準で本文をインライン精査する。Phase 3 で移設する Plan 節は対象外とし、手を入れない。番号経路では行わない
+1. ${CLAUDE_SKILL_DIR}/references/prose-review.md の基準で本文をインライン精査する。Phase 3 で移設する Plan 節は対象外とし、手を入れない。番号経路では行わない
 2. 会話に challenge の verdict と findings があれば、折り込むべき指摘だけを 1 回反映する。verdict と findings 自体は本文に入れない。番号経路では行わない
 3. plan 下書きがあれば、前項までの編集を終えた本文を ${CLAUDE_SKILL_DIR}/references/duplication-match.md の手順で照合する。どの下書きを選ぶかもそこに従う。無ければこの照合を省く。番号経路では検出で止め、AskUserQuestion で承認されたときだけ本文を編集する
 

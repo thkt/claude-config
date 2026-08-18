@@ -1,6 +1,6 @@
 # Prose Review
 
-Write for a teammate who shares context and can open the linked docs. The issue carries the delta; links carry the background. Do not write a line whose removal would not mislead the reader. Lexical empty phrasing is out of scope here and checked separately via the phrases files. Apply `~/.claude/rules/conventions/PROSE.md § Mark What Is Central` alongside this file for sentence shape.
+Write for a teammate who shares context and can open the linked docs. The issue carries the delta; links carry the background. Do not write a line whose removal would not mislead the reader. Lexical empty phrasing and sentence shape belong to `~/.claude/rules/conventions/PROSE.md`; apply it alongside this file.
 
 ## Structure
 
@@ -15,9 +15,8 @@ Write for a teammate who shares context and can open the linked docs. The issue 
 
 Fix redundancy of the same nature even when the table below does not name it.
 
-| Pattern                | Fix                                                                                                                      |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Doc transcription      | Fold restated linked docs or logs into link + one-line takeaway; write only the delta                                    |
-| Repeated decision      | State the same design reason once, where the decision lands. Option comparisons stay out of the body and belong to think |
-| Over-specified AC      | Keep the criterion, drop authoring details such as story names and enumerated config values                              |
-| One claim per sentence | Do not pack decision + rationale + references into one sentence or one paragraph; split at each claim                    |
+| Pattern           | Fix                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Doc transcription | Fold restated linked docs or logs into link + one-line takeaway; write only the delta                                    |
+| Repeated decision | State the same design reason once, where the decision lands. Option comparisons stay out of the body and belong to think |
+| Over-specified AC | Keep the criterion, drop authoring details such as story names and enumerated config values                              |

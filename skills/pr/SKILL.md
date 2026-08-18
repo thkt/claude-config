@@ -27,7 +27,7 @@ If there are no commits, the directory is not a git repository, or gh auth fails
 4. Detect UI changes (§ UI Change Detection)
 5. Select the template (§ PR Template)
 6. Generate the title and body following the selected template (§ Title Rules)
-7. Refine the body inline against ${CLAUDE_SKILL_DIR}/references/prose-review.md plus the empty-phrase file matching the body language: `phrases.ja.md` for Japanese, `phrases.en.md` for English
+7. Refine the body inline against ${CLAUDE_SKILL_DIR}/references/prose-review.md
 8. Preview the PR, then confirm via AskUserQuestion with `Create this PR?`
 9. If UI changes, invoke `use-workflow-pageshot` via Skill with the PR body (§ Pageshot Integration)
 10. Push the current branch (§ Push)

@@ -63,7 +63,7 @@ Offer "keep as one issue" or "split into an epic and child issues". Do not count
 
 ## Phase 2: Refinement
 
-1. Refine the body inline against ${CLAUDE_SKILL_DIR}/references/prose-review.md and the ${CLAUDE_SKILL_DIR}/references/phrases.<lang>.md matching the body language. The Plan section transferred in Phase 3 is out of scope; leave it untouched. On the number route this step does not run
+1. Refine the body inline against ${CLAUDE_SKILL_DIR}/references/prose-review.md. The Plan section transferred in Phase 3 is out of scope; leave it untouched. On the number route this step does not run
 2. If a challenge verdict / findings exist in the conversation, fold in only the points that belong in the body, once. The verdict and findings themselves never enter the body. On the number route this step does not run
 3. When a plan draft exists, match the body as it stands after the preceding steps per ${CLAUDE_SKILL_DIR}/references/duplication-match.md, which also decides which draft to match against. Without one, skip this match. On the number route the match stops at detection, and the body is edited only once AskUserQuestion approves it
 
