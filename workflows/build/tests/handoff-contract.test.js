@@ -10,8 +10,10 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const HANDOFF =
   /build workflow に|build に渡|build に委譲|build へ|to the build workflow|delegate to build/;
 // qualify branches on the presence of a Plan section earlier in its verdict table, so by the
-// time the build-ready row is reached the Plan section is already established.
-const EXEMPT = new Set(["qualify"]);
+// time the build-ready row is reached the Plan section is already established. issue settles the
+// plan at Phase 1: a step there suggests /think before the body is written, which its own
+// skill-contract test pins, so its routing table states the destination and nothing else.
+const EXEMPT = new Set(["qualify", "issue"]);
 
 const skillDocs = () => {
   const docs = [];

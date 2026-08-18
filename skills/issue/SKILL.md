@@ -25,7 +25,7 @@ Read `language` from `~/.claude/settings.json` and translate the issue body and 
 2. Detect the type from the description
 3. For a bug, judge whether it is minor, and offer fixing it with `/fix` instead of filing when it is
 4. For feature / bug, if the Why is not readable from the description, pin it down per ${CLAUDE_SKILL_DIR}/references/why-wall-bouncing.md
-5. Count the independently implementable criteria, and ask about splitting when two or more exist
+5. List the criteria from the description and what step 4 settled, and ask about splitting when two or more are independently implementable
 6. When an issue that is not split is bound for the build workflow and no plan draft exists, suggest running `/think`
 7. Select the template and generate the title and body. Settle an open decision through AskUserQuestion and an unverified fact through Read or ugrep. Neither goes into the body as a guess
 
@@ -79,12 +79,12 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 3. Once it exits 0, attach labels, run `gh issue create --title "<title>" --body-file <path>`, and capture the issue URL from its output. The number route skips validation and writes back with `gh issue edit <ref> --body-file <path>`
 4. Pick the destination from the table below and suggest it. Launch none of them automatically
 
-| Destination     | Condition                                                                                                                                                                                                |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/slice`        | Split was approved in Phase 1. Pass the published epic number                                                                                                                                            |
-| `/fix <number>` | A fix confined to 1-3 files                                                                                                                                                                              |
-| build workflow  | 4 or more files, or a new feature. Pass the number. The build workflow hands an issue with no `## Plan` section back as no-plan, so draft one with `/think` and transfer it with `/issue <number>` first |
-| `/qualify`      | Inspection wanted before the hand-off to the build workflow. It reads whether the `## Plan` section is fit to implement                                                                                  |
+| Destination     | Condition                                                                                                               |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `/slice`        | Split was approved in Phase 1. Pass the published epic number                                                           |
+| `/fix <number>` | A fix confined to 1-3 files                                                                                             |
+| build workflow  | 4 or more files, or a new feature. Pass the number                                                                      |
+| `/qualify`      | Inspection wanted before the hand-off to the build workflow. It reads whether the `## Plan` section is fit to implement |
 
 ### Publishing constraints
 
