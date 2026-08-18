@@ -2,7 +2,7 @@
 name: commit
 description: Git diff を分析し Conventional Commits 形式のメッセージを生成してコミットを実行する。
 when_to_use: コミットして, コミット作成, commit changes
-allowed-tools: Bash(git:*) Bash(cat:*) Bash(mv:*)
+allowed-tools: Bash(git:*) Bash(cat:*)
 model: haiku
 argument-hint: "[context or issue reference]"
 ---

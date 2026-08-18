@@ -2,7 +2,7 @@
 name: commit
 description: Analyze Git diff, generate a Conventional Commits format message, and run the commit.
 when_to_use: コミットして, コミット作成, commit changes
-allowed-tools: Bash(git:*) Bash(cat:*) Bash(mv:*)
+allowed-tools: Bash(git:*) Bash(cat:*)
 model: haiku
 argument-hint: "[context or issue reference]"
 ---
