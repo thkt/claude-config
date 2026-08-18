@@ -13,9 +13,7 @@ argument-hint: "[issue description | issue number]"
 
 `$ARGUMENTS` is the issue description. If empty, prompt for it via AskUserQuestion.
 
-When it carries only an issue number or URL, transfer a plan into that filed issue. Take the body from `gh issue view <ref> --json title,body` and start at Phase 2's duplication match. Without a plan draft, suggest running `/think` and stop; an issue that already has a `## Plan` goes to `/qualify` for inspection.
-
-This route differs from the normal one on three points. The body is someone else's writing, so the prose refinement and the challenge fold-in do not run. The duplication match stops at detection, and the body is edited only once AskUserQuestion approves it. Phase 4 replaces creation with `gh issue edit <ref> --body-file <path>`, and body validation does not run because which skeleton the issue was filed from is unknown.
+When it carries only an issue number or URL, transfer a plan into that filed issue. Take the body from `gh issue view <ref> --json title,body` and start at Phase 2's duplication match. The body is someone else's writing and is kept as it stands. Without a plan draft, suggest running `/think` and stop; an issue that already has a `## Plan` goes to `/qualify` for inspection.
 
 ## Language
 
@@ -81,9 +79,9 @@ When two or more criteria are each independently implementable, ask via AskUserQ
 
 ## Phase 2: Refinement
 
-1. Refine the body inline against ${CLAUDE_SKILL_DIR}/references/prose-review.md plus the empty-phrase file matching the body language: `phrases.ja.md` for Japanese, `phrases.en.md` for English. The Plan section transferred in Phase 3 is out of scope; leave it untouched
-2. If a challenge verdict / findings exist in the conversation, fold in only the points that belong in the body, once. The verdict and findings themselves never enter the body
-3. When a plan draft exists, match the body as it stands after the preceding steps against the one plan draft you pick, per ${CLAUDE_SKILL_DIR}/references/duplication-match.md. Pick the `/think` plan draft in the conversation when there is one. Otherwise pick the `*.plan.md` under `.claude/workspace/planning/` that matches the issue title and carries the newest modification time. Without a plan draft, skip this match
+1. Refine the body inline against ${CLAUDE_SKILL_DIR}/references/prose-review.md plus the empty-phrase file matching the body language: `phrases.ja.md` for Japanese, `phrases.en.md` for English. The Plan section transferred in Phase 3 is out of scope; leave it untouched. On the number route this step does not run
+2. If a challenge verdict / findings exist in the conversation, fold in only the points that belong in the body, once. The verdict and findings themselves never enter the body. On the number route this step does not run
+3. When a plan draft exists, match the body as it stands after the preceding steps against the one plan draft you pick, per ${CLAUDE_SKILL_DIR}/references/duplication-match.md. Pick the `/think` plan draft in the conversation when there is one. Otherwise pick the `*.plan.md` under `.claude/workspace/planning/` that matches the issue title and carries the newest modification time. Without a plan draft, skip this match. On the number route the match stops at detection, and the body is edited only once AskUserQuestion approves it
 
 ## Phase 3: Plan Transfer
 
@@ -92,7 +90,7 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 ## Phase 4: Publishing
 
 1. Present the issue preview. Collect any inline tentative marks into a tentative block. Add no new content, mirror what the body already carries, and omit the block at zero items. Then confirm via AskUserQuestion, asking "Create this issue?" for a new filing and "Update this issue?" on the number route. When there is no `## Plan` section and the extent puts it on the build workflow, add "hold the filing and draft a plan via `/think`" as an option
-2. Write the body to a temp file and run ${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>. Handle errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md and rerun once they are fixed
-3. Once it exits 0, attach labels, run `gh issue create --title "<title>" --body-file <path>`, and capture the issue URL from its output. Write `<path>` as a literal absolute path, not a variable, because the hook cannot expand one and the filing stops. `priority:*` is required, set to critical / high / medium / low by impact, and other labels follow the repository's conventions
+2. Write the body to a temp file and run ${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>. Handle errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md and rerun once they are fixed. On the number route this step does not run, because which skeleton the issue was filed from is unknown
+3. Once it exits 0, attach labels, run `gh issue create --title "<title>" --body-file <path>`, and capture the issue URL from its output. The number route skips validation and writes back with `gh issue edit <ref> --body-file <path>`. Write `<path>` as a literal absolute path, not a variable, because the hook cannot expand one and the filing stops. `priority:*` is required, set to critical / high / medium / low by impact, and other labels follow the repository's conventions
 4. If split was approved in Phase 1, suggest running /slice with the published epic number. Do not launch it automatically
 5. For an issue that is not split, suggest the next step. Where a filed issue goes is decided by its extent. A fix confined to 1-3 files goes to `/fix <number>`. A change touching 4 or more files, or a new feature, goes to the build workflow with the number. The build workflow hands an issue with no `## Plan` section back as no-plan. Draft one with `/think` and transfer it with `/issue <number>` before handing over. `/qualify` inspects it before the hand-off. Launch none of them automatically

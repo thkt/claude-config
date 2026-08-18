@@ -343,15 +343,24 @@ test("Phase 1's steps reach the minor-bug branch", () => {
 });
 
 // The number route edits an issue somebody else wrote. Running the prose refinement on it rewrites
-// their words for a request that only asked to transfer a plan.
+// their words for a request that only asked to transfer a plan. Each delta sits on the step it
+// changes rather than in one list up front, so a step added later carries its own.
 test("the number route leaves the existing body's prose alone", () => {
   for (const [lang, path] of Object.entries(skills)) {
-    const heading = lang === "ja" ? "## 入力" : "## Input";
-    const input = extractPhase(readFileSync(path, "utf8"), heading, "## Phase 1");
-    const [refinement, approval] =
-      lang === "ja" ? [/推敲.*行わない/, /承認/] : [/refinement.*do not run/, /approv/i];
-    assert.match(input, refinement, `${lang}: the refinement is stated as not running`);
-    assert.match(input, approval, `${lang}: editing the body waits on approval`);
+    const steps = [...extractPhase2(readFileSync(path, "utf8")).matchAll(/^\d+\. .*/gm)].map(
+      (m) => m[0],
+    );
+    const [route, skipped, approval] =
+      lang === "ja"
+        ? [/番号経路/, /行わない/, /承認/]
+        : [/number route/i, /does not run/i, /approv/i];
+    const marked = steps.filter((step) => route.test(step));
+    assert.equal(marked.length, 3, `${lang}: every Phase 2 step carries the number-route delta`);
+    assert.ok(
+      marked.slice(0, 2).every((step) => skipped.test(step)),
+      `${lang}: the refinement and the challenge fold-in are stated as not running`,
+    );
+    assert.match(marked.at(-1), approval, `${lang}: editing the body waits on approval`);
   }
 });
 
