@@ -105,15 +105,12 @@ test("the handoff from issue to fix lines up on both sides", () => {
     const doc = readFileSync(path, "utf8");
     assert.match(doc, /`\/\^#\?\[0-9\]\+\$\/`/, `${lang}: fix carries the issue number pattern`);
     assert.match(doc, /gh issue view/, `${lang}: the body is read with gh issue view`);
-    assert.match(
-      doc,
-      /(次の 4 形式|one of four forms)/,
-      `${lang}: the input enumeration counts the issue number`,
-    );
-    assert.match(
-      doc,
-      /(起票済み issue の番号|the number of a filed issue)/,
-      `${lang}: the issue number is listed in the enumeration`,
+    // A route dropped from the input table leaves that shape of $ARGUMENTS falling to the last row.
+    const routes = doc.split("\n\n").find((block) => block.startsWith("| "));
+    assert.equal(
+      routes.split("\n").length - 2,
+      5,
+      `${lang}: the input table lists five routes`,
     );
     assert.match(
       doc.split("---")[1],

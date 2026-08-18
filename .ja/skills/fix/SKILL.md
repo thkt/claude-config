@@ -11,15 +11,15 @@ argument-hint: "[bug or issue description]"
 
 ## 入力
 
-`$ARGUMENTS` は次の 4 形式のいずれか。バグ説明。`/audit` が $HOME/.claude/history/ に作成した snapshot の finding ID (例: `RC-001`, `SEC-003`)。audit workflow 単体実行が返した finding そのもの。起票済み issue の番号。対象は十分に理解できている 1〜3 ファイル規模の問題に限る。Finding 直接入力に複数件が渡されたら、severity 降順に 1 件ずつ直す。影響が 4 ファイル以上に及ぶ場合は先に § エスカレーションの複数ファイル判定を確認する。
+`$ARGUMENTS` の形が入り口を決める。対象は十分に理解できている 1〜3 ファイル規模の問題に限る。Finding 直接入力に複数件が渡されたら、severity 降順に 1 件ずつ直す。影響が 4 ファイル以上に及ぶ場合は先に § エスカレーションの複数ファイル判定を確認する。
 
-| パターン                                        | モード           | 動作                                                                                                                                                                                                                                       |
-| ----------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/^[A-Z][A-Z0-9]*-[0-9]+$/`                     | Finding ID 解決  | $HOME/.claude/history/ の最新 snapshot を読み findings[] の ID 一致を探す。severity と summary を保持し Outcome Anchor とビルドチェックを省いてトリアージへ。不在なら見つからない旨を伝え、バグ説明として Standard Flow で続けるか確認する |
-| file / line / severity / summary を含む finding | Finding 直接入力 | audit workflow の返り値。JSON 1 件、または file:line + severity + summary のテキスト。file:line を RCA の起点に使い、Outcome Anchor とビルドチェックを省いてトリアージへ                                                                   |
-| `/^#?[0-9]+$/`                                  | Issue 引き継ぎ   | `gh issue view <番号>` で本文を読む。Why と再現手順をバグ説明に、Premises を前提に使う。Outcome Anchor を省いてビルドチェックへ                                                                                                            |
-| 空                                              | Fix プロンプト   | AskUserQuestion で Fix type を Bug fix / Error message / Test failure から、Description を Other の自由記述で尋ね、得た内容をバグ説明として Standard Flow へ渡す                                                                           |
-| その他                                          | Standard Flow    | バグ説明とみなし Outcome Anchor から実行                                                                                                                                                                                                   |
+| パターン                                        | モード           | 読み取り                                                                                                                                                | 開始点         |
+| ----------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| `/^[A-Z][A-Z0-9]*-[0-9]+$/`                     | Finding ID 解決  | $HOME/.claude/history/ の最新 snapshot から ID 一致を探し、severity と summary を保持する。不在なら見つからない旨を伝え、バグ説明として続けるか確認する | トリアージ     |
+| file / line / severity / summary を含む finding | Finding 直接入力 | audit workflow の返り値。JSON 1 件かテキスト。file:line を RCA の起点に使う                                                                             | トリアージ     |
+| `/^#?[0-9]+$/`                                  | Issue 引き継ぎ   | `gh issue view <番号>` で本文を読み、Why と再現手順をバグ説明に、Premises を前提に使う                                                                  | ビルドチェック |
+| 空                                              | Fix プロンプト   | AskUserQuestion で Fix type を Bug fix / Error message / Test failure から、Description を Other の自由記述で尋ねる                                     | アウトカム参照 |
+| その他                                          | Standard Flow    | バグ説明とみなす                                                                                                                                        | アウトカム参照 |
 
 ## 委譲マップ
 
