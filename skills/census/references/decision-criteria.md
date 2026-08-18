@@ -47,7 +47,7 @@ A statement-of-fact config (`deny.toml`, `Cargo.toml`) is itself the single sour
 
 ## Verdict
 
-The final candidate list consists of `keep` plus `downgrade` with its target DR named; `drop` is excluded.
+Only `keep` and `downgrade` with its target DR named become DRs. `drop` becomes no DR, and the verdict still lands in the report.
 
 | Verdict     | Meaning                                                                                                              |
 | ----------- | -------------------------------------------------------------------------------------------------------------------- |

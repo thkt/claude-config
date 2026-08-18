@@ -35,9 +35,9 @@ No net-new decisions in {files}.
 
 ### {file}
 
-| #   | Line   | Decision Verb | Decision  | DR Coverage    | Impact    | Reversibility       |
-| --- | ------ | ------------- | --------- | -------------- | --------- | ------------------- |
-| 1   | {line} | {verb}        | {summary} | None / DR-{id} | H / M / L | high / medium / low |
+| #   | Line   | Decision Verb | Decision  | Impact    | Reversibility       |
+| --- | ------ | ------------- | --------- | --------- | ------------------- |
+| 1   | {line} | {verb}        | {summary} | H / M / L | high / medium / low |
 
 ## DR Promotion Candidates (post-challenge)
 
