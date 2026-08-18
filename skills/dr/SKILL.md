@@ -15,18 +15,13 @@ Take the decision title from `$ARGUMENTS` and shape it into a specific action li
 
 ## Adoption Gate
 
-Proceed to the process only when all three conditions below hold.
+Proceed to the process only when all three conditions below hold. When one is missing, skip the DR and apply the table top to bottom, leaving the decision where the first matching row says.
 
-1. Hard to reverse. Changing the decision later carries meaningful cost
-2. Surprising without context. A future reader will ask "why this way?"
-3. Result of a real trade-off. Genuine alternatives existed and one was picked for specific reasons
-
-When a condition is missing, skip the DR and record the decision where the table says.
-
-| Missing condition | Where it goes                                     |
-| ----------------- | ------------------------------------------------- |
-| 1 or 2            | A `CONTEXT.md` entry or an equivalent design note |
-| 3 alone           | The commit message body                           |
+| #   | Condition                                                                                        | Where it goes when missing                        |
+| --- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| 1   | Hard to reverse. Changing the decision later carries meaningful cost                             | A `CONTEXT.md` entry or an equivalent design note |
+| 2   | Surprising without context. A future reader will ask "why this way?"                             | A `CONTEXT.md` entry or an equivalent design note |
+| 3   | Result of a real trade-off. Genuine alternatives existed and one was picked for specific reasons | The commit message body                           |
 
 ## Process
 
@@ -65,7 +60,7 @@ The frontmatter is optional. When it is written, it uses the fields below.
 
 ## Updating an Existing DR
 
-When the status is proposed, edit the body directly and run Validate and Index. From accepted onward, keep the decision content and replace it with a new DR through the steps below, changing only `status` and `date` in the old one.
+When the status is proposed, edit the body directly and run Validate and Index. From accepted onward, replace it with a new DR through the steps below. Only `status` and `date` change in the old DR; the decision content stays.
 
 1. Create the new DR through the process
 2. Cite the predecessor in the new DR's More Information (e.g. `Supersedes DR-NNNN`)
