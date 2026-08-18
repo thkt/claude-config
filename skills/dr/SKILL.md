@@ -11,7 +11,7 @@ argument-hint: "[decision title]"
 
 ## Input
 
-Take the decision title from `$ARGUMENTS`. If empty, confirm New decision / Update existing via AskUserQuestion. For New decision ask for the title; for Update existing, list recent DRs in `<git-root>/docs/decisions/` for selection (§ Updating an Existing DR). Shape a title you are creating into a specific action like "Adopt X for Y", keeping it 5-64 characters and free of `/:*?"<>|`. To change the storage location, set the `DR_DIR` env var before running.
+Take the decision title from `$ARGUMENTS`. If empty, confirm New decision / Update existing via AskUserQuestion. For New decision ask for the title; for Update existing, list recent DRs in `<git-root>/docs/decisions/` for selection (§ Updating an Existing DR). Shape a title you are creating into a specific action like "Adopt X for Y", keeping it 5-64 characters and free of `/:*?"<>|`. The archive defaults to `<git-root>/docs/decisions/`, and the `DR_DIR` env var moves it.
 
 ## Adoption Gate
 
@@ -33,7 +33,7 @@ Proceed to the process only when all three conditions below hold. When one is mi
 | 4    | Draft      | Copy ${CLAUDE_SKILL_DIR}/templates/madr-template.md into `dr_dir` under the name `filename` and fill it from what was gathered (§ YAML Frontmatter)                                                |
 | 5    | Challenge  | Only for a DR that carves an exception into an existing DR's principle or supersedes one, run `/challenge` and record the verdict and the condition it holds under as one line in More Information |
 | 6    | Validate   | Run ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE". exit 0 passes. What failed lands in `errors[]`, and `warnings[]` is advisory                                                            |
-| 7    | Index      | Run ${CLAUDE_SKILL_DIR}/scripts/update-index.py to regenerate the index README                                                                                                                     |
+| 7    | Index      | Run ${CLAUDE_SKILL_DIR}/scripts/update-index.py to regenerate `dr_dir/README.md`                                                                                                                   |
 
 ## Decision Type
 
@@ -78,13 +78,6 @@ Each script reports its failure as JSON or on stderr. Handle them per the table.
 | Reported as an archive holding SKILL.md | It points at a skill directory, so redirect `DR_DIR` to the archive                                      |
 | `similar_drs` is non-empty              | Present the duplicates and confirm whether to proceed or switch to an update (§ Updating an Existing DR) |
 | `errors[]` comes back non-empty         | Fix what it names and run Validate again                                                                 |
-
-## Output
-
-| Path                                     | Description          |
-| ---------------------------------------- | -------------------- |
-| `<git-root>/docs/decisions/XXXX-slug.md` | DR file              |
-| `<git-root>/docs/decisions/README.md`    | Auto-generated index |
 
 ## References
 
