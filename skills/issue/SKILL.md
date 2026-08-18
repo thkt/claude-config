@@ -17,7 +17,7 @@ When it carries only an issue number or URL, transfer a plan into that filed iss
 
 ## Language
 
-Read `language` from `~/.claude/settings.json` and translate the issue body and templates into that language. If unset, default to English. Template-derived headings and Plan-section extraction keywords stay in English.
+Read `language` from `~/.claude/settings.json` and translate the issue body and templates into that language. If unset, default to English. Template-derived headings stay in English.
 
 ## Phase 1: Drafting
 
@@ -41,7 +41,7 @@ Default to `feature` if unclear. The title takes a bracketed prefix of the capit
 
 ### The /fix route for minor bugs
 
-Minor names a bug that meets all three criteria below. An intermittent bug with the root cause unidentified does not qualify. For a minor bug, offer handling it directly via /fix without filing, and when filing anyway add a footer note to the body, "minor; may be handled via /fix".
+Minor names a bug that meets all three criteria below. An intermittent bug with the root cause unidentified does not qualify. When filing anyway, add a footer note to the body, "minor; may be handled via /fix".
 
 - The change fits within 1 file
 - The reproduction steps are settled
@@ -59,11 +59,11 @@ List the entries via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLA
 
 ### Split assessment
 
-When two or more criteria are each independently implementable, ask via AskUserQuestion whether to split, offering "keep as one issue" or "split into an epic and child issues". Do not count fine-grained checks that only verify one deliverable; they stay within one issue. Never auto-split, since publishing N issues is hard to unwind. On approval, publish this issue as the epic and run the rest of the flow unchanged on it.
+Offer "keep as one issue" or "split into an epic and child issues". Do not count fine-grained checks that only verify one deliverable; they stay within one issue. Never auto-split, since publishing N issues is hard to unwind. On approval, publish this issue as the epic and run the rest of the flow unchanged on it.
 
 ## Phase 2: Refinement
 
-1. Refine the body inline against ${CLAUDE_SKILL_DIR}/references/prose-review.md plus the empty-phrase file matching the body language: `phrases.ja.md` for Japanese, `phrases.en.md` for English. The Plan section transferred in Phase 3 is out of scope; leave it untouched. On the number route this step does not run
+1. Refine the body inline against ${CLAUDE_SKILL_DIR}/references/prose-review.md and the ${CLAUDE_SKILL_DIR}/references/phrases.<lang>.md matching the body language. The Plan section transferred in Phase 3 is out of scope; leave it untouched. On the number route this step does not run
 2. If a challenge verdict / findings exist in the conversation, fold in only the points that belong in the body, once. The verdict and findings themselves never enter the body. On the number route this step does not run
 3. When a plan draft exists, match the body as it stands after the preceding steps per ${CLAUDE_SKILL_DIR}/references/duplication-match.md, which also decides which draft to match against. Without one, skip this match. On the number route the match stops at detection, and the body is edited only once AskUserQuestion approves it
 
@@ -74,7 +74,7 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 ## Phase 4: Publishing
 
 1. Present the issue preview. Add no new content and mirror what the body already carries. Then confirm via AskUserQuestion, asking "Create this issue?" for a new filing and "Update this issue?" on the number route. When there is no `## Plan` section and the extent puts it on the build workflow, add "hold the filing and draft a plan via `/think`" as an option
-2. Write the body to a temp file and run ${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>. Handle errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md and rerun once they are fixed. On the number route this step does not run, because which skeleton the issue was filed from is unknown
+2. Write the body to a temp file with a `cat` heredoc and run ${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>. Handle errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md and rerun once they are fixed. On the number route this step does not run, because which skeleton the issue was filed from is unknown
 3. Once it exits 0, attach labels, run `gh issue create --title "<title>" --body-file <path>`, and capture the issue URL from its output. The number route skips validation and writes back with `gh issue edit <ref> --body-file <path>`
 4. Pick the destination from the table below and suggest it. Launch none of them automatically
 

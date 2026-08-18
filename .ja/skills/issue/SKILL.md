@@ -17,7 +17,7 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 
 ## 言語
 
-`~/.claude/settings.json` から `language` を読み、その言語で Issue 本文とテンプレートを翻訳する。未設定なら英語をデフォルトとする。テンプレート由来の見出しと Plan 節の抽出キーワードは英語のまま維持する。
+`~/.claude/settings.json` から `language` を読み、その言語で Issue 本文とテンプレートを翻訳する。未設定なら英語をデフォルトとする。テンプレート由来の見出しは英語のまま維持する。
 
 ## Phase 1: 起草
 
@@ -41,7 +41,7 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 
 ### 軽微 bug の導線
 
-軽微とは、次の 3 基準をすべて満たす bug を指す。原因未特定の間欠 bug は該当しない。軽微なら起票せず `/fix` で直接対応する選択肢を出す。起票する場合も本文フッターに「軽微につき `/fix` で対応してもよい」と注記する。
+軽微とは、次の 3 基準をすべて満たす bug を指す。原因未特定の間欠 bug は該当しない。起票する場合も本文フッターに「軽微につき `/fix` で対応してもよい」と注記する。
 
 - 変更が 1 ファイルに収まる
 - 再現手順が確定している
@@ -59,11 +59,11 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 
 ### 分割判定
 
-独立して実装可能な criteria が 2 つ以上あれば、AskUserQuestion で分割を問う。選択肢は「1 issue のまま」か「epic と子 issue に分割」。1 つの成果物を検証するだけの細かいチェックは数えず、1 issue 内に留める。N 件の起票は取り消しにくいため、自動分割はしない。承認時はこの issue を epic として起票し、以降のフローはそのまま epic に通す。
+選択肢は「1 issue のまま」か「epic と子 issue に分割」。1 つの成果物を検証するだけの細かいチェックは数えず、1 issue 内に留める。N 件の起票は取り消しにくいため、自動分割はしない。承認時はこの issue を epic として起票し、以降のフローはそのまま epic に通す。
 
 ## Phase 2: 推敲
 
-1. ${CLAUDE_SKILL_DIR}/references/prose-review.md と、本文言語に対応する空句ファイルの基準で本文をインライン精査する。空句ファイルは日本語なら `phrases.ja.md`、英語なら `phrases.en.md`。Phase 3 で移設する Plan 節は対象外とし、手を入れない。番号経路では行わない
+1. ${CLAUDE_SKILL_DIR}/references/prose-review.md と、本文言語に対応する ${CLAUDE_SKILL_DIR}/references/phrases.<lang>.md の基準で本文をインライン精査する。Phase 3 で移設する Plan 節は対象外とし、手を入れない。番号経路では行わない
 2. 会話に challenge の verdict と findings があれば、折り込むべき指摘だけを 1 回反映する。verdict と findings 自体は本文に入れない。番号経路では行わない
 3. plan 下書きがあれば、前項までの編集を終えた本文を ${CLAUDE_SKILL_DIR}/references/duplication-match.md の手順で照合する。どの下書きを選ぶかもそこに従う。無ければこの照合を省く。番号経路では検出で止め、AskUserQuestion で承認されたときだけ本文を編集する
 
@@ -74,7 +74,7 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 ## Phase 4: 起票
 
 1. Issue プレビューを提示する。新規内容は足さず本文が持つものを写す。AskUserQuestion で確認し、新規起票は `Create this issue?`、番号経路は `Update this issue?` と尋ねる。`## Plan` 節が無く build workflow に渡す規模なら、選択肢に「起票を保留して `/think` で plan を作る」を足す
-2. 本文を一時ファイルに書き出し、${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <テンプレート選択で選んだ骨格ファイル> <title> <body-file> を実行する。エラーは ${CLAUDE_SKILL_DIR}/references/validation-errors.md に従って対処し、直したら再実行する。番号経路は骨格ファイルが分からないので行わない
+2. `cat` の heredoc で本文を一時ファイルへ書き出し、${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <テンプレート選択で選んだ骨格ファイル> <title> <body-file> を実行する。エラーは ${CLAUDE_SKILL_DIR}/references/validation-errors.md に従って対処し、直したら再実行する。番号経路は骨格ファイルが分からないので行わない
 3. exit 0 になったらラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票し、出力から Issue URL を取得する。番号経路は検証を経ずに `gh issue edit <ref> --body-file <path>` で書き戻す
 4. 下表から渡し先を選んで提案する。いずれも自動では起動しない
 
