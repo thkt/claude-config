@@ -12,18 +12,26 @@ import json
 import subprocess
 import sys
 import unittest
+from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
 
 HERE = Path(__file__).resolve().parent
 SCRIPT = HERE.parent / "pr-body.py"
 # pr-body.py has a hyphen, so load it by path rather than import name.
 _spec = importlib.util.spec_from_file_location("pr_body", SCRIPT)
+assert _spec is not None and _spec.loader is not None
 pr_body = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(pr_body)
 
-FULL = {
+
+def render(payload: Mapping[str, object]) -> str:
+    # Loaded by path because the filename has a hyphen, which leaves its attributes Any.
+    return cast("str", pr_body.render(payload))  # pyright: ignore[reportAny]
+
+
+FULL: dict[str, object] = {
     "issue": "123",
-    "assumptions": ["assume A", "assume B"],
     "scope_deviations": ["extra.js"],
     "missing_tests": ["rejects negative amounts"],
     "code_anomalies": [{"unit": "U-001", "kind": "no-red", "notes": "flaky"}],
@@ -40,52 +48,52 @@ FULL = {
         }
     ],
 }
-CLEAN = {"issue": "9", "tests_pass": True, "gates_pass": True}
+CLEAN: dict[str, object] = {"issue": "9", "tests_pass": True, "gates_pass": True}
 
 
 class RenderTest(unittest.TestCase):
-    def test_closes_and_status_summary(self):
+    def test_closes_and_status_summary(self) -> None:
         # The status line is the <summary> of the folded tail: HTML <code> (markdown
         # does not render inside <summary>) so pass/FAIL stays visible while collapsed.
-        body = pr_body.render(FULL)
+        body = render(FULL)
         self.assertIn("Closes #123", body)
         self.assertIn(
             "<summary><code>verify tests=pass gates=pass</code> · "
-            "<code>scope-deviations 1</code> · <code>missing-tests 1</code> · "
-            "<code>conformance 1 (1 high)</code></summary>",
+            + "<code>scope-deviations 1</code> · <code>missing-tests 1</code> · "
+            + "<code>conformance 1 (1 high)</code></summary>",
             body,
         )
 
-    def test_leads_with_auto_generated_label(self):
+    def test_leads_with_auto_generated_label(self) -> None:
         # A reviewer who did not launch the build must be told the terse block below
         # is machine-generated, not hand-written by the author, how far its checking
         # goes, and what the visible status line is for.
-        body = pr_body.render(FULL)
+        body = render(FULL)
         self.assertIn(
             "_Below is the build workflow's automated verification. It checks the "
-            "diff against the plan and does not hunt for code defects. It sits off "
-            "the PR's main thread, so reading it is optional. Open it when a "
-            "deviation count in the status line is non-zero._",
+            + "diff against the plan and does not hunt for code defects. It sits off "
+            + "the PR's main thread, so reading it is optional. Open it when a "
+            + "deviation count in the status line is non-zero._",
             body,
         )
         # The label leads the tail, above Closes.
         self.assertLess(body.index("automated verification"), body.index("Closes"))
 
-    def test_no_command_invitation_is_printed(self):
+    def test_no_command_invitation_is_printed(self) -> None:
         # Heavy assurance stays human-invoked, but the person reading this
         # tail is the one who launched the build, so the command hint is not repeated
         # on every PR. What the tail must still say is that no deep review happened.
         for payload in (FULL, CLEAN):
-            body = pr_body.render(payload)
+            body = render(payload)
             self.assertNotIn("/audit", body)
             self.assertNotIn("/polish", body)
             self.assertIn("does not hunt for code defects", body)
 
-    def test_finding_counts_reach_the_summary_with_the_high_breakdown(self):
+    def test_finding_counts_reach_the_summary_with_the_high_breakdown(self) -> None:
         # Deciding whether to open the fold happens on the summary alone. A count left
         # out of it goes unnoticed, and a bare count makes a wording nit and a gap that
         # defeats an acceptance criterion look like the same single finding.
-        body = pr_body.render(
+        body = render(
             {
                 **FULL,
                 "conformance": [
@@ -98,24 +106,22 @@ class RenderTest(unittest.TestCase):
         self.assertIn("<code>conformance 2 (1 high)</code>", body)
         self.assertIn("<code>structure 1</code>", body)
 
-    def test_finding_counts_without_high_omit_the_breakdown(self):
-        body = pr_body.render(
+    def test_finding_counts_without_high_omit_the_breakdown(self) -> None:
+        body = render(
             {**FULL, "conformance": [{"category": "wrong", "severity": "low", "detail": "a"}]}
         )
         self.assertIn("<code>conformance 1</code>", body)
         self.assertNotIn("high", body)
 
-    def test_no_findings_keeps_the_summary_unchanged(self):
+    def test_no_findings_keeps_the_summary_unchanged(self) -> None:
         # Parking "conformance 0" next to the three standing counts would add an item
         # carrying less information than the ones already there.
-        body = pr_body.render(CLEAN)
+        body = render(CLEAN)
         self.assertNotIn("conformance 0", body)
         self.assertNotIn("structure", body)
 
-    def test_lists_use_bold_labels_and_bullets(self):
-        body = pr_body.render(FULL)
-        self.assertIn("**Assumptions (veto targets)**", body)
-        self.assertIn("- assume A", body)
+    def test_lists_use_bold_labels_and_bullets(self) -> None:
+        body = render(FULL)
         self.assertNotIn("Backlog", body)
         self.assertIn("**Files outside the plan's scope**", body)
         self.assertIn("- `extra.js`", body)
@@ -127,44 +133,44 @@ class RenderTest(unittest.TestCase):
         self.assertNotIn("Unresolved", body)
         self.assertNotIn("re-audit", body)
 
-    def test_untouched_plan_files_render_and_reach_the_summary(self):
+    def test_untouched_plan_files_render_and_reach_the_summary(self) -> None:
         # A file the plan named but nothing touched is the trace of a unit that went
         # unimplemented and still passed. Inside the fold alone it goes unnoticed, so
         # it must reach the summary too.
-        body = pr_body.render({**FULL, "untouched_plan_files": ["app/schema.ts"]})
+        body = render({**FULL, "untouched_plan_files": ["app/schema.ts"]})
         self.assertIn("**Planned files never changed**", body)
         self.assertIn("- `app/schema.ts`", body)
         self.assertIn("<code>untouched-plan-files 1</code>", body)
 
-    def test_untouched_plan_files_absent_keeps_the_summary_unchanged(self):
+    def test_untouched_plan_files_absent_keeps_the_summary_unchanged(self) -> None:
         # Adding it to the summary at zero would park an item carrying less information
         # than the three already there.
-        self.assertNotIn("untouched-plan-files", pr_body.render(FULL))
+        self.assertNotIn("untouched-plan-files", render(FULL))
 
-    def test_conformance_is_a_separate_section_not_in_deviation_counts(self):
+    def test_conformance_is_a_separate_section_not_in_deviation_counts(self) -> None:
         # reviewer-conformance's issue-axis findings surface in their own section and
         # must NOT be merged into the deterministic deviation counts.
-        body = pr_body.render(FULL)
+        body = render(FULL)
         self.assertIn("**Issue conformance (review independently)**", body)
         self.assertIn("- `[high] missing` no test for T-003", body)
         self.assertIn("<code>scope-deviations 1</code>", body)
 
-    def test_finding_leads_with_severity_and_sends_evidence_to_a_second_line(self):
+    def test_finding_leads_with_severity_and_sends_evidence_to_a_second_line(self) -> None:
         # severity reaches the reviewer (build.js counts high separately, so the body
         # must let high and trivial findings separate at a glance), and the location +
         # quoted spec sit on their own indented line instead of a trailing parenthesis.
-        body = pr_body.render(FULL)
+        body = render(FULL)
         self.assertIn(
             "- `[high] missing` no test for T-003\n"
-            "  `pay.js:12` · spec: T-003 rejects negative",
+            + "  `pay.js:12` · spec: T-003 rejects negative",
             body,
         )
 
-    def test_anomaly_folds_its_evidence_into_a_nested_details(self):
+    def test_anomaly_folds_its_evidence_into_a_nested_details(self) -> None:
         # code.js splits the no-red report into a conclusion and an evidence list of
         # verbatim command output. That list buries the other anomalies' conclusions,
         # so it opens on demand while the summary keeps its line count visible.
-        body = pr_body.render(
+        body = render(
             {
                 **CLEAN,
                 "code_anomalies": [
@@ -182,19 +188,19 @@ class RenderTest(unittest.TestCase):
         )
         self.assertIn(
             "- U-001 (no-red): the behavior is already implemented\n"
-            "  <details><summary>2 evidence lines</summary>\n"
-            "\n"
-            "  - `src/slack.rs:120` classify delegates to from_reqwest\n"
-            "  - `cargo test --lib slack` -> 94 passed\n"
-            "\n"
-            "  </details>",
+            + "  <details><summary>2 evidence lines</summary>\n"
+            + "\n"
+            + "  - `src/slack.rs:120` classify delegates to from_reqwest\n"
+            + "  - `cargo test --lib slack` -> 94 passed\n"
+            + "\n"
+            + "  </details>",
             body,
         )
 
-    def test_anomaly_without_evidence_keeps_the_single_line_form(self):
+    def test_anomaly_without_evidence_keeps_the_single_line_form(self) -> None:
         # scope-cut / uncommitted / reader-failed anomalies carry no evidence list. A
         # missing key must not add a blank continuation line under the conclusion.
-        body = pr_body.render(
+        body = render(
             {**CLEAN, "code_anomalies": [{"unit": "U-002", "kind": "scope-cut", "notes": "x / y"}]}
         )
         self.assertIn("- U-002 (scope-cut): x / y\n", body)
@@ -202,9 +208,9 @@ class RenderTest(unittest.TestCase):
         # An empty fold makes the reader open something with nothing inside it.
         self.assertNotIn("evidence lines", body)
 
-    def test_finding_without_severity_leads_with_the_category_alone(self):
+    def test_finding_without_severity_leads_with_the_category_alone(self) -> None:
         # structure findings carry no severity; the lead must not render "[None]".
-        body = pr_body.render(
+        body = render(
             {
                 **CLEAN,
                 "structure": [
@@ -220,20 +226,20 @@ class RenderTest(unittest.TestCase):
         self.assertIn("**Structural deviations from the reference module**", body)
         self.assertIn(
             "- `[hand_rolled]` reimplements the shared frame\n"
-            "  `ui/card.tsx:8` · ref: ui/panel.tsx:Frame",
+            + "  `ui/card.tsx:8` · ref: ui/panel.tsx:Frame",
             body,
         )
         self.assertNotIn("None", body)
 
-    def test_finding_without_evidence_omits_the_continuation_line(self):
-        body = pr_body.render(
+    def test_finding_without_evidence_omits_the_continuation_line(self) -> None:
+        body = render(
             {**CLEAN, "conformance": [{"category": "wrong", "detail": "diverges"}]}
         )
         self.assertIn("- `[wrong]` diverges", body)
         self.assertNotIn("\n  ", body)
 
-    def test_clean_run_omits_empty_sections_and_stays_short(self):
-        body = pr_body.render(CLEAN)
+    def test_clean_run_omits_empty_sections_and_stays_short(self) -> None:
+        body = render(CLEAN)
         self.assertNotIn("None", body)
         self.assertNotIn("**Assumptions", body)
         self.assertNotIn("**Files outside", body)
@@ -247,89 +253,106 @@ class RenderTest(unittest.TestCase):
         # header label + Closes line + the status line
         self.assertEqual(len(non_empty), 3, non_empty)
 
-    def test_clean_run_drops_the_fold_it_has_nothing_to_put_in(self):
+    def test_clean_run_drops_the_fold_it_has_nothing_to_put_in(self) -> None:
         # An empty <details> asks the reviewer to open something with nothing behind
         # it. With nothing to fold, the status line stands on its own.
-        body = pr_body.render(CLEAN)
+        body = render(CLEAN)
         self.assertNotIn("<details>", body)
         self.assertIn("<code>verify tests=pass gates=pass</code>", body)
 
-    def test_verify_failure_uses_collapsed_details(self):
-        body = pr_body.render(
+    def test_verify_failure_uses_collapsed_details(self) -> None:
+        body = render(
             {**FULL, "tests_pass": False, "verify_output": "boom stacktrace"}
         )
         self.assertIn("<code>verify tests=FAIL gates=pass</code>", body)
         self.assertIn("<details><summary>verify output</summary>", body)
         self.assertIn("```\nboom stacktrace\n```", body)
 
-    def test_verify_output_containing_a_fence_does_not_break_out(self):
+    def test_verify_output_containing_a_fence_does_not_break_out(self) -> None:
         # A test log that itself contains ``` must not terminate the code block early.
         log = "assert failed on:\n```\nfoo\n```\nend"
-        body = pr_body.render({**FULL, "gates_pass": False, "verify_output": log})
+        body = render({**FULL, "gates_pass": False, "verify_output": log})
         # The chosen fence is longer than the longest backtick run in the log.
         self.assertIn("````\n" + log + "\n````", body)
 
-    def test_verify_pass_has_no_nested_log_details(self):
+    def test_verify_pass_has_no_nested_log_details(self) -> None:
         # FULL has sections to fold, so the outer fold is there; the nested
         # verify-output log is not.
-        body = pr_body.render(FULL)
+        body = render(FULL)
         self.assertEqual(body.count("<details>"), 1)
         self.assertNotIn("verify output", body)
         self.assertNotIn("```", body)
 
-    def test_verify_failure_without_output_keeps_the_status_line_visible(self):
+    def test_verify_failure_without_output_keeps_the_status_line_visible(self) -> None:
         # A FAIL whose log is empty leaves nothing to fold, so the fold is dropped.
         # The FAIL itself must still be readable — it lives in the status line, which
         # is exactly what stays when the <details> goes away.
-        body = pr_body.render({**CLEAN, "tests_pass": False, "verify_output": ""})
+        body = render({**CLEAN, "tests_pass": False, "verify_output": ""})
         self.assertNotIn("<details>", body)
         self.assertIn("<code>verify tests=FAIL gates=pass</code>", body)
 
-    def test_informational_content_is_inside_the_fold(self):
+    def test_informational_content_is_inside_the_fold(self) -> None:
         # The header and Closes stay visible; every informational section collapses
         # below the status summary.
-        body = pr_body.render(FULL)
+        body = render(FULL)
         opens = body.index("<summary>")
         closes = body.rindex("</details>")
         self.assertLess(body.index("Closes #123"), body.index("<details>"))
-        for marker in ("**Assumptions", "**Issue conformance", "**Anomalies"):
+        for marker in ("**Planned test", "**Issue conformance", "**Anomalies"):
             self.assertLess(opens, body.index(marker), marker)
             self.assertLess(body.index(marker), closes, marker)
 
-    def test_non_dict_item_degrades_instead_of_crashing(self):
+    def test_non_dict_item_degrades_instead_of_crashing(self) -> None:
         # A malformed (non-dict) list item must not raise and drop the whole tail.
-        body = pr_body.render({**CLEAN, "conformance": ["a bare string", None]})
+        body = render({**CLEAN, "conformance": ["a bare string", None]})
         self.assertIn("**Issue conformance (review independently)**", body)
         self.assertIn("- a bare string", body)
 
-    def test_list_item_newline_stays_on_one_line(self):
-        body = pr_body.render({**CLEAN, "assumptions": ["line one\n# not a heading"]})
+    def test_list_item_newline_stays_on_one_line(self) -> None:
+        body = render({**CLEAN, "missing_tests": ["line one\n# not a heading"]})
         self.assertIn("- line one # not a heading", body)
         self.assertNotIn("\n# not a heading", body)
 
-    def test_leads_with_blank_line_and_rule_for_safe_append(self):
-        self.assertTrue(pr_body.render(FULL).startswith("\n\n---\n\n"))
+    def test_leads_with_blank_line_and_rule_for_safe_append(self) -> None:
+        self.assertTrue(render(FULL).startswith("\n\n---\n\n"))
 
-    def test_japanese_translates_prose_labels_but_keeps_github_keyword(self):
+    def test_japanese_translates_prose_labels_but_keeps_github_keyword(self) -> None:
         # language: japanese translates the human-facing section labels; the GitHub
         # magic keyword `Closes` and the `/audit` command name must stay verbatim.
-        body = pr_body.render({**FULL, "language": "japanese"})
+        body = render({**FULL, "language": "japanese"})
         self.assertIn("Closes #123", body)
         self.assertIn("_下は build workflow の自動検証結果。", body)
-        self.assertIn("**前提 (veto 対象)**", body)
         self.assertIn("**Plan スコープ外の変更ファイル**", body)
         self.assertIn("**テストとして見つからない plan の言明**", body)
         self.assertIn("**異常 (Red 未確認)**", body)
         self.assertIn("**Issue 適合性 (独立レビュー)**", body)
         self.assertIn("コードの欠陥を探すレビューはしていない", body)
 
-    def test_unknown_language_falls_back_to_english(self):
-        body = pr_body.render({**FULL, "language": "klingon"})
-        self.assertIn("**Assumptions (veto targets)**", body)
+    def test_unknown_language_falls_back_to_english(self) -> None:
+        body = render({**FULL, "language": "klingon"})
+        self.assertIn("**Planned test statements not found**", body)
+
+
+class LabelTest(unittest.TestCase):
+    def test_every_label_key_is_rendered(self) -> None:
+        # A label whose producer is gone renders nothing, so no output assertion catches it.
+        # The assumptions section survived that way after its only input was retired.
+        src = SCRIPT.read_text(encoding="utf-8")
+        body = src[src.index("LABELS = {") :]
+        body = body[body.index("}\n\n") :]
+        for key in pr_body.LABELS["english"]:
+            self.assertIn(key, body, f"{key} is a label nothing renders")
+
+    def test_both_languages_carry_the_same_label_keys(self) -> None:
+        self.assertEqual(
+            sorted(pr_body.LABELS["english"]),
+            sorted(pr_body.LABELS["japanese"]),
+            "a label added to one language is added to the other",
+        )
 
 
 class CliTest(unittest.TestCase):
-    def _run(self, stdin):
+    def _run(self, stdin: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [sys.executable, str(SCRIPT)],
             input=stdin,
@@ -338,28 +361,28 @@ class CliTest(unittest.TestCase):
             check=False,
         )
 
-    def test_stdin_to_stdout(self):
+    def test_stdin_to_stdout(self) -> None:
         proc = self._run(json.dumps(FULL))
         self.assertEqual(proc.returncode, 0)
         self.assertIn("Closes #123", proc.stdout)
 
-    def test_invalid_json_fails_closed(self):
+    def test_invalid_json_fails_closed(self) -> None:
         proc = self._run("not json")
         self.assertEqual(proc.returncode, 1)
         self.assertEqual(proc.stdout, "")
 
-    def test_non_object_fails_closed(self):
+    def test_non_object_fails_closed(self) -> None:
         proc = self._run("[1,2,3]")
         self.assertEqual(proc.returncode, 1)
 
-    def test_language_in_payload_is_honored_over_settings(self):
+    def test_language_in_payload_is_honored_over_settings(self) -> None:
         # An explicit payload language wins, so the CLI output does not depend on the
         # machine's settings.json for this case.
         proc = self._run(json.dumps({**FULL, "language": "japanese"}))
         self.assertEqual(proc.returncode, 0)
-        self.assertIn("前提 (veto 対象)", proc.stdout)
+        self.assertIn("テストとして見つからない plan の言明", proc.stdout)
 
-    def test_missing_required_key_fails_closed(self):
+    def test_missing_required_key_fails_closed(self) -> None:
         # A shipPayload that dropped a safety-critical key must not render a
         # plausible "clean" body — it must exit 1 so the caller's && chain aborts.
         for key in ("tests_pass", "gates_pass"):
@@ -370,4 +393,4 @@ class CliTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    _ = unittest.main()
