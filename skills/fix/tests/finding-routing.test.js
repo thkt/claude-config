@@ -74,8 +74,7 @@ test("what is handed to generator-test matches the agent's Input", () => {
 });
 
 // The handoff from issue to fix. Without issue's guidance, fix's input route, and the escalation
-// threshold all in step, fix rereads a number issue recommended /fix for as a Standard Flow
-// input.
+// threshold all in step, fix rereads a number issue recommended /fix for as plain bug prose.
 test("the handoff from issue to fix lines up on both sides", () => {
   const issues = {
     ja: join(root, ".ja", "skills", "issue", "SKILL.md"),

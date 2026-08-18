@@ -11,14 +11,14 @@ argument-hint: "[bug or issue description]"
 
 ## 入力
 
-`$ARGUMENTS` の形が入り口を決める。対象は十分に理解できている 1〜3 ファイル規模の問題に限る。Finding 直接入力に複数件が渡されたら、severity 降順に 1 件ずつ直す。影響が 4 ファイル以上に及ぶ場合は先に § エスカレーションの複数ファイル判定を確認する。
+`$ARGUMENTS` の形が入り口を決める。対象は十分に理解できている 1〜3 ファイル規模の問題に限る。audit が返した finding をそのまま渡すときは、複数あれば severity の高い順に 1 件ずつ直す。影響が 4 ファイル以上に及ぶ場合は先に § エスカレーションの複数ファイル判定を確認する。
 
-| パターン                                        | モード           | 読み取り                                                                                                            | 開始点         |
-| ----------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------- | -------------- |
-| file / line / severity / summary を含む finding | Finding 直接入力 | audit workflow の返り値。JSON 1 件かテキスト。file:line を RCA の起点に使う                                         | トリアージ     |
-| `/^#?[0-9]+$/`                                  | Issue 引き継ぎ   | `gh issue view <番号>` で本文を読み、Why と再現手順をバグ説明に、Premises を前提に使う                              | ビルドチェック |
-| 空                                              | Fix プロンプト   | AskUserQuestion で Fix type を Bug fix / Error message / Test failure から、Description を Other の自由記述で尋ねる | アウトカム参照 |
-| その他                                          | Standard Flow    | バグ説明とみなす                                                                                                    | アウトカム参照 |
+| パターン                                        | 読み取り                                                                               | 開始点         |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------- | -------------- |
+| file / line / severity / summary を含む finding | audit workflow の返り値。JSON 1 件かテキスト。file:line を RCA の起点に使う            | トリアージ     |
+| `/^#?[0-9]+$/`                                  | `gh issue view <番号>` で本文を読み、Why と再現手順をバグ説明に、Premises を前提に使う | ビルドチェック |
+| 空                                              | AskUserQuestion でバグ説明を尋ねる                                                     | アウトカム参照 |
+| その他                                          | バグ説明とみなす                                                                       | アウトカム参照 |
 
 ## アウトカム参照
 
@@ -37,12 +37,12 @@ package.json やプロジェクト設定からビルドコマンドを検出し�
 
 Obvious は RCA と regression test 生成の双方を省くため、誤修正リスクの低い finding に限る。
 
-| 入力             | 条件                                            | パス        |
-| ---------------- | ----------------------------------------------- | ----------- |
-| バグ説明         | 単一箇所が特定 + 1〜3 行修正 + 類似パターンなし | Obvious     |
-| バグ説明         | 断続的、複数の再現条件、または根本原因が不明    | Non-obvious |
-| finding 直接入力 | severity low / medium かつ 1〜3 行修正          | Obvious     |
-| finding 直接入力 | severity critical / high、または修正が非自明    | Non-obvious |
+| 入力     | 条件                                            | パス        |
+| -------- | ----------------------------------------------- | ----------- |
+| バグ説明 | 単一箇所が特定 + 1〜3 行修正 + 類似パターンなし | Obvious     |
+| バグ説明 | 断続的、複数の再現条件、または根本原因が不明    | Non-obvious |
+| finding  | severity low / medium かつ 1〜3 行修正          | Obvious     |
+| finding  | severity critical / high、または修正が非自明    | Non-obvious |
 
 ## Obvious
 
@@ -51,7 +51,7 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 
 ## Non-obvious
 
-1. `Skill("use-context-root-cause-analysis")` を起動して 5 Whys を実行する。Finding 直接入力経由なら、finding の file:line と summary を 5 Whys の起点として渡す。Symptom/Root cause/Pattern を出力する。Issue Handoff 経由で issue 本文が原因を file:line まで特定しているときは 5 Whys を省き、その原因を Root cause として引き継いで Pattern だけ判定する。
+1. `Skill("use-context-root-cause-analysis")` を起動して 5 Whys を実行する。finding をそのまま渡した経路なら、その file:line と summary を 5 Whys の起点として渡す。Symptom/Root cause/Pattern を出力する。issue 番号を渡した経路で本文が原因を file:line まで特定しているときは 5 Whys を省き、その原因を Root cause として引き継いで Pattern だけ判定する。
 2. `Agent(subagent_type: generator-test)` で regression test を生成する。渡すのは symptom、再現手順、step 1 の root cause。この起動はバックグラウンドで走り、結果は完了通知で届く
 3. 完了通知を受け取ってから、regression test が Red であることを確認する
 4. 修正を適用する
@@ -60,7 +60,7 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 
 ## エスカレーション
 
-客観的トリガーで分岐し、自己評価による信頼度判断はしない。Issue 引き継ぎ経路から委譲するときは、起票済みの issue に `## Plan` 節があることを確かめてから番号を build workflow に渡す。
+客観的トリガーで分岐し、自己評価による信頼度判断はしない。issue 番号を渡した経路から委譲するときは、起票済みの issue に `## Plan` 節があることを確かめてから番号を build workflow に渡す。
 
 | トリガー                          | 動作                                                              |
 | --------------------------------- | ----------------------------------------------------------------- |
@@ -86,4 +86,4 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 - [ ] 全テスト pass
 - [ ] RCA から Pattern フィールドを記録 (Non-obvious パス)
 - [ ] defense-in-depth を適用 (Recurring/Systematic のみ)
-- [ ] 再 audit を提案 (Finding 直接入力パス)
+- [ ] 再 audit を提案 (finding を渡した経路)
