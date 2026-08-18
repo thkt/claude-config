@@ -11,7 +11,7 @@ argument-hint: "[decision title]"
 
 ## 入力
 
-決定タイトルは `$ARGUMENTS` で受け取り、"Adopt X for Y" のような具体的なアクションに整える。5〜64 文字に収め、`/:*?"<>|` は含めない。空なら AskUserQuestion で New decision/Update existing を確認し、Update existing なら `<git-root>/docs/decisions/` の既存 DR から選択させる (§ 既存 DR の更新)。保存先の変更は `DR_DIR` 環境変数を設定して実行する。
+決定タイトルは `$ARGUMENTS` で受け取り、"Adopt X for Y" のような具体的なアクションに整える。5〜64 文字に収め、`/:*?"<>|` は含めない。空なら AskUserQuestion で New decision/Update existing を確認する。New decision ならタイトルを聞き、Update existing なら `<git-root>/docs/decisions/` の既存 DR から選択させる (§ 既存 DR の更新)。保存先の変更は `DR_DIR` 環境変数を設定して実行する。
 
 ## 採用ゲート
 
@@ -72,12 +72,12 @@ status が proposed なら本文を直接編集し、Validate と Index を実�
 
 各 script が失敗を JSON かエラー出力で返す。対応は下表。
 
-| エラー                                     | 扱い                                                                    |
-| ------------------------------------------ | ----------------------------------------------------------------------- |
-| git リポジトリの外だと報告                 | `DR_DIR` を設定して保存先を明示する                                     |
-| 保存先に SKILL.md があると報告             | skill ディレクトリを指しているので `DR_DIR` を DR 置き場へ向け直す      |
-| `similar_drs` が非空                       | 重複候補を提示し、続行するか更新へ切り替えるかを確認 (§ 既存 DR の更新) |
-| validate-dr.py が `missing_section` を返す | テンプレートから欠けた見出しを補い、Validate をやり直す                 |
+| エラー                         | 扱い                                                                    |
+| ------------------------------ | ----------------------------------------------------------------------- |
+| git リポジトリの外だと報告     | `DR_DIR` を設定して保存先を明示する                                     |
+| 保存先に SKILL.md があると報告 | skill ディレクトリを指しているので `DR_DIR` を DR 置き場へ向け直す      |
+| `similar_drs` が非空           | 重複候補を提示し、続行するか更新へ切り替えるかを確認 (§ 既存 DR の更新) |
+| `errors[]` が非空              | 返った項目を直し、Validate をやり直す                                   |
 
 ## 出力
 

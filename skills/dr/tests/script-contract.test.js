@@ -206,11 +206,8 @@ test("the process Steps run without a gap and every cited stage has a row", () =
     const stages = rows.map((m) => m[2]);
     for (const stage of CITED) {
       assert.ok(stages.includes(stage), `${lang}: the cited stage ${stage} has a row`);
-      assert.match(
-        doc,
-        new RegExp(`${stage}[^|]*\\|`),
-        `${lang}: ${stage} is cited outside its row`,
-      );
+      const uses = doc.split(stage).length - 1;
+      assert.ok(uses >= 2, `${lang}: ${stage} is named beyond its own row (${uses})`);
     }
     // A number reference would shift the moment a stage is inserted, so stages are cited by name.
     assert.doesNotMatch(doc, /Step \d/, `${lang}: nothing points at a Step by number`);

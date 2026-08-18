@@ -11,7 +11,7 @@ argument-hint: "[decision title]"
 
 ## Input
 
-Take the decision title from `$ARGUMENTS` and shape it into a specific action like "Adopt X for Y". Keep it 5-64 characters and free of `/:*?"<>|`. If empty, confirm New decision / Update existing via AskUserQuestion; for Update existing, list recent DRs in `<git-root>/docs/decisions/` for selection (§ Updating an Existing DR). To change the storage location, set the `DR_DIR` env var before running.
+Take the decision title from `$ARGUMENTS` and shape it into a specific action like "Adopt X for Y". Keep it 5-64 characters and free of `/:*?"<>|`. If empty, confirm New decision / Update existing via AskUserQuestion. For New decision ask for the title; for Update existing, list recent DRs in `<git-root>/docs/decisions/` for selection (§ Updating an Existing DR). To change the storage location, set the `DR_DIR` env var before running.
 
 ## Adoption Gate
 
@@ -72,12 +72,12 @@ When the status is proposed, edit the body directly and run Validate and Index. 
 
 Each script reports its failure as JSON or on stderr. Handle them per the table.
 
-| Error                                    | Treatment                                                                                                |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Reported as outside a git repository     | Set `DR_DIR` to name the archive explicitly                                                              |
-| Reported as an archive holding SKILL.md  | It points at a skill directory, so redirect `DR_DIR` to the archive                                      |
-| `similar_drs` is non-empty               | Present the duplicates and confirm whether to proceed or switch to an update (§ Updating an Existing DR) |
-| validate-dr.py returns `missing_section` | Restore the dropped heading from the template and run Validate again                                     |
+| Error                                   | Treatment                                                                                                |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Reported as outside a git repository    | Set `DR_DIR` to name the archive explicitly                                                              |
+| Reported as an archive holding SKILL.md | It points at a skill directory, so redirect `DR_DIR` to the archive                                      |
+| `similar_drs` is non-empty              | Present the duplicates and confirm whether to proceed or switch to an update (§ Updating an Existing DR) |
+| `errors[]` comes back non-empty         | Fix what it names and run Validate again                                                                 |
 
 ## Output
 
