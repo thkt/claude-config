@@ -105,6 +105,10 @@ def main() -> None:
     is_form = template.suffix in FORM_SUFFIXES
     own_template = re.search(r"^## Template\s*$", template_text, flags=re.MULTILINE) is not None
     sections = form_sections(template_text) if is_form else skeleton_sections(template_text)
+    # 節が 0 個は要求が無いのではなく骨格を読めなかった状態。必須検査も未知検査も
+    # 素通りし、どんな本文でも exit 0 になるので、ここで止める。
+    if not sections:
+        results["errors"].append(f"unreadable_skeleton:{template.name}")
     required = [name for name, optional in sections if not optional]
     present = body_section_names(body_text)
     for name in required:

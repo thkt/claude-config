@@ -380,3 +380,14 @@ test("the selection rule stays within the tools the skill is allowed", () => {
     assert.doesNotMatch(doc, mtime, `${lang}: it does not select on a time no allowed tool reads`);
   }
 });
+
+// Independence alone sends a set that all waits on one unbuilt thing into separate issues, and
+// each of them is unstartable the moment it is filed. The split question carries readiness so the
+// person answering sees that before N issues exist.
+test("the split question carries whether each criterion can be started", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    const ready = lang === "ja" ? /今着手できるか/ : /can be started now/;
+    assert.match(doc, ready, `${lang}: the split assessment asks about readiness`);
+  }
+});

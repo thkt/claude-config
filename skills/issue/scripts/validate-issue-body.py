@@ -108,6 +108,10 @@ def main() -> None:
     is_form = template.suffix in FORM_SUFFIXES
     own_template = re.search(r"^## Template\s*$", template_text, flags=re.MULTILINE) is not None
     sections = form_sections(template_text) if is_form else skeleton_sections(template_text)
+    # Zero sections is not an absence of requirements; it is a skeleton that could not be read.
+    # Both the required and the unknown checks then pass over anything, so stop here instead.
+    if not sections:
+        results["errors"].append(f"unreadable_skeleton:{template.name}")
     required = [name for name, optional in sections if not optional]
     present = body_section_names(body_text)
     for name in required:

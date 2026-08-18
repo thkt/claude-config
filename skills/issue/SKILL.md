@@ -60,7 +60,7 @@ List the entries via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLA
 
 ### Split assessment
 
-Offer "keep as one issue" or "split into an epic and child issues". Do not count fine-grained checks that only verify one deliverable; they stay within one issue. Never auto-split, since publishing N issues is hard to unwind. On approval, publish this issue as the epic and run the rest of the flow unchanged on it.
+Offer "keep as one issue" or "split into an epic and child issues". Do not count fine-grained checks that only verify one deliverable; they stay within one issue. When asking, say for each criterion whether it can be started now. Splitting a set that waits on something unbuilt lines up issues nobody can pick up. Never auto-split, since publishing N issues is hard to unwind. On approval, publish this issue as the epic and run the rest of the flow unchanged on it.
 
 ## Phase 2: Refinement
 

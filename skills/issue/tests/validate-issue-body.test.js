@@ -279,3 +279,47 @@ test("T-014 a body built from each template's own required sections passes valid
     assert.equal(status, 0, `${type}: it exits 0`);
   }
 });
+
+// Zero sections used to mean zero requirements: a .yml whose body: key the parser missed raised
+// no error and passed any body. These run the repository's own forms, which rank first as the
+// skeleton, and assert the parser finds their sections rather than falling through silently.
+test("T-015 the repository's own forms are read as skeletons rather than passing empty", async () => {
+  const { readFile, readdir } = await import("node:fs/promises");
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  const dir = join(root, ".github", "ISSUE_TEMPLATE");
+  const forms = (await readdir(dir)).filter((f) => f.endsWith(".yml"));
+  assert.ok(forms.length > 0, "the repository ships issue forms");
+  for (const form of forms) {
+    const path = join(dir, form);
+    const labels = [...(await readFile(path, "utf8")).matchAll(/^\s*label:\s*(.+?)\s*$/gm)];
+    assert.ok(labels.length > 0, `${form}: it declares labels`);
+    const body = labels.map((m) => `## ${m[1]}\n\nx\n`).join("\n");
+    const type = form.replace(/\.yml$/, "");
+    const title = `[${type[0].toUpperCase()}${type.slice(1)}] sample`;
+    const { status, out } = runValidate(path, title, body);
+    assert.equal(status, 0, `${form}: a body carrying every label passes (${JSON.stringify(out)})`);
+    assert.ok(
+      out.checks.some((c) => c.startsWith("section:")),
+      `${form}: the parser reported the sections it read (${out.checks.join(", ")})`,
+    );
+  }
+});
+
+// A skeleton the parser cannot read is not a skeleton with no requirements. Without this the
+// required check has nothing to compare and the unknown check is skipped for a form, so every
+// body exits 0 against a broken template.
+test("T-016 a skeleton yielding no section is an error, not a free pass", () => {
+  const dir = mkdtempSync(join(tmpdir(), "issue-empty-skeleton-"));
+  try {
+    const form = join(dir, "feature.yml");
+    writeFileSync(form, "name: Feature\nentries:\n  - type: textarea\n", "utf8");
+    const { status, out } = runValidate(form, "[Feature] sample", "## Anything\n\nx\n");
+    assert.equal(status, 1, "it exits 1");
+    assert.ok(
+      out.errors.some((e) => e.startsWith("unreadable_skeleton:")),
+      `the error names the unreadable skeleton (${out.errors.join(", ")})`,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
