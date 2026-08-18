@@ -28,7 +28,7 @@ argument-hint: "[proposal file | description]"
 | 残差が不可逆か影響が大きい                       | AskUserQuestion で聞く。上限 7 問                                                         |
 | それ以外の残差                                   | advisor の仮説を仮定として進め、Why に全件残す                                            |
 
-1. `.claude/OUTCOME.md` を読む。無ければ `$ARGUMENTS` と会話から outcome を推定し、AskUserQuestion で確認する
+1. `.claude/OUTCOME.md` を読む。無ければ `$ARGUMENTS` と会話から outcome を推定し、AskUserQuestion で確認する。Phase 2 の outcome 攻撃がこれを評価軸に使うので、省略せず確定させる
 2. 提案の論点を洗い出し、事実と判断へ振り分ける
 3. 検証ループを回す。subagent が事実を並列で確かめ、advisor が振り分けを見直して次の証拠を指す
 4. 証拠を足しても振り分けが変わらなくなったら打ち切る。上限 3 周

@@ -28,7 +28,7 @@ Grill the proposal from evidence on its own, then return only the unresolved res
 | A residual is irreversible or high-impact                          | Ask it via AskUserQuestion. Cap 7 questions                                                               |
 | Every other residual                                               | Proceed on the advisor hypothesis as an assumption, and keep them all in the Why                          |
 
-1. Read `.claude/OUTCOME.md`. If absent, infer the outcome from $ARGUMENTS and the conversation and confirm it via AskUserQuestion
+1. Read `.claude/OUTCOME.md`. If absent, infer the outcome from $ARGUMENTS and the conversation and confirm it via AskUserQuestion. The Phase 2 outcome attack uses it as its evaluation axis, so settle it rather than leaving it out
 2. List the open questions in the proposal and sort them into facts and preferences
 3. Run the verification loop. subagents check facts in parallel while advisor re-checks the sorting and names the next evidence
 4. Break when more evidence no longer changes the sorting. Cap 3 rounds
