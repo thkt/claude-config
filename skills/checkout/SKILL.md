@@ -51,7 +51,3 @@ The table below decides the trigger for each type.
 | No changes        | Report there are no changes                    |
 | Branch exists     | Settle on another name and create that instead |
 | No git repository | Report it is not a git repo                    |
-
-## Output
-
-Report the created branch name on a single line.
