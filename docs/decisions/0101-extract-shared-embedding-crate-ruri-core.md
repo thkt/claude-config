@@ -4,7 +4,7 @@ date: 2026-03-24
 decision-makers: thkt
 ---
 
-# ADR-0034: embedding + storage ユーティリティの共有クレート化 (rurico)
+# embedding + storage ユーティリティの共有クレート化 (rurico)
 
 ## Context and Problem Statement
 

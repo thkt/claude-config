@@ -40,7 +40,6 @@ This directory contains important decisions about the project.
 | [0032](0032-build-esa-semantic-search-cli-sae.md) | ADR-0032: Build esa semantic search CLI (sae) | proposed | 2026-03-23 |
 | [0033](0033-add-recursive-unwrap-stack-to-shields.md) | ADR-0033: shields に Recursive Unwrap Stack を追加 | proposed | 2026-03-24 |
 | [0034](0034-automate-backlog-lifecycle-with-remote-trigger.md) | ADR-0034: LaunchAgent によるバックログライフサイクル自動化 | deprecated | 2026-03-24 |
-| [0034](0034-extract-shared-embedding-crate-ruri-core.md) | ADR-0034: embedding + storage ユーティリティの共有クレート化 (rurico) | proposed | 2026-03-24 |
 | [0035](0035-audit-verify-convergence-signal-and-reconciliation-ownership.md) | Record convergence signals in audit/verify dedup and move reconciliation into enhancer-evidence | accepted | 2026-04-04 |
 | [0036](0036-build-llm-wiki-plugin-for-cross-session-knowledge-synthesis.md) | LLMによるクロスセッション知識合成wikiプラグインの構築 | deprecated | 2026-04-07 |
 | [0037](0037-align-sae-filter-helpers-for-amici-extraction.md) | ADR-0037: sae フィルタヘルパーを amici 抽出前提で yomu パターンに揃える | accepted | 2026-04-10 |
@@ -107,6 +106,7 @@ This directory contains important decisions about the project.
 | [0098](0098-adopt-usage-census-over-time-based-prediction-ledger.md) | ADR-0098: 機構の退役判断に時間ベースの予測台帳ではなく使用センサスを採る | accepted | 2026-08-13 |
 | [0099](0099-retire-fix-finding-id-route-for-direct-finding-input.md) | Retire fix's Finding ID route in favor of Direct Finding Input | accepted | 2026-08-18 |
 | [0100](0100-replace-5-whys-with-hypothesis-elimination-in-rca.md) | Replace 5 Whys with hypothesis elimination in root cause analysis | accepted | 2026-08-18 |
+| [0101](0101-extract-shared-embedding-crate-ruri-core.md) | embedding + storage ユーティリティの共有クレート化 (rurico) | proposed | 2026-03-24 |
 
 ## By Status
 
@@ -125,11 +125,11 @@ This directory contains important decisions about the project.
 - **0031**: ADR-0031: ort + Ruri v3 によるローカル embedding 基盤の構築
 - **0032**: ADR-0032: Build esa semantic search CLI (sae)
 - **0033**: ADR-0033: shields に Recursive Unwrap Stack を追加
-- **0034**: ADR-0034: embedding + storage ユーティリティの共有クレート化 (rurico)
 - **0038**: ADR-0038: hook pipelineに stencils を追加しコードパターンをカタログ化する
 - **0039**: ADR-0039: PreToolUse hook に tempos を追加し litmus library 統合で TDD リズムを強制する
 - **0041**: ADR-0041: carte を CCPlanView からフォークする運用方針
 - **0064**: Adopt always-rerun pre-commit gate for silent commit prevention
+- **0101**: embedding + storage ユーティリティの共有クレート化 (rurico)
 
 ### Accepted
 
