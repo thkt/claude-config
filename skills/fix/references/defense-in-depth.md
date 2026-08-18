@@ -1,20 +1,20 @@
 # Defense-in-Depth Validation
 
-Multi-layer validation for bugs that can recur. Add checks at every layer the failure could pass through, so different code paths or refactors cannot reopen the same bug.
+Add checks at every layer the failure could pass through, so different code paths or refactors cannot reopen the same bug.
 
 ## When to Apply
 
-Driven by the Pattern field from `use-context-root-cause-analysis` (5 Whys output).
+Driven by the Pattern field from `use-context-root-cause-analysis` (5 Whys output). What each value means is defined in that skill's Pattern Enum.
 
-| Pattern    | Action                                                                   |
-| ---------- | ------------------------------------------------------------------------ |
-| Isolated   | Skip. Single fix site, no recurrence path                                |
-| Recurring  | Apply layers 1-2 at minimum. Similar code nearby, entry / business risks |
-| Systematic | Apply all 4 layers. Combine with `/research` escalation                  |
+| Pattern    | Action                                                       |
+| ---------- | ------------------------------------------------------------ |
+| Isolated   | Skip                                                         |
+| Recurring  | Apply layers 1-2 (entry point and business logic) at minimum |
+| Systematic | Apply every layer and escalate to `/research`                |
 
-## The Four Layers
+## Layers
 
-Each layer validates independently.
+Of the layers the Pattern selected, add only those whose condition holds.
 
 | Layer | Type                  | Purpose              | Applies when                        | Example                              |
 | ----- | --------------------- | -------------------- | ----------------------------------- | ------------------------------------ |
@@ -33,8 +33,6 @@ Each layer validates independently.
 
 ## Verification
 
-| Check                                  | Required              |
-| -------------------------------------- | --------------------- |
-| Pattern drove layer selection          | Yes                   |
-| Each layer is independently testable   | Yes                   |
-| Bypass test ran for at least one layer | Yes (Systematic path) |
+- [ ] Pattern drove layer selection
+- [ ] Each layer is independently testable
+- [ ] Bypass test ran for at least one layer (Systematic path)
