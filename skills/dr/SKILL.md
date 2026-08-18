@@ -11,7 +11,7 @@ argument-hint: "[decision title]"
 
 ## Input
 
-Take the decision title from `$ARGUMENTS` and shape it into a specific action like "Adopt X for Y". If empty, confirm New decision / Update existing via AskUserQuestion; for Update existing, list recent DRs in `<git-root>/docs/decisions/` for selection. To change the storage location, set the `DR_DIR` env var before running.
+Take the decision title from `$ARGUMENTS` and shape it into a specific action like "Adopt X for Y". If empty, confirm New decision / Update existing via AskUserQuestion; for Update existing, list recent DRs in `<git-root>/docs/decisions/` for selection (§ Updating an Existing DR). To change the storage location, set the `DR_DIR` env var before running.
 
 ## Adoption Gate
 
@@ -63,9 +63,9 @@ The frontmatter is optional. When it is written, it uses the fields below.
 | consulted       | Subject-matter experts; two-way exchange                                                                        |
 | informed        | Stakeholders kept up-to-date; one-way                                                                           |
 
-## Supersede
+## Updating an Existing DR
 
-When a new DR replaces an existing one. Only `status` and `date` change in the old DR. Decision content stays as-is.
+When the status is proposed, edit the body directly and run Step 6 and Step 7. From accepted onward, keep the decision content and replace it with a new DR through the steps below, changing only `status` and `date` in the old one.
 
 1. Create the new DR through the process
 2. Cite the predecessor in the new DR's More Information (e.g. `Supersedes DR-NNNN`)
@@ -77,12 +77,12 @@ When a new DR replaces an existing one. Only `status` and `date` change in the o
 
 Each script reports its failure as JSON or on stderr. Handle them per the table.
 
-| Error                                    | Treatment                                                                                 |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Reported as outside a git repository     | Set `DR_DIR` to name the archive explicitly                                               |
-| Reported as an archive holding SKILL.md  | It points at a skill directory, so redirect `DR_DIR` to the archive                       |
-| `similar_drs` is non-empty               | Present the duplicate candidates and confirm whether to proceed or update the existing DR |
-| validate-dr.py returns `missing_section` | Restore the dropped heading from the template and run Step 6 again                        |
+| Error                                    | Treatment                                                                                                |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Reported as outside a git repository     | Set `DR_DIR` to name the archive explicitly                                                              |
+| Reported as an archive holding SKILL.md  | It points at a skill directory, so redirect `DR_DIR` to the archive                                      |
+| `similar_drs` is non-empty               | Present the duplicates and confirm whether to proceed or switch to an update (§ Updating an Existing DR) |
+| validate-dr.py returns `missing_section` | Restore the dropped heading from the template and run Step 6 again                                       |
 
 ## Output
 

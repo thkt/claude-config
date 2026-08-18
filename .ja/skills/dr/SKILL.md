@@ -11,7 +11,7 @@ argument-hint: "[decision title]"
 
 ## 入力
 
-決定タイトルは `$ARGUMENTS` で受け取り、"Adopt X for Y" のような具体的なアクションに整える。空なら AskUserQuestion で New decision/Update existing を確認し、Update existing なら `<git-root>/docs/decisions/` の既存 DR から選択させる。保存先の変更は `DR_DIR` 環境変数を設定して実行する。
+決定タイトルは `$ARGUMENTS` で受け取り、"Adopt X for Y" のような具体的なアクションに整える。空なら AskUserQuestion で New decision/Update existing を確認し、Update existing なら `<git-root>/docs/decisions/` の既存 DR から選択させる (§ 既存 DR の更新)。保存先の変更は `DR_DIR` 環境変数を設定して実行する。
 
 ## 採用ゲート
 
@@ -63,9 +63,9 @@ frontmatter は任意。書くなら下表のフィールドを使う。
 | consulted       | 相談した専門家。やり取りは双方向                                                                                      |
 | informed        | 結果を共有する利害関係者。一方向                                                                                      |
 
-## Supersede
+## 既存 DR の更新
 
-新しい DR が既存を置き換える場合。旧 DR で変わるのは `status` と `date` のみで、決定内容はそのまま保持する。
+status が proposed なら本文を直接編集し、Step 6 と Step 7 を実行する。accepted 以降は決定内容を保持したまま次の手順で新しい DR へ置き換え、旧 DR で変えるのは `status` と `date` だけにする。
 
 1. プロセスで新規 DR を作成する
 2. 新規 DR の More Information で先行 DR を引用する (例: `Supersedes DR-NNNN`)
@@ -77,12 +77,12 @@ frontmatter は任意。書くなら下表のフィールドを使う。
 
 各 script が失敗を JSON かエラー出力で返す。対応は下表。
 
-| エラー                                     | 扱い                                                                   |
-| ------------------------------------------ | ---------------------------------------------------------------------- |
-| git リポジトリの外だと報告                 | `DR_DIR` を設定して保存先を明示する                                    |
-| 保存先に SKILL.md があると報告             | skill ディレクトリを指しているので `DR_DIR` を DR 置き場へ向け直す     |
-| `similar_drs` が非空                       | 重複候補を提示し、新規作成を続けるか既存 DR の更新に切り替えるかを確認 |
-| validate-dr.py が `missing_section` を返す | テンプレートから欠けた見出しを補い、Step 6 をやり直す                  |
+| エラー                                     | 扱い                                                                    |
+| ------------------------------------------ | ----------------------------------------------------------------------- |
+| git リポジトリの外だと報告                 | `DR_DIR` を設定して保存先を明示する                                     |
+| 保存先に SKILL.md があると報告             | skill ディレクトリを指しているので `DR_DIR` を DR 置き場へ向け直す      |
+| `similar_drs` が非空                       | 重複候補を提示し、続行するか更新へ切り替えるかを確認 (§ 既存 DR の更新) |
+| validate-dr.py が `missing_section` を返す | テンプレートから欠けた見出しを補い、Step 6 をやり直す                   |
 
 ## 出力
 

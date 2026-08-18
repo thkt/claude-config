@@ -201,10 +201,12 @@ test("the process Steps run without a gap and the cited Step is Validate", () =>
     const run = steps.map((_, i) => i + 1);
     assert.deepEqual(steps, run, `${lang}: the Steps run 1 through ${steps.length}`);
     for (const [, cited] of doc.matchAll(/Step (\d+)/g)) {
-      const stage = doc.match(new RegExp(`^\\| ${cited} +\\| (\\S+)`, "m"));
-      assert.ok(stage, `${lang}: the cited Step ${cited} has a row`);
-      assert.equal(stage[1], "Validate", `${lang}: Step ${cited} is the Validate stage`);
+      assert.ok(steps.includes(Number(cited)), `${lang}: the cited Step ${cited} has a row`);
     }
+    const redo = doc.match(/missing_section.*?Step (\d+)/);
+    assert.ok(redo, `${lang}: the missing_section row names the Step to redo`);
+    const stage = doc.match(new RegExp(`^\\| ${redo[1]} +\\| (\\S+)`, "m"));
+    assert.equal(stage[1], "Validate", `${lang}: the redo points at Validate`);
   }
 });
 
@@ -213,7 +215,7 @@ test("every section a step cites exists", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
     const cited = [...doc.matchAll(/\(§ ([^)]+)\)/g)].map((m) => m[1]);
-    assert.equal(cited.length, 2, `${lang}: the process cites two sections`);
+    assert.equal(cited.length, 4, `${lang}: the body cites four sections`);
     for (const name of cited) {
       assert.match(doc, new RegExp(`^## ${name}$`, "m"), `${lang}: ## ${name} exists`);
     }
