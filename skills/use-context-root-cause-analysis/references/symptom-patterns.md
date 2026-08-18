@@ -20,7 +20,7 @@
 | ------------------------------- | ---------------------- |
 | Can this be prevented entirely? | Consider better design |
 | Can simpler tech solve this?    | Try HTML/CSS first     |
-| Treating cause or effect?       | Apply 5 Whys           |
+| Treating cause or effect?       | Raise hypotheses again |
 | Will this fix scale?            | Rethink approach       |
 | Is this the framework way?      | Learn patterns         |
 

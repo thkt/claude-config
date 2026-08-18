@@ -36,7 +36,7 @@ Failure-driven, not pattern-driven. Start from "what could break?" then trace to
 | ---------- | -------------------------------------------- | -------------------------------------------------- |
 | silence    | Per-block catch/promise/fallback pattern     | Aggregates into failure scenario with blast radius |
 | operations | Per-component boundary/log/loading presence  | Cascade impact when boundaries themselves fail     |
-| causation  | Backward 5 Whys from observed symptom        | Forward projection from hypothetical trigger       |
+| causation  | Elimination working back from the symptom    | Forward projection from hypothetical trigger       |
 | efficiency | TOCTOU as correctness or perf bug            | TOCTOU as failure mode with user impact            |
 | security   | Threat actor and attack vector (incl. AuthZ) | Incident scenario without actor (DB timeout, OOM)  |
 

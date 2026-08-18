@@ -106,6 +106,7 @@ This directory contains important decisions about the project.
 | [0097](0097-ask-instead-of-extract-when-returning-corrections-to-rules.md) | Ask instead of extract when returning corrections to rules | accepted | 2026-08-09 |
 | [0098](0098-adopt-usage-census-over-time-based-prediction-ledger.md) | ADR-0098: 機構の退役判断に時間ベースの予測台帳ではなく使用センサスを採る | accepted | 2026-08-13 |
 | [0099](0099-retire-fix-finding-id-route-for-direct-finding-input.md) | Retire fix's Finding ID route in favor of Direct Finding Input | accepted | 2026-08-18 |
+| [0100](0100-replace-5-whys-with-hypothesis-elimination-in-rca.md) | Replace 5 Whys with hypothesis elimination in root cause analysis | accepted | 2026-08-18 |
 
 ## By Status
 
@@ -200,6 +201,7 @@ This directory contains important decisions about the project.
 - **0097**: Ask instead of extract when returning corrections to rules
 - **0098**: ADR-0098: 機構の退役判断に時間ベースの予測台帳ではなく使用センサスを採る
 - **0099**: Retire fix's Finding ID route in favor of Direct Finding Input
+- **0100**: Replace 5 Whys with hypothesis elimination in root cause analysis
 
 ### Superseded
 

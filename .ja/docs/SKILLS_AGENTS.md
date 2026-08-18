@@ -123,7 +123,7 @@ agents/
 | Agent                  | 焦点                              |
 | ---------------------- | --------------------------------- |
 | reviewer-accessibility | WCAG 2.2 適合                     |
-| reviewer-causation     | 5 Whys 根本原因分析               |
+| reviewer-causation     | 根本原因分析                      |
 | reviewer-conformance   | diff と spec の適合性             |
 | reviewer-coverage      | テストカバレッジ品質              |
 | reviewer-design        | deletion test による module depth |

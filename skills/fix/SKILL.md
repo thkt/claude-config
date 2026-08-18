@@ -51,15 +51,15 @@ Obvious skips both RCA and regression test generation, so it is limited to findi
 
 ## Non-obvious
 
-Where the 5 Whys starts depends on the route. A route absent from the table starts from the bug description.
+Where the analysis starts depends on the route. A route absent from the table starts from the bug description.
 
-| Route                                                          | What happens to the 5 Whys                                             |
+| Route                                                          | What happens to the analysis                                           |
 | -------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | The finding was handed over directly                           | Pass its file:line and summary as the starting point                   |
 | An issue number whose body names the cause down to a file:line | Skip it. Carry that cause as the Root cause and judge only the Pattern |
 
-1. Run 5 Whys via `Skill("use-context-root-cause-analysis")`
-2. `Agent(subagent_type: generator-test)` for the regression test. Pass symptom, repro steps, and the root cause the 5 Whys produced
+1. Run the root cause analysis via `Skill("use-context-root-cause-analysis")`
+2. `Agent(subagent_type: generator-test)` for the regression test. Pass symptom, repro steps, and the root cause the analysis produced
 3. Wait for the generation to finish, then verify the regression test is Red
 4. Apply fix
 5. Verify regression test is Green and no other tests regressed

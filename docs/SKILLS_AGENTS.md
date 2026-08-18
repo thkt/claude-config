@@ -127,7 +127,7 @@ agents/
 | Agent                  | Focus                             |
 | ---------------------- | --------------------------------- |
 | reviewer-accessibility | WCAG 2.2 conformance              |
-| reviewer-causation     | 5 Whys root cause analysis        |
+| reviewer-causation     | Root cause analysis               |
 | reviewer-conformance   | Diff-vs-spec conformance          |
 | reviewer-coverage      | Test coverage quality             |
 | reviewer-design        | Module depth via deletion test    |

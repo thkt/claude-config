@@ -32,7 +32,7 @@ Agent spawn プロンプト経由で symptom、repro、root_cause、test_paths �
 | ---------- | ------ | ----------------------------------- |
 | symptom    | 文字列 | 空配列を渡すと合計が NaN になる     |
 | repro      | 文字列 | sum([]) を呼ぶ                      |
-| root_cause | 任意   | reduce の初期値未指定 (5 Whys 由来) |
+| root_cause | 任意   | reduce の初期値未指定 (根本原因分析 由来) |
 | test_paths | 任意   | [tests/math/, tests/shared/]        |
 
 ## ワークフロー

@@ -9,7 +9,7 @@ background: true
 
 # Evidence Integrator
 
-静的発見事項と動的実行根拠を調整し、根拠横断の相関と収束クラスタごとの 5 Whys で根本原因を統合し、`issues`/`root_causes`/`report` を返す。Gate 判定は呼び出し元の script が担う。
+静的発見事項と動的実行根拠を調整し、根拠横断の相関と収束クラスタごとの分析で根本原因を統合し、`issues`/`root_causes`/`report` を返す。Gate 判定は呼び出し元の script が担う。
 
 ## 姿勢
 
@@ -130,8 +130,8 @@ finding_id でマッチさせ、ルールを順番に適用する。適用後、
 2. 具体的なトリガーやファイル読み取り検証を欠く発見事項をドロップし、残りを保持する
 3. Phase 4 で特定した収束クラスタを使う
 4. 収束クラスタごとに severity を再評価する (下記ルール)
-5. 収束クラスタごとに根本原因を統合し、個別発見事項ではなく根本原因に 5 Whys を適用する
-6. スタンドアロン発見事項は個別に 5 Whys を適用する
+5. 収束クラスタごとに根本原因を統合し、個別発見事項ではなく根本原因に根本原因分析を適用する
+6. スタンドアロン発見事項は個別に根本原因分析を適用する
 7. 根本原因を分類する: Architecture Gap/Knowledge Gap/Tooling Gap/Process Gap
 8. 影響評価: findings_resolved × max_severity × fixability (root cause の順序付けに使う。Gate には使わない)
 

@@ -32,7 +32,7 @@ Receives symptom, repro, root_cause, and test_paths via the Agent spawn prompt. 
 | ---------- | -------- | ---------------------------------------------------- |
 | symptom    | string   | Passing an empty array yields NaN for the sum        |
 | repro      | string   | Call sum([])                                         |
-| root_cause | optional | reduce called without an initial value (from 5 Whys) |
+| root_cause | optional | reduce called without an initial value (from root cause analysis) |
 | test_paths | optional | [tests/math/, tests/shared/]                         |
 
 ## Workflow

@@ -9,7 +9,7 @@ background: true
 
 # Evidence Integrator
 
-Reconcile static findings with dynamic execution evidence, synthesize root causes through cross-evidence correlation and 5 Whys per convergence cluster, and return `issues` / `root_causes` / `report`. The caller's script decides the Gate.
+Reconcile static findings with dynamic execution evidence, synthesize root causes through cross-evidence correlation and per-cluster analysis, and return `issues` / `root_causes` / `report`. The caller's script decides the Gate.
 
 ## Posture
 
@@ -130,8 +130,8 @@ Reuses enhancer-integration synthesis logic.
 2. Drop findings lacking a concrete trigger or file-read verification, keep the rest
 3. Use the convergence clusters identified in Phase 4
 4. Re-evaluate severity per convergence cluster (rules below)
-5. Synthesize a root cause per convergence cluster and apply 5 Whys on the root cause, not individual findings
-6. Apply 5 Whys individually to standalone findings
+5. Synthesize a root cause per convergence cluster and run the root cause analysis on the root cause, not on individual findings
+6. Run the root cause analysis on each standalone finding
 7. Classify the root cause: Architecture Gap / Knowledge Gap / Tooling Gap / Process Gap
 8. Impact evaluation: findings_resolved × max_severity × fixability (used for root cause ordering, not Gate)
 
