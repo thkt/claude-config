@@ -13,12 +13,12 @@ argument-hint: "[bug or issue description]"
 
 The shape of `$ARGUMENTS` decides the entry point. Scope is limited to small, well-understood issues of 1-3 files. When several findings are handed over directly, fix them one at a time, highest severity first. When the impact spans 4+ files, check the multi-file trigger in § Escalation first.
 
-| Pattern                                       | How it is read                                  | Enters at      |
-| --------------------------------------------- | ----------------------------------------------- | -------------- |
-| Finding with file / line / severity / summary | Use it as it stands                             | Triage         |
-| `/^#?[0-9]+$/`                                | Read the body via `gh issue view <number>`      | Build Check    |
-| empty                                         | Ask for the bug description via AskUserQuestion | Outcome Anchor |
-| otherwise                                     | Take the text as a bug description              | Outcome Anchor |
+| Pattern                                     | How it is read                                  | Enters at      |
+| ------------------------------------------- | ----------------------------------------------- | -------------- |
+| A finding carrying `file:line` and severity | Use it as it stands                             | Triage         |
+| `/^#?[0-9]+$/`                              | Read the body via `gh issue view <number>`      | Build Check    |
+| empty                                       | Ask for the bug description via AskUserQuestion | Outcome Anchor |
+| otherwise                                   | Take the text as a bug description              | Outcome Anchor |
 
 ## Outcome Anchor
 
