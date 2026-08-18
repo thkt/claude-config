@@ -21,16 +21,11 @@ argument-hint: "[context or ticket number]"
 
 ## Branch Naming
 
-Determine the type from the changes and assemble the branch name in this format.
-
-```text
-<type>/<scope>-<description>
-<type>/<ticket>-<description>
-```
+Determine the type from the changes and assemble the name as `<type>/<scope>-<description>`.
 
 - Compose it from lowercase and hyphen separators; do not use spaces, underscores, or CamelCase
 - Keep scope and description to 2-4 words, naming the target and the result rather than a vague word such as update
-- If `$ARGUMENTS` has a ticket ID, include it at the `<ticket>` position. Names this skill creates carry no date
+- If `$ARGUMENTS` has a ticket ID, put it in the scope position. Names this skill creates carry no date
 
 The table below decides the trigger for each type.
 

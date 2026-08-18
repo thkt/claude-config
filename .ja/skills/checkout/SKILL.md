@@ -21,16 +21,11 @@ argument-hint: "[context or ticket number]"
 
 ## ブランチ命名
 
-変更内容から type を判定し、次のフォーマットでブランチ名を組み立てる。
-
-```text
-<type>/<scope>-<description>
-<type>/<ticket>-<description>
-```
+変更内容から type を判定し、`<type>/<scope>-<description>` の形に組み立てる。
 
 - 小文字とハイフン区切りで構成し、空白/アンダースコア/CamelCase は使わない
 - scope と description は 2〜4 単語で簡潔にし、update のような曖昧な語でなく変更の対象と結果を表す語を使う
-- `$ARGUMENTS` にチケット ID があれば `<ticket>` の位置に含める。このスキルが作る名前に日付は入れない
+- `$ARGUMENTS` にチケット ID があれば scope の位置に入れる。このスキルが作る名前に日付は入れない
 
 type ごとのトリガーは下表が定める。
 
