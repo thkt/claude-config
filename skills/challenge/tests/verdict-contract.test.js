@@ -9,7 +9,7 @@ const skills = {
   ja: join(root, ".ja", "skills", "challenge", "SKILL.md"),
   en: join(root, "skills", "challenge", "SKILL.md"),
 };
-const agentPath = join(root, "agents", "critics", "critic-design.md");
+const agentDoc = await readFile(join(root, "agents", "critics", "critic-design.md"), "utf8");
 
 const eachLanguage = async (check) => {
   for (const [lang, path] of Object.entries(skills)) {
@@ -17,60 +17,66 @@ const eachLanguage = async (check) => {
   }
 };
 
-// The agent definition decides the verdict critic-design returns. Were challenge to instruct it
-// to return GO / NO-GO, the agent definition and the spawn prompt would conflict and the
-// receiving side would hold a value it cannot interpret.
-test("challenge takes critic-design's verdict as it stands", async () => {
-  const definition = await readFile(agentPath, "utf8");
-  const verdicts = [...definition.matchAll(/^\| (confirmed|weakened|needs_revision) +\|/gm)].map(
+const phases = (doc) => ({
+  "Phase 1": doc.slice(doc.indexOf("## Phase 1"), doc.indexOf("## Phase 2")),
+  "Phase 2": doc.slice(doc.indexOf("## Phase 2")),
+});
+
+// Handing GO / NO-GO to the spawn step would conflict with the agent definition, and the receiving
+// side would hold a value it cannot interpret.
+test("challenge takes critic-design's verdict as it stands", () => {
+  const verdicts = [...agentDoc.matchAll(/^\| (confirmed|weakened|needs_revision) +\|/gm)].map(
     (m) => m[1],
   );
   assert.equal(verdicts.length, 3, `three agent verdicts are readable (${verdicts.join(", ")})`);
 
-  await eachLanguage((doc, lang) => {
+  return eachLanguage((doc, lang) => {
     for (const verdict of verdicts) {
-      assert.match(doc, new RegExp(verdict), `${lang}: it states how ${verdict} is handled`);
+      assert.match(doc, new RegExp(verdict), `${lang}: it names ${verdict}`);
     }
-    assert.doesNotMatch(
-      doc,
-      /verdict: "GO" \| "NO-GO"/,
-      `${lang}: it does not make the agent return GO / NO-GO`,
-    );
+    const [spawn, verdictStep] = phases(doc)["Phase 2"].split("### Step 2");
+    assert.ok(verdictStep, `${lang}: Phase 2 has a Step 2 bounding the spawn step`);
+    assert.doesNotMatch(spawn, /\bGO\b/, `${lang}: the spawn step hands over no GO / NO-GO`);
   });
 });
 
 // Writing weaknesses as string[] drops severity during the match and misjudges the duplicates.
-test("the shape of weaknesses matches the agent's Output", async () => {
+test("the shape of weaknesses matches the agent's Output", () => {
   assert.match(
-    await readFile(agentPath, "utf8"),
+    agentDoc,
     /Each item includes viewpoint, severity, finding, evidence/,
     "the agent enumerates what a weakness holds",
   );
-  await eachLanguage((doc, lang) => {
+  return eachLanguage((doc, lang) => {
     assert.doesNotMatch(doc, /weaknesses: string\[\]/, `${lang}: it is not written as string[]`);
     assert.match(doc, /severity/, `${lang}: it names what an item holds`);
   });
 });
 
-// A Pass listed but never spawned would leave the reader expecting an attack that never lands.
-test("the Phase 2 Pass table matches the steps", () =>
+// A Pass listed but never spawned leaves the reader counting on an attack that never lands.
+test("every Pass the table lists is a critic-design", () =>
   eachLanguage((doc, lang) => {
-    const phase2 = doc.slice(doc.indexOf("## Phase 2"));
-    const passes = phase2.match(/^\| critic-design \(/gm) || [];
-    assert.equal(passes.length, 2, `${lang}: the Passes are two critic-design (${passes.length})`);
-    assert.doesNotMatch(phase2, /^\| advisor /m, `${lang}: no Pass that never starts is listed`);
+    const table = phases(doc)
+      ["Phase 2"].split("\n\n")
+      .find((block) => block.startsWith("| Pass"));
+    assert.ok(table, `${lang}: the Pass table is readable`);
+    const rows = table.split("\n").slice(2);
+    assert.equal(rows.length, 2, `${lang}: the table lists two Passes (${rows.length})`);
+    for (const row of rows) {
+      assert.match(row, /^\| critic-design \(/, `${lang}: nothing spawns this Pass: ${row}`);
+    }
   }));
 
-// A handoff sitting outside Phase 1 reads as a stage of its own, and one placed after Phase 2
-// would leave the spawn step reading fields nothing has filled yet.
-test("the handoff is the closing Step of Phase 1", () =>
+// A handoff placed after Phase 2 would leave the spawn step reading fields nothing has filled yet.
+test("each Phase runs two Steps, and the handoff closes Phase 1", () =>
   eachLanguage((doc, lang) => {
-    const phase1 = doc.slice(doc.indexOf("## Phase 1"), doc.indexOf("## Phase 2"));
-    assert.match(phase1, /^\| outcome_ref /m, `${lang}: the handoff table sits inside Phase 1`);
-    const steps = [...phase1.matchAll(/^### Step (\d+):/gm)].map((m) => Number(m[1]));
-    assert.deepEqual(steps, [1, 2], `${lang}: Phase 1 runs Step 1 then Step 2`);
-    const phase2 = doc.slice(doc.indexOf("## Phase 2"));
-    assert.match(phase2, /`outcome_ref`/, `${lang}: Phase 2 reads the field the handoff defines`);
+    const bodies = phases(doc);
+    for (const [name, body] of Object.entries(bodies)) {
+      const steps = [...body.matchAll(/^### Step (\d+):/gm)].map((m) => Number(m[1]));
+      assert.deepEqual(steps, [1, 2], `${lang}: ${name} runs Step 1 then Step 2`);
+    }
+    assert.match(bodies["Phase 1"], /^\| outcome_ref /m, `${lang}: the handoff sits in Phase 1`);
+    assert.match(bodies["Phase 2"], /`outcome_ref`/, `${lang}: Phase 2 reads that field`);
   }));
 
 // Renaming a field on one side alone leaves the NO-GO rule matching nothing, while the schema and
@@ -80,7 +86,7 @@ test("the NO-GO rule names the VERDICT_SCHEMA fields it reads", () =>
     const schema = doc.match(/assumptions: \[\{ ([^}]+) \}\]/);
     assert.ok(schema, `${lang}: the schema literal is readable`);
     const fields = schema[1].split(",").map((f) => f.trim());
-    const rule = doc.slice(doc.indexOf(schema[0]) + schema[0].length);
+    const rule = doc.slice(doc.indexOf(schema[0]) + schema[0].length).split(/^## /m)[0];
     for (const field of ["irreversible", "underspecified"]) {
       assert.ok(fields.includes(field), `${lang}: the schema carries ${field}`);
       assert.match(rule, new RegExp(`\`${field}\``), `${lang}: the rule reads \`${field}\``);
