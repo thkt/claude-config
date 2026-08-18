@@ -19,15 +19,13 @@ argument-hint: "[file or directory]"
 
 ## Phase 1: 収集
 
-source は ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py を python3 で実行して列挙する。doc は ${CLAUDE_SKILL_DIR}/references/detection-targets.md のファイルパターンでスキャンする。どちらもどこを見るかは `$ARGUMENTS` で決まる。
+source は ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py を python3 で実行して列挙する。doc は ${CLAUDE_SKILL_DIR}/references/detection-targets.md のファイルパターンでスキャンする。source が目安の 20 件を超えるときは、Phase 2 の reviewer を並列起動する前に AskUserQuestion で絞り込みを確認する。選択肢はサブディレクトリ、上位 N 件、特定モジュールなど。どちらの系統もどこを見るかは下表が定める。
 
 | $ARGUMENTS   | source            | doc                       |
 | ------------ | ----------------- | ------------------------- |
 | なし         | リポジトリルート  | トップ階層と `docs/` 配下 |
 | ディレクトリ | そのパス          | その subtree              |
 | ファイル     | そのファイル 1 件 | 集めない                  |
-
-Phase 2 の reviewer を並列起動する前に、AskUserQuestion で絞り込みを確認する。確認が要るのは source が目安の 20 件を超えるときで、目安以下なら省く。選択肢はサブディレクトリ、上位 N 件、特定モジュールなど。
 
 ## Phase 2: 発掘
 
@@ -43,14 +41,12 @@ Phase 2 の reviewer を並列起動する前に、AskUserQuestion で絞り込�
 
 ### Step 1: source から
 
-各ソースファイルについて、その言語に合う reviewer subagent を Task で起動する。reviewer は以下に答える。
+コード内部と git 履歴の 2 系統から集める。git 履歴は `/census` 自身が `git log --follow --format='%h %s' -- <file>` を実行し、決定動詞を含む commit を抽出する。これを census が担うのは reviewer に git アクセスが無いため。決定動詞の一覧は ${CLAUDE_SKILL_DIR}/references/detection-targets.md にある。コード内部は各ソースファイルの言語に合う reviewer subagent を Task で起動し、次に答えさせる。
 
 - なぜこのファイルはこの粒度・形になっているか
 - コードから読み取れない不変条件や契約を担っているか
 - 根拠を記録したコメントや module-doc があるか
 - コメントが現状だけを述べ、将来の貢献者向けのルールを欠く `incomplete-contract` パターンに該当しないか
-
-reviewer は git にアクセスできない。そこで `/census` 自身が `git log --follow --format='%h %s' -- <file>` を実行し、決定動詞を含む commit を抽出する。決定動詞の一覧は ${CLAUDE_SKILL_DIR}/references/detection-targets.md にある。
 
 ### Step 2: doc から
 
@@ -89,10 +85,10 @@ REPORT="docs/audit/${STAMP}-dr-gaps.md"
 
 ## 引き継ぎ
 
-- challenge 後の `keep` 候補のみ表示し、各候補を `/dr` で起票するか `/issue` で単一の追跡 issue にまとめる
-- `downgrade` 候補はコメント強化タスクとしてリストする。`drop` 候補はレポートに記録するのみで後続にしない
-- DR 起草は `/dr`、既存 DR の drift スキャンは `/adrift` が担う。実コード修正と README 更新は範囲外
-- DR が既にあるリポジトリでは `/adrift` を先に実行し、drift で拾えないギャップをこの skill で発掘する
+- challenge 後の `keep` 候補のみ表示し、`/dr` で起票するか `/issue` で単一の追跡 issue にまとめる
+- `downgrade` はコメント強化タスクとしてリストし、`drop` はレポートに記録するのみで後続にしない
+- 既存 DR の drift スキャンは `/adrift` が担う。DR があるリポジトリでは先に `/adrift` を実行し、drift で拾えないギャップをこの skill で発掘する
+- 実コード修正と README 更新は範囲外
 
 ## 完了条件
 

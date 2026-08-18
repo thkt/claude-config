@@ -19,15 +19,13 @@ Every criterion lives in ${CLAUDE_SKILL_DIR}/references/decision-criteria.md. Th
 
 ## Phase 1: Collect
 
-List source by running ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py with python3. Scan for docs using the file patterns in ${CLAUDE_SKILL_DIR}/references/detection-targets.md. Where each one looks is set by `$ARGUMENTS`.
+List source by running ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py with python3. Scan for docs using the file patterns in ${CLAUDE_SKILL_DIR}/references/detection-targets.md. When source exceeds the guideline of 20, confirm narrowing via AskUserQuestion before the Phase 2 reviewer fan-out. Options are a subdirectory, top-N, or a specific module. Where each stream looks is set by the table below.
 
 | $ARGUMENTS  | source          | doc                   |
 | ----------- | --------------- | --------------------- |
 | none        | repository root | top-level and `docs/` |
 | a directory | that path       | that subtree          |
 | a file      | that file alone | nothing               |
-
-Confirm narrowing via AskUserQuestion before the Phase 2 reviewer fan-out. The prompt is needed when source exceeds the guideline of 20, and skipped at or below it. Options are a subdirectory, top-N, or a specific module.
 
 ## Phase 2: Mine
 
@@ -43,14 +41,12 @@ Record each finding under these five items.
 
 ### Step 1: From source
 
-For each source file, spawn the reviewer subagent matching its language via Task. The reviewer answers the following.
+Two streams feed this step, the code itself and the git history. Census runs `git log --follow --format='%h %s' -- <file>` over the history and extracts commits containing decision verbs, since the reviewer has no git access. The decision verb list is in ${CLAUDE_SKILL_DIR}/references/detection-targets.md. For the code, spawn the reviewer subagent matching each source file's language via Task and have it answer the following.
 
 - Why does this file have this granularity and shape
 - Does it carry invariants or contracts unreadable from the code
 - Is there a comment or module-doc recording the rationale
 - Does it match the `incomplete-contract` pattern, where a comment states only the present state and omits the rule for future contributors
-
-The reviewer has no git access. Census itself therefore runs `git log --follow --format='%h %s' -- <file>` and extracts commits containing decision verbs. The decision verb list is in ${CLAUDE_SKILL_DIR}/references/detection-targets.md.
 
 ### Step 2: From docs
 
@@ -90,9 +86,9 @@ REPORT="docs/audit/${STAMP}-dr-gaps.md"
 ## Handoff
 
 - Show only the post-challenge `keep` candidates, and file each via `/dr` or fold them into a single tracking issue via `/issue`
-- List `downgrade` candidates as comment-strengthening tasks. `drop` candidates are recorded in the report and carried no further
-- DR drafting goes to `/dr` and the drift scan against existing DRs to `/adrift`. Code changes and README updates are out of scope
-- In a repository that already has DRs, run `/adrift` first and use this skill for the gaps drift cannot reach
+- List `downgrade` as comment-strengthening tasks, and record `drop` in the report with nothing following
+- The drift scan against existing DRs goes to `/adrift`. In a repository that already has DRs, run `/adrift` first and use this skill for the gaps drift cannot reach
+- Code changes and README updates are out of scope
 
 ## Completion condition
 
