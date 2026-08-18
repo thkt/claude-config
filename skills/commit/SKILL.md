@@ -55,7 +55,6 @@ cat > "$TMPDIR/commit-msg.txt" << 'EOF'
 <message>
 EOF
 git commit -F "$TMPDIR/commit-msg.txt"
-mv "$TMPDIR/commit-msg.txt" ~/.Trash/ 2>/dev/null || true
 ```
 
 ## Error Handling

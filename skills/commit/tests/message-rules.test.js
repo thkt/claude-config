@@ -51,8 +51,7 @@ test("the sandbox-compatible commit uses $TMPDIR", () => {
     const block = doc.slice(doc.indexOf("```bash"), doc.indexOf("```", doc.indexOf("```bash") + 3));
     assert.match(block, /\$TMPDIR/, `${lang}: the temporary file sits under $TMPDIR`);
     assert.doesNotMatch(block, /\/tmp\/claude/, `${lang}: no literal /tmp remains`);
-    // A hook rejects rm. Cleanup goes through mv to ~/.Trash.
-    assert.match(block, /mv .* ~\/\.Trash\//, `${lang}: cleanup goes through mv`);
+    // A hook rejects rm, so reaching for it to clear the temporary file stops the commit.
     assert.doesNotMatch(block, /\brm\b/, `${lang}: rm is not used`);
   }
 });
