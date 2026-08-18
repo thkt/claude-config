@@ -4,18 +4,22 @@ Used by Phase 4 tagging / ranking / `critic-design` challenge. Passed whole to `
 
 ## incomplete-contract
 
-A finding is `incomplete-contract` when code carries a comment stating what is true but not what must remain true. It relies on the reader inferring "and this should stay this way," common with security invariants and design rationale. Since the missing forward-looking rule can only be supplied by a DR, treat it as a strong DR candidate regardless of `documented?` value.
+A finding is `incomplete-contract` when code carries a comment stating what is true but not what must remain true. It relies on the reader inferring "and this should stay this way," common with security invariants and design rationale. For example, an SSRF-safe HTTP client field is annotated "redirect disabled for SSRF" but carries no rule saying "future commands handling user URLs MUST use this client".
 
-For example, an SSRF-safe HTTP client field is annotated "redirect disabled for SSRF" but carries no rule saying "future commands handling user URLs MUST use this client".
+Only a DR can supply the missing forward-looking rule. Treat such a finding as a strong DR candidate regardless of `documented?` value.
 
 ## DR-worth rule of thumb
 
-Reserve DR for the two categories below, where no tool can hold the line. Lint config, the type system, and automated tests reject a mechanical violation as it happens, while DR text holds only when someone reads it. A statement-of-fact config (`deny.toml`, `Cargo.toml`) is itself the single source of truth, and copying it into a DR lets the two drift apart. Write that policy as a 1-2 line comment in the config block.
+Reserve DR for the two categories below, where no tool can hold the line. Lint config, the type system, and automated tests reject a mechanical violation as it happens, while DR text holds only when someone reads it.
 
 | Category                           | Example                                                         |
 | ---------------------------------- | --------------------------------------------------------------- |
 | An invariant no tool can enforce   | "field X must not be used with Y" when both carry the same type |
 | A public API compatibility promise | An exit code convention, a JSON output schema                   |
+
+## A statement-of-fact config is not a DR
+
+A statement-of-fact config (`deny.toml`, `Cargo.toml`) is itself the single source of truth, and copying it into a DR lets the two drift apart. Write that policy as a 1-2 line comment in the config block.
 
 ## impact + reversibility criteria
 
