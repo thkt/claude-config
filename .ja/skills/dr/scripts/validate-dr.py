@@ -26,16 +26,23 @@ REQUIRED_SECTIONS = (
 
 
 def count_options(lines: list[str]) -> int:
-    """## Considered Options 直下の bullet または番号付き item を数える。"""
-    in_options = False
+    """Considered Options 見出しの直下にある bullet または番号付き item を数える。"""
+    depth = 0
     count = 0
     for line in lines:
-        if re.match(r"^## Considered Options\s*$", line):
-            in_options = True
+        # セクション検査は h2 と h3 を通すので、数える側も揃える。h2 だけを見ると、同じ
+        # スクリプトが present と判定した見出しに対して 0 件を返す。
+        opening = re.match(r"^(#{2,3}) Considered Options\s*$", line)
+        if opening:
+            depth = len(opening.group(1))
             continue
-        if in_options and line.startswith("## "):
-            in_options = False
-        if in_options and re.match(r"^\s*([-*]|\d+\.)\s", line):
+        if not depth:
+            continue
+        heading = re.match(r"^(#+) ", line)
+        # 深い見出しは Considered Options の小見出しなので、その bullet も数に入れる。
+        if heading and len(heading.group(1)) <= depth:
+            break
+        if re.match(r"^\s*([-*]|\d+\.)\s", line):
             count += 1
     return count
 

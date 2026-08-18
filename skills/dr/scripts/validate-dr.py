@@ -26,16 +26,23 @@ REQUIRED_SECTIONS = (
 
 
 def count_options(lines: list[str]) -> int:
-    """Bullets or numbered items directly under ## Considered Options."""
-    in_options = False
+    """Bullets or numbered items directly under the Considered Options heading."""
+    depth = 0
     count = 0
     for line in lines:
-        if re.match(r"^## Considered Options\s*$", line):
-            in_options = True
+        # The section check accepts h2 or h3, so counting must too. Matching h2 alone reports
+        # zero options for a heading the same script has just called present.
+        opening = re.match(r"^(#{2,3}) Considered Options\s*$", line)
+        if opening:
+            depth = len(opening.group(1))
             continue
-        if in_options and line.startswith("## "):
-            in_options = False
-        if in_options and re.match(r"^\s*([-*]|\d+\.)\s", line):
+        if not depth:
+            continue
+        heading = re.match(r"^(#+) ", line)
+        # A deeper heading is a subsection of Considered Options, so its bullets still count.
+        if heading and len(heading.group(1)) <= depth:
+            break
+        if re.match(r"^\s*([-*]|\d+\.)\s", line):
             count += 1
     return count
 

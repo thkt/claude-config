@@ -12,9 +12,14 @@ const pair = (...parts) => ({ ja: at("ja", ...parts), en: at("en", ...parts) });
 const skills = pair("SKILL.md");
 const templates = pair("templates", "madr-template.md");
 const formats = pair("references", "madr-format.md");
-// The scripts are identical copies on both sides, so one path covers the pair.
-const preCheck = at("en", "scripts", "pre-check.py");
-const validate = at("en", "scripts", "validate-dr.py");
+const preChecks = pair("scripts", "pre-check.py");
+const validates = pair("scripts", "validate-dr.py");
+
+const outputKeys = (src) => {
+  const block = src.slice(src.indexOf("print(json.dumps({"));
+  return [...block.matchAll(/^\s{8}"(\w+)":/gm)].map((m) => m[1]);
+};
+const requiredSections = (src) => [...src.matchAll(/^\s{4}"([^"]+)",$/gm)].map((m) => m[1]);
 
 const eachLanguage = async (paths, check) => {
   for (const [lang, path] of Object.entries(paths)) {
@@ -44,11 +49,13 @@ const instructionFiles = async () => {
 // A key SKILL.md never names is a key the agent never reads. Without filename the auto-numbering
 // is thrown away and the agent invents a name of its own.
 test("SKILL.md uses pre-check.py's output keys", async () => {
-  const src = await readFile(preCheck, "utf8");
-  const block = src.slice(src.indexOf("print(json.dumps({"));
-  const keys = [...block.matchAll(/^\s{8}"(\w+)":/gm)].map((m) => m[1]);
+  const keys = outputKeys(await readFile(preChecks.en, "utf8"));
   assert.ok(keys.includes("filename"), `the output keys are readable (${keys.join(", ")})`);
   assert.ok(keys.length >= 6, `six or more keys are present (${keys.length})`);
+  // Only the prose differs between the two copies, so a key that moved on one side alone would
+  // leave the two skills documenting different JSON.
+  const ja = outputKeys(await readFile(preChecks.ja, "utf8"));
+  assert.deepEqual(ja, keys, "both copies return the same keys");
 
   // number rides inside filename, slug inside both, and status is always "ok", so none of the
   // three reaches the body.
@@ -134,9 +141,10 @@ test("every frontmatter field has a slot in the template", async () => {
 // With a required section missing from the template, every DR written fails at Validate with
 // missing_section.
 test("the required sections match between the template and validate-dr.py", async () => {
-  const src = await readFile(validate, "utf8");
-  const sections = [...src.matchAll(/^\s{4}"([^"]+)",$/gm)].map((m) => m[1]);
+  const sections = requiredSections(await readFile(validates.en, "utf8"));
   assert.ok(sections.length >= 4, `the required sections are readable (${sections.join(" / ")})`);
+  const ja = requiredSections(await readFile(validates.ja, "utf8"));
+  assert.deepEqual(ja, sections, "both copies require the same sections");
   await eachLanguage(templates, (doc, lang) => {
     for (const section of sections) {
       assert.match(doc, new RegExp(`^#{2,3} ${section}$`, "m"), `${lang}: the ${section} heading`);
