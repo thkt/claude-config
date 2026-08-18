@@ -11,7 +11,7 @@ argument-hint: "[file or directory]"
 
 ## 入力
 
-`$ARGUMENTS` は監査スコープを表す任意のパス。引数なしならリポジトリ全体、ファイルパスならそのファイル単体、ディレクトリパスならその subtree に絞る。スコープを限定したときは、レポート Summary の Scope 行に対象を記録する。
+`$ARGUMENTS` は監査スコープを表す任意のパス。何を集めるかは Phase 1 の表が定める。スコープを限定したときは、レポート Summary の Scope 行に対象を記録する。
 
 ## 判定基準
 
@@ -19,12 +19,13 @@ impact/reversibility、incomplete-contract の定義、DR 化価値の経験則�
 
 ## Phase 1: 収集
 
-source と doc の 2 系統を集める。ファイルが直接指定されたときは、そのファイル 1 件だけを source とし、doc は集めない。
+source は ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py を python3 で実行して列挙し、doc は ${CLAUDE_SKILL_DIR}/references/detection-targets.md のファイルパターンでスキャンする。どこを見るかは `$ARGUMENTS` で決まる。
 
-| 系統   | 集め方                                                                                                                                                        |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| source | ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py を python3 で実行する。引数はディレクトリ指定時そのパス、引数なし時はリポジトリルート                        |
-| doc    | ${CLAUDE_SKILL_DIR}/references/detection-targets.md のファイルパターンでスキャンする。ディレクトリ指定時はその subtree、引数なし時はトップ階層と `docs/` 配下 |
+| $ARGUMENTS   | source            | doc                       |
+| ------------ | ----------------- | ------------------------- |
+| なし         | リポジトリルート  | トップ階層と `docs/` 配下 |
+| ディレクトリ | そのパス          | その subtree              |
+| ファイル     | そのファイル 1 件 | 集めない                  |
 
 source が目安の 20 件を超えるなら、Phase 2 の reviewer を並列起動する前に AskUserQuestion で絞り込みを確認する。選択肢はサブディレクトリ、上位 N 件、特定モジュールなど。目安以下なら確認を省く。
 

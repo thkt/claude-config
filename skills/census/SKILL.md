@@ -11,7 +11,7 @@ argument-hint: "[file or directory]"
 
 ## Input
 
-`$ARGUMENTS` is an optional path naming the audit scope. No argument means the whole repository, a file path mines that file alone, and a directory path limits the scope to that subtree. When scoped to a path, record the target in the report Summary's Scope row.
+`$ARGUMENTS` is an optional path naming the audit scope. What gets collected is set by the Phase 1 table. When scoped to a path, record the target in the report Summary's Scope row.
 
 ## Criteria
 
@@ -19,12 +19,13 @@ Impact / reversibility, the incomplete-contract definition, the DR-worth rule of
 
 ## Phase 1: Collect
 
-Gather two streams, source and doc. When a file is named directly, that one file is the whole source stream and no docs are collected.
+List source by running ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py with python3, and scan for docs using the file patterns in ${CLAUDE_SKILL_DIR}/references/detection-targets.md. Where each one looks is set by `$ARGUMENTS`.
 
-| Stream | How to gather                                                                                                                                                              |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| source | Run ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py with python3. Pass the directory when one is given, the repository root when no argument is passed                    |
-| doc    | Scan for the file patterns in ${CLAUDE_SKILL_DIR}/references/detection-targets.md. With a directory target, scope to that subtree; with no argument, top-level and `docs/` |
+| $ARGUMENTS  | source          | doc                   |
+| ----------- | --------------- | --------------------- |
+| none        | repository root | top-level and `docs/` |
+| a directory | that path       | that subtree          |
+| a file      | that file alone | nothing               |
 
 When source exceeds the guideline of 20, confirm narrowing via AskUserQuestion before the Phase 2 reviewer fan-out. Options are a subdirectory, top-N, or a specific module. At or below the guideline, skip the prompt.
 
