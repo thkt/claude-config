@@ -25,7 +25,7 @@ Every judgment below is decided by the table, never by advisor confidence.
 
 | Subject               | Condition                                                                                                | Treatment when it holds                     | Treatment when it does not                                                       |
 | --------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------- |
-| A question            | Evidence settles it to one answer (one needing a choice, such as priority or scope, does not settle)     | subagents verify its answer in parallel     | Send it unverified to the unsettled pile                                         |
+| A question            | Evidence settles it to one answer. One needing a choice, such as priority or scope, does not settle      | subagents verify its answer in parallel     | Send it unverified to the unsettled pile                                         |
 | A verified fact       | The targeted state already holds, or it contradicts the proposal. advisor opinion alone does not meet it | Skip Phase 2 and put the grounds in the Why | Proceed on the claims that still hold                                            |
 | An unsettled question | It is irreversible or high-impact                                                                        | Ask it via AskUserQuestion. Cap 7 questions | Proceed on the advisor hypothesis as an assumption, and keep them all in the Why |
 
@@ -54,26 +54,26 @@ Land the Phase 1 material on two critic-design, adversarially probing for holes.
 
 ### Step 1: Spawn the two
 
-Both spawn prompts carry the target title, the handoff, and the path of any design document (`ARCHITECTURE.md` and the like). The table below decides what differs per Pass.
+Both spawn prompts carry the target title, the handoff, and the path of a design document like `ARCHITECTURE.md`. Omit the outcome Pass when no outcome is available. The table below decides what differs per Pass.
 
-| Pass                     | Target of the attack                                                       | Extra input                                      |
-| ------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------ |
-| critic-design (internal) | The proposal on its own terms. Surface hidden weaknesses and failure paths | None                                             |
-| critic-design (outcome)  | Outcome fit and non-goal / constraint breaches                             | `outcome_ref`. Omit this Pass when there is none |
+| Pass                     | Target of the attack                           | Extra input   |
+| ------------------------ | ---------------------------------------------- | ------------- |
+| critic-design (internal) | The proposal itself                            | None          |
+| critic-design (outcome)  | Outcome fit and non-goal / constraint breaches | `outcome_ref` |
 
 1. Spawn two critic-design via Agent in parallel. subagent_type is critic-design
 2. Wait for both. Each returns what its agent definition specifies: verdict (confirmed / weakened / needs_revision) and weaknesses (items carrying viewpoint, severity, finding, evidence, disconfirming probe)
 
 ### Step 2: Reach the verdict
 
-Reconcile the weaknesses, drop the overlap, and aggregate the assumptions into VERDICT_SCHEMA `{ verdict, assumptions: [{ text, irreversible, underspecified }] }`. Apply the table below top to bottom and take the first treatment that matches.
+Reconcile the weaknesses, drop the overlap, and aggregate the assumptions into VERDICT_SCHEMA `{ verdict, assumptions: [{ text, irreversible, underspecified }] }`. Apply the table below top to bottom and take the verdict of the first row that matches.
 
-| Condition                                                                         | Treatment                                                                         |
-| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| An `irreversible` or `underspecified` assumption remains, or assumptions exceed 7 | NO-GO. Never hand-override it back to GO, whatever verdict critic-design returned |
-| Either pass returned needs_revision                                               | NO-GO                                                                             |
-| Both passes returned confirmed                                                    | GO                                                                                |
-| Anything else                                                                     | Conditional GO, with the condition riding on the Verdict line                     |
+| Condition                                                                         | Verdict                             |
+| --------------------------------------------------------------------------------- | ----------------------------------- |
+| An `irreversible` or `underspecified` assumption remains, or assumptions exceed 7 | NO-GO. Never hand-override it to GO |
+| Either pass returned needs_revision                                               | NO-GO                               |
+| Both passes returned confirmed                                                    | GO                                  |
+| Anything else                                                                     | Conditional GO                      |
 
 ## Output
 

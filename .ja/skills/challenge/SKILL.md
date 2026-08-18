@@ -25,7 +25,7 @@ argument-hint: "[proposal file | description]"
 
 | 対象         | 条件                                                                               | 満たすときの扱い                      | 満たさないときの扱い                           |
 | ------------ | ---------------------------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------- |
-| 論点         | 証拠で答えが 1 つに決まる (優先順位やスコープのように選択が要るものは決まらない)   | subagent が並列で答えを確かめる       | 検証せず未決へ回す                             |
+| 論点         | 証拠で答えが 1 つに決まる。優先順位やスコープのように選択が要るものは決まらない    | subagent が並列で答えを確かめる       | 検証せず未決へ回す                             |
 | 確かめた事実 | 狙う状態が既に成立している、または提案と矛盾する。advisor の見解だけでは満たさない | Phase 2 を飛ばし、根拠を Why に据える | 食い違わなかった主張で続ける                   |
 | 未決の論点   | 後戻りできない、または影響が大きい                                                 | AskUserQuestion で聞く。上限 7 問     | advisor の仮説を仮定として進め、Why に全件残す |
 
@@ -54,26 +54,26 @@ Phase 1 の素材を critic-design 2 体に敵対的に当て、穴を探す。
 
 ### Step 1: 2 体を起動する
 
-両方の起動プロンプトに、対象のタイトル、引き継ぎ、設計ドキュメント (`ARCHITECTURE.md` など) のパスを入れる。Pass ごとに違う部分は下表が定める。
+両方の起動プロンプトに、対象のタイトル、引き継ぎ、`ARCHITECTURE.md` のような設計ドキュメントのパスを入れる。outcome を確定できなければ outcome の Pass は省略する。Pass ごとに違う部分は下表が定める。
 
-| Pass                    | 攻撃対象                                        | 追加の入力                                  |
-| ----------------------- | ----------------------------------------------- | ------------------------------------------- |
-| critic-design (内部)    | 提案そのもの。隠れた弱点と破綻の経路を出す      | なし                                        |
-| critic-design (outcome) | outcome への適合と non-goal / constraint の侵害 | `outcome_ref`。無ければこの Pass を省略する |
+| Pass                    | 攻撃対象                                        | 追加の入力    |
+| ----------------------- | ----------------------------------------------- | ------------- |
+| critic-design (内部)    | 提案そのもの                                    | なし          |
+| critic-design (outcome) | outcome への適合と non-goal / constraint の侵害 | `outcome_ref` |
 
 1. critic-design を Agent で 2 体並列に起動する。subagent_type は critic-design
 2. 両者の完了を待つ。返り値は agent 定義どおり verdict (confirmed/weakened/needs_revision) と weaknesses (viewpoint、severity、finding、evidence、disconfirming probe を持つ項目の配列)
 
 ### Step 2: 判定する
 
-弱点を突き合わせて重複を除き、仮定を VERDICT_SCHEMA `{ verdict, assumptions: [{ text, irreversible, underspecified }] }` に集約する。判定は下表を上から順に当て、最初に該当した扱いを採る。
+弱点を突き合わせて重複を除き、仮定を VERDICT_SCHEMA `{ verdict, assumptions: [{ text, irreversible, underspecified }] }` に集約する。下表を上から順に当て、最初に該当した行の判定を採る。
 
-| 条件                                                                       | 扱い                                                                 |
-| -------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `irreversible` か `underspecified` の仮定が残る、または仮定が 7 件を超える | NO-GO。critic-design の verdict に関わらず、手動で GO に上書きしない |
-| 片方でも needs_revision を返した                                           | NO-GO                                                                |
-| 両方 confirmed を返した                                                    | GO                                                                   |
-| それ以外                                                                   | 条件付き GO。条件を Verdict 行に併記する                             |
+| 条件                                                                       | 判定                            |
+| -------------------------------------------------------------------------- | ------------------------------- |
+| `irreversible` か `underspecified` の仮定が残る、または仮定が 7 件を超える | NO-GO。手動で GO に上書きしない |
+| 片方でも needs_revision を返した                                           | NO-GO                           |
+| 両方 confirmed を返した                                                    | GO                              |
+| それ以外                                                                   | 条件付き GO                     |
 
 ## 出力
 
