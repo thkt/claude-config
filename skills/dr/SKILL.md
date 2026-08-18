@@ -62,7 +62,7 @@ The frontmatter is optional. When it is written, it uses the fields below.
 
 When the status is proposed, edit the body directly and run Validate and Index. From accepted onward, replace it with a new DR through the steps below. Only `status` and `date` change in the old DR; the decision content stays.
 
-1. Create the new DR through the process
+1. Create the new DR through the process. The Adoption Gate does not apply, since the decision it replaces is already on record
 2. Cite the predecessor in the new DR's More Information (e.g. `Supersedes DR-NNNN`)
 3. In the old DR, change `status:` to `superseded by DR-NNNN`
 4. Update the old DR's `date:` to today

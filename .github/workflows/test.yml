@@ -41,6 +41,7 @@ jobs:
       - name: Node tests
         run: >
           node --test
+          "tests/*.test.js"
           "agents/**/tests/*.test.js"
           "hooks/**/tests/*.test.js"
           "skills/**/tests/*.test.js"

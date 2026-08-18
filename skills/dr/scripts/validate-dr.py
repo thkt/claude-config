@@ -53,7 +53,6 @@ def lint_check(path: Path) -> tuple[str, str]:
     candidates: list[str | None] = [
         os.environ.get("MARKDOWNLINT_CONFIG"),
         ".markdownlint.json",
-        str(Path.home() / ".claude" / ".markdownlint.json"),
     ]
     config = next((c for c in candidates if c and Path(c).is_file()), None)
     cmd = ["markdownlint-cli2"] + (["--config", config] if config else []) + [str(path)]

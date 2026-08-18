@@ -62,7 +62,7 @@ frontmatter は任意。書くなら下表のフィールドを使う。
 
 status が proposed なら本文を直接編集し、Validate と Index を実行する。accepted 以降は次の手順で新しい DR へ置き換える。旧 DR で変えるのは `status` と `date` だけで、決定内容は保持する。
 
-1. プロセスで新規 DR を作成する
+1. プロセスで新規 DR を作成する。置き換える決定は既に記録済みなので、採用ゲートは通さない
 2. 新規 DR の More Information で先行 DR を引用する (例: `Supersedes DR-NNNN`)
 3. 旧 DR の `status:` を `superseded by DR-NNNN` に変更する
 4. 旧 DR の `date:` を当日に更新する
