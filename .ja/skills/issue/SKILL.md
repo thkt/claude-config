@@ -82,8 +82,8 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 ## Phase 2: 推敲
 
 1. ${CLAUDE_SKILL_DIR}/references/prose-review.md と、本文言語に対応する空句ファイルの基準で本文をインライン精査する。空句ファイルは日本語なら `phrases.ja.md`、英語なら `phrases.en.md`。Phase 3 で移設する Plan 節は対象外とし、手を入れない
-2. 会話に challenge の verdict と findings があれば、本文に折り込むべき指摘だけ 1 回反映する。verdict と findings 自体は本文に入れない
-3. plan 下書きがあれば、前項までの編集を終えた本文を、選んだ plan 下書き 1 つと ${CLAUDE_SKILL_DIR}/references/duplication-match.md の手順で照合する。会話に `/think` のものがあればそれを、無ければ `.claude/workspace/planning/` の `*.plan.md` から issue のタイトルに一致するもののうち更新時刻が最も新しい 1 件を選ぶ。plan 下書きが無ければ、この照合を省く
+2. 会話に challenge の verdict と findings があれば、折り込むべき指摘だけを 1 回反映する。verdict と findings 自体は本文に入れない
+3. plan 下書きがあれば、前項までの編集を終えた本文を、選んだ plan 下書き 1 つと ${CLAUDE_SKILL_DIR}/references/duplication-match.md の手順で照合する。会話に `/think` のものがあればそれを選ぶ。無ければ `.claude/workspace/planning/` の `*.plan.md` のうち issue のタイトルに一致し、更新時刻が最も新しい 1 件を選ぶ。plan 下書きが無ければ、この照合を省く
 
 ## Phase 3: Plan 移設
 
@@ -95,4 +95,4 @@ issue の Why を、本文起草の前に確立する。1 メッセージにつ�
 2. 本文を一時ファイルに書き出し、${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <テンプレート選択で選んだ骨格ファイル> <title> <body-file> を実行する。エラーは ${CLAUDE_SKILL_DIR}/references/validation-errors.md に従って対処し、直したら再実行する
 3. exit 0 になったらラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票し、出力から Issue URL を取得する。`<path>` は変数でなくリテラルの絶対パスで書く。hook は変数を展開できず、起票が止まる。`priority:*` は必須で、影響度に応じて critical、high、medium、low から選ぶ。それ以外のラベルはリポジトリの慣例に合わせる
 4. Phase 1 で分割を承認していれば、起票した epic 番号を添えて `/slice` の実行を提案する。自動では起動しない
-5. 分割しない issue には次の手を提案する。起票済み issue の渡し先は影響範囲で決め、1〜3 ファイルに収まる修正なら `/fix <番号>`、4 ファイル以上または新機能なら build workflow に番号を渡す。build workflow は `## Plan` 節の無い issue を no-plan で差し戻すので、無ければ `/think` と `/issue <番号>` で用意してから渡す。渡す前の検分には `/qualify` を使う。いずれも自動では起動しない
+5. 分割しない issue には次の手を提案する。渡し先は影響範囲で決める。1〜3 ファイルに収まる修正なら `/fix <番号>` へ渡す。4 ファイル以上または新機能なら build workflow に番号を渡す。build workflow は `## Plan` 節の無い issue を no-plan で差し戻す。節が無ければ `/think` と `/issue <番号>` で先に用意する。渡す前の検分には `/qualify` を使う。いずれも自動では起動しない

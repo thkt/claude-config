@@ -38,17 +38,17 @@ Models do not generalize an instruction from one item to another, nor do they in
 
 Do the extraction the reader would otherwise have to do.
 
-| Rule                            | Directive                                                                                                                                                     |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Length ceilings                 | Cap a sentence at 25 words and a paragraph at 150. Split at subject-predicate pairs, or turn it into a table or list                                          |
-| Lead with the center            | Put the section's most important claim in its first sentence. Do not make the reader extract the point                                                        |
-| Emphasize only the center       | Emphasize the central claim alone. Emphasizing several places leaves the reader unable to tell which one is central                                           |
-| No forward references           | Do not write "as described below" or "see below for details". Write it in place, or move it behind a link                                                     |
-| Split condition from conclusion | Do not put a condition and a conclusion in one sentence. Write the conclusion first and the condition in the next sentence                                    |
-| No nested clauses               | Do not nest clauses. Split into short affirmative sentences                                                                                                   |
-| One action per step line        | Write each step as one sentence, and start each line with a verb                                                                                              |
-| No return trips to the body     | Write each table row so it reads on its own                                                                                                                   |
-| Intent, operation, judgment     | Do not mix the three in one section. Put the operation in steps and the judgment in a condition-and-treatment table, and lead with the intent in one sentence |
+| Rule                            | Directive                                                                                                                                                                                                                                                      |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Length ceilings                 | Cap a sentence at 25 words and a paragraph at 150. Split at subject-predicate pairs, or turn it into a table or list. A verbatim element the writer cannot shorten, such as a path, a command, an identifier, or a file:line, does not count toward the length |
+| Lead with the center            | Put the section's most important claim in its first sentence. Do not make the reader extract the point                                                                                                                                                         |
+| Emphasize only the center       | Emphasize the central claim alone. Emphasizing several places leaves the reader unable to tell which one is central                                                                                                                                            |
+| No forward references           | Do not write "as described below" or "see below for details". Write it in place, or move it behind a link                                                                                                                                                      |
+| Split condition from conclusion | Do not put a condition and a conclusion in one sentence. Write the conclusion first and the condition in the next sentence                                                                                                                                     |
+| No nested clauses               | Do not nest clauses. Split into short affirmative sentences                                                                                                                                                                                                    |
+| One action per step line        | Write each step as one sentence, and start each line with a verb                                                                                                                                                                                               |
+| No return trips to the body     | Write each table row so it reads on its own                                                                                                                                                                                                                    |
+| Intent, operation, judgment     | Do not mix the three in one section. Put the operation in steps and the judgment in a condition-and-treatment table, and lead with the intent in one sentence                                                                                                  |
 
 ## Let the Reader Predict the Next Sentence
 

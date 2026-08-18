@@ -4,7 +4,7 @@ When /issue classifies the request as bug, it generates the title and body from 
 
 ## Template
 
-`{...}` is replaced with content at generation. Sections marked `(optional)` are omitted, heading and all, when there is nothing to say. Fixed items (the reproduction, expected/actual) stay unmarked; tentative items (a suspected cause, an inferred fix direction) carry a `(tentative: <action at pickup>)` mark (criteria in SKILL.md § Confidence marking).
+`{...}` is replaced with content at generation. Sections marked `(optional)` are omitted, heading and all, when there is nothing to say. Fixed items (the reproduction, expected/actual) stay unmarked. Tentative items (a suspected cause, an inferred fix direction) carry a `(tentative: <action at pickup>)` mark. The criteria live in SKILL.md § Confidence marking.
 
 ```markdown
 ## What & Why
