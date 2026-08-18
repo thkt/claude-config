@@ -25,9 +25,9 @@ Substitute `{...}` from findings. For enum cells, pick the matching value from t
 
 ### {file} ({N} lines)
 
-| #   | Line   | Decision  | Documented?        | Incomplete-contract? | Impact    | Reversibility       |
-| --- | ------ | --------- | ------------------ | -------------------- | --------- | ------------------- |
-| 1   | {line} | {summary} | Yes / Partial / No | Yes / No             | H / M / L | high / medium / low |
+| #   | Line   | Decision  | Evidence   | Documented?        | Incomplete-contract? | Impact    | Reversibility       |
+| --- | ------ | --------- | ---------- | ------------------ | -------------------- | --------- | ------------------- |
+| 1   | {line} | {summary} | {evidence} | Yes / Partial / No | Yes / No             | H / M / L | high / medium / low |
 
 No net-new decisions in {files}.
 

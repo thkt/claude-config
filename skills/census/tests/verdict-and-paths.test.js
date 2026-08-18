@@ -111,6 +111,18 @@ test("the criteria path handed to a subagent names this skill's own copy", async
   }
 });
 
+// Phase 2 hands the recording format to the template, so a column dropped there would leave
+// the mining step with no shape to fill.
+test("the template carries the columns the mining step records", async () => {
+  for (const [lang, path] of Object.entries(templates)) {
+    const doc = await readFile(path, "utf8");
+    const header = doc.split("\n").find((line) => line.includes("| Decision  |")) || "";
+    for (const col of ["Line", "Decision", "Evidence", "Documented?", "Incomplete-contract?"]) {
+      assert.ok(header.includes(col), `${lang}: Source File Decisions carries ${col}`);
+    }
+  }
+});
+
 // MARKDOWN.md § Do not forbids a paragraph immediately after a table.
 test("the tally row sits before the DR Promotion Candidates table", async () => {
   for (const [lang, path] of Object.entries(templates)) {

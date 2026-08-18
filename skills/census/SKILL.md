@@ -29,15 +29,7 @@ List source by running ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py with pyt
 
 ## Phase 2: Mine
 
-Record each finding under these five items.
-
-| Item                   | Value                                                                       |
-| ---------------------- | --------------------------------------------------------------------------- |
-| Location               | `file:line`                                                                 |
-| Decision summary       | One line                                                                    |
-| Evidence               | A comment, a name, a module-doc, or a commit. A commit reads `commit <sha>` |
-| `documented?`          | Yes / Partial / No                                                          |
-| `incomplete-contract?` | Yes / No                                                                    |
+Record findings under the table columns in ${CLAUDE_SKILL_DIR}/templates/report-template.md, Source File Decisions for source and Prose Document Decisions for docs. Evidence is a comment, a name, a module-doc, or a commit, and a commit-derived one reads `commit <sha>`.
 
 ### Step 1: From source
 
@@ -89,9 +81,10 @@ REPORT="docs/audit/${STAMP}-dr-gaps.md"
 
 ## Handoff
 
-- Show only the post-challenge `keep` candidates, and file each via `/dr` or fold them into a single tracking issue via `/issue`
-- List `downgrade` as comment-strengthening tasks, and record `drop` in the report with nothing following
-- The drift scan against existing DRs goes to `/adrift`. In a repository that already has DRs, run `/adrift` first and use this skill for the gaps drift cannot reach
+- File `keep` via `/dr`, or fold them into a single tracking issue via `/issue`. Only `keep` is shown
+- List `downgrade` as comment-strengthening tasks
+- Record `drop` in the report with nothing following
+- The drift scan against existing DRs goes to `/adrift`. In a repository that already has DRs, run it first and use this skill for the gaps drift cannot reach
 - Code changes and README updates are out of scope
 
 ## Completion condition
@@ -103,5 +96,6 @@ Finish only when all of the following hold. Record the reason in the report for 
 | Report      | `docs/audit/<YYYY-MM-DD>-<HHMMSS>-dr-gaps.md` exists                |
 | Source file | Every reviewed file is accounted for                                |
 | Document    | Every scanned document has an extraction section                    |
+| Evidence    | Every finding carries an Evidence entry                             |
 | Tags        | Every candidate has impact + reversibility                          |
 | Candidates  | DR promotion candidates listed at the end with a one-line rationale |

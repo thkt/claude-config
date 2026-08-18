@@ -29,15 +29,7 @@ source は ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py を python3 で実�
 
 ## Phase 2: 発掘
 
-各検出事項を次の 5 項目で記録する。
-
-| 項目                   | 値                                                                          |
-| ---------------------- | --------------------------------------------------------------------------- |
-| 位置                   | `file:line`                                                                 |
-| 判断概要               | 1 行                                                                        |
-| 根拠                   | コメント、命名、module-doc、commit のいずれか。commit 由来は `commit <sha>` |
-| `documented?`          | Yes / Partial / No                                                          |
-| `incomplete-contract?` | Yes / No                                                                    |
+検出事項は ${CLAUDE_SKILL_DIR}/templates/report-template.md の表の列で記録する。source 由来は Source File Decisions、doc 由来は Prose Document Decisions。根拠はコメント、命名、module-doc、commit のいずれかで、commit 由来は `commit <sha>` と書く。
 
 ### Step 1: source から
 
@@ -89,9 +81,10 @@ REPORT="docs/audit/${STAMP}-dr-gaps.md"
 
 ## 引き継ぎ
 
-- challenge 後の `keep` 候補のみ表示し、`/dr` で起票するか `/issue` で単一の追跡 issue にまとめる
-- `downgrade` はコメント強化タスクとしてリストし、`drop` はレポートに記録するのみで後続にしない
-- 既存 DR の drift スキャンは `/adrift` が担う。DR があるリポジトリでは先に `/adrift` を実行し、drift で拾えないギャップをこの skill で発掘する
+- `keep` は `/dr` で起票するか `/issue` で単一の追跡 issue にまとめる。表示するのは `keep` のみ
+- `downgrade` はコメント強化タスクとしてリストする
+- `drop` はレポートに記録するのみで後続にしない
+- 既存 DR の drift スキャンは `/adrift` が担う。DR があるリポジトリでは先に実行し、drift で拾えないギャップをこの skill で発掘する
 - 実コード修正と README 更新は範囲外
 
 ## 完了条件
@@ -103,5 +96,6 @@ REPORT="docs/audit/${STAMP}-dr-gaps.md"
 | レポート       | `docs/audit/<YYYY-MM-DD>-<HHMMSS>-dr-gaps.md` が存在 |
 | ソースファイル | レビューした各ファイルを記載                         |
 | ドキュメント   | スキャンした各ドキュメントに抽出セクション           |
+| 根拠           | 各検出事項に Evidence が入る                         |
 | タグ           | 各候補に impact と reversibility が付与              |
 | DR 化候補      | 末尾に一行の根拠付きでリスト                         |
