@@ -249,3 +249,33 @@ test("T-013 both languages anchor the skeleton on the same heading", async () =>
     }
   }
 });
+
+// The four templates are the skeleton Phase 4 validates the body against, so a body built from a
+// template's own required sections has to pass. The other cases here use synthetic skeletons; this
+// one runs the real files, which is what an edit to a template actually breaks.
+const TYPES = ["bug", "chore", "docs", "feature"];
+
+test("T-014 a body built from each template's own required sections passes validation", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  for (const type of TYPES) {
+    const path = join(root, "skills", "issue", "templates", `${type}.md`);
+    const src = await readFile(path, "utf8");
+    const after = src.slice(src.search(/^## Template$/m));
+    const fence = after.match(/```(?:markdown)?\n([\s\S]*?)```/)[1];
+    let optional = false;
+    const body = fence
+      .split("\n")
+      .filter((line) => {
+        const heading = line.match(/^## (.+?)\s*$/);
+        if (heading) optional = /\((optional|任意)\)$/.test(heading[1]);
+        return !optional;
+      })
+      .join("\n")
+      .replace(/\{[^}]*\}/g, "x");
+    const title = `[${type[0].toUpperCase()}${type.slice(1)}] sample`;
+    const { status, out } = runValidate(path, title, `${body}\n`);
+    assert.deepEqual(out.errors, [], `${type}: a body from its own skeleton raises no error`);
+    assert.equal(status, 0, `${type}: it exits 0`);
+  }
+});
