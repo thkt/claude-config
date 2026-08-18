@@ -30,15 +30,15 @@ argument-hint: "[decision title]"
 
 ## プロセス
 
-| Step | 工程       | 内容                                                                                                                                                                                                                    |
-| ---- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Pre-Check  | ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE" を実行する。`similar_drs` が非空なら続行前にユーザーへ確認する。DR は返り値の `dr_dir` 配下に `filename` の名前で書き、`number` と `date` を本文と frontmatter に写す |
-| 2    | Type       | 決定の意図で決定タイプを判定し、推奨トピックを選ぶ (§ 決定タイプ)                                                                                                                                                       |
-| 3    | References | プロジェクトドキュメント、issue、外部リソースを収集する                                                                                                                                                                 |
-| 4    | Draft      | ${CLAUDE_SKILL_DIR}/templates/madr-template.md を写し、収集した内容で埋める (§ YAML Frontmatter)                                                                                                                        |
-| 5    | Challenge  | 既存 DR の原則に例外を作る、または既存 DR を supersede する場合だけ `/challenge` を通し、verdict と成立条件を More Information に 1 行で残す                                                                            |
-| 6    | Validate   | ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE" を実行する。exit 0 かつ `errors[]` が空で合格。`warnings[]` は参考                                                                                                |
-| 7    | Index      | ${CLAUDE_SKILL_DIR}/scripts/update-index.py を実行し、index README を再生成する                                                                                                                                         |
+| Step | 工程       | 内容                                                                                                                                                                             |
+| ---- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Pre-Check  | ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE" を実行する。返り値は `number`、`date`、`dr_dir`、`filename`、`similar_drs`                                                     |
+| 2    | Type       | 決定の意図で決定タイプを判定し、推奨トピックを選ぶ (§ 決定タイプ)                                                                                                                |
+| 3    | References | プロジェクトドキュメント、issue、外部リソースを収集する                                                                                                                          |
+| 4    | Draft      | ${CLAUDE_SKILL_DIR}/templates/madr-template.md を `dr_dir` 配下に `filename` で写し、収集した内容で埋める。`number` と `date` を本文と frontmatter に入れる (§ YAML Frontmatter) |
+| 5    | Challenge  | 既存 DR の原則に例外を作る、または既存 DR を supersede する場合だけ `/challenge` を通し、verdict と成立条件を More Information に 1 行で残す                                     |
+| 6    | Validate   | ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE" を実行する。exit 0 かつ `errors[]` が空で合格。`warnings[]` は参考                                                         |
+| 7    | Index      | ${CLAUDE_SKILL_DIR}/scripts/update-index.py を実行し、index README を再生成する                                                                                                  |
 
 ## 決定タイプ
 
