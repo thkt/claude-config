@@ -14,7 +14,7 @@ The order to work in when bringing an existing skill back in line with the conve
 | 1 Machine    | Reference notation, `~` or `$HOME` hardcoded paths, heading vocabulary, body and reference line counts | grep and a line count                 |
 | 2 Resolution | Where `${CLAUDE_SKILL_DIR}` lands, references into rules, template columns                             | Resolve each path and check it exists |
 | 3 Fact       | Whether a stated premise still holds                                                                   | Read the current thing it names       |
-| 4 Structure  | Phase ordering, the same operation living in two places                                                | Draw the flow, then read through      |
+| 4 Structure  | Phase ordering, a duplicated operation, where a branch rejoins                                         | Draw the flow before and after        |
 | 5 Prose      | Intent / operation / judgment split, where prose sits, one sentence carrying several actions           | Read through                          |
 | 6 Deletion   | Duplicated instructions, self-description, dead code, history                                          | Read through                          |
 | 7 Pinning    | Guard the couplings you fixed with a test                                                              | Break it and confirm it fails         |
@@ -27,7 +27,7 @@ Stage 2 checks against plugin distribution. `~/.claude/skills/<name>/` names the
 
 Stage 3 doubts every premise written as a reason. Agent tools, CLI behavior, and harness variable expansion all drift from what was true when the line was written. Leave out a reason you cannot verify and keep the instruction alone.
 
-Stage 4 starts by drawing the flow from input to output. Branches, joins, and how many times one operation appears do not show up when reading the phases in order. Once the drawing confirms them, order phases by step rather than by stream. Splitting phases per input kind makes the numbering cross streams and sends the reader back and forth between two flows. When one operation appears in several phases, pull it into a phase of its own. Show the reworked drawing to the user, naming where the complexity came from and which phases collapse, before rewriting anything.
+Stage 4 starts by drawing the flow from input to output. Branches, joins, and how many times one operation appears do not show up when reading the phases in order. Once the drawing confirms them, order phases by step rather than by stream. Splitting phases per input kind makes the numbering cross streams and sends the reader back and forth between two flows. When one operation appears in several phases, pull it into a phase of its own. Show the reworked drawing to the user, naming where the complexity came from and which phases collapse, before rewriting anything. Draw it again once the rewrite lands. An edit that folds rows or steps together means to cut the line count alone, yet it drops a path, so count on the drawing whether every state still has a way in and a way out. Tests fail on a mismatched phase number or a stale reference, and they do not fail on a missing path.
 
 Stage 5 keeps three things apart in one section. Operations go in numbered steps, judgment in a condition-and-treatment table, and the intent leads in one sentence. Prose collects before tables and bullets.
 
