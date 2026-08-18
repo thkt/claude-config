@@ -21,7 +21,7 @@ Typically a single page, at most two. Capture the decision, its context, and sig
 | Brevity          | Single page preferred. Link out for supporting material |
 | Markdown         | Lives in the repository, diffable alongside code        |
 
-## Required Content Elements
+## The content elements Fowler names
 
 | Element      | Detail                                            |
 | ------------ | ------------------------------------------------- |

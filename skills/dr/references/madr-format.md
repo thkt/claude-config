@@ -1,14 +1,6 @@
 # MADR: Markdown Architectural Decision Records
 
-MADR is a streamlined markdown template for recording decisions. This file assumes v4. The A expanded to Any in 2022 and back to Architectural in 2024, yet upstream allowed recording any decision throughout; what moved was the focus. This skill steps off the wobbling name by saying DR, covering decisions beyond architecture.
-
-## Key Points
-
-| Aspect      | Convention                                                          |
-| ----------- | ------------------------------------------------------------------- |
-| Granularity | One markdown file per decision                                      |
-| Filename    | `nnnn-title-with-dashes.md`. 4-digit number, lowercase dashed title |
-| Location    | `docs/decisions/`. The MADR default, fixed by this skill            |
+MADR is a streamlined markdown template for recording decisions, one file per decision. This file assumes v4. The A expanded to Any in 2022 and back to Architectural in 2024, yet upstream allowed recording any decision throughout; what moved was the focus. This skill steps off the wobbling name by saying DR, covering decisions beyond architecture.
 
 ## Required Sections
 
