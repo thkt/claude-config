@@ -234,3 +234,18 @@ test("T-012 a repository .md template is read as the skeleton and does not close
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// skeleton_sections anchors on the literal "## Template" heading, so that heading is a parse
+// anchor rather than prose and stays identical on both sides per MIRROR.md. Translating it on the
+// Japanese side made the fallback branch read `テンプレート` as a section name of its own.
+test("T-013 both languages anchor the skeleton on the same heading", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  for (const type of ["bug", "chore", "docs", "feature"]) {
+    for (const prefix of ["", ".ja"]) {
+      const path = join(root, prefix, "skills", "issue", "templates", `${type}.md`);
+      const doc = await readFile(path, "utf8");
+      assert.match(doc, /^## Template$/m, `${prefix || "en"}/${type}: the skeleton anchor`);
+    }
+  }
+});

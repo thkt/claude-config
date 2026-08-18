@@ -2,7 +2,7 @@
 
 /scribe が Phase 1 で、`docs/wiki/README.md` が無いときに以下の内容をそのまま書き出す。置き換える箇所は無い。
 
-## テンプレート
+## Template
 
 ```markdown
 # docs/wiki

@@ -2,7 +2,7 @@
 
 `/think` が Phase 3 の下書き `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md` をこの骨格で生成する。`/issue` は `## Plan` と `## Backlog candidates` の 2 節をそのまま issue の Plan 節へ移設する。
 
-## テンプレート
+## Template
 
 `{...}` は生成時に内容へ置き換える。下書きは次の 2 節だけで構成し、見出しと箇条書きの形を崩さない。build workflow は Plan 節を LLM 抽出で build.js の EXTRACT_SCHEMA へ写し、U-NNN/T-NNN id の決定論クロスチェックで欠落と捏造を止める。骨格を崩すと、この抽出も崩れる。機械用の隠し block は置かない。
 

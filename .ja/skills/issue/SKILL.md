@@ -55,7 +55,7 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 | ------------------------------ | --------------------------------------------------------------------------------- |
 | リポジトリの `<type>.yml`      | 各 `body` 要素の `attributes.label`。必須は `validations.required` が真のものだけ |
 | リポジトリの `<type>.md`       | 先頭 frontmatter の `name`/`about`/`labels`/`title` を外した本文                  |
-| skill の `templates/<type>.md` | `## テンプレート` 内のコードフェンス                                              |
+| skill の `templates/<type>.md` | `## Template` 内のコードフェンス                                              |
 
 ### 分割判定
 
