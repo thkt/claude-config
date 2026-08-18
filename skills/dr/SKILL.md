@@ -11,7 +11,7 @@ argument-hint: "[decision title]"
 
 ## Input
 
-Take the decision title from `$ARGUMENTS` and shape it into a specific action like "Adopt X for Y". Keep it 5-64 characters and free of `/:*?"<>|`. If empty, confirm New decision / Update existing via AskUserQuestion. For New decision ask for the title; for Update existing, list recent DRs in `<git-root>/docs/decisions/` for selection (§ Updating an Existing DR). To change the storage location, set the `DR_DIR` env var before running.
+Take the decision title from `$ARGUMENTS`. If empty, confirm New decision / Update existing via AskUserQuestion. For New decision ask for the title; for Update existing, list recent DRs in `<git-root>/docs/decisions/` for selection (§ Updating an Existing DR). Shape a title you are creating into a specific action like "Adopt X for Y", keeping it 5-64 characters and free of `/:*?"<>|`. To change the storage location, set the `DR_DIR` env var before running.
 
 ## Adoption Gate
 

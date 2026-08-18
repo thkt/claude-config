@@ -11,7 +11,7 @@ argument-hint: "[decision title]"
 
 ## 入力
 
-決定タイトルは `$ARGUMENTS` で受け取り、"Adopt X for Y" のような具体的なアクションに整える。5〜64 文字に収め、`/:*?"<>|` は含めない。空なら AskUserQuestion で New decision/Update existing を確認する。New decision ならタイトルを聞き、Update existing なら `<git-root>/docs/decisions/` の既存 DR から選択させる (§ 既存 DR の更新)。保存先の変更は `DR_DIR` 環境変数を設定して実行する。
+決定タイトルは `$ARGUMENTS` で受け取る。空なら AskUserQuestion で New decision/Update existing を確認する。New decision ならタイトルを聞き、Update existing なら `<git-root>/docs/decisions/` の既存 DR から選択させる (§ 既存 DR の更新)。新規に作るタイトルは "Adopt X for Y" のような具体的なアクションに整え、5〜64 文字に収めて `/:*?"<>|` を含めない。保存先の変更は `DR_DIR` 環境変数を設定して実行する。
 
 ## 採用ゲート
 
