@@ -2,7 +2,7 @@
 name: census
 description: Discover design decisions that exist in code but have no DR, and produce a DR promotion candidate list ranked by impact and reversibility. Pairs with adrift, which scans existing DRs for drift against code.
 when_to_use: 判断未記録の発掘, undocumented decisions, DR候補発掘, ADR候補発掘, 設計判断棚卸し, decision archaeology, design rationale audit
-allowed-tools: Read Write LS Bash(mkdir:*) Bash(date:*) Bash(python3:*) Bash(ugrep:*) Bash(git:*) Task AskUserQuestion
+allowed-tools: Read Write LS Bash(date:*) Bash(python3:*) Bash(ugrep:*) Bash(git:*) Task AskUserQuestion
 model: opus
 argument-hint: "[file or directory]"
 ---
@@ -69,15 +69,11 @@ Assign impact and reversibility to each candidate. Read the table top to bottom 
 
 ## Phase 5: Emit the report
 
+Write into `docs/audit/`, naming the file with the output of `date -u +%Y-%m-%d-%H%M%S` followed by `-dr-gaps.md`. UTC keeps same-day reruns from colliding.
+
 1. Write it following ${CLAUDE_SKILL_DIR}/templates/report-template.md, substituting placeholders from findings
 2. Put a single repo-wide summary line `keep N / downgrade N / drop N` right before the DR Promotion Candidates table
 3. Print the candidate count and the DR promotion candidate count to the console
-
-```bash
-mkdir -p docs/audit
-STAMP=$(date -u +%Y-%m-%d-%H%M%S)  # UTC date + HHMMSS; same-day reruns never collide
-REPORT="docs/audit/${STAMP}-dr-gaps.md"
-```
 
 ## Handoff
 

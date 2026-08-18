@@ -2,7 +2,7 @@
 name: census
 description: コードに存在するが DR の無い設計判断を発掘し、impact と reversibility でランク付けした DR 化候補リストを生成する。既存 DR とコードの drift スキャンを担う adrift と組む。
 when_to_use: 判断未記録の発掘, undocumented decisions, DR候補発掘, ADR候補発掘, 設計判断棚卸し, decision archaeology, design rationale audit
-allowed-tools: Read Write LS Bash(mkdir:*) Bash(date:*) Bash(python3:*) Bash(ugrep:*) Bash(git:*) Task AskUserQuestion
+allowed-tools: Read Write LS Bash(date:*) Bash(python3:*) Bash(ugrep:*) Bash(git:*) Task AskUserQuestion
 model: opus
 argument-hint: "[file or directory]"
 ---
@@ -69,15 +69,11 @@ Phase 2 の全候補を既存 DR と相互参照する。覆われた候補は�
 
 ## Phase 5: レポート出力
 
+書き込み先は `docs/audit/` で、ファイル名は `date -u +%Y-%m-%d-%H%M%S` の出力に `-dr-gaps.md` を付ける。UTC にするのは、同日に再実行しても名前が衝突しないため。
+
 1. ${CLAUDE_SKILL_DIR}/templates/report-template.md に従い、プレースホルダーを検出事項から置換して書く
 2. DR Promotion Candidates 表の直前に、全候補を集計した 1 行 `keep N / downgrade N / drop N` を置く
 3. 候補数と DR 化候補数をコンソールに出力する
-
-```bash
-mkdir -p docs/audit
-STAMP=$(date -u +%Y-%m-%d-%H%M%S)  # UTC の日付 + HHMMSS。同日に再実行しても衝突しない
-REPORT="docs/audit/${STAMP}-dr-gaps.md"
-```
 
 ## 引き継ぎ
 
