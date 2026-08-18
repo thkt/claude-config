@@ -2,7 +2,7 @@
 name: dr
 description: MADR v4 形式で Decision Record (DR) を自動採番付きで作成する。対象はアーキテクチャに限らず、覆しにくく文脈なしでは意外に見える決定すべて。
 when_to_use: DR作成, ADR作成, 技術決定, アーキテクチャ決定, decision record
-allowed-tools: Read Write Edit LS Bash(mkdir:*) Bash($HOME/.claude/skills/dr/scripts/*) AskUserQuestion Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Read Write Edit LS Bash(mkdir:*) Bash(${CLAUDE_SKILL_DIR}/scripts/*) AskUserQuestion Bash(ugrep:*) Bash(bfs:*)
 model: opus
 argument-hint: "[decision title]"
 ---

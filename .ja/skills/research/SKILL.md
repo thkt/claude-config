@@ -2,7 +2,7 @@
 name: research
 description: プロジェクトと技術的な質問を調査する。発見事項は結論ではなく、明示的なソース付きで反証にさらすべき主張として扱う。Phase 6 では統合が確定する前に advisor がそれへ反論する。設計計画や plan 生成には使わない (代わりに /think を使う)。
 when_to_use: 調査して, 調べて, リサーチ, investigate, 分析して, issueやろう, issue見て, 横並びチェック, 類似パターン検出, refactor 横展開
-allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Agent AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) Bash($HOME/.claude/skills/research/scripts/*)
+allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Agent AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) Bash(${CLAUDE_SKILL_DIR}/scripts/*)
 model: opus
 context: fork
 argument-hint: "[research subject or question]"

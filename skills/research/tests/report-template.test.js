@@ -96,10 +96,7 @@ test("the script SKILL.md's Phase 2 names exists, runs, and returns JSON", () =>
     const phase2 = extractPhase(skill, 2);
     assert.ok(phase2.length > 0, `${lang}: the Phase 2 section exists`);
     const scriptMatch = phase2.match(/\$\{CLAUDE_SKILL_DIR\}\/scripts\/([\w.-]+\.py)/);
-    assert.ok(
-      scriptMatch,
-      `${lang}: Phase 2 names a script under \${CLAUDE_SKILL_DIR}/scripts/`,
-    );
+    assert.ok(scriptMatch, `${lang}: Phase 2 names a script under \${CLAUDE_SKILL_DIR}/scripts/`);
     const scriptPath = join(dirname(skills[lang]), "scripts", scriptMatch[1]);
     assert.ok(existsSync(scriptPath), `${lang}: the named script ${scriptPath} exists`);
     const result = spawnSync(
@@ -121,10 +118,13 @@ test("allowed-tools grants running the scripts under research", () => {
     const skill = read(skills[lang]);
     const frontmatter = skill.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? "";
     const allowedToolsLine = frontmatter.match(/^allowed-tools:\s*(.+)$/m)?.[1] ?? "";
-    assert.ok(
-      /Bash\(\$HOME\/\.claude\/skills\/research\/scripts\/\*\)/.test(allowedToolsLine),
-      `${lang}: allowed-tools grants Bash($HOME/.claude/skills/research/scripts/*)`,
+    assert.match(
+      allowedToolsLine,
+      /Bash\(\$\{CLAUDE_SKILL_DIR\}\/scripts\/\*\)/,
+      `${lang}: allowed-tools grants the scripts through \${CLAUDE_SKILL_DIR}`,
     );
+    // A home-anchored grant names the dev tree, which a plugin copy of the skill never matches.
+    assert.doesNotMatch(allowedToolsLine, /\$HOME|~\//, `${lang}: no hardcoded home path`);
   }
 });
 

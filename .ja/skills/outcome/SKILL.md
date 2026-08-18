@@ -2,7 +2,7 @@
 name: outcome
 description: .claude/OUTCOME.md を対話的に生成 / 更新する。不在や空 (Behavior が空か TBD のみ) なら AskUserQuestion で収集して stub を生成し、既存なら現状を提示して更新する。
 when_to_use: OUTCOME作って, OUTCOME更新, アウトカム定義, create outcome, update outcome
-allowed-tools: Read Write Edit AskUserQuestion Bash($HOME/.claude/skills/outcome/scripts/*)
+allowed-tools: Read Write Edit AskUserQuestion Bash(${CLAUDE_SKILL_DIR}/scripts/*)
 model: opus
 ---
 
