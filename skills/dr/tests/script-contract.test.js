@@ -20,6 +20,10 @@ const outputKeys = (src) => {
   return [...block.matchAll(/^\s{8}"(\w+)":/gm)].map((m) => m[1]);
 };
 const requiredSections = (src) => [...src.matchAll(/^\s{4}"([^"]+)",$/gm)].map((m) => m[1]);
+const recommendedSections = (src) =>
+  [...(src.match(/^RECOMMENDED_SECTIONS = \(([^)]*)\)/m)?.[1] ?? "").matchAll(/"([^"]+)"/g)].map(
+    (m) => m[1],
+  );
 
 const eachLanguage = async (paths, check) => {
   for (const [lang, path] of Object.entries(paths)) {
@@ -115,6 +119,12 @@ test("the process Steps run without a gap and every cited stage has a row", () =
     }
     // A number reference would shift the moment a stage is inserted, so stages are cited by name.
     assert.doesNotMatch(doc, /Step \d/, `${lang}: nothing points at a Step by number`);
+    // A stage whose name is also a section heading makes every later mention ambiguous, and the
+    // collision shows on the English side alone because the Japanese section names differ.
+    for (const stage of stages) {
+      const collides = new RegExp(`^## ${stage}$`, "m");
+      assert.doesNotMatch(doc, collides, `${lang}: ${stage} is a stage and not also a section`);
+    }
   });
 });
 
@@ -127,3 +137,41 @@ test("every section a step cites exists", () =>
       assert.match(doc, new RegExp(`^## ${name}$`, "m"), `${lang}: ## ${name} exists`);
     }
   }));
+
+// The opening sentence of Decision Type says the type changes the recommended topics alone, so a
+// fourth column puts the table at odds with the sentence above it. Nothing reads a per-type line
+// cap either: the type is never written into the DR, so validate-dr.py cannot look one up.
+test("the decision type table carries type, use case, and topics only", () =>
+  eachLanguage(skills, (doc, lang) => {
+    const row = doc.split("\n").find((line) => line.startsWith("| technology-selection"));
+    assert.ok(row, `${lang}: the decision type table is readable`);
+    assert.equal(row.split("|").length - 2, 3, `${lang}: the row carries three columns`);
+  }));
+
+// A remove-or-merge proposal is sent to Reassessment Triggers. Three places carry it and all three
+// are needed: the template slot gives the writer somewhere to put it, the body tells them to, and
+// madr-format is what stops the section from being filed as optional while the body requires it.
+// 58 of 101 existing DRs lack the section, which is what a missing piece produces.
+test("every recommended section reaches the template, the body, and the format reference", async () => {
+  const sections = recommendedSections(await readFile(validates.en, "utf8"));
+  assert.ok(
+    sections.length >= 1,
+    `the recommended sections are readable (${sections.join(" / ")})`,
+  );
+  const ja = recommendedSections(await readFile(validates.ja, "utf8"));
+  assert.deepEqual(ja, sections, "both copies recommend the same sections");
+  for (const section of sections) {
+    await eachLanguage(templates, (doc, lang) => {
+      assert.match(doc, new RegExp(`^#{2,3} ${section}$`, "m"), `${lang}: the ${section} heading`);
+    });
+    await eachLanguage(skills, (doc, lang) => {
+      assert.match(doc, new RegExp(section), `${lang}: the body names ${section}`);
+    });
+    await eachLanguage(formats, (doc, lang) => {
+      const row = doc.split("\n").find((line) => line.startsWith(`| ${section} `));
+      assert.ok(row, `${lang}: madr-format carries a ${section} row`);
+      const optional = doc.slice(doc.search(/^## (任意セクション|Optional Sections)$/m));
+      assert.ok(!optional.includes(section), `${lang}: ${section} is not filed as optional`);
+    });
+  }
+});

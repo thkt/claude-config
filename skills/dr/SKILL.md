@@ -17,34 +17,34 @@ Take the decision title from `$ARGUMENTS`. If empty, confirm New decision / Upda
 
 Proceed to the process only when all three conditions below hold. When one is missing, skip the DR and apply the table top to bottom, leaving the decision where the first matching row says.
 
-| Condition                                                                                        | Where it goes when missing                        |
-| ------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
-| Hard to reverse. Changing the decision later carries meaningful cost                             | A `CONTEXT.md` entry or an equivalent design note |
-| Surprising without context. A future reader will ask "why this way?"                             | A `CONTEXT.md` entry or an equivalent design note |
-| Result of a real trade-off. Genuine alternatives existed and one was picked for specific reasons | The commit message body                           |
+| Condition                                                                                        | Where it goes when missing                                                  |
+| ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| Hard to reverse. Changing the decision later carries meaningful cost                             | A design note in the project, or the commit message body when there is none |
+| Surprising without context. A future reader will ask "why this way?"                             | A design note in the project, or the commit message body when there is none |
+| Result of a real trade-off. Genuine alternatives existed and one was picked for specific reasons | The commit message body                                                     |
 
 ## Process
 
-| Step | Stage      | Actions                                                                                                                                                                                            |
-| ---- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Pre-Check  | Run ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE". What it consumes from the return is `dr_dir` and `filename` (where to write), `date` (frontmatter), and `similar_drs` (duplicate check)     |
-| 2    | Type       | Determine the decision type by the decision's intent and pick its recommended topics (§ Decision Type)                                                                                             |
-| 3    | References | Gather project docs, issues, external resources                                                                                                                                                    |
-| 4    | Draft      | Copy ${CLAUDE_SKILL_DIR}/templates/madr-template.md into `dr_dir` under the name `filename` and fill it from what was gathered (§ YAML Frontmatter)                                                |
-| 5    | Challenge  | Only for a DR that carves an exception into an existing DR's principle or supersedes one, run `/challenge` and record the verdict and the condition it holds under as one line in More Information |
-| 6    | Validate   | Run ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE". exit 0 passes. What failed lands in `errors[]`, and `warnings[]` is advisory                                                            |
-| 7    | Index      | Run ${CLAUDE_SKILL_DIR}/scripts/update-index.py to regenerate `dr_dir/README.md`                                                                                                                   |
+| Step | Stage     | Actions                                                                                                                                                                                            |
+| ---- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Pre-Check | Run ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE". What it consumes from the return is `dr_dir` and `filename` (where to write), `date` (frontmatter), and `similar_drs` (duplicate check)     |
+| 2    | Type      | Determine the decision type by the decision's intent and pick its recommended topics (§ Decision Type)                                                                                             |
+| 3    | Sources   | Gather project docs, issues, external resources                                                                                                                                                    |
+| 4    | Draft     | Copy ${CLAUDE_SKILL_DIR}/templates/madr-template.md into `dr_dir` under the name `filename` and fill it from what was gathered (§ YAML Frontmatter)                                                |
+| 5    | Challenge | Only for a DR that carves an exception into an existing DR's principle or supersedes one, run `/challenge` and record the verdict and the condition it holds under as one line in More Information |
+| 6    | Validate  | Run ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE". exit 0 passes. What failed lands in `errors[]`, and `warnings[]` is advisory                                                            |
+| 7    | Index     | Run ${CLAUDE_SKILL_DIR}/scripts/update-index.py to regenerate `dr_dir/README.md`                                                                                                                   |
 
 ## Decision Type
 
-The decision type only affects which recommended More Information topics to include. Per-section guidance is common to all types: Context 3 lines, Options 3-5 lines each, Consequences 2-3 bullets.
+The decision type only affects which recommended More Information topics to include. Per-section guidance is common to all types: Context 3 lines, Options 3-5 lines each, Consequences 2-3 bullets. Reassessment Triggers goes into More Information whatever the type. Whoever proposes removing or merging existing structure reads that section to judge, so a missing one leaves that judgment nothing to read.
 
-| Decision type        | Use Case                   | Line limit | Recommended topics                                                            |
-| -------------------- | -------------------------- | ---------- | ----------------------------------------------------------------------------- |
-| technology-selection | Library, framework choices | 80 lines   | Migration Strategy, Rollback Plan, Success Criteria                           |
-| architecture-pattern | Structure, design policy   | 80 lines   | Architecture Diagram, Quality Attributes, Trade-offs                          |
-| process-change       | Workflow, rule changes     | 100 lines  | Before / After comparison, Transition Plan, Review Schedule                   |
-| deprecation          | Retiring technology        | 100 lines  | Deprecation Target, Migration Plan, Deprecation Warning Period, Rollback Plan |
+| Decision type        | Use Case                   | Recommended topics                                                            |
+| -------------------- | -------------------------- | ----------------------------------------------------------------------------- |
+| technology-selection | Library, framework choices | Migration Strategy, Rollback Plan, Success Criteria                           |
+| architecture-pattern | Structure, design policy   | Architecture Diagram, Quality Attributes, Trade-offs                          |
+| process-change       | Workflow, rule changes     | Before / After comparison, Transition Plan, Review Schedule                   |
+| deprecation          | Retiring technology        | Deprecation Target, Migration Plan, Deprecation Warning Period, Rollback Plan |
 
 ## YAML Frontmatter
 

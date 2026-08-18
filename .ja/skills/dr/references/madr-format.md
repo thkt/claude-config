@@ -14,6 +14,14 @@ Confirmation は upstream MADR v4 では任意だが、このスキルでは必�
 | Decision Outcome              | 選択した選択肢と端的な根拠       |
 | Confirmation (under Outcome)  | 実装が決定と一致するかの検証方法 |
 
+## 推奨セクション
+
+More Information 配下に置く。欠けても validate-dr.py は error にせず warning を返す。
+
+| セクション            | 目的                                                               |
+| --------------------- | ------------------------------------------------------------------ |
+| Reassessment Triggers | 決定を再評価する条件。既存構造の削除や統合を提案する側がここを読む |
+
 ## 任意セクション
 
 | セクション                   | 含める基準                                     |
@@ -21,7 +29,7 @@ Confirmation は upstream MADR v4 では任意だが、このスキルでは必�
 | Decision Drivers             | 選択を導いた基準                               |
 | Consequences (under Outcome) | `Good, because ...` / `Bad, because ...`       |
 | Pros and Cons of the Options | 選択肢ごとの詳細を `### {option}` 見出しで示す |
-| More Information             | 移行計画、トリガー、関連リンク                 |
+| More Information             | 移行計画、関連リンク                           |
 
 ## Status ライフサイクル
 

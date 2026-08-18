@@ -14,6 +14,14 @@ Confirmation is optional in upstream MADR v4 but treated as required by this ski
 | Decision Outcome              | Chosen option and the immediate justification |
 | Confirmation (under Outcome)  | How to verify implementation matches decision |
 
+## Recommended Sections
+
+These go under More Information. validate-dr.py returns a warning rather than an error when one is missing.
+
+| Section               | Purpose                                                                                                  |
+| --------------------- | -------------------------------------------------------------------------------------------------------- |
+| Reassessment Triggers | Conditions for revisiting the decision. Whoever proposes removing or merging existing structure reads it |
+
 ## Optional Sections
 
 | Section                      | When to include                             |
@@ -21,7 +29,7 @@ Confirmation is optional in upstream MADR v4 but treated as required by this ski
 | Decision Drivers             | Criteria guiding the choice                 |
 | Consequences (under Outcome) | `Good, because ...` / `Bad, because ...`    |
 | Pros and Cons of the Options | Per-option detail with `### {option}` heads |
-| More Information             | Migration plan, triggers, related links     |
+| More Information             | Migration plan, related links               |
 
 ## Status Lifecycle
 

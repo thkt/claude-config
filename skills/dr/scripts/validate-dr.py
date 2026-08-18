@@ -24,6 +24,10 @@ REQUIRED_SECTIONS = (
     "Confirmation",
 )
 
+# A remove-or-merge proposal reads this section to judge, so a DR without it leaves that judgment
+# nothing to read. madr-format files it as recommended, so this warns rather than errors.
+RECOMMENDED_SECTIONS = ("Reassessment Triggers",)
+
 
 def count_options(lines: list[str]) -> int:
     """Bullets or numbered items directly under the Considered Options heading."""
@@ -71,11 +75,13 @@ def main() -> None:
     lines = text.splitlines()
     results: dict[str, list[str]] = {"errors": [], "warnings": [], "checks": []}
 
-    for section in REQUIRED_SECTIONS:
+    for section in REQUIRED_SECTIONS + RECOMMENDED_SECTIONS:
         if re.search(rf"^#{{2,3}} {re.escape(section)}\s*$", text, flags=re.MULTILINE):
             results["checks"].append(f"section:{section}=ok")
-        else:
+        elif section in REQUIRED_SECTIONS:
             results["errors"].append(f"missing_section:{section}")
+        else:
+            results["warnings"].append(f"missing_section:{section} (recommended)")
 
     # MADR v4 frontmatter: status and date are optional but recommended
     frontmatter, _ = split_frontmatter(text)

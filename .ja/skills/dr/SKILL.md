@@ -17,34 +17,34 @@ argument-hint: "[decision title]"
 
 下表の 3 条件すべてが成り立つときだけプロセスへ進む。欠けるときは DR を作らず、上から順に当てて最初に該当した記録先へ決定を残す。
 
-| 条件                                                                            | 欠けたときの記録先                        |
-| ------------------------------------------------------------------------------- | ----------------------------------------- |
-| 覆しにくい。後から決定を変えるには相応のコストがかかる                          | `CONTEXT.md` エントリか相当する設計ノート |
-| 文脈がないと意外に見える。将来の読み手が「なぜこの形にしたのか」と疑問を持つ    | `CONTEXT.md` エントリか相当する設計ノート |
-| 実在するトレードオフの結果。本物の代替案が存在し、特定の理由で 1 つを選んでいる | コミットメッセージ本文                    |
+| 条件                                                                            | 欠けたときの記録先                                       |
+| ------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| 覆しにくい。後から決定を変えるには相応のコストがかかる                          | プロジェクトの設計ノート。無ければコミットメッセージ本文 |
+| 文脈がないと意外に見える。将来の読み手が「なぜこの形にしたのか」と疑問を持つ    | プロジェクトの設計ノート。無ければコミットメッセージ本文 |
+| 実在するトレードオフの結果。本物の代替案が存在し、特定の理由で 1 つを選んでいる | コミットメッセージ本文                                   |
 
 ## プロセス
 
-| Step | 工程       | 内容                                                                                                                                                                 |
-| ---- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Pre-Check  | ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE" を実行する。返り値から使うのは `dr_dir` と `filename` (書き込み先)、`date` (frontmatter)、`similar_drs` (重複判定) |
-| 2    | Type       | 決定の意図で決定タイプを判定し、推奨トピックを選ぶ (§ 決定タイプ)                                                                                                    |
-| 3    | References | プロジェクトドキュメント、issue、外部リソースを収集する                                                                                                              |
-| 4    | Draft      | ${CLAUDE_SKILL_DIR}/templates/madr-template.md を `dr_dir` 配下に `filename` で写し、収集した内容で埋める (§ YAML Frontmatter)                                       |
-| 5    | Challenge  | 既存 DR の原則に例外を作る、または既存 DR を supersede する場合だけ `/challenge` を通し、verdict と成立条件を More Information に 1 行で残す                         |
-| 6    | Validate   | ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE" を実行する。exit 0 なら合格。落ちた項目は `errors[]` に入り、`warnings[]` は参考                               |
-| 7    | Index      | ${CLAUDE_SKILL_DIR}/scripts/update-index.py を実行し、`dr_dir/README.md` を再生成する                                                                                |
+| Step | 工程      | 内容                                                                                                                                                                 |
+| ---- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Pre-Check | ${CLAUDE_SKILL_DIR}/scripts/pre-check.py "$TITLE" を実行する。返り値から使うのは `dr_dir` と `filename` (書き込み先)、`date` (frontmatter)、`similar_drs` (重複判定) |
+| 2    | Type      | 決定の意図で決定タイプを判定し、推奨トピックを選ぶ (§ 決定タイプ)                                                                                                    |
+| 3    | Sources   | プロジェクトドキュメント、issue、外部リソースを収集する                                                                                                              |
+| 4    | Draft     | ${CLAUDE_SKILL_DIR}/templates/madr-template.md を `dr_dir` 配下に `filename` で写し、収集した内容で埋める (§ YAML Frontmatter)                                       |
+| 5    | Challenge | 既存 DR の原則に例外を作る、または既存 DR を supersede する場合だけ `/challenge` を通し、verdict と成立条件を More Information に 1 行で残す                         |
+| 6    | Validate  | ${CLAUDE_SKILL_DIR}/scripts/validate-dr.py "$DR_FILE" を実行する。exit 0 なら合格。落ちた項目は `errors[]` に入り、`warnings[]` は参考                               |
+| 7    | Index     | ${CLAUDE_SKILL_DIR}/scripts/update-index.py を実行し、`dr_dir/README.md` を再生成する                                                                                |
 
 ## 決定タイプ
 
-決定タイプの違いが影響するのは、More Information に置く推奨トピックの選択のみ。各セクションの分量目安は全タイプ共通で、Context は 3 行、Options は各 3〜5 行、Consequences は箇条書き 2〜3 項目とする。
+決定タイプの違いが影響するのは、More Information に置く推奨トピックの選択のみ。分量は全タイプ共通で、Context は 3 行、Options は各 3〜5 行、Consequences は箇条書き 2〜3 項目とする。Reassessment Triggers はタイプに関わらず More Information に置く。既存構造の削除や統合を提案する側がこの節を読んで判定するので、欠けると判定材料が無い。
 
-| 決定タイプ           | ユースケース                   | 行数上限 | 推奨トピック                                                                  |
-| -------------------- | ------------------------------ | -------- | ----------------------------------------------------------------------------- |
-| technology-selection | ライブラリ、フレームワーク選定 | 80 行    | Migration Strategy, Rollback Plan, Success Criteria                           |
-| architecture-pattern | 構造、設計方針                 | 80 行    | Architecture Diagram, Quality Attributes, Trade-offs                          |
-| process-change       | ワークフロー、ルール変更       | 100 行   | Before / After 比較, Transition Plan, Review Schedule                         |
-| deprecation          | 技術の廃止                     | 100 行   | Deprecation Target, Migration Plan, Deprecation Warning Period, Rollback Plan |
+| 決定タイプ           | ユースケース                   | 推奨トピック                                                                  |
+| -------------------- | ------------------------------ | ----------------------------------------------------------------------------- |
+| technology-selection | ライブラリ、フレームワーク選定 | Migration Strategy, Rollback Plan, Success Criteria                           |
+| architecture-pattern | 構造、設計方針                 | Architecture Diagram, Quality Attributes, Trade-offs                          |
+| process-change       | ワークフロー、ルール変更       | Before / After 比較, Transition Plan, Review Schedule                         |
+| deprecation          | 技術の廃止                     | Deprecation Target, Migration Plan, Deprecation Warning Period, Rollback Plan |
 
 ## YAML Frontmatter
 

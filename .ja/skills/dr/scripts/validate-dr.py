@@ -24,6 +24,10 @@ REQUIRED_SECTIONS = (
     "Confirmation",
 )
 
+# 既存構造の削除や統合を提案する側がこの節を読んで判定するので、欠けると判定材料が無い。
+# madr-format が推奨セクションとして扱うので、error でなく warning で出す。
+RECOMMENDED_SECTIONS = ("Reassessment Triggers",)
+
 
 def count_options(lines: list[str]) -> int:
     """Considered Options 見出しの直下にある bullet または番号付き item を数える。"""
@@ -71,11 +75,13 @@ def main() -> None:
     lines = text.splitlines()
     results: dict[str, list[str]] = {"errors": [], "warnings": [], "checks": []}
 
-    for section in REQUIRED_SECTIONS:
+    for section in REQUIRED_SECTIONS + RECOMMENDED_SECTIONS:
         if re.search(rf"^#{{2,3}} {re.escape(section)}\s*$", text, flags=re.MULTILINE):
             results["checks"].append(f"section:{section}=ok")
-        else:
+        elif section in REQUIRED_SECTIONS:
             results["errors"].append(f"missing_section:{section}")
+        else:
+            results["warnings"].append(f"missing_section:{section} (recommended)")
 
     # MADR v4 frontmatter: status と date は optional だが推奨
     frontmatter, _ = split_frontmatter(text)
