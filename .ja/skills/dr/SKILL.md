@@ -65,7 +65,7 @@ frontmatter は任意。書くなら下表のフィールドを使う。
 
 ## 既存 DR の更新
 
-status が proposed なら本文を直接編集し、Step 6 と Step 7 を実行する。accepted 以降は決定内容を保持したまま次の手順で新しい DR へ置き換え、旧 DR で変えるのは `status` と `date` だけにする。
+status が proposed なら本文を直接編集し、Validate と Index を実行する。accepted 以降は決定内容を保持したまま次の手順で新しい DR へ置き換え、旧 DR で変えるのは `status` と `date` だけにする。
 
 1. プロセスで新規 DR を作成する
 2. 新規 DR の More Information で先行 DR を引用する (例: `Supersedes DR-NNNN`)
@@ -82,7 +82,7 @@ status が proposed なら本文を直接編集し、Step 6 と Step 7 を実行
 | git リポジトリの外だと報告                 | `DR_DIR` を設定して保存先を明示する                                     |
 | 保存先に SKILL.md があると報告             | skill ディレクトリを指しているので `DR_DIR` を DR 置き場へ向け直す      |
 | `similar_drs` が非空                       | 重複候補を提示し、続行するか更新へ切り替えるかを確認 (§ 既存 DR の更新) |
-| validate-dr.py が `missing_section` を返す | テンプレートから欠けた見出しを補い、Step 6 をやり直す                   |
+| validate-dr.py が `missing_section` を返す | テンプレートから欠けた見出しを補い、Validate をやり直す                 |
 
 ## 出力
 

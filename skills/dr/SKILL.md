@@ -65,7 +65,7 @@ The frontmatter is optional. When it is written, it uses the fields below.
 
 ## Updating an Existing DR
 
-When the status is proposed, edit the body directly and run Step 6 and Step 7. From accepted onward, keep the decision content and replace it with a new DR through the steps below, changing only `status` and `date` in the old one.
+When the status is proposed, edit the body directly and run Validate and Index. From accepted onward, keep the decision content and replace it with a new DR through the steps below, changing only `status` and `date` in the old one.
 
 1. Create the new DR through the process
 2. Cite the predecessor in the new DR's More Information (e.g. `Supersedes DR-NNNN`)
@@ -82,7 +82,7 @@ Each script reports its failure as JSON or on stderr. Handle them per the table.
 | Reported as outside a git repository     | Set `DR_DIR` to name the archive explicitly                                                              |
 | Reported as an archive holding SKILL.md  | It points at a skill directory, so redirect `DR_DIR` to the archive                                      |
 | `similar_drs` is non-empty               | Present the duplicates and confirm whether to proceed or switch to an update (§ Updating an Existing DR) |
-| validate-dr.py returns `missing_section` | Restore the dropped heading from the template and run Step 6 again                                       |
+| validate-dr.py returns `missing_section` | Restore the dropped heading from the template and run Validate again                                     |
 
 ## Output
 

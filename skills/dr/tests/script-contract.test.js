@@ -191,22 +191,28 @@ test("the required sections match between the template and validate-dr.py", () =
   }
 });
 
-// A Step number skipped or repeated leaves the error table's "run Step N again" pointing at the
-// wrong stage.
-test("the process Steps run without a gap and the cited Step is Validate", () => {
+// A gap in the Step numbers hides a stage that was dropped, and a stage named outside the table
+// sends the reader looking for work that has no row.
+test("the process Steps run without a gap and every cited stage has a row", () => {
+  const CITED = ["Validate", "Index"];
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
-    const steps = [...doc.matchAll(/^\| (\d+) {4}\| /gm)].map((m) => Number(m[1]));
+    const rows = [...doc.matchAll(/^\| (\d+) {4}\| (\S+)/gm)];
+    const steps = rows.map((m) => Number(m[1]));
     assert.ok(steps.length >= 5, `${lang}: the process table is readable (${steps.length})`);
     const run = steps.map((_, i) => i + 1);
     assert.deepEqual(steps, run, `${lang}: the Steps run 1 through ${steps.length}`);
-    for (const [, cited] of doc.matchAll(/Step (\d+)/g)) {
-      assert.ok(steps.includes(Number(cited)), `${lang}: the cited Step ${cited} has a row`);
+    const stages = rows.map((m) => m[2]);
+    for (const stage of CITED) {
+      assert.ok(stages.includes(stage), `${lang}: the cited stage ${stage} has a row`);
+      assert.match(
+        doc,
+        new RegExp(`${stage}[^|]*\\|`),
+        `${lang}: ${stage} is cited outside its row`,
+      );
     }
-    const redo = doc.match(/missing_section.*?Step (\d+)/);
-    assert.ok(redo, `${lang}: the missing_section row names the Step to redo`);
-    const stage = doc.match(new RegExp(`^\\| ${redo[1]} +\\| (\\S+)`, "m"));
-    assert.equal(stage[1], "Validate", `${lang}: the redo points at Validate`);
+    // A number reference would shift the moment a stage is inserted, so stages are cited by name.
+    assert.doesNotMatch(doc, /Step \d/, `${lang}: nothing points at a Step by number`);
   }
 });
 
