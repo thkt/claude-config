@@ -204,3 +204,33 @@ test("T-004 a body whose section order differs from the skeleton does not become
     `a difference in order does not become an error (actual: ${JSON.stringify(out.errors)})`,
   );
 });
+
+// Template source ranks a repository's own .github/ISSUE_TEMPLATE/<type>.md second, ahead of the
+// skill's templates. That file is the raw body with no "## Template" fence, so reading only the
+// fenced skeleton returned no sections and faulted every heading of a correct body as
+// unknown_section. validation-errors.md then tells the writer to delete those correct sections.
+test("T-012 a repository .md template is read as the skeleton and does not close the section set", () => {
+  const dir = mkdtempSync(join(tmpdir(), "issue-repo-template-"));
+  try {
+    const template = join(dir, "feature.md");
+    writeFileSync(
+      template,
+      "---\nname: Feature request\nlabels: enhancement\n---\n\n## What & Why\n\n## Scope\n",
+      "utf8",
+    );
+    const body = "## What & Why\n\nx\n\n## Scope\n\ny\n\n## Notes\n\nz\n";
+    const { status, out } = runValidate(template, "[Feature] Add CSV export", body);
+    assert.equal(status, 0, `a correct body passes (${JSON.stringify(out)})`);
+    assert.deepEqual(out.errors, [], "no error is raised");
+    assert.ok(
+      out.checks.includes("section:What & Why=ok"),
+      `the repository template's headings are read (${out.checks.join(", ")})`,
+    );
+    assert.ok(
+      out.checks.some((c) => c.startsWith("unknown_section=skipped")),
+      "an added section is not faulted against a repository template",
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

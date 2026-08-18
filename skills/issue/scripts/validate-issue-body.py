@@ -15,6 +15,7 @@ HEADING = re.compile(r"^## (.+?)\s*$", flags=re.MULTILINE)
 CODE_BLOCK = re.compile(r"```(?:markdown)?\n(.*?)```", flags=re.DOTALL)
 OPTIONAL_SUFFIX = re.compile(r"\s*\((?:optional|任意)\)\s*$")
 FORM_SUFFIXES = (".yml", ".yaml")
+FRONTMATTER = re.compile(r"\A---\n.*?\n---\n", flags=re.DOTALL)
 # Headings that stay out of errors despite being absent from the skeleton. An issue
 # carrying a transferred /think plan always has these two, and Phase 3 of
 # skills/issue/SKILL.md is what puts them there.
@@ -28,12 +29,17 @@ def skeleton_sections(template_text: str) -> list[tuple[str, bool]]:
     markdown full of "## " headings inside the code fence, so that bound stops at the
     first of those instead of at "## Guidelines". The code fence closes itself, so this
     locates the heading start only and looks for the first fence after it.
+
+    A file without "## Template" is a repository's own .github/ISSUE_TEMPLATE/<type>.md,
+    whose body is the skeleton as it stands. Without this branch no section is read and
+    every heading in a correct body is faulted as unknown_section.
     """
     heading_match = re.search(r"^## Template\s*$", template_text, flags=re.MULTILINE)
     if heading_match is None:
-        return []
-    code_match = CODE_BLOCK.search(template_text[heading_match.end() :])
-    skeleton = code_match.group(1) if code_match else ""
+        skeleton = FRONTMATTER.sub("", template_text)
+    else:
+        code_match = CODE_BLOCK.search(template_text[heading_match.end() :])
+        skeleton = code_match.group(1) if code_match else ""
     sections: list[tuple[str, bool]] = []
     names: list[str] = HEADING.findall(skeleton)
     for name in names:
@@ -100,6 +106,7 @@ def main() -> None:
         results["errors"].append("type_mismatch:title has no bracketed type prefix")
 
     is_form = template.suffix in FORM_SUFFIXES
+    own_template = re.search(r"^## Template\s*$", template_text, flags=re.MULTILINE) is not None
     sections = form_sections(template_text) if is_form else skeleton_sections(template_text)
     required = [name for name, optional in sections if not optional]
     present = body_section_names(body_text)
@@ -109,10 +116,10 @@ def main() -> None:
         else:
             results["errors"].append(f"missing_section:{name}")
 
-    # A .yml lists a web form's minimum, not a closed set of sections. A CLI filing that
-    # adds to it is not deviating, so off-skeleton headings are only faulted for .md.
-    if is_form:
-        results["checks"].append("unknown_section=skipped (form template)")
+    # A repository template states the web UI's minimum, so a CLI filing that adds sections to
+    # it is not deviating. Only the skill's own templates are a closed set.
+    if is_form or not own_template:
+        results["checks"].append("unknown_section=skipped (repository template)")
     else:
         known = {name for name, _ in sections} | ALLOWED_EXTRA
         extra = sorted(present - known)

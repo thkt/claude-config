@@ -7,4 +7,4 @@ ${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py は `{errors, warnings, check
 | `missing_section:<name>`                           | テンプレート骨格から落ちた見出しを戻す                                                                               |
 | `type_mismatch:title=... template=...`             | タイトルの角括弧の型を正とし、それに合うテンプレートを選び直して本文を書き直す。タイトルの書き換えによる解消はしない |
 | `type_mismatch:title has no bracketed type prefix` | 種別判定の結果をキャピタライズして角括弧で囲い、タイトル先頭に付ける                                                 |
-| `unknown_section:<name>`                           | 骨格に無い見出しを外すか、骨格側の見出しに寄せる。`.yml` を骨格にした起票では出ない                                  |
+| `unknown_section:<name>`                           | 骨格に無い見出しを外すか、骨格側の見出しに寄せる。リポジトリ側のテンプレートを骨格にした起票では出ない               |
