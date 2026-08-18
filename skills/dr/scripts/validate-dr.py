@@ -30,8 +30,7 @@ def count_options(lines: list[str]) -> int:
     depth = 0
     count = 0
     for line in lines:
-        # The section check accepts h2 or h3, so counting must too. Matching h2 alone reports
-        # zero options for a heading the same script has just called present.
+        # Matching h2 alone reports zero options for a heading the section check calls present.
         opening = re.match(r"^(#{2,3}) Considered Options\s*$", line)
         if opening:
             depth = len(opening.group(1))

@@ -16,7 +16,7 @@ from dr_common import fail, guard_skill_dir, resolve_dr_dir
 
 
 def similarity(title_a: str, title_b: str) -> float:
-    """Shared distinct words between the titles, divided by title_a's word count."""
+    """Divided by title_a's word count, not the union, so a long existing title cannot dilute it."""
     words_a = title_a.lower().split()
     if not words_a:
         return 0.0

@@ -16,7 +16,7 @@ from dr_common import fail, guard_skill_dir, resolve_dr_dir
 
 
 def similarity(title_a: str, title_b: str) -> float:
-    """2 つのタイトルで共通する語の異なり数を、title_a の語数で割った値。"""
+    """割る数は和集合でなく title_a の語数。長い既存タイトルでスコアが薄まらない。"""
     words_a = title_a.lower().split()
     if not words_a:
         return 0.0

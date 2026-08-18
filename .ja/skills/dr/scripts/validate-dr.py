@@ -30,8 +30,7 @@ def count_options(lines: list[str]) -> int:
     depth = 0
     count = 0
     for line in lines:
-        # セクション検査は h2 と h3 を通すので、数える側も揃える。h2 だけを見ると、同じ
-        # スクリプトが present と判定した見出しに対して 0 件を返す。
+        # h2 だけを見ると、セクション検査が present と判定した見出しに 0 件を返す。
         opening = re.match(r"^(#{2,3}) Considered Options\s*$", line)
         if opening:
             depth = len(opening.group(1))

@@ -14,7 +14,6 @@ def fail(*lines: str) -> NoReturn:
 
 
 def resolve_dr_dir(arg: str | None = None) -> Path:
-    """DR_DIR env > arg > <git-root>/docs/decisions."""
     if os.environ.get("DR_DIR"):
         return Path(os.environ["DR_DIR"])
     if arg:
@@ -34,7 +33,6 @@ def resolve_dr_dir(arg: str | None = None) -> Path:
 
 
 def guard_skill_dir(dr_dir: Path, hint: str) -> None:
-    """Reject the skill-definition directory itself as a Decision Record archive."""
     if (dr_dir / "SKILL.md").is_file():
         fail(
             f"Error: {dr_dir} contains SKILL.md (skill-definition directory,"
@@ -44,12 +42,7 @@ def guard_skill_dir(dr_dir: Path, hint: str) -> None:
 
 
 def split_frontmatter(text: str) -> tuple[list[str], list[str]]:
-    """(frontmatter lines, body lines).
-
-    Frontmatter only when the file opens with a --- line and has a closing ---
-    line. A --- elsewhere (e.g. a body horizontal rule) is never a delimiter, and
-    an unclosed opening --- yields no frontmatter.
-    """
+    """A --- past the opening line is never a delimiter, so a body rule cannot split the file."""
     lines = text.splitlines()
     fence = re.compile(r"^---[ \t]*$")
     if not lines or not fence.match(lines[0]):
