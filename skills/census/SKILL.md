@@ -15,11 +15,11 @@ argument-hint: "[file or directory]"
 
 ## Criteria
 
-Impact / reversibility, the incomplete-contract definition, the DR-worth rule of thumb, and the challenge angles all live in ${CLAUDE_SKILL_DIR}/references/decision-criteria.md.
+Every criterion lives in ${CLAUDE_SKILL_DIR}/references/decision-criteria.md. That file holds impact / reversibility, the incomplete-contract definition, the DR-worth rule of thumb, and the challenge angles.
 
 ## Phase 1: Collect
 
-List source by running ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py with python3, and scan for docs using the file patterns in ${CLAUDE_SKILL_DIR}/references/detection-targets.md. Where each one looks is set by `$ARGUMENTS`.
+List source by running ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py with python3. Scan for docs using the file patterns in ${CLAUDE_SKILL_DIR}/references/detection-targets.md. Where each one looks is set by `$ARGUMENTS`.
 
 | $ARGUMENTS  | source          | doc                   |
 | ----------- | --------------- | --------------------- |
@@ -27,11 +27,19 @@ List source by running ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py with pyt
 | a directory | that path       | that subtree          |
 | a file      | that file alone | nothing               |
 
-When source exceeds the guideline of 20, confirm narrowing via AskUserQuestion before the Phase 2 reviewer fan-out. Options are a subdirectory, top-N, or a specific module. At or below the guideline, skip the prompt.
+Confirm narrowing via AskUserQuestion before the Phase 2 reviewer fan-out. The prompt is needed when source exceeds the guideline of 20, and skipped at or below it. Options are a subdirectory, top-N, or a specific module.
 
 ## Phase 2: Mine
 
-Record each finding as `file:line` + decision summary + evidence + `documented?` + `incomplete-contract?`. Evidence is a comment, a name, a module-doc, or a commit; a commit-derived one reads `commit <sha>`.
+Record each finding under these five items.
+
+| Item                   | Value                                                                       |
+| ---------------------- | --------------------------------------------------------------------------- |
+| Location               | `file:line`                                                                 |
+| Decision summary       | One line                                                                    |
+| Evidence               | A comment, a name, a module-doc, or a commit. A commit reads `commit <sha>` |
+| `documented?`          | Yes / Partial / No                                                          |
+| `incomplete-contract?` | Yes / No                                                                    |
 
 ### Step 1: From source
 
@@ -42,7 +50,7 @@ For each source file, spawn the reviewer subagent matching its language via Task
 - Is there a comment or module-doc recording the rationale
 - Does it match the `incomplete-contract` pattern, where a comment states only the present state and omits the rule for future contributors
 
-The reviewer has no git access, so census itself runs `git log --follow --format='%h %s' -- <file>` and extracts commits containing decision verbs. The decision verb list is in ${CLAUDE_SKILL_DIR}/references/detection-targets.md.
+The reviewer has no git access. Census itself therefore runs `git log --follow --format='%h %s' -- <file>` and extracts commits containing decision verbs. The decision verb list is in ${CLAUDE_SKILL_DIR}/references/detection-targets.md.
 
 ### Step 2: From docs
 
@@ -50,7 +58,7 @@ For each detected document, find sentences containing decision verbs; each match
 
 ## Phase 3: DR cross-reference
 
-When a DR directory exists, cross-reference every Phase 2 candidate against the existing DRs. Drop the covered ones and record the excluded count in the Summary as "DR-covered (excluded)". With no DR directory, every candidate moves on to Phase 4.
+Cross-reference every Phase 2 candidate against the existing DRs. Drop the covered ones and record the excluded count in the Summary as "DR-covered (excluded)". The cross-reference runs when a DR directory exists; without one, every candidate moves on to Phase 4 unchanged.
 
 ## Phase 4: Judge
 
@@ -62,11 +70,16 @@ A finding with `incomplete-contract=Yes` is promoted whatever `documented?` says
 
 ### Step 2: Devil's Advocate Challenge
 
-Spawn `critic-design` via Task with the initial promotion candidate list and ${CLAUDE_SKILL_DIR}/references/decision-criteria.md. The agent returns what its own definition specifies: verdict (confirmed / weakened / needs_revision) and weaknesses. `/census` matches those weaknesses against each candidate and assigns keep / downgrade / drop from the table in that criteria file. Record the assignment alongside the initial ranking.
+1. Spawn `critic-design` via Task with the initial promotion candidate list and ${CLAUDE_SKILL_DIR}/references/decision-criteria.md
+2. Take the verdict (confirmed / weakened / needs_revision) and weaknesses the agent returns. Its own definition decides what comes back
+3. Match those weaknesses against each candidate and assign keep / downgrade / drop from the table in the criteria file
+4. Record the assignment alongside the initial ranking
 
 ## Phase 5: Emit the report
 
-Write the report following ${CLAUDE_SKILL_DIR}/templates/report-template.md, substituting placeholders from findings. Put a single repo-wide summary line `keep N / downgrade N / drop N` right before the DR Promotion Candidates table. After writing, print the candidate count and the DR promotion candidate count to the console.
+1. Write it following ${CLAUDE_SKILL_DIR}/templates/report-template.md, substituting placeholders from findings
+2. Put a single repo-wide summary line `keep N / downgrade N / drop N` right before the DR Promotion Candidates table
+3. Print the candidate count and the DR promotion candidate count to the console
 
 ```bash
 mkdir -p docs/audit

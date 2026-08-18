@@ -15,11 +15,11 @@ argument-hint: "[file or directory]"
 
 ## 判定基準
 
-impact/reversibility、incomplete-contract の定義、DR 化価値の経験則、challenge 観点の判定基準はすべて ${CLAUDE_SKILL_DIR}/references/decision-criteria.md にある。
+判定基準はすべて ${CLAUDE_SKILL_DIR}/references/decision-criteria.md にある。impact/reversibility、incomplete-contract の定義、DR 化価値の経験則、challenge 観点がそこに入る。
 
 ## Phase 1: 収集
 
-source は ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py を python3 で実行して列挙し、doc は ${CLAUDE_SKILL_DIR}/references/detection-targets.md のファイルパターンでスキャンする。どこを見るかは `$ARGUMENTS` で決まる。
+source は ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py を python3 で実行して列挙する。doc は ${CLAUDE_SKILL_DIR}/references/detection-targets.md のファイルパターンでスキャンする。どちらもどこを見るかは `$ARGUMENTS` で決まる。
 
 | $ARGUMENTS   | source            | doc                       |
 | ------------ | ----------------- | ------------------------- |
@@ -27,11 +27,19 @@ source は ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py を python3 で実�
 | ディレクトリ | そのパス          | その subtree              |
 | ファイル     | そのファイル 1 件 | 集めない                  |
 
-source が目安の 20 件を超えるなら、Phase 2 の reviewer を並列起動する前に AskUserQuestion で絞り込みを確認する。選択肢はサブディレクトリ、上位 N 件、特定モジュールなど。目安以下なら確認を省く。
+Phase 2 の reviewer を並列起動する前に、AskUserQuestion で絞り込みを確認する。確認が要るのは source が目安の 20 件を超えるときで、目安以下なら省く。選択肢はサブディレクトリ、上位 N 件、特定モジュールなど。
 
 ## Phase 2: 発掘
 
-各検出事項を `file:line` + 判断概要 + 根拠 + `documented?` + `incomplete-contract?` で記録する。根拠はコメント/命名/module-doc/commit のいずれかで、commit 由来は `commit <sha>` と書く。
+各検出事項を次の 5 項目で記録する。
+
+| 項目                   | 値                                                                          |
+| ---------------------- | --------------------------------------------------------------------------- |
+| 位置                   | `file:line`                                                                 |
+| 判断概要               | 1 行                                                                        |
+| 根拠                   | コメント、命名、module-doc、commit のいずれか。commit 由来は `commit <sha>` |
+| `documented?`          | Yes / Partial / No                                                          |
+| `incomplete-contract?` | Yes / No                                                                    |
 
 ### Step 1: source から
 
@@ -42,7 +50,7 @@ source が目安の 20 件を超えるなら、Phase 2 の reviewer を並列起
 - 根拠を記録したコメントや module-doc があるか
 - コメントが現状だけを述べ、将来の貢献者向けのルールを欠く `incomplete-contract` パターンに該当しないか
 
-reviewer は git にアクセスできないため、`/census` 自身が `git log --follow --format='%h %s' -- <file>` を実行し、決定動詞を含む commit を抽出する。決定動詞の一覧は ${CLAUDE_SKILL_DIR}/references/detection-targets.md にある。
+reviewer は git にアクセスできない。そこで `/census` 自身が `git log --follow --format='%h %s' -- <file>` を実行し、決定動詞を含む commit を抽出する。決定動詞の一覧は ${CLAUDE_SKILL_DIR}/references/detection-targets.md にある。
 
 ### Step 2: doc から
 
@@ -50,7 +58,7 @@ reviewer は git にアクセスできないため、`/census` 自身が `git lo
 
 ## Phase 3: DR 照合
 
-DR ディレクトリがあれば、Phase 2 の全候補を既存 DR と相互参照する。覆われた候補は除外し、除外件数を Summary に "DR-covered (excluded)" として記録する。DR ディレクトリが無ければ全候補が Phase 4 へ進む。
+Phase 2 の全候補を既存 DR と相互参照する。覆われた候補は除外し、除外件数を Summary に "DR-covered (excluded)" として記録する。照合するのは DR ディレクトリがあるときで、無ければ全候補がそのまま Phase 4 へ進む。
 
 ## Phase 4: 判定
 
@@ -62,11 +70,16 @@ DR ディレクトリがあれば、Phase 2 の全候補を既存 DR と相互�
 
 ### Step 2: Devil's Advocate Challenge
 
-`critic-design` を Task で起動し、初期の昇格候補リストと ${CLAUDE_SKILL_DIR}/references/decision-criteria.md を渡す。agent は自身の定義どおり verdict (confirmed/weakened/needs_revision) と weaknesses を返す。`/census` はその weaknesses を候補ごとに突き合わせ、その判定基準ファイルの keep/downgrade/drop 表で各候補を判定する。判定は初期ランク付けと並べて記録する。
+1. `critic-design` を Task で起動し、初期の昇格候補リストと ${CLAUDE_SKILL_DIR}/references/decision-criteria.md を渡す
+2. agent が返す verdict (confirmed/weakened/needs_revision) と weaknesses を受け取る。返す内容は agent 自身の定義が決める
+3. weaknesses を候補ごとに突き合わせ、判定基準ファイルの keep/downgrade/drop 表で各候補を判定する
+4. 判定を初期ランク付けと並べて記録する
 
 ## Phase 5: レポート出力
 
-${CLAUDE_SKILL_DIR}/templates/report-template.md に従い、プレースホルダーを検出事項から置換してレポートを書く。DR Promotion Candidates 表の直前に、全候補を集計した 1 行 `keep N / downgrade N / drop N` を置く。書き終えたら候補数/DR 化候補数をコンソールに出力する。
+1. ${CLAUDE_SKILL_DIR}/templates/report-template.md に従い、プレースホルダーを検出事項から置換して書く
+2. DR Promotion Candidates 表の直前に、全候補を集計した 1 行 `keep N / downgrade N / drop N` を置く
+3. 候補数と DR 化候補数をコンソールに出力する
 
 ```bash
 mkdir -p docs/audit
