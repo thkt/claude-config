@@ -13,7 +13,9 @@ argument-hint: "[issue description | issue number]"
 
 `$ARGUMENTS` is the issue description. If empty, prompt for it via AskUserQuestion.
 
-When it carries only an issue number or URL, transfer a plan into that filed issue. Take the body from `gh issue view <ref> --json title,body` and start at Phase 2's duplication match. The body is someone else's writing, so the prose refinement and the challenge fold-in do not run. The match stops at detecting the duplication, and the body is edited only once AskUserQuestion approves it. Without approval the body stays as it is and only the Plan sections are added. Phase 4 replaces creation with `gh issue edit <ref> --body-file <path>`. Body validation does not run, because which skeleton the issue was filed from is unknown. Without a plan draft, suggest running `/think` and stop; an issue that already has a `## Plan` goes to `/qualify` for inspection.
+When it carries only an issue number or URL, transfer a plan into that filed issue. Take the body from `gh issue view <ref> --json title,body` and start at Phase 2's duplication match. Without a plan draft, suggest running `/think` and stop; an issue that already has a `## Plan` goes to `/qualify` for inspection.
+
+This route differs from the normal one on three points. The body is someone else's writing, so the prose refinement and the challenge fold-in do not run. The duplication match stops at detection, and the body is edited only once AskUserQuestion approves it. Phase 4 replaces creation with `gh issue edit <ref> --body-file <path>`, and body validation does not run because which skeleton the issue was filed from is unknown.
 
 ## Language
 
@@ -90,10 +92,7 @@ Run this phase only when a /think plan draft exists; otherwise omit the section 
 ## Phase 4: Publishing
 
 1. Present the issue preview. Collect any inline tentative marks into a tentative block. Add no new content, mirror what the body already carries, and omit the block at zero items. Then confirm via AskUserQuestion, asking "Create this issue?" for a new filing and "Update this issue?" on the number route. When there is no `## Plan` section and the extent puts it on the build workflow, add "hold the filing and draft a plan via `/think`" as an option
-2. Write the body to a temp file. Run `${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>` and handle errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md. Once it exits 0, attach labels and run `gh issue create --title "<title>" --body-file <path>`. Write `<path>` as a literal absolute path, not a variable. The hook cannot expand a variable, and the filing stops. Capture the issue URL from its output
-3. If split was approved in Phase 1, suggest running /slice with the published epic number. Do not launch it automatically
-4. For an issue that is not split, suggest the next step. Where a filed issue goes is decided by its extent: a fix confined to 1-3 files goes to `/fix <number>`; 4 or more files, or a new feature, goes to the build workflow with the number. When an issue bound for the build workflow has no Plan section, it gets a plan via `/think`, transferred by `/issue <number>`, before it is handed over, and `/qualify` inspects it before the hand-off. Launch none of them automatically
-
-### Labels
-
-`priority:*` is required, set to critical / high / medium / low by impact. For other labels, follow the repository's conventions.
+2. Write the body to a temp file and run ${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>. Handle errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md and rerun once they are fixed
+3. Once it exits 0, attach labels, run `gh issue create --title "<title>" --body-file <path>`, and capture the issue URL from its output. Write `<path>` as a literal absolute path, not a variable, because the hook cannot expand one and the filing stops. `priority:*` is required, set to critical / high / medium / low by impact, and other labels follow the repository's conventions
+4. If split was approved in Phase 1, suggest running /slice with the published epic number. Do not launch it automatically
+5. For an issue that is not split, suggest the next step. Where a filed issue goes is decided by its extent: a fix confined to 1-3 files goes to `/fix <number>`; 4 or more files, or a new feature, goes to the build workflow with the number. The build workflow hands an issue with no `## Plan` section back as no-plan, so draft one with `/think` and transfer it with `/issue <number>` before handing over. `/qualify` inspects it before the hand-off. Launch none of them automatically

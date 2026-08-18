@@ -363,3 +363,17 @@ test("the confirmation names both routes", () => {
     assert.match(doc, /Update this issue\?/, `${lang}: the number-route wording`);
   }
 });
+
+// The Japanese body cited the English heading "Template source", which exists in neither the
+// Japanese file nor as a Japanese heading, so a reader following it landed nowhere.
+test("the validator step cites a heading its own language carries", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    const cited =
+      lang === "ja"
+        ? doc.match(/<(.+?)で選んだ骨格ファイル>/)?.[1]
+        : doc.match(/<the skeleton chosen in (.+?)>/)?.[1];
+    assert.ok(cited, `${lang}: the validator step names where the skeleton came from`);
+    assert.match(doc, new RegExp(`^### ${cited}$`, "m"), `${lang}: ### ${cited} exists`);
+  }
+});
