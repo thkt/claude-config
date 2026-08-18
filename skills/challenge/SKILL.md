@@ -23,15 +23,15 @@ Verify the proposal from evidence on its own, then return only the unsettled que
 
 Every judgment below is decided by the table, never by advisor confidence.
 
-| Subject               | Condition                                                        | Holds                                                                                                          | Does not hold                                                                     |
-| --------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| A question            | Evidence settles it to one answer                                | A fact. subagents check it in parallel                                                                         | A preference, such as priority or scope. Send it unverified to the unsettled pile |
-| A verified fact       | The targeted state already holds, or it contradicts the proposal | The proposal does not stand. Skip Phase 2 and put the grounds in the Why. Do not stop on advisor opinion alone | Proceed on the claims that still hold                                             |
-| An unsettled question | It is irreversible or high-impact                                | Ask it via AskUserQuestion. Cap 7 questions                                                                    | Proceed on the advisor hypothesis as an assumption, and keep them all in the Why  |
+| Subject               | Condition                                                        | Holds                                                                                                          | Does not hold                                                                              |
+| --------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| A question            | Evidence settles it to one answer                                | A factual question. subagents verify its answer in parallel                                                    | A preference question, such as priority or scope. Send it unverified to the unsettled pile |
+| A verified fact       | The targeted state already holds, or it contradicts the proposal | The proposal does not stand. Skip Phase 2 and put the grounds in the Why. Do not stop on advisor opinion alone | Proceed on the claims that still hold                                                      |
+| An unsettled question | It is irreversible or high-impact                                | Ask it via AskUserQuestion. Cap 7 questions                                                                    | Proceed on the advisor hypothesis as an assumption, and keep them all in the Why           |
 
 1. Read `.claude/OUTCOME.md`. If absent, infer the outcome from $ARGUMENTS and the conversation and confirm it via AskUserQuestion. The Phase 2 outcome attack uses it as its evaluation axis, so settle it rather than leaving it out
 2. List the open questions in the proposal and sort them by the table
-3. Run the verification loop. subagents check facts in parallel while advisor re-checks the sorting and names the next evidence
+3. Run the verification loop. subagents verify the answers in parallel while advisor re-checks the sorting and names the next evidence
 4. Break when more evidence no longer changes the sorting. Cap 3 rounds. Send whatever the loop left unsettled to the unsettled pile
 5. Apply the table to the verified facts. Skip Phase 2 if the proposal does not stand
 6. Have advisor attach a hypothesis plus reversibility and blast-radius to each unsettled question, then route them by the table
