@@ -53,6 +53,18 @@ test("reading the changes looks at both the staged and the unstaged side", () =>
   }
 });
 
+// A step citing a section the file no longer carries sends the reader nowhere.
+test("every section a step cites exists", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    const cited = [...doc.matchAll(/\(§ ([^)]+)\)/g)].map((m) => m[1]);
+    assert.ok(cited.length > 0, `${lang}: a step cites the naming section`);
+    for (const name of cited) {
+      assert.match(doc, new RegExp(`^## ${name}$`, "m"), `${lang}: ## ${name} exists`);
+    }
+  }
+});
+
 // scribe creates scribe/<yyyymmdd-HHMMSS>. The date prohibition must not read as a
 // repository-wide rule.
 test("the date prohibition is scoped to the names this skill creates", () => {

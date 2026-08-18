@@ -16,18 +16,24 @@ argument-hint: "[context or ticket number]"
 ## Execution
 
 1. Run `git status` and `git diff HEAD` in parallel to read the changes. Plain `git diff` hides staged changes
-2. Generate 3 branch name candidates that follow the naming convention from the changes and `$ARGUMENTS`
+2. Generate 3 branch name candidates from the changes and `$ARGUMENTS` (§ Branch Naming)
 3. Present each candidate with a selection reason via `AskUserQuestion` and let the user pick one
 4. Create the new branch via `git checkout -b <selected name>`
 
 ## Branch Naming
 
-Determine the type from the changes and assemble the branch name in this format. Each type's trigger is in the table below.
+Determine the type from the changes and assemble the branch name in this format.
 
 ```text
 <type>/<scope>-<description>
 <type>/<ticket>-<description>
 ```
+
+- Compose it from lowercase and hyphen separators; do not use spaces, underscores, or CamelCase
+- Keep scope and description to 2-4 words, naming the target and the result rather than a vague word such as update
+- If `$ARGUMENTS` has a ticket ID, include it at the `<ticket>` position. Names this skill creates carry no date
+
+The table below decides the trigger for each type.
 
 | Prefix    | Purpose              | Trigger               |
 | --------- | -------------------- | --------------------- |
@@ -39,17 +45,13 @@ Determine the type from the changes and assemble the branch name in this format.
 | chore/    | Maintenance          | Dependencies, config  |
 | perf/     | Performance          | Optimization, caching |
 
-- Compose it from lowercase and hyphen separators; do not use spaces, underscores, or CamelCase
-- Keep scope and description to 2-4 words, naming the target and the result rather than a vague word such as update
-- If `$ARGUMENTS` has a ticket ID, include it at the `<ticket>` position. Names this skill creates carry no date
-
 ## Error Handling
 
-| Error             | Action                      |
-| ----------------- | --------------------------- |
-| No changes        | Report there are no changes |
-| Branch exists     | Suggest an alternative name |
-| No git repository | Report it is not a git repo |
+| Error             | Action                                               |
+| ----------------- | ---------------------------------------------------- |
+| No changes        | Report there are no changes                          |
+| Branch exists     | Offer alternative names and have the user pick again |
+| No git repository | Report it is not a git repo                          |
 
 ## Output
 
