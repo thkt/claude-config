@@ -113,8 +113,8 @@ test("the handoff from issue to fix lines up on both sides", () => {
   assert.match(frontmatter, /Bash\(gh issue view:\*\)/, "allowed-tools grants gh issue view");
 });
 
-// The completion conditions are a checklist. Reverting them to a table turns the Required column
-// into a row of Yes and leaves nothing to fill in.
+// Each condition here is done or it is not, with nothing to state past that. Splitting them into
+// a name and a condition, the way census does, leaves the condition column echoing the name.
 test("the completion conditions take checklist form in both languages", () => {
   for (const [lang, path] of Object.entries(skills)) {
     assert.ok(existsSync(path), `${path} exists`);
