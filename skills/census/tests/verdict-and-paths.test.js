@@ -13,6 +13,10 @@ const criteria = {
   ja: join(root, ".ja", "skills", "census", "references", "decision-criteria.md"),
   en: join(root, "skills", "census", "references", "decision-criteria.md"),
 };
+const targets = {
+  ja: join(root, ".ja", "skills", "census", "references", "detection-targets.md"),
+  en: join(root, "skills", "census", "references", "detection-targets.md"),
+};
 const templates = {
   ja: join(root, ".ja", "skills", "census", "templates", "report-template.md"),
   en: join(root, "skills", "census", "templates", "report-template.md"),
@@ -26,6 +30,41 @@ const agentVerdicts = async () => {
   assert.equal(found.length, 3, `three agent verdicts are readable (${found.join(", ")})`);
   return found;
 };
+
+// Collect -> mine -> cross-reference -> judge -> emit. A phase inserted or dropped on one language
+// side alone would leave the two skills running different flows under one name.
+test("both languages run the same five phases in the same order", async () => {
+  const expected = [1, 2, 3, 4, 5];
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = await readFile(path, "utf8");
+    const numbers = [...doc.matchAll(/^## Phase (\d+):/gm)].map((m) => Number(m[1]));
+    assert.deepEqual(numbers, expected, `${lang}: phases run 1 through 5 in order`);
+  }
+});
+
+// The DR cross-reference used to run once per stream, so a change to the rule had two homes.
+test("the DR cross-reference has a single home", async () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = await readFile(path, "utf8");
+    const mentions = [...doc.matchAll(/DR-covered \(excluded\)/g)];
+    assert.equal(mentions.length, 1, `${lang}: the exclusion is recorded in one place`);
+    assert.match(doc, /^## Phase 3: /m, `${lang}: it is its own phase`);
+  }
+});
+
+// A reference naming a phase that no longer exists sends the reader to the wrong step.
+test("the phase numbers the references cite exist in SKILL.md", async () => {
+  for (const lang of ["ja", "en"]) {
+    const skill = await readFile(skills[lang], "utf8");
+    const present = new Set([...skill.matchAll(/^## Phase (\d+):/gm)].map((m) => m[1]));
+    for (const [name, paths] of Object.entries({ criteria, targets, templates })) {
+      const doc = await readFile(paths[lang], "utf8");
+      for (const [, cited] of doc.matchAll(/Phase (\d+)/g)) {
+        assert.ok(present.has(cited), `${lang}: ${name} cites Phase ${cited}, which SKILL.md has`);
+      }
+    }
+  }
+});
 
 test("the criteria define census's own accept-or-reject words", async () => {
   for (const [lang, path] of Object.entries(criteria)) {

@@ -1,6 +1,6 @@
 # DR Gaps Audit Report Template
 
-The skeleton that `/census` Phase 6 emits. Repeat the Source File Decisions `###` section per source file and the Prose Document Decisions `###` section per document. Batch source files with no decisions into one trailing line. Record a document with no decisions as `no decisions found` under its `###`.
+The skeleton that `/census` Phase 5 emits. Repeat the Source File Decisions `###` section per source file and the Prose Document Decisions `###` section per document. Batch source files with no decisions into one trailing line. Record a document with no decisions as `no decisions found` under its `###`.
 
 ## Template
 

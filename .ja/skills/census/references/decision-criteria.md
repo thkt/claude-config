@@ -1,6 +1,6 @@
 # /census 判定基準
 
-Phase 5 のタグ付け、ランク付け、`critic-design` challenge で使う。Phase 5 の Step 2 で `critic-design` に全文を渡す。
+Phase 4 のタグ付け、ランク付け、`critic-design` challenge で使う。Phase 4 の Step 2 で `critic-design` に全文を渡す。
 
 ## incomplete-contract
 

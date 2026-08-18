@@ -1,6 +1,6 @@
 # /census decision criteria
 
-Used by Phase 5 tagging / ranking / `critic-design` challenge. Passed whole to `critic-design` in Phase 5 Step 2.
+Used by Phase 4 tagging / ranking / `critic-design` challenge. Passed whole to `critic-design` in Phase 4 Step 2.
 
 ## incomplete-contract
 
