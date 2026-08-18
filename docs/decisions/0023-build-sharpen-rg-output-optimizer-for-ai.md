@@ -107,3 +107,8 @@ stdin (rg output) → parse → filter → group-by-path → format → stdout
 ### Neutral
 
 - RTK の grep リライトとは独立（RTK はコマンド置換、sharpen は出力変換）
+
+## Reassessment Triggers
+
+- rg 自体が AI 向けの出力整形を持ち、sharpen のトークン削減率が誤差になったとき
+- パイプで組み合わせる使い方が崩れ、sharpen 自身に検索機能を求められ始めたとき

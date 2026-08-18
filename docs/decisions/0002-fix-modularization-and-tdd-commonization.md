@@ -343,3 +343,8 @@ references/commands/code/
 _作成日: 2025-12-24_
 _著者: Claude Code_
 _ステータス: 承認済み_
+
+## Reassessment Triggers
+
+- TDD 共通モジュールの参照元が 1 つに減り、共通化して得るものが無くなったとき
+- /code と /fix で TDD の手順が分かれ、共通モジュールに条件分岐が入り始めたとき

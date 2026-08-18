@@ -108,3 +108,8 @@ Q1 が実証されたため accepted とする。Q2 の competing stop は単純
 - Claude Code 2.1.139 リリース (2026-05-12) で /goal 追加
 - 旧 SOW (flow-controller 自作前提): ~/.claude/workspace/planning/2026-03-16-flow-controller/sow.md
 - completion-gate spec: ~/.claude/workspace/planning/2026-03-10-completion-gate/spec.md
+
+## Reassessment Triggers
+
+- ネイティブ /goal が完了判定を実行 agent 側へ戻す仕様変更を受けたとき
+- /goal では表現できない反復条件が実運用で必要になったとき

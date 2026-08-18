@@ -105,3 +105,8 @@ oneline
 - DA challenge 1: wrapperカバーは「たまたま拾えてるだけ」
 - DA challenge 2: N1がshell-wordsに必要な構造を破壊する
 - DA challenge 3: per-segmentマッチがcross-segmentパターンを壊す
+
+## Reassessment Triggers
+
+- omamori の設計が変わり、参考実装として追随できなくなったとき
+- unwrap モジュールの追加で依存数か行数が minimalist 方針の範囲を超えたとき

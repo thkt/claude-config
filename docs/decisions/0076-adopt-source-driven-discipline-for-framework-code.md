@@ -67,3 +67,8 @@ rules/development/SOURCING.md の作成、/code Execution への write-time step
 - addyosmani/agent-skills の source-driven-development を inspiration として参照したが、論拠は自 harness の recurring incident に置く。pack の主張単独は load-bearing にしない
 - CLAUDE.md Verify ルール「事実は出典を引用」の write-time 具体化にあたる
 - ADR-0071 (no-source 状態の routing。本 ADR と軸が別であることを上記で明示)
+
+### Reassessment Triggers
+
+- write 時の fetch コストが DETECT 限定でも許容できなくなったとき
+- pin バージョンの公式 docs が参照できない framework を扱う段になったとき

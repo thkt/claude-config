@@ -141,3 +141,8 @@ transcriptのJSONLに記録される区切りマーカー:
 
 - Gap 2（セッション間状態管理 / HANDOFF.md）とは独立。Gap 2は別途対応
 - IDR（人間向け実装記録）とDelta（エージェント向けコンテキスト復元）は別目的で共存
+
+## Reassessment Triggers
+
+- compaction の仕様が変わり、manual と auto の性質差という二層の前提が消えたとき
+- Delta の復元品質が実測で足りず、外部 API を使う設計と比べる段になったとき

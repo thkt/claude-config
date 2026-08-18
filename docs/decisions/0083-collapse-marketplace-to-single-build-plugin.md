@@ -49,3 +49,8 @@ build workflow の workflow / agent 解決は元から build: namespace のた�
 ## More Information
 
 ADR-0003 を supersede する。前提となった github source 化は PR #182。
+
+### Reassessment Triggers
+
+- build が全 skill / agent / workflow を auto-discovery しなくなったとき
+- 単一 plugin のロード量が起動時間を圧迫し始めたとき

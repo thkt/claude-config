@@ -107,3 +107,8 @@ rmcp crate に重大な問題が発覚した場合：
 - [ ] research ツールで検索→fetch→統合の一連フローが動作する
 - [ ] research の Gemini API 呼出が ≤ 2回（search + 統合）に収まる
 - [ ] MCP Server 起動時間 < 100ms
+
+## Reassessment Triggers
+
+- Gemini API の型定義変更が続き、自前メンテのコストが公式 SDK 採用を上回ったとき
+- MCP Server の起動速度が問題にならない実行形態へ移ったとき

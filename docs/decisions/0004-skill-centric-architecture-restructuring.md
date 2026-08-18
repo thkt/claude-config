@@ -164,3 +164,8 @@ ADR 0001/0002/0003 から強制ルールを抽出：
 
 - [MODULARIZATION_RULES.md](../rules/workflows/MODULARIZATION_RULES.md)
 - [PLUGIN_ARCHITECTURE.md](../rules/conventions/PLUGIN_ARCHITECTURE.md)
+
+## Reassessment Triggers
+
+- skill に属さない知識が溜まり、skills/ の外に置き場が要るようになったとき
+- コマンドの薄いラッパー化が破れ、コマンド側に手順が戻り始めたとき

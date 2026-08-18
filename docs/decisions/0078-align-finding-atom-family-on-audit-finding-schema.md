@@ -78,3 +78,8 @@ family の base format は finding-schema の共通コア (Severity / Evidence /
 - skills/audit/references/finding-schema.md (canonical な Base Fields)
 - agents/critics/critic-design.md (改修対象の weakness schema)
 - agents/enhancers/enhancer-evidence.md (既に finding-schema の projection)
+
+### Reassessment Triggers
+
+- critic-design 以外にも共通コアへ収まらない producer が現れたとき
+- スキル間で finding を実際に consume する経路ができ、format の共有だけでは足りなくなったとき

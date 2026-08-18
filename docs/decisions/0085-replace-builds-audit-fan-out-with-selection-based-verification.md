@@ -51,3 +51,8 @@ workflows/build/tests/build.behavior.test.js が phase 順 (Load → Revalidate 
 - ADR-0084 (上流の人間駆動化) の下流への適用。ADR-0081 (fan-out は決定論 workflow へ) とは両立し、残る fan-out (code / polish cleanup) は workflow のまま
 - 静的解析の言語別整理は memory reference_semgrep-gitleaks-by-language を参照
 - 2026-08-02 に Ship の「`/audit` は人間が必要と判断したら起動する」案内を PR body から外した。tail を読むのは build を起動した本人であり、毎回同じ操作案内が並ぶ。build が深いレビューを含まないことは自動生成ラベルが持ち続ける。重い担保は人間が起動するという方針自体は変えていない
+
+### Reassessment Triggers
+
+- ロジックレベルの欠陥が本番へ抜け、人間駆動の /audit では受け皿にならないと分かったとき
+- 決定論検査では plan からの逸脱を検出できない事例が出たとき

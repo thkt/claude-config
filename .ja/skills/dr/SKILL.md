@@ -37,7 +37,7 @@ argument-hint: "[decision title]"
 
 ## 決定タイプ
 
-決定タイプの違いが影響するのは、More Information に置く推奨トピックの選択のみ。分量は全タイプ共通で、Context は 3 行、Options は各 3〜5 行、Consequences は箇条書き 2〜3 項目とする。Reassessment Triggers はタイプに関わらず More Information に置く。既存構造の削除や統合を提案する側がこの節を読んで判定するので、欠けると判定材料が無い。
+決定タイプの違いが影響するのは、More Information に置く推奨トピックの選択のみ。分量は全タイプ共通で、Context は 3 行、Options は各 3〜5 行、Consequences は箇条書き 2〜3 項目とする。Reassessment Triggers はタイプに関わらず More Information に置く。新規 DR は必ず More Information を持つので h3 になる。既存構造の削除や統合を提案する側がこの節を読んで判定するので、欠けると判定材料が無い。
 
 | 決定タイプ           | ユースケース                   | 推奨トピック                                                                  |
 | -------------------- | ------------------------------ | ----------------------------------------------------------------------------- |

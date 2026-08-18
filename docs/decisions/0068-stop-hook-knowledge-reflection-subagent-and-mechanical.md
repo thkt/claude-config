@@ -106,3 +106,8 @@ Option A を採用する。
 - Motivation: Zenn 2026-05-02 Takami Torao "ソフトウェアの『設計原則』を、なぜ一部のエンジニアは生理的に嫌うのか" / Anthropic Thariq (2026-02-19) "Lessons from Building Claude Code: Prompt Caching Is Everything"
 - Memory: `project_harness-investigation-quality.md`, `feedback_no-llm-self-confidence-as-gate.md`, `reference_hook-patterns-throttle-deferred.md`
 - Future work: wiki plugin enable 時の dedup contract、reflection archive policy、subagent コスト telemetry
+
+### Reassessment Triggers
+
+- subagent 起動の LLM コストが telemetry で許容範囲を超えたとき
+- 機械的な activity log だけで durable な外化資産が残ると実測できたとき

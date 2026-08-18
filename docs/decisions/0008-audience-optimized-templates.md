@@ -104,3 +104,8 @@ SOW/Spec もガイドライン形式にする。
 
 - ADR-0005: ドキュメントの役割分離とAI最適化（本 ADR の前提となる原則）
 - `rules/conventions/DOCUMENTATION.md` - ドキュメント規約
+
+## Reassessment Triggers
+
+- SOW 以外の文書でもテンプレート無視が起き始めたとき
+- AI 読み手が構造化テーブルより散文を正確に扱えるという実測が出たとき

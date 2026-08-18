@@ -50,7 +50,10 @@ The severity gate ADR-0077 introduced stays. It now keys off Direct Finding Inpu
 
 Supersedes ADR-0077. ADR-0077's severity gate is kept, not reversed; only the ID resolution and the snapshot read are retired. ADR-0078 aligned the finding atom family on the audit finding schema and stays in force, since Direct Finding Input consumes that same schema.
 
-Re-open this if the audit snapshot schema regains a stable per-finding `id` that is unique across runs, or if a second consumer of `~/.claude/history/` appears.
+### Reassessment Triggers
+
+- The audit snapshot schema regains a stable per-finding `id` that is unique across runs
+- A second consumer of `~/.claude/history/` appears
 
 ### References
 

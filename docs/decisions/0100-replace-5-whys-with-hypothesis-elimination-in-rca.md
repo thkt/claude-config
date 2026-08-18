@@ -56,7 +56,10 @@ The skill keeps `5 Whys` and `なぜなぜ分析` in `when_to_use`, so whoever t
 
 `references/symptom-patterns.md` survives unchanged in purpose: its symptom-to-cause table is where hypotheses come from.
 
-Re-open this if eliminating three hypotheses proves too slow for the 1-3 file fixes `/fix` is scoped to, or if a caller needs the causal chain itself rather than the cause.
+### Reassessment Triggers
+
+- Eliminating three hypotheses proves too slow for the 1-3 file fixes `/fix` is scoped to
+- A caller needs the causal chain itself rather than the cause
 
 ### References
 

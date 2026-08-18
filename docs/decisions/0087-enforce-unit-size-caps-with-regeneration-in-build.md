@@ -51,3 +51,8 @@ workflows/build/tests/build.behavior.test.js が、extract 経路で files 4 つ
 - ADR-0086 の draftPlan 経路 (Load 内ローカル関数、単独起動しない) に UNIT_CAPS enforcement を追加する。ADR-0086 の生成 path を変えるものではない
 - issue #219 に上限値・検出関数のシグネチャ・却下した Alternatives の詳細を記録
 - 上限値変更時は skills/think/SKILL.md Phase 3 の上限規則と workflows/build.js の UNIT_CAPS を同一コミットで揃える (Premise、issue #219)
+
+### Reassessment Triggers
+
+- UNIT_CAPS と think の分解規則が乖離し、人間が書いた valid な plan が extract 経路で reject されたとき
+- stop 後の手動精緻化が運用の負担になり、自動縮小を見送った判断が破れたとき

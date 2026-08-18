@@ -93,3 +93,8 @@ notify crate（FSEvents）はディレクトリ単位の監視が煩雑で、ses
 - Spec: ~/.claude/workspace/planning/2026-03-22-mado/spec.md
 - SessionDock: <https://github.com/adachic/sessiondock>
 - Ghostty AppleScript: Ghostty v1.3 release (2026-03-09)
+
+## Reassessment Triggers
+
+- 監視対象の状態取得元が変わり、TUI 側の解析を作り直す必要が出たとき
+- Ghostty split に常駐させる使い方をやめたとき

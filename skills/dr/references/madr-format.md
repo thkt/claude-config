@@ -16,7 +16,7 @@ Confirmation is optional in upstream MADR v4 but treated as required by this ski
 
 ## Recommended Sections
 
-These go under More Information. validate-dr.py returns a warning rather than an error when one is missing.
+These go under More Information as an h3. A DR without a More Information section may carry one as a standalone h2, and validate-dr.py accepts either level. A missing one returns a warning rather than an error.
 
 | Section               | Purpose                                                                                                  |
 | --------------------- | -------------------------------------------------------------------------------------------------------- |

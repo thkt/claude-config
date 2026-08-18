@@ -97,3 +97,8 @@ wikiが20ページを超えた段階であらためて判断する。
 - Good: 未実装のためv1との互換コストがゼロ
 - Bad: SOW v2として計画文書を再起こしする必要がある（実施済み: 2026-04-14）
 - Bad: headless呼び出しコストが累積する（pre-filterで90% 削減）
+
+## Reassessment Triggers
+
+- headless 呼び出しのコストを pre-filter で抑えきれなくなったとき
+- wiki_root リゾルバーが解決できない配置 (複数リポ横断など) を求められたとき

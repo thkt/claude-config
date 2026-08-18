@@ -16,7 +16,7 @@ Confirmation は upstream MADR v4 では任意だが、このスキルでは必�
 
 ## 推奨セクション
 
-More Information 配下に置く。欠けても validate-dr.py は error にせず warning を返す。
+More Information 配下の h3 に置く。More Information を持たない DR では h2 の独立節でよく、validate-dr.py はどちらの階層も認める。欠けても error にせず warning を返す。
 
 | セクション            | 目的                                                               |
 | --------------------- | ------------------------------------------------------------------ |

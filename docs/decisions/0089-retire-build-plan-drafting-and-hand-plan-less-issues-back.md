@@ -47,3 +47,8 @@ workflows/build/tests/build.behavior.test.js が、Plan 節なし本文で stopp
 
 - ADR-0086 を supersede する。ADR-0085 が置いた no-plan 差し戻しへ戻す
 - ADR-0087 のうち draftPlan 経路の再生成が併せて退役し、extract 経路の上限強制は残る
+
+### Reassessment Triggers
+
+- Plan 節を書く工程の負担が、fire-and-forget を失う損失を上回ったとき
+- /slice が生む issue に Plan 節を自動で載せられるようになったとき

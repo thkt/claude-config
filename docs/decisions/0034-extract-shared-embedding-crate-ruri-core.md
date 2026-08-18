@@ -77,3 +77,8 @@ Option 1: ruricoを独立リポジトリとして作成し、git dependencyで�
 - ADR-0032: sae（esa semantic search CLI）
 - ADR-0021: kiku（Slack semantic search）
 - SOW/Spec: ~/.claude/workspace/planning/2026-03-24-rurico/
+
+## Reassessment Triggers
+
+- 3 ツールの embedding コードが再び分かれ、共有クレートに条件分岐が増え始めたとき
+- rusqlite のバージョン統一が崩れ、git dependency の解決が衝突するようになったとき

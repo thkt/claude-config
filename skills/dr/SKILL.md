@@ -37,7 +37,7 @@ Proceed to the process only when all three conditions below hold. When one is mi
 
 ## Decision Type
 
-The decision type only affects which recommended More Information topics to include. Per-section guidance is common to all types: Context 3 lines, Options 3-5 lines each, Consequences 2-3 bullets. Reassessment Triggers goes into More Information whatever the type. Whoever proposes removing or merging existing structure reads that section to judge, so a missing one leaves that judgment nothing to read.
+The decision type only affects which recommended More Information topics to include. Per-section guidance is common to all types: Context 3 lines, Options 3-5 lines each, Consequences 2-3 bullets. Reassessment Triggers goes into More Information whatever the type, which makes it an h3 in a new DR. Whoever proposes removing or merging existing structure reads that section to judge, so a missing one leaves that judgment nothing to read.
 
 | Decision type        | Use Case                   | Recommended topics                                                            |
 | -------------------- | -------------------------- | ----------------------------------------------------------------------------- |

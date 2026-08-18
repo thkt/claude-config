@@ -66,3 +66,8 @@ Chosen: Option 1。プレフィクス対称性 (ADR-0070 のドライバ) を、
 
 - Supersedes ADR-0070: 同 ADR の `audit-adr-*` プレフィクス対称性ドライバを置き換える。skill を別維持する判断 (ADR-0049 由来) は不変
 - ADR-0052: `use-*` prefix 統一。user-invocable skill は対象外。本 ADR が user-invocable audit 系の命名を更新する
+
+### Reassessment Triggers
+
+- name だけで役割が伝わらない skill が増え、ペアの相互参照だけでは辿れなくなったとき
+- 2 skill の役割が重なり、統合を検討する段になったとき

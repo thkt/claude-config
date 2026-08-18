@@ -53,13 +53,7 @@ CCPlanView のソースをコピーして別アプリ化。Bundle ID / URL schem
 
 Option 1 を採用。Phase 1 ではフォークで独立運用する。
 
-shared package 化の判断は、次のトリガのいずれかが発生した時点で再評価する:
-
-- CCPlanView 側の WKWebView 回避策 (TitlebarDragView / DropOverlayView 等) に同じ修正が両アプリに 2 回入ったら
-- macOS メジャーバージョンアップで両アプリに同種の対応が必要になったら
-- Phase 2 以降で third app を派生させる計画が立ったら
-
-それまでは両リポジトリで並走メンテし、差分は手動で伝搬する。
+Phase 1 では shared package 化しない。両リポジトリで並走メンテし、差分は手動で伝搬する。
 
 ## Technical Details
 
@@ -131,3 +125,9 @@ AS-003 (Canvas/Heptabase への移住判断) で撤退する場合、carte リ�
 - carte Spec: [~/.claude/workspace/planning/2026-04-19-carte/spec.md](../workspace/planning/2026-04-19-carte/spec.md)
 - CCPlanView (fork source): /Users/thkt/GitHub/apps/CCPlanView
 - k1LoW/mo (CLI 起動パターンの参考): <https://github.com/k1LoW/mo>
+
+## Reassessment Triggers
+
+- CCPlanView 側の WKWebView 回避策 (TitlebarDragView / DropOverlayView 等) に同じ修正が両アプリに 2 回入ったら
+- macOS メジャーバージョンアップで両アプリに同種の対応が必要になったら
+- Phase 2 以降で third app を派生させる計画が立ったら

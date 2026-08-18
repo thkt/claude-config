@@ -71,3 +71,8 @@ esaのtagsカラムはJSON配列格納。`json_each` + EXISTSサブクエリはe
 **個別ヘルパーのまま維持**: column名がヘルパー内にハードコードされ、amici抽出時にgeneric化が必要になる。早期に揃えるコストが低いため採用しない。
 
 **`append_in_filter` を今 sae に追加**: YAGNI。使用箇所がなく、tagsフィルタの構造とも合わない。
+
+## Reassessment Triggers
+
+- amici 抽出を実施し、移動できるものと sae に残すものの切り分けが確定したとき
+- append_in_filter を要する検索条件が実際に必要になったとき

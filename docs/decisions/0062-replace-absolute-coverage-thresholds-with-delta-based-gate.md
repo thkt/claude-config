@@ -94,3 +94,8 @@ References:
 - `workspace/planning/2026-03-22-shields/spec.md` NFR-005 — clarified as individual override
 - `workspace/inbox/audit-2026-04-30-issues/09-rc-010-test-coverage-gate.md` — selection A revised
 - scout research 2026-05-06: industry coverage thresholds, branch coverage standards (Codecov, Atlassian, Google, Istanbul/Jest/Vitest, LaunchDarkly)
+
+### Reassessment Triggers
+
+- A project needs an absolute floor because the delta gate lets a low-coverage module stay low indefinitely
+- The do-not-decrease rule blocks routine refactors that legitimately delete tested code

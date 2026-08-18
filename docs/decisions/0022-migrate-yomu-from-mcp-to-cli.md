@@ -97,3 +97,8 @@ flag は、MCP が必要になった時点で追加すればよい。
 - `cargo test` 全テスト pass
 - `yomu search` が既存 `explorer` MCP ツールと同等の出力を返す
 - Claude Code から Bash 経由で全サブコマンドが利用可能
+
+## Reassessment Triggers
+
+- MCP でしか成立しない consumer (エディタ統合など) が現れたとき
+- CLI の起動コストが繰り返し呼び出しで無視できなくなったとき

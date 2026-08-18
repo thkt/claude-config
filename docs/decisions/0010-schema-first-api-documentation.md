@@ -111,3 +111,8 @@ Chosen option: "Hybrid: Schema-First with Architectural Guidance", because Archi
 _Created: 2026-02-08_
 _Author: thkt_
 _ADR Number: 0010_
+
+## Reassessment Triggers
+
+- schema.ts が正でなくなり、実装が schema を追い越すようになったとき
+- regex ベースの抽出が誤りを出し、AST parser へ移行するコストを払う段になったとき

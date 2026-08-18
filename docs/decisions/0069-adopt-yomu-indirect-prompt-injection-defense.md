@@ -140,3 +140,8 @@ CI / cross-tenant / embedding poisoning を out of scope と判定した根拠�
 - OWASP LLM01:2025 Prompt Injection (<https://owasp.org/www-project-top-10-for-large-language-model-applications/>)
 - OWASP 2025 新規: Vector and Embedding Weaknesses
 - ADR-0060: Adopt Agent-Friendly CLI Design Principles
+
+### Reassessment Triggers
+
+- user base が個人利用を超えて広がり、schema 遷移が強いる全 chunk の reindex に migration 戦略が要るようになったとき
+- 素材とマーカーまでという境界では防げない攻撃面が観測されたとき

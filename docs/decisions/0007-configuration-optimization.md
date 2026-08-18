@@ -151,3 +151,8 @@ WORKFLOW_GUIDE.md ← README.md（ユーザードキュメント）
 ## 結論
 
 Phase 1 のみ実行。Phase 2, 3 は効果が限定的なため見送り。
+
+## Reassessment Triggers
+
+- CLAUDE.md の参照先が増え、常時ロードするだけでコンテキストを圧迫し始めたとき
+- Phase 3 で実行しないと決めたエージェント統合が、実運用で必要になったとき
