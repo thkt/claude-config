@@ -29,7 +29,7 @@
 
 ## Approach (任意)
 
-- {決めた実装方針: `既存構成に合わせて OrderService 配下に配置する`}
+- {critic-design を通した実装方針: `既存構成に合わせて OrderService 配下に配置する`。叩いていない方針はここへ書かず、`/think` へ回す}
 
 ## Constraints (任意)
 
@@ -51,6 +51,6 @@
 | Acceptance Criteria | Export クリックで .csv がダウンロードされる           | CSV エクスポートが正しく動く               |
 | Scope - Out of      | Excel 形式は対象外                                    | (省略)                                     |
 | Accessibility       | キーボードのみで全操作が完結する                      | UI 変更なのに省略、「a11y に配慮する」だけ |
-| Approach            | OrderService の構成に合わせる                         | 決まっていない HOW を書く                  |
+| Approach            | OrderService の構成に合わせる                         | 誰も叩いていない方針を書く                 |
 | Constraints         | 新規依存を追加しない                                  | (既知の制約があるのに省略)                 |
 | Testing Decisions   | CSV シリアライザをテスト。tests/orders.test.ts を踏襲 | TBD または理由なしのスキップ               |

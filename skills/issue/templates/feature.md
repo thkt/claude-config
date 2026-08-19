@@ -29,7 +29,7 @@ When /issue classifies the request as feature, it generates the title and body f
 
 ## Approach (optional)
 
-- {The decided implementation direction: "place under OrderService to match existing structure"}
+- {An implementation direction that cleared critic-design: "place under OrderService to match existing structure". One nothing attacked goes to `/think` rather than here}
 
 ## Constraints (optional)
 
@@ -51,6 +51,6 @@ When /issue classifies the request as feature, it generates the title and body f
 | Acceptance Criteria | When user clicks Export, a .csv downloads            | CSV export works correctly                               |
 | Scope - Out of      | Excel format is out of scope                         | (omitted)                                                |
 | Accessibility       | All operations complete with keyboard only           | Omitted despite UI changes, or bare "make it accessible" |
-| Approach            | Match the OrderService structure                     | A HOW nobody has decided                                 |
+| Approach            | Match the OrderService structure                     | A direction nothing attacked                             |
 | Constraints         | Must not add new dependencies                        | (omitted when there are known constraints)               |
 | Testing Decisions   | Test the CSV serializer; mirror tests/orders.test.ts | TBD or skipped without rationale                         |

@@ -420,3 +420,28 @@ test("the floor matches between the validator, the body, and the templates", () 
     }
   }
 });
+
+// An approach nobody attacked reaches the implementer as a requirement. /think is where it gets
+// attacked, since its own Phase 2 launches critic-design unconditionally, so issue routes there
+// on more than an estimated file count: a stated direction, or an extent nobody can call.
+test("a stated approach routes to /think rather than into the body", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const phase1 = readFileSync(path, "utf8").split("## Phase 1")[1].split("###")[0];
+    const step = [...phase1.matchAll(/^\d+\. .*/gm)]
+      .map((m) => m[0])
+      .find((s) => s.includes("/think"));
+    assert.ok(step, `${lang}: a step suggests /think`);
+    const [direction, unclear] =
+      lang === "ja"
+        ? [/実装方針を名指す/, /判断がつかない/]
+        : [/names an implementation direction/, /extent is unclear/];
+    assert.match(step, direction, `${lang}: a stated direction is a trigger`);
+    assert.match(step, unclear, `${lang}: an uncallable extent is a trigger`);
+  }
+  for (const lang of ["ja", "en"]) {
+    const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+    const dir = lang === "ja" ? [root, ".ja"] : [root];
+    const doc = readFileSync(join(...dir, "skills", "issue", "templates", "feature.md"), "utf8");
+    assert.match(doc, /critic-design/, `${lang}: the Approach section names what has to clear it`);
+  }
+});

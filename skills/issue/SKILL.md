@@ -26,7 +26,7 @@ Read `language` from `~/.claude/settings.json` and translate the issue body and 
 3. For a bug, judge whether it is minor, and offer fixing it with `/fix` instead of filing when it is
 4. For feature / bug, if the Why is not readable from the description, pin it down per ${CLAUDE_SKILL_DIR}/references/why-wall-bouncing.md
 5. List the criteria from the description and what step 4 settled, and ask about splitting when two or more are independently implementable
-6. When an issue that is not split is bound for the build workflow and no plan draft exists, suggest running `/think`
+6. With no plan draft, suggest running `/think`. That covers an issue bound for the build workflow and one whose description already names an implementation direction. Suggest it as well when the extent is unclear
 7. Select the template and generate the title and body. Settle an open decision through AskUserQuestion and an unverified fact through Read or ugrep. Neither goes into the body as a guess
 
 ### Type detection
