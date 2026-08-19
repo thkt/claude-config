@@ -16,6 +16,13 @@ CODE_BLOCK = re.compile(r"```(?:markdown)?\n(.*?)```", flags=re.DOTALL)
 OPTIONAL_SUFFIX = re.compile(r"\s*\((?:optional|任意)\)\s*$")
 FORM_SUFFIXES = (".yml", ".yaml")
 FRONTMATTER = re.compile(r"\A---\n.*?\n---\n", flags=re.DOTALL)
+# 骨格が何を必須としても skill が守る底。リポジトリの form が述べるのは Web UI が
+# 埋めさせる最小で、起票された issue が担うべき量より薄い。これが無いと feature は
+# 受け入れ条件なしで、bug は再現手順なしで通る。
+FLOOR = {
+    "feature": ("Acceptance Criteria", "Testing Decisions"),
+    "bug": ("Steps to Reproduce", "Expected vs Actual"),
+}
 # 骨格に無くても errors にしない節。/think の plan を転記した issue はこの 2 節を必ず持ち、
 # skills/issue/SKILL.md の Phase 3 がそれを指示している。
 ALLOWED_EXTRA = frozenset({"Plan", "Backlog candidates"})
@@ -75,7 +82,13 @@ def form_sections(form_text: str) -> list[tuple[str, bool]]:
 
 
 def body_section_names(body_text: str) -> set[str]:
-    names: list[str] = HEADING.findall(body_text)
+    """本文の節名。コードフェンスの中は数えない。
+
+    骨格はフェンスの中身を読むが、本文でフェンスに入る `## ` は引用であって節ではない。
+    数えると骨格に無い引用が unknown_section になり、正しい本文が落ちる。
+    """
+    outside = CODE_BLOCK.sub("", body_text)
+    names: list[str] = HEADING.findall(outside)
     return {OPTIONAL_SUFFIX.sub("", name) for name in names}
 
 
@@ -111,6 +124,9 @@ def main() -> None:
         results["errors"].append(f"unreadable_skeleton:{template.name}")
     required = [name for name, optional in sections if not optional]
     present = body_section_names(body_text)
+    for name in FLOOR.get(template_type, ()):
+        if name not in present and name not in required:
+            required.append(name)
     for name in required:
         if name in present:
             results["checks"].append(f"section:{name}=ok")

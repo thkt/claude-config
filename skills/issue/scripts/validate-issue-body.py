@@ -16,6 +16,13 @@ CODE_BLOCK = re.compile(r"```(?:markdown)?\n(.*?)```", flags=re.DOTALL)
 OPTIONAL_SUFFIX = re.compile(r"\s*\((?:optional|任意)\)\s*$")
 FORM_SUFFIXES = (".yml", ".yaml")
 FRONTMATTER = re.compile(r"\A---\n.*?\n---\n", flags=re.DOTALL)
+# The floor the skill keeps whatever the skeleton requires. A repository form states the web UI's
+# minimum, which is thinner than what a filed issue has to carry: without this a feature issue
+# passes with no acceptance criteria and a bug with no reproduction.
+FLOOR = {
+    "feature": ("Acceptance Criteria", "Testing Decisions"),
+    "bug": ("Steps to Reproduce", "Expected vs Actual"),
+}
 # Headings that stay out of errors despite being absent from the skeleton. An issue
 # carrying a transferred /think plan always has these two, and Phase 3 of
 # skills/issue/SKILL.md is what puts them there.
@@ -78,7 +85,14 @@ def form_sections(form_text: str) -> list[tuple[str, bool]]:
 
 
 def body_section_names(body_text: str) -> set[str]:
-    names: list[str] = HEADING.findall(body_text)
+    """Section names in the body, counting nothing inside a code fence.
+
+    The skeleton is read from inside a fence, but a `## ` fenced in the body is a quotation
+    rather than a section. Counting it turns a quotation the skeleton lacks into
+    unknown_section and fails a body that was right.
+    """
+    outside = CODE_BLOCK.sub("", body_text)
+    names: list[str] = HEADING.findall(outside)
     return {OPTIONAL_SUFFIX.sub("", name) for name in names}
 
 
@@ -114,6 +128,9 @@ def main() -> None:
         results["errors"].append(f"unreadable_skeleton:{template.name}")
     required = [name for name, optional in sections if not optional]
     present = body_section_names(body_text)
+    for name in FLOOR.get(template_type, ()):
+        if name not in present and name not in required:
+            required.append(name)
     for name in required:
         if name in present:
             results["checks"].append(f"section:{name}=ok")

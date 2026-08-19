@@ -50,7 +50,7 @@ Minor names a bug that meets all three criteria below. An intermittent bug with 
 
 ### Template source
 
-List the entries via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` and take the skeleton for the type by working down the table. The repository's own comes first because that is what a web-UI filing uses; ignoring it leaves two shapes of the same issue type in one tracker. The top two state the minimum the web UI makes someone fill in, so a CLI filing that adds sections is not deviating.
+List the entries via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` and take the skeleton for the type by working down the table. The repository's own comes first because that is what a web-UI filing uses; ignoring it leaves two shapes of the same issue type in one tracker. The top two state the minimum the web UI makes someone fill in, so a CLI filing that adds sections is not deviating. However thin the skeleton, a feature carries Acceptance Criteria and Testing Decisions, and a bug carries Steps to Reproduce and Expected vs Actual.
 
 | Skeleton                          | Where the section names come from                                                          |
 | --------------------------------- | ------------------------------------------------------------------------------------------ |
