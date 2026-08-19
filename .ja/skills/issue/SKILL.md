@@ -2,7 +2,7 @@
 name: issue
 description: 構造化されたタイトルと本文で GitHub Issue を生成する。単独で成立し、前段を要求しない。challenge / research の成果物が会話にあれば本文の根拠に使う。/think の plan 下書きがあれば `## Plan` 節へ移設する。issue 番号を渡すと、起票済みで Plan 節を持たない issue へ plan を転記する。
 when_to_use: Issue作って, Issue書いて, Issue作成, GitHub Issue, build に渡す準備, Plan転記
-allowed-tools: Bash(gh:*) Bash(cat:*) Bash(ugrep:*) Read LS AskUserQuestion
+allowed-tools: Bash(gh:*) Bash(cat:*) Bash(ugrep:*) Bash(${CLAUDE_SKILL_DIR}/scripts/*) Read LS AskUserQuestion
 model: opus
 argument-hint: "[issue description | issue number]"
 ---
@@ -74,7 +74,7 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 
 ## Phase 3: Plan 移設
 
-/think の plan 下書きがあるときだけ実施し、無ければ節ごと省略する。Phase 2 の照合で選んだ plan 下書きを Read し、`## Plan` と `## Backlog candidates` の両節をそのまま本文へ移設する。書式と検証は `/think` の書き出し時と build の Load validate が担い、移設した内容には手を入れない。
+/think の plan 下書きがあるときだけ実施し、無ければ節ごと省略する。Phase 2 の照合で選んだ plan 下書きを ${CLAUDE_SKILL_DIR}/scripts/pick-plan.py に渡し、返った `plan` と `backlog` をそのまま本文へ移設する。書式と検証は `/think` の書き出し時と build の Load validate が担い、移設した内容には手を入れない。
 
 ## Phase 4: 起票
 

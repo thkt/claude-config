@@ -1,6 +1,6 @@
 # Duplication match
 
-Used in Phase 2 only when a plan draft exists. Match against the `/think` draft in the conversation when there is one. Otherwise list `.claude/workspace/planning/` with LS and take the `*.plan.md` whose slug matches the issue title and whose date is the newest; /think writes the name as `YYYY-MM-DD-<slug>`. The target is every place the body and `## Plan` carry the same knowledge. Two places carry the same knowledge when editing one forces the other to change; what can change independently stays in both.
+Used in Phase 2 only when a plan draft exists. Match against the `/think` draft in the conversation when there is one. Otherwise pass the issue title to ${CLAUDE_SKILL_DIR}/scripts/pick-plan.py. A returned `path` settles it; when `ambiguous` is true, put `candidates` to the user with AskUserQuestion. The target is every place the body and `## Plan` carry the same knowledge. Two places carry the same knowledge when editing one forces the other to change; what can change independently stays in both.
 
 Replace the duplicated body side with a `## Plan` reference. The reference runs from the body to `## Plan`. Three things stay in the body after the replacement. One line that states what change that heading covers, the rejection reason with its file:line grounds, and the pain description.
 

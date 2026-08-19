@@ -2,7 +2,7 @@
 name: issue
 description: Generate GitHub Issue with structured title and body. It stands alone and requires no upstream stage. When challenge / research artifacts exist in the conversation, they feed the body's evidence. When a /think plan draft exists, it is transferred into the `## Plan` section. Given an issue number, it transfers a plan into a filed issue that has no Plan section.
 when_to_use: Issue作って, Issue書いて, Issue作成, GitHub Issue, prepare for build, Plan転記
-allowed-tools: Bash(gh:*) Bash(cat:*) Bash(ugrep:*) Read LS AskUserQuestion
+allowed-tools: Bash(gh:*) Bash(cat:*) Bash(ugrep:*) Bash(${CLAUDE_SKILL_DIR}/scripts/*) Read LS AskUserQuestion
 model: opus
 argument-hint: "[issue description | issue number]"
 ---
@@ -74,7 +74,7 @@ The title keeps the detected type. An epic is the outcome of a split rather than
 
 ## Phase 3: Plan Transfer
 
-Run this phase only when a /think plan draft exists; otherwise omit the section entirely. Read the plan draft Phase 2 picked for the match, and transfer both the `## Plan` and `## Backlog candidates` sections into the body as-is. Format and verification are owned by /think at write-out time and by build's Load validate; do not touch the transferred content.
+Run this phase only when a /think plan draft exists; otherwise omit the section entirely. Pass the plan draft Phase 2 picked to ${CLAUDE_SKILL_DIR}/scripts/pick-plan.py and transfer the returned `plan` and `backlog` into the body as-is. Format and verification are owned by /think at write-out time and by build's Load validate; do not touch the transferred content.
 
 ## Phase 4: Publishing
 

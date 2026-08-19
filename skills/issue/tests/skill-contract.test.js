@@ -257,11 +257,8 @@ test("the plan draft is selected in one place", () => {
       0,
       `${lang}: SKILL.md does not restate where the drafts live`,
     );
-    assert.equal(
-      ref.split(".claude/workspace/planning").length - 1,
-      1,
-      `${lang}: duplication-match.md names the planning path once`,
-    );
+    assert.match(ref, /scripts\/pick-plan\.py/, `${lang}: the reference calls the one script`);
+    assert.match(skill, /scripts\/pick-plan\.py/, `${lang}: the transfer calls the same script`);
     assert.match(
       phase2(skill),
       lang === "ja" ? /どの下書きを選ぶか/ : /which draft to match against/,
@@ -366,19 +363,21 @@ test("the prose review settles guesses after the body is drafted", () => {
   }
 });
 
-// Picking the plan draft means listing a directory. With no listing tool in allowed-tools the
-// instruction has nothing to run: Read errors on a directory and ugrep reports names without
-// order. Selecting by the filename's date rather than mtime keeps LS sufficient.
+// Picking the draft reads a directory and returns file contents, which the skill's own tools
+// cannot do: Read errors on a directory and ugrep reports names without order. A script does it,
+// so the skill needs permission to run one, and the script has to hand back what it chose.
 test("the selection rule stays within the tools the skill is allowed", () => {
   for (const [lang, path] of Object.entries(skills)) {
-    assert.match(readFileSync(path, "utf8"), /^allowed-tools:.*\bLS\b/m, `${lang}: LS is allowed`);
+    assert.match(
+      readFileSync(path, "utf8"),
+      /^allowed-tools:.*Bash\(\$\{CLAUDE_SKILL_DIR\}\/scripts\/\*\)/m,
+      `${lang}: running a bundled script is allowed`,
+    );
   }
-  for (const [lang, path] of Object.entries(matchRefs)) {
-    const doc = readFileSync(path, "utf8");
-    assert.match(doc, /\bLS\b/, `${lang}: the rule names the listing tool`);
-    const mtime = lang === "ja" ? /更新時刻/ : /modification time/;
-    assert.doesNotMatch(doc, mtime, `${lang}: it does not select on a time no allowed tool reads`);
-  }
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  const src = readFileSync(join(root, "skills", "issue", "scripts", "pick-plan.py"), "utf8");
+  for (const key of ["path", "plan", "backlog", "candidates", "ambiguous"])
+    assert.match(src, new RegExp(`"${key}"`), `the script returns ${key}`);
 });
 
 // Independence alone sends a set that all waits on one unbuilt thing into separate issues, and
