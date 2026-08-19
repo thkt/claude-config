@@ -50,7 +50,9 @@ issue 番号か URL だけを受け取ったときは、起票済み issue へ p
 
 ### テンプレート選択
 
-`gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` で列挙し、種別に対応するものを下表の上から順に骨格へ取る。リポジトリ自身のものを先に取るのは、Web UI からの起票がそれを使うため。無視すると同じ種別の issue が 1 つの tracker に 2 通りの形で並ぶ。上 2 つは Web UI が埋めさせる最小要件なので、CLI 起票が節を足すのは逸脱ではない。骨格が薄くても、feature は Acceptance Criteria と Testing Decisions、bug は Steps to Reproduce と Expected vs Actual を必ず書く。
+`gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` で列挙し、種別に対応するものを下表の上から順に骨格へ取る。リポジトリ自身のものを先に取るのは、Web UI からの起票がそれを使うため。無視すると同じ種別の issue が 1 つの tracker に 2 通りの形で並ぶ。
+
+上 2 つは Web UI が埋めさせる最小要件。CLI 起票が節を足すのは逸脱ではない。骨格が薄くても、feature は `Acceptance Criteria` と `Testing Decisions` を書く。bug は `Steps to Reproduce` と `Expected vs Actual` を書く。
 
 | 骨格                           | 節名の取り方                                                                      |
 | ------------------------------ | --------------------------------------------------------------------------------- |

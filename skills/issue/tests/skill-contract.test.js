@@ -391,3 +391,32 @@ test("the split question carries whether each criterion can be started", () => {
     assert.match(doc, ready, `${lang}: the split assessment asks about readiness`);
   }
 });
+
+// The floor lives in three places: the validator enforces it, the body names it so the writer
+// knows before drafting, and the skill's own template already carries those sections as required.
+// Changing one leaves the writer drafting against a floor the validator no longer holds.
+test("the floor matches between the validator, the body, and the templates", () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  const src = readFileSync(
+    join(root, "skills", "issue", "scripts", "validate-issue-body.py"),
+    "utf8",
+  );
+  const block = src.match(/^FLOOR = \{([\s\S]*?)^\}/m)?.[1];
+  assert.ok(block, "the validator declares a floor");
+  const floor = {};
+  for (const row of block.matchAll(/"(\w+)":\s*\(([^)]*)\)/g))
+    floor[row[1]] = [...row[2].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(Object.keys(floor).length >= 2, `the floor covers the types (${Object.keys(floor)})`);
+  for (const [type, names] of Object.entries(floor)) {
+    for (const name of names) {
+      for (const [lang, path] of Object.entries(skills))
+        assert.match(
+          readFileSync(path, "utf8"),
+          new RegExp(`\`${name}\``),
+          `${lang}: the body names ${name}`,
+        );
+      const tmpl = readFileSync(join(root, "skills", "issue", "templates", `${type}.md`), "utf8");
+      assert.match(tmpl, new RegExp(`^## ${name}$`, "m"), `${type}.md carries ${name} as required`);
+    }
+  }
+});
