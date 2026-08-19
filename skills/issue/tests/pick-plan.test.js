@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -116,3 +116,14 @@ test("the bracketed type does not enter the score", () =>
       assert.equal(withPrefix.out.ambiguous, false, "the prefix does not create a tie");
     },
   ));
+
+// SKILL.md invokes the script by its path and allowed-tools permits exactly that shape. Without
+// the executable bit the call fails, and prefixing python3 to work around it no longer matches
+// the permission. Both language copies ship the bit because either tree can be the loaded skill.
+test("both copies of the script can be run by path", () => {
+  for (const prefix of ["", ".ja"]) {
+    const path = join(root, prefix, "skills", "issue", "scripts", "pick-plan.py");
+    const mode = statSync(path).mode;
+    assert.ok(mode & 0o111, `${prefix || "en"}: the script carries the executable bit`);
+  }
+});
