@@ -340,11 +340,16 @@ body:
 """,
             encoding="utf-8",
         )
-        # A body holding the form's labels alone, with none of the required sections of
-        # templates/bug.md under the skill. With the form not chosen as the skeleton,
-        # missing_section denies it.
+        # A body holding the form's labels plus the floor the validator keeps for a bug whatever
+        # the skeleton requires. Without the form chosen as the skeleton, templates/bug.md's own
+        # required sections would be missing and missing_section would deny it.
         path = stage / "body.md"
-        _ = path.write_text("## Impact\n\nLogin is down for everyone.\n", encoding="utf-8")
+        _ = path.write_text(
+            "## Impact\n\nLogin is down for everyone.\n\n"
+            "## Steps to Reproduce\n\n1. Sign in\n\n"
+            "## Expected vs Actual\n\n- Expected: 200\n- Actual: 500\n",
+            encoding="utf-8",
+        )
         out, stdout, status = self.run_hook(
             f'cd {stage} && gh issue create --title "[Bug] Login is down" --body-file {path}'
         )
@@ -352,6 +357,28 @@ body:
             self.assertEqual(status, 0, f"actual: {stdout!r}")
         with self.subTest("not denied"):
             self.assertNotEqual(self.decision_of(out), "deny")
+
+    def test_repository_form_does_not_lower_the_floor(self) -> None:
+        """T-025 A body meeting the repository form but missing the type's floor is denied"""
+        # A form states the web UI's minimum, which is thinner than what a filed issue carries.
+        # Letting the skeleton set the floor files a bug with no reproduction and nothing says so.
+        stage = Path(tempfile.mkdtemp(dir=self.root))
+        forms = stage / ".github" / "ISSUE_TEMPLATE"
+        forms.mkdir(parents=True)
+        _ = (forms / "bug.yml").write_text(
+            "name: Bug\nbody:\n  - type: input\n    attributes:\n      label: Impact\n"
+            "    validations:\n      required: true\n",
+            encoding="utf-8",
+        )
+        path = stage / "body.md"
+        _ = path.write_text("## Impact\n\nLogin is down.\n", encoding="utf-8")
+        out, stdout, status = self.run_hook(
+            f'cd {stage} && gh issue create --title "[Bug] Login is down" --body-file {path}'
+        )
+        with self.subTest("exit 0"):
+            self.assertEqual(status, 0, f"actual: {stdout!r}")
+        with self.subTest("denied"):
+            self.assertEqual(self.decision_of(out), "deny")
 
     def test_short_flag_title_is_read(self) -> None:
         """T-018 A title passed through the short flag -t still has its type prefix read"""
