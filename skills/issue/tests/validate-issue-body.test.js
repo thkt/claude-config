@@ -360,3 +360,28 @@ test("T-017 a body meeting the form but missing the type's floor is an error", a
     }
   }
 });
+
+// The split assessment publishes the issue as an epic. Rewriting the prefix to [Epic] leaves the
+// title naming a type no skeleton answers to, and validation-errors.md then tells the writer to
+// pick the matching template, which does not exist. The type detection table is the closed set.
+test("T-018 only a type the detection table carries clears the title check", async () => {
+  const { readdir } = await import("node:fs/promises");
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  const dir = join(root, ".github", "ISSUE_TEMPLATE");
+  const form = join(dir, "feature.yml");
+  const labels = [...readFileSync(form, "utf8").matchAll(/^\s*label:\s*(.+?)\s*$/gm)];
+  const body = labels
+    .map((m) => m[1])
+    .concat(floorFor("feature"))
+    .map((s) => `## ${s}\n\nx\n`)
+    .join("\n");
+  assert.equal(runValidate(form, "[Feature] x", body).status, 0, "the detected type clears it");
+  const epic = runValidate(form, "[Epic] x", body);
+  assert.equal(epic.status, 1, "a type with no skeleton does not clear it");
+  assert.ok(
+    epic.out.errors.some((e) => e.startsWith("type_mismatch:")),
+    `the error names the mismatch (${epic.out.errors.join(", ")})`,
+  );
+  const types = (await readdir(dir)).map((f) => f.replace(/\.(yml|md)$/, ""));
+  assert.ok(!types.includes("epic"), "no epic skeleton exists to answer an [Epic] title");
+});

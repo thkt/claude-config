@@ -64,6 +64,8 @@ The top two state the minimum the web UI makes someone fill in, so a CLI filing 
 
 Offer "keep as one issue" or "split into an epic and child issues". Do not count fine-grained checks that only verify one deliverable; they stay within one issue. When asking, say for each criterion whether it can be started now. Splitting a set that waits on something unbuilt lines up issues nobody can pick up. Never auto-split, since publishing N issues is hard to unwind. On approval, publish this issue as the epic and run the rest of the flow unchanged on it.
 
+The title keeps the detected type. An epic is the outcome of a split rather than a kind of content. Rewriting the prefix to `[Epic]` fails validation with type_mismatch, because no skeleton answers to it.
+
 ## Phase 2: Refinement
 
 1. Refine the body inline against ${CLAUDE_SKILL_DIR}/references/prose-review.md. The Plan section transferred in Phase 3 is out of scope; leave it untouched. On the number route this step does not run
