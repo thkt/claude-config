@@ -33,4 +33,4 @@ Stage 5 keeps three things apart in one section. Operations go in numbered steps
 
 Stage 6 removes an instruction another place already settles, a sentence where the skill describes its own nature, and code that binds a variable nothing reads. When an output template defines the columns, the body does not define them too.
 
-Stage 7 makes a broken coupling fail. Phase numbers, referenced files, and template columns all change on one side without anything noticing.
+Stage 7 makes a broken coupling fail. Phase numbers, referenced files, and template columns all change on one side without anything noticing. Pick the break per `../development/TESTING.md` § Whether the test swings at nothing.
