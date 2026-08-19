@@ -422,8 +422,8 @@ test("the floor matches between the validator, the body, and the templates", () 
 });
 
 // An approach nobody attacked reaches the implementer as a requirement. /think is where it gets
-// attacked, since its own Phase 2 launches critic-design unconditionally, so issue routes there
-// on more than an estimated file count: a stated direction, or an extent nobody can call.
+// attacked, since its own Phase 2 launches critic-design unconditionally. Routing states what to
+// skip rather than what to catch: an extent nobody can call then still reaches the critique.
 test("a stated approach routes to /think rather than into the body", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const phase1 = readFileSync(path, "utf8").split("## Phase 1")[1].split("###")[0];
@@ -431,12 +431,12 @@ test("a stated approach routes to /think rather than into the body", () => {
       .map((m) => m[0])
       .find((s) => s.includes("/think"));
     assert.ok(step, `${lang}: a step suggests /think`);
-    const [direction, unclear] =
+    const [direction, skipOnly] =
       lang === "ja"
-        ? [/実装方針を名指す/, /判断がつかない/]
-        : [/names an implementation direction/, /extent is unclear/];
+        ? [/実装方針を名指す/, /言い切れる修正だけ省く/]
+        : [/names an implementation direction/, /Skip only a fix you can call/];
     assert.match(step, direction, `${lang}: a stated direction is a trigger`);
-    assert.match(step, unclear, `${lang}: an uncallable extent is a trigger`);
+    assert.match(step, skipOnly, `${lang}: the rule states what to skip, not what to catch`);
   }
   for (const lang of ["ja", "en"]) {
     const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
