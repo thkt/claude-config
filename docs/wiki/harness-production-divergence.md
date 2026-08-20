@@ -1,3 +1,7 @@
+---
+globs: ["**/workflows/**/*.js"]
+---
+
 # テスト harness と本番の食い違い
 
 ## 内容
