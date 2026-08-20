@@ -17,29 +17,20 @@ Subject 2+ approaches to `critic-design` critique, and let only the surviving ap
 
 ## Phase 1: Establish the Why
 
-Read `.claude/OUTCOME.md`. If it does not exist, generate it via `/outcome`. The Why is three things, plus a fourth when the task is a Bug: who needs this and with what pain, what counts as success, why now, and for a Bug what the root cause is. Attach evidence to the pain. Identify the root cause together with evidence such as reproduction steps or logs; when the cause is undetermined, do not proceed to design and route to `/research` instead. When the report that comes back carries a Hypotheses Log, read it as the evidence for the cause. Design starts only once this Why is readable from $ARGUMENTS and the conversation. Do not proceed on placeholders; pin it down via AskUserQuestion.
+Read `.claude/OUTCOME.md`. If it does not exist, generate it via `/outcome`. The Why is three things, plus a fourth when the task is a Bug: who needs this and with what pain, what counts as success, why now, and for a Bug what the root cause is. Attach evidence to the pain. Identify the root cause together with evidence such as reproduction steps or logs; when the cause is undetermined, do not proceed to design and route to `/research` instead. When the report that comes back carries a `Hypotheses Log` section, read it as the evidence for the cause. Design starts only once this Why is readable from $ARGUMENTS and the conversation. Do not proceed on placeholders; pin it down via AskUserQuestion.
 
 ## Phase 2: Design Exploration
 
-Ground the approaches in the real code and existing research. Read the relevant code, derive a lowercase hyphenated slug from the task's words, and run ${CLAUDE_SKILL_DIR}/../research/scripts/find-prior-research.py <slug> .claude/workspace/research. Read the matching report from the candidates on stdout; with no candidate, proceed as though no research report exists. Before generating approaches, search for an existing module whose set of screens or layers matches the one being planned, in any domain, as a reference_module candidate. Record the result as kind (module/no-module/new-shape) with a reason. Once the area to touch is roughly known, run `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <the paths likely touched>` and read the `matched` pages before generating approaches. A rule bears on how units are cut and which files they take, so reading it after the decomposition means cutting them again. Generate 2+ approaches from distinct perspectives (simplest thing that works / structure and extensibility / developer experience). Do not bundle independent technical decisions into one question; ask each separately with a recommendation and trade-offs.
+Ground the approaches in the real code and existing research before making them. Steps 1 through 4 gather that grounding, and they finish with no approach yet in existence.
 
-When the task, the issue, or a research report cites a mock image or screenshot, open that image file with Read before designing. Absence from the text is not evidence the element does not exist.
-
-1. Launch `critic-design` on the approaches. Include the task title verbatim in the prompt, and have it return a single JSON object `{ verdict: "GO" | "NO-GO", weaknesses: string[], actionable: string[] }`
-2. On NO-GO, resolve blockers inline before proceeding. Present the surviving design to the user with trade-off rationale, and wait for approval
-3. After approval, ask whether the technical decision needs a DR
-
-### Reading the research report
-
-Treat each part of the report you read per the table below. A part absent from the table is not plan material.
-
-| Part of the report                                          | How the plan takes it                                                                                                          |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Constraints table                                           | Take as design constraints. Phase 1 already read the rows that come from OUTCOME, so only the rows research discovered are new |
-| Same-origin Sweep siblings                                  | Decide whether each goes into a unit of this plan or drops to Backlog candidates                                               |
-| A finding whose Next Action reads `record only`             | Background knowledge, not plan scope                                                                                           |
-| A finding whose source starts with `unknown, requires`      | Unverified, so background knowledge, not plan scope                                                                            |
-| Coverage Notes' unknown items and unverified external claim | Likewise never a premise of the plan                                                                                           |
+1. Read the relevant code. When the task, the issue, or a research report cites a mock image or screenshot, open that image file with Read as well. Absence from the text is not evidence the element does not exist
+2. Derive a lowercase hyphenated slug from the task's words and run ${CLAUDE_SKILL_DIR}/../research/scripts/find-prior-research.py <slug> .claude/workspace/research. Read the matching report from the candidates on stdout, and take each of its parts per the table in ${CLAUDE_SKILL_DIR}/references/research-report-intake.md. With no candidate, proceed as though no research report exists
+3. Search for an existing module whose set of screens or layers matches the one being planned, in any domain, as a reference_module candidate, and record the result as kind (module/no-module/new-shape) with a reason
+4. Run `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <the paths likely touched>` and read the `matched` pages. A rule bears on how units are cut and which files they take, so reading it after the decomposition means cutting them again
+5. Generate 2+ approaches from distinct perspectives (simplest thing that works / structure and extensibility / developer experience). Do not bundle independent technical decisions into one question; ask each separately with a recommendation and trade-offs
+6. Launch `critic-design` on the approaches. Include the task title verbatim in the prompt, and have it return a single JSON object `{ verdict: "GO" | "NO-GO", weaknesses: string[], actionable: string[] }`
+7. On NO-GO, resolve blockers inline before proceeding. Present the surviving design to the user with trade-off rationale, and wait for approval
+8. After approval, ask whether the technical decision needs a DR
 
 ## Phase 3: Plan Generation
 
@@ -50,12 +41,12 @@ Decompose the approved design into units, independently implementable bundles of
 3. On a bare repo, plan-wide uniqueness does not reach inside a single file. Skip the numbers already used in the file the tests land in
 4. tests[].name is a one-line condition + expected-result statement. The code workflow uses it verbatim as the test name, and build matches it as a fixed string
 5. A unit with no verifiable behavior (docs / config) gets an empty tests array. build advances that unit as a single direct-implementation step rather than Red-Green
-6. Each unit's tests stub that unit's own boundaries, so once 2 or more units carry tests, place exactly one seam unit last and mark it `seam: true`. Its tests run the real modules across the unit boundary, fake only I/O with external systems, and assert the connections between units. build's `validate()` rejects a plan with no seam unit
-7. A non-seam unit's caps are 3 files and 4 tests. A seam unit's tests cross the unit boundary, so its file count legitimately grows and the caps do not apply to it. Split any unit over the caps along outcomes, and confirm the resulting new unit composition with the user. Candidates carved out of scope stay out of the plan and go to backlog candidates. `UNIT_CAPS` in `workflows/build.js` enforces these caps deterministically, seam exemption included. Change this description and `UNIT_CAPS` in the same commit
-8. Once the units are settled, run `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <the units[].files>` and diff it against what Phase 2 read. Every page under `matched` is either cited or written off in the prose with the reason it does not bear on this plan. A page under `related` only shares a word, so state why it bears when citing one
-9. Pass the self-check (missing required fields, duplicate ids, empty units / files / goal / contract) and the pre-writeout verification in ${CLAUDE_SKILL_DIR}/references/pre-write-check.md, then write the plan following the ${CLAUDE_SKILL_DIR}/templates/plan.md skeleton to `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md`. The slug is the lowercase hyphenated title. Include both the `## Plan` and `## Backlog candidates` sections
-10. Route acceptance-test candidates that test_command cannot execute (a visual check, manual coordination with an external service) out of T-NNN and into `### Manual verification`. Each routed criterion names the mechanism that takes it on (test-storybook, code review, and so on)
-11. A unit that renders domain fields lists each rendered field as its own T-NNN entry, one field per line; bundling them into one entry hides a single field's omission
+6. Route acceptance-test candidates that test_command cannot execute (a visual check, manual coordination with an external service) out of T-NNN and into `### Manual verification`. Each routed criterion names the mechanism that takes it on (test-storybook, code review, and so on)
+7. A unit that renders domain fields lists each rendered field as its own T-NNN entry, one field per line; bundling them into one entry hides a single field's omission
+8. Each unit's tests stub that unit's own boundaries, so once 2 or more units carry tests, place exactly one seam unit last and mark it `seam: true`. Its tests run the real modules across the unit boundary, fake only I/O with external systems, and assert the connections between units. build's `validate()` rejects a plan with no seam unit
+9. A non-seam unit's caps are 3 files and 4 tests. A seam unit's tests cross the unit boundary, so its file count legitimately grows and the caps do not apply to it. Split any unit over the caps along outcomes, and confirm the resulting new unit composition with the user. Candidates carved out of scope stay out of the plan and go to backlog candidates. `UNIT_CAPS` in `workflows/build.js` enforces these caps deterministically, seam exemption included. Change this description and `UNIT_CAPS` in the same commit
+10. Once the units are settled, run `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <the units[].files>` and diff it against what Phase 2 read. Every page under `matched` is either cited or written off in the prose with the reason it does not bear on this plan. A page under `related` only shares a word, so state why it bears when citing one
+11. Pass the self-check (missing required fields, duplicate ids, empty units / files / goal / contract) and the pre-writeout verification in ${CLAUDE_SKILL_DIR}/references/pre-write-check.md, then write the plan following the ${CLAUDE_SKILL_DIR}/templates/plan.md skeleton to `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md`. The slug is the lowercase hyphenated title. Include both the `## Plan` and `## Backlog candidates` sections
 
 ### test_command
 

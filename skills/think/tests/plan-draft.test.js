@@ -224,13 +224,57 @@ test("the skeleton carries an unconditional place for a rule bearing across unit
 });
 
 // Reading the rules after the units are cut means cutting them again when a rule lands.
+// The table deciding what a research report contributes lives in the reference. Drop the line
+// that routes there and the rules stay on disk with nothing sending a reader to them.
+test("Phase 2 routes the research report's parts to the intake reference", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
+    assert.match(
+      phase2,
+      /\$\{CLAUDE_SKILL_DIR\}\/references\/research-report-intake\.md/,
+      `${lang}: Phase 2 names the intake reference`,
+    );
+    const reference = join(
+      root,
+      ...(lang === "ja" ? [".ja"] : []),
+      "skills",
+      "think",
+      "references",
+      "research-report-intake.md",
+    );
+    assert.ok(existsSync(reference), `${lang}: the reference is where the path points`);
+  }
+});
+
+// A rule shaping T-NNN that sits after the write step is applied to a file already on disk. The
+// step order is what a reader follows, so a rule below the write reaches nothing.
+test("every rule shaping what gets written comes before the step that writes it", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const phase3 = doc.slice(doc.indexOf("## Phase 3"), doc.indexOf("### test_command"));
+    const steps = phase3.split("\n").filter((line) => /^\d+\. /.test(line));
+    assert.ok(steps.length >= 8, `${lang}: Phase 3 carries its numbered steps`);
+    const writeAt = steps.findIndex((s) => s.includes(".claude/workspace/planning/"));
+    assert.ok(writeAt >= 0, `${lang}: a step writes the plan out`);
+    for (const [i, step] of steps.entries()) {
+      if (i === writeAt || !step.includes("T-NNN")) continue;
+      assert.ok(i < writeAt, `${lang}: step ${i + 1} shapes T-NNN, so it precedes the write`);
+    }
+  }
+});
+
 test("think reads the wiki rules before the approaches are generated", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
     const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
     assert.match(phase2, /find_wiki_rule\.py/, `${lang}: Phase 2 runs the finder`);
     const phase3 = doc.slice(doc.indexOf("## Phase 3"));
-    assert.match(phase3, /find_wiki_rule\.py/, `${lang}: Phase 3 runs it again on the settled files`);
+    assert.match(
+      phase3,
+      /find_wiki_rule\.py/,
+      `${lang}: Phase 3 runs it again on the settled files`,
+    );
   }
 });
 

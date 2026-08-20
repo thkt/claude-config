@@ -13,7 +13,9 @@ const at = (lang, ...parts) => join(root, ...(lang === "ja" ? [".ja"] : []), ...
 const skillPath = (lang) => at(lang, "skills", "research", "SKILL.md");
 const templatePath = (lang) => at(lang, "skills", "research", "templates", "research.md");
 const verificationPath = (lang) => at(lang, "skills", "research", "references", "verification.md");
-const thinkPath = (lang) => at(lang, "skills", "think", "SKILL.md");
+// think's SKILL.md sends the report's parts to this reference, so the table naming them lives
+// there. Pointing these checks at the skill body would find only the line that delegates.
+const thinkPath = (lang) => at(lang, "skills", "think", "references", "research-report-intake.md");
 
 function read(path) {
   assert.ok(existsSync(path), `${path} exists`);
@@ -86,7 +88,9 @@ const CONSUMED_SECTIONS = {
 test("every report section think reads exists as a heading in the template", () => {
   for (const lang of LANGS) {
     const template = read(templatePath(lang));
-    const think = read(thinkPath(lang));
+    // Phase 1 names the Hypotheses Log in the skill body while the rest of the parts sit in the
+    // reference, so what think reads spans the two files.
+    const think = read(at(lang, "skills", "think", "SKILL.md")) + read(thinkPath(lang));
     for (const section of CONSUMED_SECTIONS[lang]) {
       // \b takes an ASCII word character on one side, which a Japanese heading never offers.
       assert.match(
@@ -94,7 +98,12 @@ test("every report section think reads exists as a heading in the template", () 
         new RegExp(`^## ${section}( |$)`, "m"),
         `${lang}: the template carries the ${section} section`,
       );
-      assert.ok(think.includes(section), `${lang}: think SKILL.md names ${section}`);
+      // Anchored to the row, not the word: several of these names also appear in surrounding
+      // prose, so a whole-file search stays green on a table that dropped the row.
+      const named =
+        think.split("\n").some((line) => line.startsWith(`| ${section}`)) ||
+        think.includes(`\`${section}\``);
+      assert.ok(named, `${lang}: think takes ${section} in a row or names it as a literal`);
     }
   }
 });
@@ -142,7 +151,8 @@ test("the unverified-source literal matches across research SKILL and think SKIL
 // only the script one is repeatable. A grant that does not cover the path leaves the call refused.
 test("think runs research's finder script and is granted the path it names", () => {
   for (const lang of LANGS) {
-    const think = read(thinkPath(lang));
+    // The call and the grant sit in the skill body, not in the reference the table moved to.
+    const think = read(at(lang, "skills", "think", "SKILL.md"));
     const call = think.match(/\$\{CLAUDE_SKILL_DIR\}\/\.\.\/research\/scripts\/([\w.-]+\.py)/);
     assert.ok(call, `${lang}: think names research's script under \${CLAUDE_SKILL_DIR}`);
     assert.ok(

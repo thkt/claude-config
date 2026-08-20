@@ -17,29 +17,20 @@ argument-hint: "[task description]"
 
 ## Phase 1: Why の確立
 
-`.claude/OUTCOME.md` を読む。存在しない場合は `/outcome` で生成する。Why は 3 点で構成し、タスクが Bug のときは 4 点目として原因を足す。誰がどんな痛みを抱えて必要としているか、何を成功とみなすか、なぜ今やるか、Bug なら原因は何か。痛みには根拠を添える。原因は再現手順やログなど根拠とともに特定し、原因が未確定なら設計へ進まず `/research` に回す。戻ってきた調査レポートに仮説ログがあれば、それを原因の根拠として読む。設計はこの Why が $ARGUMENTS と会話から読めてから始める。曖昧なまま仮置きせず、AskUserQuestion で詰める。
+`.claude/OUTCOME.md` を読む。存在しない場合は `/outcome` で生成する。Why は 3 点で構成し、タスクが Bug のときは 4 点目として原因を足す。誰がどんな痛みを抱えて必要としているか、何を成功とみなすか、なぜ今やるか、Bug なら原因は何か。痛みには根拠を添える。原因は再現手順やログなど根拠とともに特定し、原因が未確定なら設計へ進まず `/research` に回す。戻ってきた調査レポートに `仮説ログ` 節があれば、それを原因の根拠として読む。設計はこの Why が $ARGUMENTS と会話から読めてから始める。曖昧なまま仮置きせず、AskUserQuestion で詰める。
 
 ## Phase 2: 設計探索
 
-案を現実のコードと既存の調査に接地させる。関連コードを読み、タスクの語から小文字ハイフン区切りの slug を作って ${CLAUDE_SKILL_DIR}/../research/scripts/find-prior-research.py <slug> .claude/workspace/research を実行する。標準出力の候補から該当するレポートを読み、候補が 0 件なら調査レポートは無いものとして進む。案を生成する前に、ドメインを問わず画面の組か layer の組が一致する既存モジュールを reference_module 候補として探索する。結果は kind (module/no-module/new-shape) と理由で控える。触る領域の当たりが付いた時点で `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <触りそうなパス>` を実行し、`matched` のページを読んでから案を作る。決まりごとは unit の切り方と files の選び方に効くので、分割の後に読むと割り直しになる。異なる視点 (動く最小解/構造と拡張性/開発体験) から 2 つ以上の案を生成する。独立した技術判断は 1 つの質問に束ねず、推奨とトレードオフを添えて別々に問う。
+案を現実のコードと既存の調査に接地させてから作る。手順 1 から 4 が接地の材料を集める工程で、案が 1 つも無い状態で終える。
 
-タスク、issue、調査レポートのいずれかがモック画像やスクリーンショットを参照しているなら、その画像ファイルを Read で開いてから設計する。テキスト側に記載が無いことを、その要素が存在しない根拠にしない。
-
-1. 案に `critic-design` を起動する。プロンプトにタスクのタイトルを一字一句そのまま含め、結果は `{ verdict: "GO" | "NO-GO", weaknesses: string[], actionable: string[] }` の JSON オブジェクト 1 つで返させる
-2. NO-GO は blocker をその場で解消してから進む。生き残った設計をトレードオフの根拠とともにユーザーに提示し、承認を待つ
-3. 承認後、技術判断に DR が必要か問う
-
-### 調査レポートの扱い
-
-読んだレポートの各箇所を下表のとおり扱う。表に無い箇所は plan の材料にしない。
-
-| レポートの箇所                                       | plan での扱い                                                                          |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| 制約 表                                              | 設計の制約とする。OUTCOME 由来の行は Phase 1 で読み終えているので、調査で発見された行だけを新しい制約とする |
-| Same-origin Sweep の兄弟欠陥                         | この plan の unit に入れるか、Backlog candidates に落とすかを決める                     |
-| 次のアクションが「記録のみ」の発見                   | 背景知識とし、plan のスコープに入れない                                                |
-| ソースが `unknown, requires` で始まる発見            | 未検証なので、背景知識とし、plan のスコープに入れない                                  |
-| カバレッジ注記の unknown 項目と unverified external claim | 同じく plan の前提にしない                                                          |
+1. 関連コードを読む。タスク、issue、調査レポートのいずれかがモック画像やスクリーンショットを参照しているなら、その画像ファイルも Read で開く。テキスト側に記載が無いことを、その要素が存在しない根拠にしない
+2. タスクの語から小文字ハイフン区切りの slug を作り、${CLAUDE_SKILL_DIR}/../research/scripts/find-prior-research.py <slug> .claude/workspace/research を実行する。標準出力の候補から該当するレポートを読み、各箇所を ${CLAUDE_SKILL_DIR}/references/research-report-intake.md の表のとおり扱う。候補が 0 件なら調査レポートは無いものとして進む
+3. ドメインを問わず画面の組か layer の組が一致する既存モジュールを reference_module 候補として探索し、kind (module/no-module/new-shape) と理由で控える
+4. `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <触りそうなパス>` を実行し、`matched` のページを読む。決まりごとは unit の切り方と files の選び方に効くので、分割の後に読むと割り直しになる
+5. 異なる視点 (動く最小解/構造と拡張性/開発体験) から 2 つ以上の案を生成する。独立した技術判断は 1 つの質問に束ねず、推奨とトレードオフを添えて別々に問う
+6. 案に `critic-design` を起動する。プロンプトにタスクのタイトルを一字一句そのまま含め、結果は `{ verdict: "GO" | "NO-GO", weaknesses: string[], actionable: string[] }` の JSON オブジェクト 1 つで返させる
+7. NO-GO は blocker をその場で解消してから進む。生き残った設計をトレードオフの根拠とともにユーザーに提示し、承認を待つ
+8. 承認後、技術判断に DR が必要か問う
 
 ## Phase 3: Plan 生成
 
@@ -50,12 +41,12 @@ argument-hint: "[task description]"
 3. 接頭辞なしの repo では、plan 全体の一意性が同じファイル内までは届かない。テストを書き込むファイルで既に使われている番号を避けて振る
 4. tests[].name は条件 + 期待結果の 1 行言明。code workflow がテスト名として逐語使用し、build が固定文字列で照合する
 5. 検証可能な振る舞いが無い unit (docs/設定) は tests を空配列にする。build はその unit を Red-Green ではなく直接実装の 1 ステップとして進める
-6. 各 unit のテストは自分の境界をテストダブルへ置き換えるので、tests を持つ unit が 2 つ以上になったら seam unit をちょうど 1 つ最後に置き `seam: true` を付ける。その tests は unit 間の境界を跨いで実モジュールを動かし、テストダブルへ置き換えるのはシステム外部との I/O に限り、unit どうしをつなぐ接続を assert する。seam unit が無い plan は build の `validate()` が reject する
-7. non-seam unit の上限は files 3 つ、tests 4 個。seam unit の tests は unit 境界を跨ぐので files が増え、この上限の対象外になる。上限を超えた unit は成果を軸に分割し、生じた新しい unit 構成をユーザーと確認する。スコープ外へ切り出した候補は plan から外し、backlog candidates に回す。この上限は seam の除外も含めて `workflows/build.js` の `UNIT_CAPS` が決定論的に強制する。変更はこの記述と `UNIT_CAPS` を同一コミットで揃える
-8. unit が出そろったら `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <units[].files を並べる>` を実行し、Phase 2 で読んだ分との差を取る。`matched` の各ページは、引用するか、この plan には当たらない理由を prose に書くかのどちらかにする。`related` は語が重なるだけなので、引くときは当たる理由を添える
-9. 自己点検 (必須フィールドの欠落、id の重複、units、files、goal、contract のいずれかが空) を通し、${CLAUDE_SKILL_DIR}/references/pre-write-check.md の書き出し前検証を通す。通ったら ${CLAUDE_SKILL_DIR}/templates/plan.md の骨格で `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md` に書き出す。slug はタイトルの小文字ハイフン区切り。`## Plan` と `## Backlog candidates` の両節を含める
-10. 受け入れテスト候補のうち test_command で実行できない基準 (画面の見た目確認、外部サービスとの手動連携など) は T-NNN にせず、`### 実機確認` へ委譲する。委譲した基準には、それを引き取る機構 (test-storybook、コードレビューなど) を添える
-11. ドメインフィールドを描画する unit は、表示するフィールドを T-NNN に 1 フィールド 1 件で列挙する。まとめて 1 件にすると個別フィールドの欠落を検出できない
+6. 受け入れテスト候補のうち test_command で実行できない基準 (画面の見た目確認、外部サービスとの手動連携など) は T-NNN にせず、`### 実機確認` へ委譲する。委譲した基準には、それを引き取る機構 (test-storybook、コードレビューなど) を添える
+7. ドメインフィールドを描画する unit は、表示するフィールドを T-NNN に 1 フィールド 1 件で列挙する。まとめて 1 件にすると個別フィールドの欠落を検出できない
+8. 各 unit のテストは自分の境界をテストダブルへ置き換えるので、tests を持つ unit が 2 つ以上になったら seam unit をちょうど 1 つ最後に置き `seam: true` を付ける。その tests は unit 間の境界を跨いで実モジュールを動かし、テストダブルへ置き換えるのはシステム外部との I/O に限り、unit どうしをつなぐ接続を assert する。seam unit が無い plan は build の `validate()` が reject する
+9. non-seam unit の上限は files 3 つ、tests 4 個。seam unit の tests は unit 境界を跨ぐので files が増え、この上限の対象外になる。上限を超えた unit は成果を軸に分割し、生じた新しい unit 構成をユーザーと確認する。スコープ外へ切り出した候補は plan から外し、backlog candidates に回す。この上限は seam の除外も含めて `workflows/build.js` の `UNIT_CAPS` が決定論的に強制する。変更はこの記述と `UNIT_CAPS` を同一コミットで揃える
+10. unit が出そろったら `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <units[].files を並べる>` を実行し、Phase 2 で読んだ分との差を取る。`matched` の各ページは、引用するか、この plan には当たらない理由を prose に書くかのどちらかにする。`related` は語が重なるだけなので、引くときは当たる理由を添える
+11. 自己点検 (必須フィールドの欠落、id の重複、units、files、goal、contract のいずれかが空) を通し、${CLAUDE_SKILL_DIR}/references/pre-write-check.md の書き出し前検証を通す。通ったら ${CLAUDE_SKILL_DIR}/templates/plan.md の骨格で `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md` に書き出す。slug はタイトルの小文字ハイフン区切り。`## Plan` と `## Backlog candidates` の両節を含める
 
 ### test_command
 
