@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Usage: validate-issue-body.py <template-file> <title> <body-file>
+       validate-issue-body.py --content-only <body-file>
+
+--content-only は骨格を要らない検査だけを走らせる。番号経路が編集するのは起票元の
+テンプレートが記録されていない issue なので、走らせられるのはこれだけになる。
 
 stdout: JSON { errors, warnings, checks }
-exit: 0 if no errors (warnings allowed), 1 if errors
+exit: errors が無ければ 0 (warnings は許容)、あれば 1
 """
 
 import json
@@ -12,10 +16,14 @@ from pathlib import Path
 
 TYPE_PREFIX = re.compile(r"^\[([A-Za-z]+)\]")
 HEADING = re.compile(r"^## (.+?)\s*$", flags=re.MULTILINE)
-CODE_BLOCK = re.compile(r"```(?:markdown)?\n(.*?)```", flags=re.DOTALL)
+CODE_BLOCK = re.compile(r"```[^\n]*\n(.*?)```", flags=re.DOTALL)
 OPTIONAL_SUFFIX = re.compile(r"\s*\((?:optional|任意)\)\s*$")
 FORM_SUFFIXES = (".yml", ".yaml")
 FRONTMATTER = re.compile(r"\A---\n.*?\n---\n", flags=re.DOTALL)
+# 行頭の箇条書き記号とチェックボックス。剥がした残りがその行の中身になる。
+MARKER = re.compile(r"^\s*(?:[-*]|\d+\.)?\s*(?:\[[ xX]\])?\s*")
+PLACEHOLDER = re.compile(r"\{[^{}\n]+\}")
+PLACEHOLDER_ONLY = re.compile(r"^\{[^{}\n]+\}$")
 # 骨格が何を必須としても skill が守る底。リポジトリの form が述べるのは Web UI が
 # 埋めさせる最小で、起票された issue が担うべき量より薄い。これが無いと feature は
 # 受け入れ条件なしで、bug は再現手順なしで通る。
@@ -28,8 +36,8 @@ FLOOR = {
 ALLOWED_EXTRA = frozenset({"Plan", "Backlog candidates"})
 
 
-def skeleton_sections(template_text: str) -> list[tuple[str, bool]]:
-    """`## Template` 直下の最初のコードブロックから読む (name, optional) の組。
+def skeleton_text(template_text: str) -> str:
+    """骨格そのもの。`## Template` 直下の最初のコードフェンス。
 
     ここで次の見出しまでを取る手は使えない。骨格自体が `## ` を含む markdown なので、
     その境界は `## Guidelines` でなく骨格内の最初の見出しで止まる。コードフェンスは
@@ -41,12 +49,15 @@ def skeleton_sections(template_text: str) -> list[tuple[str, bool]]:
     """
     heading_match = re.search(r"^## Template\s*$", template_text, flags=re.MULTILINE)
     if heading_match is None:
-        skeleton = FRONTMATTER.sub("", template_text)
-    else:
-        code_match = CODE_BLOCK.search(template_text[heading_match.end() :])
-        skeleton = code_match.group(1) if code_match else ""
+        return FRONTMATTER.sub("", template_text)
+    code_match = CODE_BLOCK.search(template_text[heading_match.end() :])
+    return code_match.group(1) if code_match else ""
+
+
+def skeleton_sections(template_text: str) -> list[tuple[str, bool]]:
+    """骨格から読む (name, optional) の組。"""
     sections: list[tuple[str, bool]] = []
-    names: list[str] = HEADING.findall(skeleton)
+    names: list[str] = HEADING.findall(skeleton_text(template_text))
     for name in names:
         optional = bool(OPTIONAL_SUFFIX.search(name))
         bare = OPTIONAL_SUFFIX.sub("", name)
@@ -92,9 +103,79 @@ def body_section_names(body_text: str) -> set[str]:
     return {OPTIONAL_SUFFIX.sub("", name) for name in names}
 
 
+def section_body(body_text: str, name: str) -> str | None:
+    """本文の `## <name>` 直下の行。次の h2 か末尾まで。"""
+    outside = CODE_BLOCK.sub("", body_text)
+    matches = list(HEADING.finditer(outside))
+    for index, match in enumerate(matches):
+        if OPTIONAL_SUFFIX.sub("", match.group(1)) != name:
+            continue
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(outside)
+        return outside[match.end() : end]
+    return None
+
+
+def is_unfilled(body: str) -> bool:
+    """見出しの下に箇条書き記号とチェックボックスと TBD しか無いか。"""
+    for line in body.splitlines():
+        content = MARKER.sub("", line).strip()
+        if not content or content.upper() == "TBD":
+            continue
+        return False
+    return True
+
+
+def placeholders_left(body_text: str, skeleton: str) -> list[str]:
+    """本文に残っているテンプレートの穴埋め文。
+
+    記号を剥がした残りが `{...}` だけの行は、どこから来たものでも未記入。それ以外は
+    骨格が持つ穴埋め文と一致するものだけを数えるので、{status, findings} のような
+    JSON の形を書いた本文は未記入と読まれない。
+    フェンスの中は引用した見本なので、その波括弧は数えない。
+    """
+    outside = CODE_BLOCK.sub("", body_text)
+    left: list[str] = []
+    for line in outside.splitlines():
+        content = MARKER.sub("", line).strip()
+        if PLACEHOLDER_ONLY.match(content):
+            left.append(content)
+    prompts: list[str] = PLACEHOLDER.findall(skeleton)
+    in_body: list[str] = PLACEHOLDER.findall(outside)
+    for found in in_body:
+        if found in prompts and found not in left:
+            left.append(found)
+    return left
+
+
+def record_placeholders(body_text: str, skeleton: str, results: dict[str, list[str]]) -> None:
+    """本文に残っている穴埋め文を results へ積む。"""
+    left = placeholders_left(body_text, skeleton)
+    if left:
+        results["errors"].append(f"placeholder_left:{len(left)} [{left[0]}]")
+    else:
+        results["checks"].append("placeholder=none")
+
+
+def report(results: dict[str, list[str]]) -> None:
+    """報告を出力し、errors があれば exit 1 で終える。"""
+    print(json.dumps(results, indent=2))
+    sys.exit(1 if results["errors"] else 0)
+
+
+def content_only_report(body_path: str) -> None:
+    """番号経路の検証。骨格なしで走る検査だけを回す。"""
+    results: dict[str, list[str]] = {"errors": [], "warnings": [], "checks": []}
+    record_placeholders(Path(body_path).read_text(encoding="utf-8"), "", results)
+    report(results)
+
+
 def main() -> None:
+    # 番号経路は骨格が分からないので、骨格を要らない検査だけを走らせる。
+    if len(sys.argv) > 2 and sys.argv[1] == "--content-only":
+        content_only_report(sys.argv[2])
+        return
     if len(sys.argv) < 4:
-        print("Usage: validate-issue-body.py <template-file> <title> <body-file>", file=sys.stderr)
+        print(__doc__, file=sys.stderr)
         sys.exit(1)
     template_path, title, body_path = sys.argv[1], sys.argv[2], sys.argv[3]
 
@@ -145,8 +226,19 @@ def main() -> None:
         if not extra:
             results["checks"].append("unknown_section=none")
 
-    print(json.dumps(results, indent=2))
-    sys.exit(1 if results["errors"] else 0)
+    record_placeholders(body_text, "" if is_form else skeleton_text(template_text), results)
+
+    unfilled = [
+        name
+        for name in required
+        if name in present and is_unfilled(section_body(body_text, name) or "")
+    ]
+    for name in unfilled:
+        results["errors"].append(f"unfilled_section:{name}")
+    if not unfilled:
+        results["checks"].append("unfilled_section=none")
+
+    report(results)
 
 
 if __name__ == "__main__":

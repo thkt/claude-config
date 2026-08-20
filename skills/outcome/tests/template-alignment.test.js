@@ -201,3 +201,23 @@ test("the generate steps drop the optional block and the script rejects a leftov
     "the script pushes placeholder_left into errors",
   );
 });
+
+// The generate flow drops the opening prose and Indicators, and nothing else writes them. Without
+// the update flow naming both, the template carries two sections no path ever fills, and the
+// missing_indicator warning has no step that reads it.
+test("the update flow can add what generate dropped, and reads the indicator warning", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    const update = doc.slice(doc.search(/^## (Update|更新)$/m));
+    assert.ok(update, `${lang}: an update section exists`);
+    const prose = lang === "ja" ? /冒頭文/ : /opening prose/;
+    assert.match(update, prose, `${lang}: the update flow names the opening prose`);
+    assert.match(update, /Indicators/, `${lang}: the update flow names Indicators`);
+    assert.match(update, /missing_indicator/, `${lang}: a step reads the indicator warning`);
+  }
+  assert.match(
+    readFileSync(script, "utf8"),
+    /missing_indicator:/,
+    "the script pushes missing_indicator into warnings",
+  );
+});

@@ -26,12 +26,14 @@ environmental would let it reach Ready (caveat) (references/phase-0.md 0b).
 import json
 import subprocess
 import sys
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import NoReturn, cast
 
 INSTALL_TIMEOUT = 180
 BUILD_TIMEOUT = 600
 
-# Project type detection: first match in this order wins (references/phase-0.md).
+# First match in this order wins (references/phase-0.md).
 PROJECT_MARKERS = [
     ("package.json", "node"),
     ("Cargo.toml", "rust"),
@@ -41,7 +43,7 @@ PROJECT_MARKERS = [
     ("Gemfile", "ruby"),
 ]
 
-# npm install command by lock file, first match wins.
+# First matching lock file wins.
 NPM_LOCK_COMMANDS = [
     ("bun.lockb", ["bun", "install", "--frozen-lockfile"]),
     ("bun.lock", ["bun", "install", "--frozen-lockfile"]),
@@ -51,7 +53,7 @@ NPM_LOCK_COMMANDS = [
 ]
 NPM_INSTALL_DEFAULT = ["npm", "install"]
 
-# Non-node install commands. None means the type has no dependency step.
+# None means the type has no dependency step.
 INSTALL_COMMANDS = {
     "rust": ["cargo", "fetch"],
     "make": None,
@@ -60,7 +62,7 @@ INSTALL_COMMANDS = {
     "ruby": ["bundle", "install"],
 }
 
-# Build commands. None means the type has no build concept (build=skipped, proceed).
+# None means the type has no build concept (build=skipped, proceed).
 BUILD_COMMANDS = {
     "rust": ["cargo", "build"],
     "make": ["make", "build"],
@@ -70,20 +72,19 @@ BUILD_COMMANDS = {
 }
 
 
-def fail(message):
+def fail(message: str) -> NoReturn:
     print(message, file=sys.stderr)
     sys.exit(1)
 
 
-def detect_project_type(worktree):
+def detect_project_type(worktree: Path) -> str | None:
     for marker, ptype in PROJECT_MARKERS:
         if (worktree / marker).is_file():
             return ptype
     return None
 
 
-def install_command(worktree, ptype):
-    """Return the install command (list) for ptype, or None if there is none."""
+def install_command(worktree: Path, ptype: str) -> list[str] | None:
     if ptype == "node":
         for lock, cmd in NPM_LOCK_COMMANDS:
             if (worktree / lock).is_file():
@@ -92,12 +93,7 @@ def install_command(worktree, ptype):
     return INSTALL_COMMANDS.get(ptype)
 
 
-def build_command(worktree, ptype):
-    """Return the build command (list) for ptype, or None for no build concept.
-
-    For node the build step exists only when package.json has a scripts.build
-    entry; otherwise there is no build concept and build is skipped.
-    """
+def build_command(worktree: Path, ptype: str) -> list[str] | None:
     if ptype == "node":
         if _has_npm_build_script(worktree):
             return ["npm", "run", "build"]
@@ -105,20 +101,27 @@ def build_command(worktree, ptype):
     return BUILD_COMMANDS.get(ptype)
 
 
-def _has_npm_build_script(worktree):
+def _has_npm_build_script(worktree: Path) -> bool:
     try:
-        pkg = json.loads((worktree / "package.json").read_text(encoding="utf-8"))
+        raw = cast("object", json.loads((worktree / "package.json").read_text(encoding="utf-8")))
     except (OSError, json.JSONDecodeError):
         return False
-    scripts = pkg.get("scripts")
-    return isinstance(scripts, dict) and bool(scripts.get("build"))
+    if not isinstance(raw, dict):
+        return False
+    scripts = cast("dict[str, object]", raw).get("scripts")
+    if not isinstance(scripts, dict):
+        return False
+    return bool(cast("dict[str, object]", scripts).get("build"))
 
 
-# Sentinel exit code meaning "the step timed out".
+# The runner returns object rather than int so the timeout marker travels the same
+# return path; an int sentinel would collide with a real exit code.
 TIMED_OUT = object()
 
+Runner = Callable[[Sequence[str], Path, int], object]
 
-def _real_runner(cmd, cwd, timeout):
+
+def _real_runner(cmd: Sequence[str], cwd: Path, timeout: int) -> object:
     try:
         proc = subprocess.run(
             cmd,
@@ -135,10 +138,10 @@ def _real_runner(cmd, cwd, timeout):
         return 127
 
 
-def run(worktree, runner=_real_runner):
-    """Detect, install, build. Return the result dict (never raises on step failure)."""
+def run(worktree: Path, runner: Runner = _real_runner) -> dict[str, str | None]:
+    """A step failure never raises; it lands in the result dict."""
     ptype = detect_project_type(worktree)
-    result = {
+    result: dict[str, str | None] = {
         "project_type": ptype,
         "install": "skip",
         "build": "skipped",
@@ -183,7 +186,7 @@ def run(worktree, runner=_real_runner):
     return result
 
 
-def main():
+def main() -> None:
     if len(sys.argv) != 2:
         fail("Usage: bootstrap.py <worktree-path>")
     worktree = Path(sys.argv[1])

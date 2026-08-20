@@ -120,7 +120,7 @@ A shell hook sits in the directory named after the event that fires it, so `sett
 | ----------------- | ----------------- | ------------ | ------------------------------------------------------------------- |
 | statusline.sh     | statusLine        | fail-open    | Status line display, and a TTL sweep of its own per-session state   |
 | recall_index.py   | SessionStart      | fail-open    | Background update of the recall cross-session index                 |
-| reflection_ask.py | Stop              | fail-open    | Ask for one correction worth carrying to the next session           |
+| reflection_ask.py | Stop              | fail-open    | Hand the reflection to a detached headless run                      |
 | failure-alert.sh  | Stop, StopFailure | fail-open    | Sound a turn that ended badly. Silent on end_turn and in a subagent |
 
 ### integrations/

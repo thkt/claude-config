@@ -19,10 +19,10 @@ from typing import override
 HOOK = Path(__file__).resolve().parents[1] / "body_proofread.py"
 
 # ≥50 Japanese chars (has_japanese threshold) with a deterministic finding (redundant expression)
-LINTED_BODY = (
-    "この機能はユーザーが設定を変更することができます。"
-    "この説明は日本語判定の五十文字閾値を超えるための追加の文章です。"
-)
+LINTED_BODY = "この機能はユーザーが設定を変更することができます。この説明は日本語判定の五十文字閾値を超えるための追加の文章です。"
+
+# The second line carries enough commas to trip max-ten, so a heredoc commit draws a finding.
+COMMIT_BODY = "fix(hooks): 処理を行うことが出来ます\n\nこれは、テスト、です、が、読点、が、多すぎ、ます。"
 
 FINDINGS = "textlint 校正結果"
 CHECKLIST = "構造レビュー"
@@ -47,9 +47,7 @@ class TestBodyProofread(unittest.TestCase):
         tool_input: dict[str, str] | None = None,
         env: dict[str, str] | None = None,
     ) -> str:
-        payload = json.dumps(
-            {"tool_name": tool, "tool_input": tool_input or {"command": command}}
-        )
+        payload = json.dumps({"tool_name": tool, "tool_input": tool_input or {"command": command}})
         result = subprocess.run(
             [sys.executable, str(HOOK)],
             input=payload,
@@ -66,6 +64,10 @@ class TestBodyProofread(unittest.TestCase):
         path = directory / "body.md"
         _ = path.write_text(LINTED_BODY + "\n", encoding="utf-8")
         return path
+
+    def heredoc_commit(self, body: str, *, delimiter: str) -> str:
+        """A git commit whose message arrives through a heredoc."""
+        return f'git commit -m "$(cat <<{delimiter}\n{body}\nEOF\n)"'
 
     def assert_all_in(self, output: str, *phrases: str) -> None:
         for phrase in phrases:
@@ -149,20 +151,15 @@ class TestBodyProofread(unittest.TestCase):
         """T-015 A gh pr create with a multiline body is proofread too"""
         body = (
             "一行目は複数行の本文が正しく抽出されることを確認する文です。\n"
-            "これは、二行目、で、読点、が、多す、ぎます。\n"
-            "三行目は日本語判定の五十文字閾値を確実に超えるための追加の文章です。"
+            + "これは、二行目、で、読点、が、多す、ぎます。\n"
+            + "三行目は日本語判定の五十文字閾値を確実に超えるための追加の文章です。"
         )
         out = self.run_hook(f'gh pr create --title "test" --body "{body}"')
         self.assert_all_in(out, FINDINGS, "max-ten")
 
     def test_commit_heredoc_advisory(self) -> None:
         """T-016 A heredoc commit message returns an advisory with no structure review"""
-        cmd = (
-            'git commit -m "$(cat <<\'EOF\'\n'
-            "fix(hooks): 処理を行うことが出来ます\n\n"
-            "これは、テスト、です、が、読点、が、多すぎ、ます。\nEOF\n)\""
-        )
-        out = self.run_hook(cmd)
+        out = self.run_hook(self.heredoc_commit(COMMIT_BODY, delimiter="'EOF'"))
         self.assert_all_in(out, FINDINGS, "commit message")
         with self.subTest("no structure checklist for commit"):
             self.assertNotIn(CHECKLIST, out)
@@ -171,12 +168,7 @@ class TestBodyProofread(unittest.TestCase):
         """T-024 A commit message written with an unquoted delimiter is proofread too"""
         # Reading the quoted <<'EOF' alone reads <<EOF as carrying no body, and the
         # proofreading quietly drops out.
-        cmd = (
-            'git commit -m "$(cat <<EOF\n'
-            "fix(hooks): 処理を行うことが出来ます\n\n"
-            "これは、テスト、です、が、読点、が、多すぎ、ます。\nEOF\n)\""
-        )
-        out = self.run_hook(cmd)
+        out = self.run_hook(self.heredoc_commit(COMMIT_BODY, delimiter="EOF"))
         self.assert_all_in(out, FINDINGS, "commit message")
 
     def test_commit_message_file_advisory(self) -> None:
@@ -205,8 +197,8 @@ class TestBodyProofread(unittest.TestCase):
         path = self.with_body_file("heredoc")
         cmd = (
             "cat > /tmp/patch.py <<'PY'\n"
-            "これは、無関係、な、ファイル、の、中身、です。\nPY\n"
-            f'gh issue create --title "test" --body-file {path}'
+            + "これは、無関係、な、ファイル、の、中身、です。\nPY\n"
+            + f'gh issue create --title "test" --body-file {path}'
         )
         out = self.run_hook(cmd)
         # Findings never quote their source text, so the rule name is what tells the two apart:
@@ -239,7 +231,7 @@ class TestBodyProofread(unittest.TestCase):
         """T-014 An English body returns the structure review alone"""
         body = (
             "This is an English issue body with enough content to verify that textlint does "
-            "not run on non-Japanese text. The structure review should still appear."
+            + "not run on non-Japanese text. The structure review should still appear."
         )
         out = self.run_hook(f'gh issue create --title "test" --body "{body}"')
         self.assert_all_in(out, CHECKLIST, "additionalContext")
@@ -254,12 +246,8 @@ class TestBodyProofread(unittest.TestCase):
 
     def test_commit_heredoc_mentioning_a_filing_is_still_a_commit(self) -> None:
         """T-030 A commit whose heredoc body holds the words of a filing command is proofread too"""
-        cmd = (
-            'git commit -m "$(cat <<\'EOF\'\n'
-            "fix: これは、テスト、です、が、読点、が、多すぎ、ます。\n\n"
-            "gh issue create --title x の行\nEOF\n)\""
-        )
-        out = self.run_hook(cmd)
+        body = "fix: これは、テスト、です、が、読点、が、多すぎ、ます。\n\ngh issue create --title x の行"
+        out = self.run_hook(self.heredoc_commit(body, delimiter="'EOF'"))
         with self.subTest("proofreads the heredoc message"):
             self.assertIn(FINDINGS, out)
         with self.subTest("no structure checklist for commit"):

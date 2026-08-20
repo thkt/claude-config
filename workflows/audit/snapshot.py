@@ -19,22 +19,21 @@ Resolved fields (shell), added to the record:
 """
 
 import json
-import os
 import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import NoReturn
+from typing import NoReturn, cast
 
-HISTORY_DIR = Path(os.path.expanduser("~")) / ".claude" / "history"
+HISTORY_DIR = Path.home() / ".claude" / "history"
 
 
-def fail(message) -> NoReturn:
+def fail(message: str) -> NoReturn:
     print(f"Error: {message}", file=sys.stderr)
     sys.exit(1)
 
 
-def git_branch():
+def git_branch() -> str:
     try:
         out = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
@@ -58,34 +57,33 @@ COUNTED_ARRAYS = (
 )
 
 
-def counted_arrays(record):
-    """Element count per array the record carries, for the caller to compare against.
-
-    An absent key counts 0 rather than being omitted, so the caller reads the
+def counted_arrays(record: dict[str, object]) -> dict[str, int]:
+    """An absent key counts 0 rather than being omitted, so the caller reads the
     same key set every run and a dropped array is a count mismatch instead of a
-    missing field.
-    """
-    return {
-        key: len(record[key]) if isinstance(record.get(key), list) else 0
-        for key in COUNTED_ARRAYS
-    }
+    missing field."""
+    counts: dict[str, int] = {}
+    for key in COUNTED_ARRAYS:
+        value = record.get(key)
+        counts[key] = len(cast("list[object]", value)) if isinstance(value, list) else 0
+    return counts
 
 
-def build_record(payload, branch, generated_at):
+def build_record(payload: dict[str, object], branch: str, generated_at: str) -> dict[str, object]:
     record = dict(payload)
     record["branch"] = branch
     record["generated_at"] = generated_at
     return record
 
 
-def main():
+def main() -> None:
     raw_stdin = sys.stdin.read()
     try:
-        payload = json.loads(raw_stdin)
+        loaded = cast("object", json.loads(raw_stdin))
     except ValueError as exc:
         fail(f"unparseable payload: {exc}")
-    if not isinstance(payload, dict):
+    if not isinstance(loaded, dict):
         fail("payload must be a JSON object")
+    payload = cast("dict[str, object]", loaded)
 
     HISTORY_DIR.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc)
@@ -97,10 +95,8 @@ def main():
     )
 
     out_path = HISTORY_DIR / f"audit-{now.strftime('%Y-%m-%d-%H%M%S')}.json"
-    with open(out_path, "w") as fh:
+    with out_path.open("w") as fh:
         json.dump(record, fh, ensure_ascii=False, indent=2)
-    # The counts come from what this process serialized, so the caller compares
-    # against them instead of against a figure the agent reports about itself.
     print(json.dumps({"path": str(out_path), "counts": counted_arrays(record)}))
 
 

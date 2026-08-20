@@ -26,12 +26,14 @@ build 開始後に発火した build timeout は build=fail として報告す�
 import json
 import subprocess
 import sys
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import NoReturn, cast
 
 INSTALL_TIMEOUT = 180
 BUILD_TIMEOUT = 600
 
-# プロジェクト種別検出: この順で最初に一致したものを採用 (references/phase-0.md)。
+# この順で最初に一致した種別を採用する (references/phase-0.md)。
 PROJECT_MARKERS = [
     ("package.json", "node"),
     ("Cargo.toml", "rust"),
@@ -41,7 +43,7 @@ PROJECT_MARKERS = [
     ("Gemfile", "ruby"),
 ]
 
-# lock ファイル別の npm install コマンド。最初に一致したものを採用。
+# 最初に一致した lock ファイルのコマンドを採用する。
 NPM_LOCK_COMMANDS = [
     ("bun.lockb", ["bun", "install", "--frozen-lockfile"]),
     ("bun.lock", ["bun", "install", "--frozen-lockfile"]),
@@ -51,7 +53,7 @@ NPM_LOCK_COMMANDS = [
 ]
 NPM_INSTALL_DEFAULT = ["npm", "install"]
 
-# node 以外の install コマンド。None はその種別に依存ステップが無いことを表す。
+# None はその種別に依存ステップが無いことを表す。
 INSTALL_COMMANDS = {
     "rust": ["cargo", "fetch"],
     "make": None,
@@ -60,7 +62,7 @@ INSTALL_COMMANDS = {
     "ruby": ["bundle", "install"],
 }
 
-# build コマンド。None はその種別に build 概念が無いことを表す (build=skipped、前進)。
+# None はその種別に build 概念が無いことを表す (build=skipped、前進)。
 BUILD_COMMANDS = {
     "rust": ["cargo", "build"],
     "make": ["make", "build"],
@@ -70,20 +72,19 @@ BUILD_COMMANDS = {
 }
 
 
-def fail(message):
+def fail(message: str) -> NoReturn:
     print(message, file=sys.stderr)
     sys.exit(1)
 
 
-def detect_project_type(worktree):
+def detect_project_type(worktree: Path) -> str | None:
     for marker, ptype in PROJECT_MARKERS:
         if (worktree / marker).is_file():
             return ptype
     return None
 
 
-def install_command(worktree, ptype):
-    """ptype の install コマンド (list) を返す。無ければ None。"""
+def install_command(worktree: Path, ptype: str) -> list[str] | None:
     if ptype == "node":
         for lock, cmd in NPM_LOCK_COMMANDS:
             if (worktree / lock).is_file():
@@ -92,12 +93,7 @@ def install_command(worktree, ptype):
     return INSTALL_COMMANDS.get(ptype)
 
 
-def build_command(worktree, ptype):
-    """ptype の build コマンド (list) を返す。build 概念が無ければ None。
-
-    node では package.json に scripts.build がある場合のみ build ステップが存在する。
-    無ければ build 概念は無く build は skip される。
-    """
+def build_command(worktree: Path, ptype: str) -> list[str] | None:
     if ptype == "node":
         if _has_npm_build_script(worktree):
             return ["npm", "run", "build"]
@@ -105,20 +101,27 @@ def build_command(worktree, ptype):
     return BUILD_COMMANDS.get(ptype)
 
 
-def _has_npm_build_script(worktree):
+def _has_npm_build_script(worktree: Path) -> bool:
     try:
-        pkg = json.loads((worktree / "package.json").read_text(encoding="utf-8"))
+        raw = cast("object", json.loads((worktree / "package.json").read_text(encoding="utf-8")))
     except (OSError, json.JSONDecodeError):
         return False
-    scripts = pkg.get("scripts")
-    return isinstance(scripts, dict) and bool(scripts.get("build"))
+    if not isinstance(raw, dict):
+        return False
+    scripts = cast("dict[str, object]", raw).get("scripts")
+    if not isinstance(scripts, dict):
+        return False
+    return bool(cast("dict[str, object]", scripts).get("build"))
 
 
-# 「ステップが timeout した」ことを表す sentinel exit code。
+# runner の戻りを int でなく object にするのは、timeout の目印を同じ経路で返すため。
+# int の sentinel は実在の exit code と衝突する。
 TIMED_OUT = object()
 
+Runner = Callable[[Sequence[str], Path, int], object]
 
-def _real_runner(cmd, cwd, timeout):
+
+def _real_runner(cmd: Sequence[str], cwd: Path, timeout: int) -> object:
     try:
         proc = subprocess.run(
             cmd,
@@ -135,10 +138,10 @@ def _real_runner(cmd, cwd, timeout):
         return 127
 
 
-def run(worktree, runner=_real_runner):
-    """検出・install・build を行う。結果 dict を返す (ステップ失敗では raise しない)。"""
+def run(worktree: Path, runner: Runner = _real_runner) -> dict[str, str | None]:
+    """ステップの失敗では raise せず、結果 dict に載せる。"""
     ptype = detect_project_type(worktree)
-    result = {
+    result: dict[str, str | None] = {
         "project_type": ptype,
         "install": "skip",
         "build": "skipped",
@@ -183,7 +186,7 @@ def run(worktree, runner=_real_runner):
     return result
 
 
-def main():
+def main() -> None:
     if len(sys.argv) != 2:
         fail("Usage: bootstrap.py <worktree-path>")
     worktree = Path(sys.argv[1])

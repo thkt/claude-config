@@ -30,6 +30,12 @@ def render(payload: Mapping[str, object]) -> str:
     return cast("str", pr_body.render(payload))  # pyright: ignore[reportAny]
 
 
+def labels(language: str) -> dict[str, str]:
+    """The label table for one language, read through the same cast as render."""
+    table = cast("dict[str, dict[str, str]]", pr_body.LABELS)
+    return table[language]
+
+
 FULL: dict[str, object] = {
     "issue": "123",
     "scope_deviations": ["extra.js"],
@@ -232,9 +238,7 @@ class RenderTest(unittest.TestCase):
         self.assertNotIn("None", body)
 
     def test_finding_without_evidence_omits_the_continuation_line(self) -> None:
-        body = render(
-            {**CLEAN, "conformance": [{"category": "wrong", "detail": "diverges"}]}
-        )
+        body = render({**CLEAN, "conformance": [{"category": "wrong", "detail": "diverges"}]})
         self.assertIn("- `[wrong]` diverges", body)
         self.assertNotIn("\n  ", body)
 
@@ -247,9 +251,7 @@ class RenderTest(unittest.TestCase):
         self.assertNotIn("**Issue conformance", body)
         self.assertNotIn("**Anomalies", body)
         self.assertIn("<code>scope-deviations 0</code> · <code>missing-tests 0</code>", body)
-        non_empty = [
-            ln for ln in body.splitlines() if ln.strip() and ln.strip() != "---"
-        ]
+        non_empty = [ln for ln in body.splitlines() if ln.strip() and ln.strip() != "---"]
         # header label + Closes line + the status line
         self.assertEqual(len(non_empty), 3, non_empty)
 
@@ -261,9 +263,7 @@ class RenderTest(unittest.TestCase):
         self.assertIn("<code>verify tests=pass gates=pass</code>", body)
 
     def test_verify_failure_uses_collapsed_details(self) -> None:
-        body = render(
-            {**FULL, "tests_pass": False, "verify_output": "boom stacktrace"}
-        )
+        body = render({**FULL, "tests_pass": False, "verify_output": "boom stacktrace"})
         self.assertIn("<code>verify tests=FAIL gates=pass</code>", body)
         self.assertIn("<details><summary>verify output</summary>", body)
         self.assertIn("```\nboom stacktrace\n```", body)
@@ -339,13 +339,13 @@ class LabelTest(unittest.TestCase):
         src = SCRIPT.read_text(encoding="utf-8")
         body = src[src.index("LABELS = {") :]
         body = body[body.index("}\n\n") :]
-        for key in pr_body.LABELS["english"]:
+        for key in labels("english"):
             self.assertIn(key, body, f"{key} is a label nothing renders")
 
     def test_both_languages_carry_the_same_label_keys(self) -> None:
         self.assertEqual(
-            sorted(pr_body.LABELS["english"]),
-            sorted(pr_body.LABELS["japanese"]),
+            sorted(labels("english")),
+            sorted(labels("japanese")),
             "a label added to one language is added to the other",
         )
 
@@ -389,6 +389,49 @@ class CliTest(unittest.TestCase):
             proc = self._run(json.dumps(payload))
             self.assertEqual(proc.returncode, 1, f"missing {key} should fail closed")
             self.assertEqual(proc.stdout, "")
+
+
+class CheckStatusTest(unittest.TestCase):
+    """A check that did not run and a check that found nothing both count 0.
+
+    The status line is where a reviewer decides whether to open the fold, so a check that
+    never ran has to say so there rather than showing the same 0 a clean check shows.
+    """
+
+    def test_a_failed_scope_check_says_not_run_instead_of_zero(self) -> None:
+        body = render({**CLEAN, "scope_status": "agent-failed", "scope_deviations": []})
+        self.assertIn("<code>scope-deviations not run</code>", body)
+        self.assertNotIn("<code>scope-deviations 0</code>", body)
+
+    def test_a_failed_presence_check_says_not_run_instead_of_zero(self) -> None:
+        body = render({**CLEAN, "test_presence_status": "agent-failed", "missing_tests": []})
+        self.assertIn("<code>missing-tests not run</code>", body)
+
+    def test_a_conformance_that_never_ran_reaches_the_status_line(self) -> None:
+        # With no findings the cell is omitted, so without the status a dead reviewer is
+        # indistinguishable from a clean review on the PR.
+        body = render({**CLEAN, "conformance_status": "agent-failed", "conformance": []})
+        self.assertIn("<code>conformance not run</code>", body)
+
+    def test_a_conformance_that_found_no_spec_also_reads_as_not_run(self) -> None:
+        # The agent answered, but with no spec to compare against nothing was reviewed.
+        body = render({**CLEAN, "conformance_status": "no-spec", "conformance": []})
+        self.assertIn("<code>conformance not run</code>", body)
+
+    def test_nothing_to_check_keeps_the_cell_off_the_status_line(self) -> None:
+        body = render({**CLEAN, "structure_status": "no-reference", "structure": []})
+        self.assertNotIn("structure", body)
+
+    def test_no_tests_in_the_plan_still_shows_the_count(self) -> None:
+        body = render({**CLEAN, "test_presence_status": "no-tests", "missing_tests": []})
+        self.assertIn("<code>missing-tests 0</code>", body)
+
+    def test_a_payload_without_statuses_renders_as_before(self) -> None:
+        self.assertIn("<code>scope-deviations 0</code>", render(CLEAN))
+
+    def test_the_japanese_body_translates_the_not_run_label(self) -> None:
+        body = render({**CLEAN, "language": "japanese", "scope_status": "agent-failed"})
+        self.assertIn("<code>scope-deviations 未実行</code>", body)
 
 
 if __name__ == "__main__":

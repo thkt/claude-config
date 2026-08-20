@@ -30,27 +30,25 @@ VERBS = frozenset({"rm", "rmdir", "unlink", "shred"})
 
 # The words that can reach a denial. Matched anywhere in the payload rather than at a token
 # boundary, since the scan below decides and this only keeps the work off everything else.
-# `-delete` and `clean` are here because neither `find . -delete` nor `git clean -fd` carries
-# a verb. `clean` is paired with `git` so `cargo clean` stays off the scan.
+# `-delete` is here because `find . -delete` carries no deletion verb.
 TRIGGERS = ("rm", "unlink", "shred", "-delete")
 
 REASONS = {
     "find": (
         "rm-to-trash: find -delete はファイルを消す。"
-        "`find ... -exec mv {} ~/.Trash/ \\;` に置き換える。"
+        + "`find ... -exec mv {} ~/.Trash/ \\;` に置き換える。"
     ),
     "clean": (
         "rm-to-trash: git clean は未追跡ファイルを消すので、コミットに復元元が無い。"
-        "`git clean -n` で対象を一覧し、残すものを確かめてから `mv <file> ~/.Trash/` で移す。"
-        "件数が多く 1 つずつ移せないときは、ユーザーに `! git clean -fd` での実行を依頼する。"
+        + "`git clean -n` で対象を一覧し、残すものを確かめてから `mv <file> ~/.Trash/` で移す。"
+        + "件数が多く 1 つずつ移せないときは、ユーザーに `! git clean -fd` での実行を依頼する。"
     ),
     "verb": (
         "rm-to-trash: 削除は `mv <file> ~/.Trash/ && git add <file>` を使う。"
-        "sandbox が `mv ~/.Trash/` を弾いたら dangerouslyDisableSandbox: true でリトライし、"
-        "他の sandbox エラーはユーザーに報告する。"
+        + "sandbox が `mv ~/.Trash/` を弾いたら dangerouslyDisableSandbox: true でリトライし、"
+        + "他の sandbox エラーはユーザーに報告する。"
     ),
 }
-
 
 
 def _only_lists(rest: list[str]) -> bool:
@@ -81,7 +79,7 @@ def kind(command: str) -> str | None:
     """The first deletion the command line performs.
 
     Not a regex over the raw string: it cannot tell where a token sits, so the word inside a
-    sed script read as a deletion while a wrapped one (sudo, xargs, find -exec) did not.
+    sed script reads as a deletion while a wrapped one (sudo, xargs, find -exec) does not.
     """
     try:
         # next() stays inside the guard: commands() yields lazily, so the tokenizer raises
@@ -93,6 +91,7 @@ def kind(command: str) -> str | None:
 
 def main() -> None:
     raw = sys.stdin.read()
+    # `clean` is paired with `git` here rather than listed in TRIGGERS, so `cargo clean` stays off.
     if not (any(word in raw for word in TRIGGERS) or ("git" in raw and "clean" in raw)):
         return
 

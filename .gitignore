@@ -26,10 +26,13 @@ history/
 /.analysis/
 /.claude/*
 !/.claude/rules/
+!/.claude/OUTCOME.md
 /.credentials.json
 /agent-memory/
 /chrome/
 /herdr-auto-title/
+# herdr が自分で書き、再インストールで上書きする。配線先の settings.json も追跡外。
+/hooks/herdr-agent-state.sh
 /ide/
 /projects/
 /settings.json
@@ -79,10 +82,13 @@ dump.sql
 .playwright-cli/
 mcp-needs-auth-cache.json
 
+# CodeGraph
+# codegraph init は .codegraph/.gitignore も置くが、無視の指定はここだけに持たせる
+.codegraph/
+
 # Python
 __pycache__/
 *.pyc
-.ruff_cache/
 
 # Cache
 stats-cache.json

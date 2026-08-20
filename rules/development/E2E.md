@@ -81,7 +81,7 @@ Confirming that every primary screen renders for each permission is a matrix, so
 
 Pin the calls to external services with stubs, and prepare and observe state unreachable from the UI through a test-support API. In E2E the whole backend is the logic under test, so the boundary you pin sits past it, at the edge where the system calls a service outside the team's control.
 
-Do not place stubs and test-support APIs in production. An endpoint that creates accounts, issues auth codes, and reads mail must not sit where a user can reach it.
+Place stubs and test-support APIs outside the surface a user can reach. Gate any endpoint that creates accounts, issues auth codes, or reads mail behind both authentication and an environment flag. Keep it reachable from the test runner alone.
 
 A stub drifts when the provider changes, producing a suite that passes while the real integration is broken. Keep stubs to the endpoints and fields the application actually reads, and keep a few scenarios that exercise the real integration on staging.
 

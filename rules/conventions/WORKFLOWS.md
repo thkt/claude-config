@@ -13,12 +13,12 @@ Conventions for workflow scripts under `workflows/`.
 
 Discovery reads `workflows/` flat and registers only the `.js` files directly under it. The prompt strings inside a script are read by an LLM, so those follow the sentence-length conventions in PROSE.md.
 
-| Target            | Rule                                                                                         |
-| ----------------- | -------------------------------------------------------------------------------------------- |
-| Script filename   | `workflows/<name>.js`. That `<name>` is the name `Workflow({name})` resolves                 |
-| Shape of the name | One English word. Generic names like helper, utils, tools are not allowed                    |
-| Helper script     | Place under `workflows/<name>/`. A `.js` directly under `workflows/` registers as a workflow |
-| Shared harness    | Place under `workflows/_lib/`. Limited to the use imported from tests                        |
+| Target            | Rule                                                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Script filename   | `workflows/<name>.js`. That `<name>` is the name `Workflow({name})` resolves                                                         |
+| Shape of the name | One English word naming the operation the workflow performs. Replace generic names like helper, utils, tools with the operation name |
+| Helper script     | Place under `workflows/<name>/`. A `.js` directly under `workflows/` registers as a workflow                                         |
+| Shared harness    | Place under `workflows/_lib/`. Limited to the use imported from tests                                                                |
 
 ## Reference notation
 

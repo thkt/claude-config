@@ -1,14 +1,7 @@
 #!/usr/bin/env python3
 """Usage: pick-plan.py <issue-title | plan-path> [planning-dir]
 
-plan 下書きの節を逐語で切り出し、パスが分からないときは候補を順位付けする。
-
-`.plan.md` のパスを渡すとそのファイルだけを切り出す。会話が /think の書いた下書きを
-持っている通常の経路がこれに当たる。
-
-タイトルを渡すとディレクトリを順位付けする。slug は /think へ渡したタイトルから作られ、
-issue のタイトルは別に書かれるので、文字列としては一致しない。順位付けは共通語の数で行い、
-単独で得点した下書きがあるときだけ選ぶ。同点は推測で決めず、呼び出し側へ返す。
+パスを渡すとその下書きの節を切り出し、タイトルを渡すと planning-dir の下書きを順位付けする。
 
 stdout: JSON { path, slug, date, plan, backlog, candidates, ambiguous }
         path       選んだファイル。得点が 0 か同点なら null
@@ -25,12 +18,21 @@ import re
 import sys
 import unicodedata
 from pathlib import Path
+from typing import TypedDict
 
 DEFAULT_DIR = Path(".claude/workspace/planning")
-# /think は YYYY-MM-DD-<slug>.plan.md で書く。日付が名前にあるので、issue skill に許された
-# どの道具も返せない mtime を読まずに新しい順が決まる。
+# 日付を名前から読むのは、issue skill に許されたどの道具も mtime を返さないため。
 NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})-(.+)\.plan\.md$")
 SECTION = re.compile(r"^## (.+?)\s*$", flags=re.MULTILINE)
+
+
+class Draft(TypedDict):
+    """下書き 1 件と、タイトルとの共通語で付けた得点。"""
+
+    path: str
+    slug: str
+    date: str
+    score: int
 
 
 def slugify(title: str) -> str:
@@ -45,6 +47,11 @@ def slugify(title: str) -> str:
     return "-".join(text.lower().split())
 
 
+def scoring_words(slug: str) -> set[str]:
+    """得点に数える語。2 字以下はどの slug にも当たるので落とす。"""
+    return {w for w in slug.split("-") if len(w) > 2}
+
+
 def section(text: str, name: str) -> str | None:
     """見出しを含む `## <name>` 節 1 つ。次の h2 か末尾まで。"""
     for match in SECTION.finditer(text):
@@ -57,70 +64,66 @@ def section(text: str, name: str) -> str | None:
     return None
 
 
-def main() -> None:
-    if len(sys.argv) < 2:
-        print("Usage: pick-plan.py <issue-title> [planning-dir]", file=sys.stderr)
-        sys.exit(1)
-    argument = sys.argv[1]
-    directory = Path(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_DIR
+def extracted(path: Path) -> dict[str, object]:
+    """下書き 1 件から読む出力用の値。"""
+    text = path.read_text(encoding="utf-8")
+    parsed = NAME.match(path.name)
+    return {
+        "path": str(path),
+        "slug": parsed.group(2) if parsed else None,
+        "date": parsed.group(1) if parsed else None,
+        "plan": section(text, "Plan"),
+        "backlog": section(text, "Backlog candidates"),
+    }
 
-    given = Path(argument)
-    if given.suffix == ".md" and given.is_file():
-        text = given.read_text(encoding="utf-8")
-        parsed = NAME.match(given.name)
-        print(
-            json.dumps(
-                {
-                    "path": str(given),
-                    "slug": parsed.group(2) if parsed else None,
-                    "date": parsed.group(1) if parsed else None,
-                    "plan": section(text, "Plan"),
-                    "backlog": section(text, "Backlog candidates"),
-                    "candidates": [],
-                    "ambiguous": False,
-                },
-                ensure_ascii=False,
-                indent=2,
-            )
-        )
-        return
 
-    wanted = slugify(argument)
-
-    words = {w for w in wanted.split("-") if len(w) > 2}
-    rows = []
+def rank(title: str, directory: Path) -> list[Draft]:
+    """ディレクトリ内の全下書き。得点の高い順、同点なら日付の新しい順。"""
+    wanted = scoring_words(slugify(title))
+    rows: list[Draft] = []
     if directory.is_dir():
         for entry in sorted(directory.iterdir()):
             parsed = NAME.match(entry.name)
             if not parsed:
                 continue
             slug = parsed.group(2)
-            score = len(words & {w for w in slug.split("-") if len(w) > 2})
-            rows.append({"path": str(entry), "slug": slug, "date": parsed.group(1), "score": score})
-    rows.sort(key=lambda r: (-r["score"], r["date"]), reverse=False)
+            rows.append(
+                {
+                    "path": str(entry),
+                    "slug": slug,
+                    "date": parsed.group(1),
+                    "score": len(wanted & scoring_words(slug)),
+                }
+            )
     rows.sort(key=lambda r: (r["score"], r["date"]), reverse=True)
+    return rows
 
-    scored = [r for r in rows if r["score"] > 0]
-    top = [r for r in scored if r["score"] == scored[0]["score"]] if scored else []
+
+def main() -> None:
+    if len(sys.argv) < 2:
+        print("Usage: pick-plan.py <issue-title | plan-path> [planning-dir]", file=sys.stderr)
+        sys.exit(1)
+    directory = Path(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_DIR
+
     result: dict[str, object] = {
         "path": None,
         "slug": None,
         "date": None,
         "plan": None,
         "backlog": None,
-        "candidates": rows,
-        "ambiguous": len(top) > 1,
+        "candidates": [],
+        "ambiguous": False,
     }
-    if len(top) == 1:
-        chosen = Path(top[0]["path"])
-        text = chosen.read_text(encoding="utf-8")
-        result.update(
-            path=top[0]["path"],
-            slug=top[0]["slug"],
-            date=top[0]["date"],
-            plan=section(text, "Plan"),
-            backlog=section(text, "Backlog candidates"),
-        )
+    given = Path(sys.argv[1])
+    if given.suffix == ".md" and given.is_file():
+        result |= extracted(given)
+    else:
+        rows = rank(sys.argv[1], directory)
+        scored = [r for r in rows if r["score"] > 0]
+        top = [r for r in scored if r["score"] == scored[0]["score"]] if scored else []
+        result |= {"candidates": rows, "ambiguous": len(top) > 1}
+        if len(top) == 1:
+            result |= extracted(Path(top[0]["path"]))
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

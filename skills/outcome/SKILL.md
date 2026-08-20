@@ -12,7 +12,7 @@ The landing point when another skill detects a missing OUTCOME.md. Returning a h
 
 ## Branch
 
-Run `${CLAUDE_SKILL_DIR}/scripts/validate-outcome.py .claude/OUTCOME.md` and enter the flow its JSON `flow` names. The script owns the criteria; the table below reads the mapping.
+Run ${CLAUDE_SKILL_DIR}/scripts/validate-outcome.py .claude/OUTCOME.md and enter the flow its JSON `flow` names. The script owns the criteria.
 
 | state  | Condition                   | flow     |
 | ------ | --------------------------- | -------- |
@@ -25,12 +25,13 @@ Run `${CLAUDE_SKILL_DIR}/scripts/validate-outcome.py .claude/OUTCOME.md` and ent
 1. Read ${CLAUDE_SKILL_DIR}/templates/outcome.md
 2. Collect Behavior, Non-goals, Constraints in one AskUserQuestion call, one question per item. Behavior needs 1 or more entries with the subject named
 3. Run each Behavior through the Outcome test; rewrite failures and re-present to the user
-4. Fill the template and Write `.claude/OUTCOME.md`. Skip the opening prose, which is not collected, and drop Indicators with its heading
+4. Fill the template and Write `.claude/OUTCOME.md`. Neither the opening prose nor Indicators is collected, so skip the prose and drop Indicators with its heading
 5. Re-run validate-outcome.py and fix until `errors` is empty. `placeholder_left` is a surviving placeholder, `missing_section` a dropped heading
 
 ## Update
 
-1. Read `.claude/OUTCOME.md` and present the current three sections
-2. Confirm which sections change and their content via AskUserQuestion
+1. Read `.claude/OUTCOME.md` and present each section as it stands. Show the opening prose and Indicators as unwritten when the generate flow dropped them
+2. Confirm which sections change and what they become via AskUserQuestion. This flow is the only one that can add the opening prose and Indicators
 3. Run each changed Behavior through the Outcome test, then Edit
 4. Re-run validate-outcome.py and confirm `errors` is empty
+5. When `warnings` carries `missing_indicator`, ask the user whether to add that indicator. It names an Indicators section missing one of Time, Error rate, or Value

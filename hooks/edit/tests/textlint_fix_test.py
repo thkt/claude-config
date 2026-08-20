@@ -98,7 +98,7 @@ class TestTextlintFix(unittest.TestCase):
         for name in ("jq", "jaq"):
             found = shutil.which(name)
             if found:
-                env["PATH"] += f":{os.path.dirname(found)}"
+                env["PATH"] += f":{Path(found).parent}"
                 break
         result = self.run_hook("Write", path, env=env)
         self.assertEqual(result.returncode, 0, "crashes when textlint is absent")

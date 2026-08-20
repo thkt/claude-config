@@ -43,6 +43,10 @@ def deny(reason: str) -> None:
 
     Not a top-level `decision`: PreToolUse accepts only "block" there, so an "approve" written
     at that level asserts a permission the harness never grants.
+
+    permissionDecision takes exactly these: allow, deny, ask, defer. Any other value fails
+    schema validation, which Claude Code reports as a non-blocking hook error before the tool
+    call runs, so a gate written with an invalid value stops nothing and says nothing.
     """
     print(
         json.dumps(

@@ -19,27 +19,29 @@ best-effort で、古い状態の除去失敗は無視し run を失敗させな
 import json
 import subprocess
 import sys
+from collections.abc import Callable, Sequence
+
+Runner = Callable[[Sequence[str]], tuple[int, str]]
 
 
-def _real_runner(cmd):
+def _real_runner(cmd: Sequence[str]) -> tuple[int, str]:
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     return proc.returncode, proc.stderr
 
 
-def paths(session_id):
+def paths(session_id: str) -> tuple[str, str]:
     branch = f"assert-{session_id}"
     path = f".claude/worktrees/assert-{session_id}"
     return branch, path
 
 
-def _remove(branch, path, runner):
-    """worktree とその branch を best-effort で除去する。エラーは無視する。"""
-    runner(["git", "worktree", "remove", path, "--force"])
-    runner(["git", "branch", "-D", branch])
+def _remove(branch: str, path: str, runner: Runner) -> None:
+    """エラーは無視する。古い状態の除去に失敗しても run は失敗させない。"""
+    _ = runner(["git", "worktree", "remove", path, "--force"])
+    _ = runner(["git", "branch", "-D", branch])
 
 
-def create(session_id, runner=_real_runner):
-    """古い worktree を除去してから新規作成する。結果 dict を返す。"""
+def create(session_id: str, runner: Runner = _real_runner) -> dict[str, str]:
     branch, path = paths(session_id)
     _remove(branch, path, runner)
     rc, stderr = runner(["git", "worktree", "add", "-b", branch, path, "HEAD"])
@@ -54,14 +56,13 @@ def create(session_id, runner=_real_runner):
     return {"branch": branch, "path": path, "status": "created"}
 
 
-def cleanup(session_id, runner=_real_runner):
-    """worktree と branch を除去する。結果 dict を返す (エラーにはならない)。"""
+def cleanup(session_id: str, runner: Runner = _real_runner) -> dict[str, str]:
     branch, path = paths(session_id)
     _remove(branch, path, runner)
     return {"branch": branch, "path": path, "status": "removed"}
 
 
-def main():
+def main() -> None:
     args = sys.argv[1:]
     if len(args) == 2 and args[0] == "--cleanup":
         print(json.dumps(cleanup(args[1])))

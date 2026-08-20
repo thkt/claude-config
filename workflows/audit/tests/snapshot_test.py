@@ -1,3 +1,4 @@
+# pyright: reportUninitializedInstanceVariable=false
 """Tests for workflows/audit/snapshot.py (deterministic audit-run recorder).
 
 Run: python3 workflows/audit/tests/snapshot_test.py
@@ -14,6 +15,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 
 HERE = Path(__file__).resolve().parent
 SCRIPT = HERE.parent / "snapshot.py"
@@ -23,12 +25,19 @@ snapshot = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(snapshot)
 
 
-def raw(file, message):
+def raw(file: str, message: str) -> dict[str, str]:
     return {"file": file, "message": message}
 
 
-# payload と counts を各 test 本体に書き写すと、片側にだけキーが増えたときに
-# 気づかないまま食い違う。
+def loaded(text: str) -> dict[str, object]:
+    """A parsed JSON object. Anything else fails the test here rather than downstream."""
+    value = cast("object", json.loads(text))
+    assert isinstance(value, dict)
+    return cast("dict[str, object]", value)
+
+
+# Copying the payload and its counts into each test body lets one side gain a key while the
+# other stays behind, and nothing notices.
 COUNTED_PAYLOAD = {
     "raw_findings": [raw("a.rs", "x"), raw("b.rs", "y")],
     "findings": [raw("a.rs", "root")],
@@ -46,7 +55,7 @@ COUNTED_PAYLOAD_COUNTS = {
 
 
 class CliTest(unittest.TestCase):
-    def _run(self, payload, home):
+    def _run(self, payload: object, home: str) -> subprocess.CompletedProcess[str]:
         env = {"HOME": str(home), "PATH": ""}
         return subprocess.run(
             [sys.executable, str(SCRIPT)],
@@ -57,7 +66,7 @@ class CliTest(unittest.TestCase):
             check=False,
         )
 
-    def test_writes_record_with_resolved_fields(self):
+    def test_writes_record_with_resolved_fields(self) -> None:
         with tempfile.TemporaryDirectory() as home:
             payload = {
                 "scope": "HEAD",
@@ -68,72 +77,72 @@ class CliTest(unittest.TestCase):
             }
             result = self._run(payload, home)
             self.assertEqual(result.returncode, 0, result.stderr)
-            out_path = Path(json.loads(result.stdout)["path"])
+            out_path = Path(str(loaded(result.stdout)["path"]))
             self.assertTrue(out_path.exists())
-            record = json.loads(out_path.read_text())
+            record = loaded(out_path.read_text())
             self.assertEqual(record["branch"], "unknown")  # PATH="" -> no git
             self.assertIn("generated_at", record)
 
-    def test_stdout_reports_element_counts_of_what_was_written(self):
-        """呼び出し元が agent の自己申告でなくこの出力と照合できる。
+    def test_stdout_reports_element_counts_of_what_was_written(self) -> None:
+        """The caller compares against this output, not against what the agent says about itself.
 
-        payload は prompt 埋め込みでしか agent に渡せず、書き写す途中で要約されると
-        record だけが痩せる。件数を agent に自己申告させると、切り詰めた当人が
-        報告することになる。stdin を受けた Python が数えれば agent は介在できない。
+        A payload reaches an agent only embedded in a prompt, and a summary made while copying it
+        thins the record alone. Asking the agent for the counts hands the reporting to whoever did
+        the trimming. Counting in the Python that received the stdin leaves no room for that.
         """
         with tempfile.TemporaryDirectory() as home:
             result = self._run(COUNTED_PAYLOAD, home)
             self.assertEqual(result.returncode, 0, result.stderr)
-            out = json.loads(result.stdout)
+            out = loaded(result.stdout)
             self.assertEqual(out["counts"], COUNTED_PAYLOAD_COUNTS)
-            self.assertTrue(Path(out["path"]).exists())
+            self.assertTrue(Path(str(out["path"])).exists())
 
-    def test_written_record_has_no_delta_key(self):
-        """T-001: 書き出された record に delta キーが無い。"""
+    def test_written_record_has_no_delta_key(self) -> None:
+        """T-001: the written record carries no delta key."""
         with tempfile.TemporaryDirectory() as home:
             payload = {"raw_findings": [raw("a.rs", "x")]}
             result = self._run(payload, home)
             self.assertEqual(result.returncode, 0, result.stderr)
-            record = json.loads(Path(json.loads(result.stdout)["path"]).read_text())
+            record = loaded(Path(str(loaded(result.stdout)["path"])).read_text())
             self.assertNotIn("delta", record)
 
-    def test_written_record_content_does_not_depend_on_prior_history(self):
-        """T-002: 履歴に prior record があっても、書き出された record の内容は prior に依存しない。"""
+    def test_written_record_content_does_not_depend_on_prior_history(self) -> None:
+        """T-002: a prior record in the history does not change the written record's content."""
         second_payload = {"raw_findings": [raw("a.rs", "keep"), raw("c.rs", "add")]}
 
         with tempfile.TemporaryDirectory() as home_with_prior:
             first_payload = {"raw_findings": [raw("a.rs", "keep"), raw("b.rs", "drop")]}
-            self._run(first_payload, home_with_prior)
+            _ = self._run(first_payload, home_with_prior)
             result_with_prior = self._run(second_payload, home_with_prior)
-            record_with_prior = json.loads(
-                Path(json.loads(result_with_prior.stdout)["path"]).read_text()
+            record_with_prior = loaded(
+                Path(str(loaded(result_with_prior.stdout)["path"])).read_text()
             )
 
         with tempfile.TemporaryDirectory() as home_without_prior:
             result_without_prior = self._run(second_payload, home_without_prior)
-            record_without_prior = json.loads(
-                Path(json.loads(result_without_prior.stdout)["path"]).read_text()
+            record_without_prior = loaded(
+                Path(str(loaded(result_without_prior.stdout)["path"])).read_text()
             )
 
-        record_with_prior.pop("generated_at", None)
-        record_without_prior.pop("generated_at", None)
+        _ = record_with_prior.pop("generated_at", None)
+        _ = record_without_prior.pop("generated_at", None)
         self.assertEqual(
             record_with_prior,
             record_without_prior,
-            "prior の有無で record の内容が変わってはいけない",
+            "a prior record must not change the content of the one written after it",
         )
 
-    def test_stdout_still_reports_path_and_counts(self):
-        """T-003: stdout は path と counts を従来どおり返す。"""
+    def test_stdout_still_reports_path_and_counts(self) -> None:
+        """T-003: stdout still returns path and counts."""
         with tempfile.TemporaryDirectory() as home:
             result = self._run(COUNTED_PAYLOAD, home)
             self.assertEqual(result.returncode, 0, result.stderr)
-            out = json.loads(result.stdout)
+            out = loaded(result.stdout)
             self.assertEqual(set(out.keys()), {"path", "counts"})
             self.assertEqual(out["counts"], COUNTED_PAYLOAD_COUNTS)
-            self.assertTrue(Path(out["path"]).exists())
+            self.assertTrue(Path(str(out["path"])).exists())
 
-    def test_unparseable_payload_exits_1_and_writes_nothing(self):
+    def test_unparseable_payload_exits_1_and_writes_nothing(self) -> None:
         with tempfile.TemporaryDirectory() as home:
             env = {"HOME": home, "PATH": ""}
             result = subprocess.run(
@@ -151,4 +160,4 @@ class CliTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    _ = unittest.main()

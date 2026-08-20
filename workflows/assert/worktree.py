@@ -20,27 +20,29 @@ is best-effort: stale-state removals are ignored and it never fails the run.
 import json
 import subprocess
 import sys
+from collections.abc import Callable, Sequence
+
+Runner = Callable[[Sequence[str]], tuple[int, str]]
 
 
-def _real_runner(cmd):
+def _real_runner(cmd: Sequence[str]) -> tuple[int, str]:
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     return proc.returncode, proc.stderr
 
 
-def paths(session_id):
+def paths(session_id: str) -> tuple[str, str]:
     branch = f"assert-{session_id}"
     path = f".claude/worktrees/assert-{session_id}"
     return branch, path
 
 
-def _remove(branch, path, runner):
-    """Best-effort removal of a worktree and its branch. Errors are ignored."""
-    runner(["git", "worktree", "remove", path, "--force"])
-    runner(["git", "branch", "-D", branch])
+def _remove(branch: str, path: str, runner: Runner) -> None:
+    """Errors are ignored: failing to clear stale state must not fail the run."""
+    _ = runner(["git", "worktree", "remove", path, "--force"])
+    _ = runner(["git", "branch", "-D", branch])
 
 
-def create(session_id, runner=_real_runner):
-    """Remove any stale worktree, then create a fresh one. Return the result dict."""
+def create(session_id: str, runner: Runner = _real_runner) -> dict[str, str]:
     branch, path = paths(session_id)
     _remove(branch, path, runner)
     rc, stderr = runner(["git", "worktree", "add", "-b", branch, path, "HEAD"])
@@ -55,14 +57,13 @@ def create(session_id, runner=_real_runner):
     return {"branch": branch, "path": path, "status": "created"}
 
 
-def cleanup(session_id, runner=_real_runner):
-    """Remove the worktree and branch. Return the result dict (never errors)."""
+def cleanup(session_id: str, runner: Runner = _real_runner) -> dict[str, str]:
     branch, path = paths(session_id)
     _remove(branch, path, runner)
     return {"branch": branch, "path": path, "status": "removed"}
 
 
-def main():
+def main() -> None:
     args = sys.argv[1:]
     if len(args) == 2 and args[0] == "--cleanup":
         print(json.dumps(cleanup(args[1])))
