@@ -1,5 +1,5 @@
-// U-003: behavior test that code.js propagates an optional input.model only to the
-// Red / Green implementation agents (defaulting to sonnet), which always run at effort high.
+// An optional input.model reaches the Red / Green implementation agents only (defaulting to
+// sonnet), and those agents always run at effort high.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -24,7 +24,6 @@ const plan = {
   ],
 };
 
-// A unit with no tests takes direct implementation instead of Red -> Green, chosen by the plan.
 const noTestPlan = {
   test_command: "echo test",
   units: [
@@ -38,8 +37,7 @@ const noTestPlan = {
   ],
 };
 
-// red / green fail on the first call to fire the retries (red2 / green2), so all
-// 4 calls (red, red2, green, green2) get captured.
+// red / green fail on the first call, which is the only way red2 / green2 come to exist.
 const retryingAgentStub = (prompt, opts) => {
   const label = opts.label ?? "";
   if (label === "reference-index") return { found: false, table: "" };
@@ -228,4 +226,58 @@ test("the static gates pass on the JA and EN code.js and on tests/*.js", () => {
     execFileSync("node", ["--check", file], { cwd: root });
   }
   execFileSync("npx", ["oxlint", ...scripts, ...modules], { cwd: root });
+});
+
+// verification tells the caller whether the suite verified anything or the gates carried the
+// run alone. build.js derives the same claim from its own plan reading, so this pins the
+// contract before that second derivation is retired in favour of this one.
+const verificationStub = (prompt, opts) => {
+  const label = opts.label ?? "";
+  if (label === "reference-index") return { found: false, table: "" };
+  if (label.startsWith("impl:")) return { green: true, notes: "", deferred: [] };
+  if (label.startsWith("red:"))
+    return { red_confirmed: true, test_files: ["a.test.js"], notes: "", evidence: [] };
+  if (label.startsWith("green:")) return { green: true, notes: "", deferred: [] };
+  if (label === "verify") return { tests_pass: true, gates_pass: true, output_tail: "" };
+  throw new Error(`unexpected label: ${label}`);
+};
+
+const unitOf = (id, tests) => ({
+  id,
+  goal: `${id} goal`,
+  files: [`${id}.js`],
+  contract: `${id} contract`,
+  tests,
+  seam: false,
+});
+
+test("reports tests+gates when any unit of the plan carries a test scenario", async () => {
+  const { result } = await runWorkflow(codeJs, {
+    args: {
+      plan: {
+        test_command: "echo test",
+        units: [unitOf("U-1", []), unitOf("U-2", [{ id: "T-001", name: "rejects zero" }])],
+      },
+      repo: "",
+    },
+    stubs: { agent: verificationStub },
+  });
+
+  assert.equal(result.verification, "tests+gates", "one unit with tests is enough");
+});
+
+test("reports gates-only when no unit of the plan carries a test scenario", async () => {
+  const { result } = await runWorkflow(codeJs, {
+    args: {
+      plan: { test_command: "echo test", units: [unitOf("U-1", []), unitOf("U-2", [])] },
+      repo: "",
+    },
+    stubs: { agent: verificationStub },
+  });
+
+  assert.equal(
+    result.verification,
+    "gates-only",
+    "with every unit's tests empty the suite verified nothing",
+  );
 });

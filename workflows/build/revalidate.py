@@ -17,17 +17,17 @@ pass". The drift decision (any exists=false or matches=false) stays in build.js.
 
 import json
 import sys
+from collections.abc import Sequence
 from pathlib import Path
+from typing import NoReturn, cast
 
 
-def verify_one(root, entry):
-    """Return {path, pattern, exists, matches} for one precondition entry.
-
-    A non-object entry, or one whose file is unreadable, resolves to
-    exists/matches false (fail-closed) rather than raising.
-    """
-    path = str(entry.get("path", "")) if isinstance(entry, dict) else ""
-    raw_pattern = entry.get("pattern", "") if isinstance(entry, dict) else ""
+def verify_one(root: Path, entry: object) -> dict[str, str | bool]:
+    """A non-object entry, or one whose file is unreadable, resolves to
+    exists/matches false (fail-closed) rather than raising."""
+    mapping: dict[str, object] = cast("dict[str, object]", entry) if isinstance(entry, dict) else {}
+    path = str(mapping.get("path", ""))
+    raw_pattern = mapping.get("pattern", "")
     pattern = "" if raw_pattern is None else str(raw_pattern)
     exists = (root / path).is_file() if path else False
     if not pattern:
@@ -42,24 +42,24 @@ def verify_one(root, entry):
     return {"path": path, "pattern": pattern, "exists": exists, "matches": matches}
 
 
-def run(preconditions, root=Path(".")):
-    """Verify every precondition against root, preserving input order and count."""
-    return [verify_one(root, entry) for entry in preconditions]
+def run(preconditions: Sequence[object], root: Path | None = None) -> list[dict[str, str | bool]]:
+    base = Path() if root is None else root
+    return [verify_one(base, entry) for entry in preconditions]
 
 
-def fail(message):
+def fail(message: str) -> NoReturn:
     print(message, file=sys.stderr)
     sys.exit(1)
 
 
-def main():
+def main() -> None:
     try:
-        preconditions = json.loads(sys.stdin.read())
+        loaded = cast("object", json.loads(sys.stdin.read()))
     except json.JSONDecodeError as exc:
         fail(f"Error: preconditions is not valid JSON: {exc}")
-    if not isinstance(preconditions, list):
+    if not isinstance(loaded, list):
         fail("Error: preconditions must be a JSON array of {path, pattern?}")
-    print(json.dumps({"results": run(preconditions)}))
+    print(json.dumps({"results": run(cast("list[object]", loaded))}))
 
 
 if __name__ == "__main__":

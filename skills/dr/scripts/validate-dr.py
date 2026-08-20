@@ -24,30 +24,43 @@ REQUIRED_SECTIONS = (
     "Confirmation",
 )
 
+# A remove-or-merge proposal reads this section to judge, so a DR without it leaves that judgment
+# nothing to read. madr-format files it as recommended, so this warns rather than errors.
+RECOMMENDED_SECTIONS = ("Reassessment Triggers",)
 
-def count_options(lines):
-    """Bullets or numbered items directly under ## Considered Options."""
-    in_options = False
+# update-index.py buckets By Status with status.startswith(), so a value outside the lifecycle
+# lands in no section and drops out of the index. The drop is invisible, so this errors.
+STATUS_VALUES = re.compile(r"proposed|accepted|rejected|deprecated|superseded by DR-\d{4}")
+
+
+def count_options(lines: list[str]) -> int:
+    """Bullets or numbered items directly under the Considered Options heading."""
+    depth = 0
     count = 0
     for line in lines:
-        if re.match(r"^## Considered Options\s*$", line):
-            in_options = True
+        # Matching h2 alone reports zero options for a heading the section check calls present.
+        opening = re.match(r"^(#{2,3}) Considered Options\s*$", line)
+        if opening:
+            depth = len(opening.group(1))
             continue
-        if in_options and line.startswith("## "):
-            in_options = False
-        if in_options and re.match(r"^\s*([-*]|\d+\.)\s", line):
+        if not depth:
+            continue
+        heading = re.match(r"^(#+) ", line)
+        # A deeper heading is a subsection of Considered Options, so its bullets still count.
+        if heading and len(heading.group(1)) <= depth:
+            break
+        if re.match(r"^\s*([-*]|\d+\.)\s", line):
             count += 1
     return count
 
 
-def lint_check(path):
+def lint_check(path: Path) -> tuple[str, str]:
     """('checks' | 'warnings', message) from markdownlint-cli2, if installed."""
     if not shutil.which("markdownlint-cli2"):
         return "checks", "markdown_lint=skipped (markdownlint-cli2 not installed)"
-    candidates = [
+    candidates: list[str | None] = [
         os.environ.get("MARKDOWNLINT_CONFIG"),
         ".markdownlint.json",
-        str(Path.home() / ".claude" / ".markdownlint.json"),
     ]
     config = next((c for c in candidates if c and Path(c).is_file()), None)
     cmd = ["markdownlint-cli2"] + (["--config", config] if config else []) + [str(path)]
@@ -56,7 +69,7 @@ def lint_check(path):
     return "warnings", "markdown_lint=issues (run markdownlint-cli2 for details)"
 
 
-def main():
+def main() -> None:
     dr_file = sys.argv[1] if len(sys.argv) > 1 else ""
     path = Path(dr_file)
     if not path.is_file():
@@ -64,22 +77,27 @@ def main():
 
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines()
-    results = {"errors": [], "warnings": [], "checks": []}
+    results: dict[str, list[str]] = {"errors": [], "warnings": [], "checks": []}
 
-    for section in REQUIRED_SECTIONS:
+    for section in REQUIRED_SECTIONS + RECOMMENDED_SECTIONS:
         if re.search(rf"^#{{2,3}} {re.escape(section)}\s*$", text, flags=re.MULTILINE):
             results["checks"].append(f"section:{section}=ok")
-        else:
+        elif section in REQUIRED_SECTIONS:
             results["errors"].append(f"missing_section:{section}")
+        else:
+            results["warnings"].append(f"missing_section:{section} (recommended)")
 
     # MADR v4 frontmatter: status and date are optional but recommended
     frontmatter, _ = split_frontmatter(text)
     if frontmatter:
         results["checks"].append("frontmatter=present")
         for meta in ("status", "date"):
-            raw = next((l for l in frontmatter if l.startswith(f"{meta}:")), None)
+            raw = next((line for line in frontmatter if line.startswith(f"{meta}:")), None)
             if raw:
                 results["checks"].append(f"metadata:{meta}=ok [{raw}]")
+                value = raw.split(":", 1)[1].strip().strip('"')
+                if meta == "status" and not STATUS_VALUES.fullmatch(value):
+                    results["errors"].append(f"invalid_status:{value}")
             else:
                 results["warnings"].append(
                     f"missing_metadata:{meta} (recommended in MADR v4 frontmatter)"
@@ -87,7 +105,7 @@ def main():
     else:
         results["warnings"].append(
             "missing_frontmatter (MADR v4 supports optional YAML frontmatter"
-            " for status/date/decision-makers)"
+            + " for status/date/decision-makers)"
         )
 
     options_count = count_options(lines)

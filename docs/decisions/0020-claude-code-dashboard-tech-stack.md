@@ -98,3 +98,8 @@ input）、モデル名、トークン使用量（input/output/cache）が含ま
 
 - Plugin のユーザースコープ配置が必要（モノレポ対応のため）
 - Clerk の GitHub OAuth 設定が初期セットアップで必要
+
+## Reassessment Triggers
+
+- トランスクリプト JSONL の形式が変わり、Stop hook の解析が壊れたとき
+- Cloudflare 以外のホスティングを要する要件が出たとき

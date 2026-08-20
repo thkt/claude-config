@@ -41,10 +41,7 @@ res.status(500).json({ error: err.message, stack: err.stack });
 
 // 安全: 本番では汎用メッセージ、詳細はログのみ
 const isProd = process.env.NODE_ENV === "production";
-res.status(500).json({
-  error: isProd ? "Internal server error" : err.message,
-  ...(isProd ? {} : { stack: err.stack }),
-});
+res.status(500).json({ error: isProd ? "Internal server error" : err.message });
 logger.error({ err }, "Unhandled error");
 ```
 
@@ -81,11 +78,11 @@ logger.warn("Login failed", {
 
 ## 10. SSRF
 
-| チェック   | 拒否対象                           |
-| ---------- | ---------------------------------- |
-| プロトコル | http/https 以外                    |
-| ホスト名   | localhost, 127._, 192.168._, 10.\* |
-| ドメイン   | 許可リストにない                   |
+| チェック   | 拒否対象                                  |
+| ---------- | ----------------------------------------- |
+| プロトコル | http/https 以外                           |
+| ホスト名   | `localhost`, `127.*`, `192.168.*`, `10.*` |
+| ドメイン   | 許可リストにない                          |
 
 ```typescript
 function isAllowedUrl(input: string, allowlist: string[]): boolean {
@@ -99,13 +96,3 @@ function isAllowedUrl(input: string, allowlist: string[]): boolean {
   }
 }
 ```
-
-## マスター チェックリスト
-
-| カテゴリ | 項目                                      |
-| -------- | ----------------------------------------- |
-| Auth     | エンドポイント保護、所有権検証            |
-| Input    | SQL/XSS/コマンド インジェクション防止     |
-| Data     | 暗号化、HTTPS、ログにセンシティブ情報なし |
-| Config   | デバッグ オフ、ヘッダー設定、CORS 制限    |
-| Deps     | 脆弱性なし、更新済み、未使用は削除        |

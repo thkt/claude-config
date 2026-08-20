@@ -5,15 +5,15 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import NoReturn
 
 
-def fail(*lines):
+def fail(*lines: str) -> NoReturn:
     print(*lines, sep="\n", file=sys.stderr)
     sys.exit(1)
 
 
-def resolve_dr_dir(arg=None):
-    """DR_DIR env > arg > <git-root>/docs/decisions."""
+def resolve_dr_dir(arg: str | None = None) -> Path:
     if os.environ.get("DR_DIR"):
         return Path(os.environ["DR_DIR"])
     if arg:
@@ -27,28 +27,22 @@ def resolve_dr_dir(arg=None):
     if git.returncode != 0:
         fail(
             "Error: not inside a git repository. Decision Records require"
-            " <git-root>/docs/decisions/. Set DR_DIR env var to override."
+            + " <git-root>/docs/decisions/. Set DR_DIR env var to override."
         )
     return Path(git.stdout.strip()) / "docs" / "decisions"
 
 
-def guard_skill_dir(dr_dir, hint):
-    """skill 定義ディレクトリ自体を Decision Record の置き場として受け付けない。"""
+def guard_skill_dir(dr_dir: Path, hint: str) -> None:
     if (dr_dir / "SKILL.md").is_file():
         fail(
             f"Error: {dr_dir} contains SKILL.md (skill-definition directory,"
-            " not a Decision Record archive)",
+            + " not a Decision Record archive)",
             hint,
         )
 
 
-def split_frontmatter(text):
-    """(frontmatter の行, body の行) を返す。
-
-    frontmatter と見なすのは、ファイルが --- の行で始まり、閉じる --- の行を持つ
-    ときだけ。それ以外の位置にある --- (body の水平線など) は区切りにしない。
-    開いたまま閉じない --- は frontmatter 無しとして扱う。
-    """
+def split_frontmatter(text: str) -> tuple[list[str], list[str]]:
+    """先頭行以外の --- は区切りにしない。body の水平線でファイルが割れなくなる。"""
     lines = text.splitlines()
     fence = re.compile(r"^---[ \t]*$")
     if not lines or not fence.match(lines[0]):

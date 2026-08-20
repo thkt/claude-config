@@ -4,7 +4,7 @@ When /issue classifies the request as bug, it generates the title and body from 
 
 ## Template
 
-`{...}` is replaced with content at generation. Sections marked `(optional)` are omitted, heading and all, when there is nothing to say. Fixed items (the reproduction, expected/actual) stay unmarked; tentative items (a suspected cause, an inferred fix direction) carry a `(tentative: <action at pickup>)` mark (criteria in SKILL.md § Confidence marking).
+`{...}` is replaced with content at generation. Sections marked `(optional)` are omitted, heading and all, when there is nothing to say.
 
 ```markdown
 ## What & Why
@@ -32,10 +32,6 @@ When /issue classifies the request as bug, it generates the title and body from 
 
 - {Fix constraints: no breaking changes, root cause not workaround, etc.}
 
-## Premises (optional)
-
-- {Unverified assumption the fix depends on, with a recheck marker: "User-reported error not yet reproduced on current binary; confirm before fixing"}
-
 ## Environment (optional)
 
 - Browser/OS: {e.g., Chrome 120 / macOS 14}
@@ -44,10 +40,9 @@ When /issue classifies the request as bug, it generates the title and body from 
 
 ## Guidelines
 
-| Field              | OK                                            | NG                               |
-| ------------------ | --------------------------------------------- | -------------------------------- |
-| What & Why         | Login fails, blocking 30% of users            | Login is broken                  |
-| Expected vs Actual | Expected: 200 OK / Actual: 500 error response | Works correctly (vague)          |
-| Scope - Out of     | Auth refactor is out of scope                 | (omitted)                        |
-| Constraints        | Fix root cause, not workaround                | (omitted when fix is risky)      |
-| Premises           | Reproduce on current binary before fixing     | Unverified report stated as fact |
+| Field              | OK                                            | NG                          |
+| ------------------ | --------------------------------------------- | --------------------------- |
+| What & Why         | Login fails, blocking 30% of users            | Login is broken             |
+| Expected vs Actual | Expected: 200 OK / Actual: 500 error response | Works correctly (vague)     |
+| Scope - Out of     | Auth refactor is out of scope                 | (omitted)                   |
+| Constraints        | Fix root cause, not workaround                | (omitted when fix is risky) |

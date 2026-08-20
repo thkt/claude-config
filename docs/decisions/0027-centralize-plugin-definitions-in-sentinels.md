@@ -65,3 +65,8 @@ Bが理想だが、URL sourceのカスタムmarketplaceでの動作実績がな�
 - SOW: workspace/planning/2026-03-20-sentinels/sow.md
 - ADR-0026: 仕様-コード収束則（Rustバイナリ化の判断基準として関連）
 - ADR-0006: 決定論的処理のスクリプト化パターン（wrapper.shの設計パターン）
+
+## Reassessment Triggers
+
+- URL source のカスタム marketplace に動作実績ができ、path source を選んだ理由が消えたとき
+- wrapper.sh の意図的重複が 5 ディレクトリを超え、同期漏れが実際に起きたとき

@@ -1,6 +1,6 @@
 ---
-status: "accepted"
-date: 2026-06-19
+status: "superseded by DR-0099"
+date: "2026-08-18"
 decision-makers: thkt
 ---
 

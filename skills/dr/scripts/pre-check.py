@@ -10,26 +10,27 @@ import os
 import re
 import sys
 from datetime import datetime
+from pathlib import Path
 
 from dr_common import fail, guard_skill_dir, resolve_dr_dir
 
 
-def similarity(title_a, title_b):
-    """Shared distinct words between the titles, divided by title_a's word count."""
+def similarity(title_a: str, title_b: str) -> float:
+    """Divided by title_a's word count, not the union, so a long existing title cannot dilute it."""
     words_a = title_a.lower().split()
     if not words_a:
         return 0.0
     return len(set(words_a) & set(title_b.lower().split())) / len(words_a)
 
 
-def first_heading(path):
+def first_heading(path: Path) -> str:
     for line in path.read_text(encoding="utf-8").splitlines():
         if line.startswith("# "):
             return line[2:]
     return ""
 
 
-def main():
+def main() -> None:
     title = sys.argv[1] if len(sys.argv) > 1 else ""
     dr_dir = resolve_dr_dir()
     threshold = float(os.environ.get("DUPLICATE_THRESHOLD", "0.7"))
@@ -41,7 +42,7 @@ def main():
     guard_skill_dir(
         dr_dir,
         "Set DR_DIR env var or run from a project root where"
-        " docs/decisions/ is the archive.",
+        + " docs/decisions/ is the archive.",
     )
 
     dr_dir.mkdir(parents=True, exist_ok=True)
@@ -50,15 +51,15 @@ def main():
 
     numbers = [
         int(m.group(1))
-        for name in os.listdir(dr_dir)
-        if (m := re.match(r"(\d{4})-", name))
+        for entry in dr_dir.iterdir()
+        if (m := re.match(r"(\d{4})-", entry.name))
     ]
     next_num = f"{max(numbers, default=0) + 1:04d}"
 
     slug = re.sub(r"[^a-z0-9-]", "", title.lower().replace(" ", "-"))
     slug = re.sub(r"-{2,}", "-", slug).strip("-")
 
-    similar_drs = []
+    similar_drs: list[dict[str, str]] = []
     for dr_file in sorted(dr_dir.rglob("*.md")):
         existing = first_heading(dr_file)
         if not existing:

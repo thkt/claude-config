@@ -1,5 +1,5 @@
 ---
-status: Accepted
+status: "accepted"
 date: 2026-05-02
 deciders: thkt
 consulted: critic-design (DA), claude-code research agent
@@ -115,3 +115,8 @@ informed: future contributors
 
 - Pros: Rust philosophy 整合、自分の CLI 群と統一感
 - Cons: 既存 OSS で全機能カバー可能、開発・保守工数が outcome に寄与しない、DA で「Rust 理由は工数を奪う言い訳」と指摘
+
+### Reassessment Triggers
+
+- 45 ラベル必要だったと判明し、Tier 2 へエスカレーションする段になったとき
+- github-label-sync の自動 sync が止まり、30 リポでスキーマドリフトが再発したとき

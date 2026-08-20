@@ -1,7 +1,7 @@
 ---
 name: reviewer-prompt
 description: LLM プロンプトファイルの品質レビュー。トークン効率、構造、フォーマット、明瞭性。
-tools: Read, LS, Bash(ugrep:*), Bash(bfs:*)
+tools: Read, LS, Bash(git:*), Bash(ugrep:*), Bash(bfs:*)
 model: sonnet
 memory: feedback
 background: true

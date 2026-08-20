@@ -8,14 +8,14 @@ skills: [use-context-root-cause-analysis]
 
 # Progressive Integrator
 
-challenger と verifier の verdict を finding_id で突き合わせ、5 Whys でドメイン横断の finding を根本原因へグループ化し、構造化された `findings` 配列を返す。永続化と描画は呼び出し元が担う。
+challenger と verifier の verdict を finding_id で突き合わせ、ドメイン横断の finding を根本原因へグループ化し、構造化された `findings` 配列を返す。永続化と描画は呼び出し元が担う。
 
 ## 姿勢
 
 - 統合の前に reconcile する。dedup、相関、根本原因合成の前に、challenger + verifier の verdict に reconciliation ルールを適用する。順序を飛ばすと結果が一貫しなくなる
 - リストではなく合成する。2 つ以上のドメインが同じ領域をフラグした場合、ドメイン横断の finding は共有された根本原因にグループ化する。フラットな finding リストは収束シグナルを見落とす
 - 相関を強要しない。単一ドメインに留まる finding はそれ自体で妥当。強制的なグループ化は存在しない関係を捏造する
-- 合成内で禁止するショートカット: count ベースの severity 引き上げ (medium が 2 件でも high にはならない)、収束クラスタでの 5 Whys スキップ
+- 合成内で禁止するショートカット: count ベースの severity 引き上げ (medium が 2 件でも high にはならない)、収束クラスタでの根本原因分析のスキップ
 
 ## 入力
 
@@ -87,8 +87,8 @@ finding_id でチャレンジと検証をペアにし、ルールを順番に適
 3. finding を場所 (ファイル、モジュール、境界) でグループ化し、2 つ以上のドメインが同じ領域をフラグする収束シグナルを特定する
 4. 収束クラスタごとに severity を再評価する (下記ルール)
 5. 相関のない単一ドメインの finding はスタンドアロン項目として残す
-6. 各収束クラスタについて、すべての finding を説明する根本原因を 1 つ合成し、個別 finding ではなく根本原因に 5 Whys を適用する
-7. スタンドアロン finding は個別に 5 Whys を適用する
+6. 各収束クラスタについて、すべての finding を説明する根本原因を 1 つ合成し、個別 finding ではなく根本原因に根本原因分析を適用する
+7. スタンドアロン finding は個別に根本原因分析を適用する
 8. 根本原因をカテゴリで分類する (下記カテゴリ)
 9. 根本原因をスコア化 (`findings_resolved × max_severity × fixability`) し、根本原因ごとに統一されたアクションプランを生成する (1 つのアクションで多数の finding を解決)
 10. 自動修正可能な提案を生成する (下記 auto-fix 判定、可能な場合は根本原因を対象とする)

@@ -1,8 +1,8 @@
 ---
 name: qualify
-description: Inspect whether an issue is in shape to hand to build, returning a verdict (build-ready / needs-plan / needs-fix) and the findings. Do NOT use to file an issue (use /issue) or to screen a PR (use /preview).
+description: Inspect whether an issue is in shape to hand to build, returning a verdict (build-ready / needs-plan / needs-fix) and the findings. Do NOT use to file an issue (use /issue) or to match a PR against its plan (use /preview).
 when_to_use: 実装可否, build-ready 判定, issue 品質チェック, qualify issue, check issue before build
-allowed-tools: Bash(gh issue view:*) Bash(ugrep:*) Bash(bfs:*) Read AskUserQuestion
+allowed-tools: Bash(gh issue view:*) Bash(gh repo view:*) Bash(ugrep:*) Bash(bfs:*) Read AskUserQuestion
 model: opus
 argument-hint: "[issue number or URL]"
 ---
@@ -17,32 +17,35 @@ Inspect an issue before handing it to build, and return whether to hand it over 
 
 ## Phase 1: Fetch
 
-Take the body and labels with `gh issue view <ref> --json number,title,body,labels`. If the fetch fails, report the ref and stop.
+Take the body and labels with `gh issue view <ref> --json number,title,body,labels,url`. If the fetch fails, report the ref and stop. Take the local repository with `gh repo view --json nameWithOwner` and match it against the owner/repo in the url.
 
 ## Phase 2: Inspect the plan contract
 
-With no `## Plan` section, set the verdict to needs-plan, go to Phase 4, and end the inspection there. The decision to pick it up does not change, but the next step does depend on the issue's type. When the title is `[Bug]`, check whether the body states a root cause; if not, set the next step to "pin down the root cause before drafting the plan". Other types keep "draft the plan" as the next step, so no other finding changes the decision to hand it over.
+With no `## Plan` section, set the verdict to needs-plan, inspect Verifiable criteria alone among Phase 3's axes, and go to Phase 4. A plan-less issue carries no contract, so Creation collision and Displayed field enumeration have nothing to judge against. The remaining axes are advice, so they leave the next step as it is. Criteria sent on to `/think` while unverifiable become what the plan gets designed against.
 
-With a `## Plan` section, read build.js's own conditions at run time, apply them, and treat every violation as a blocker. Build stops on the same conditions, so every severity stays blocker.
+Under needs-plan the decision to pick it up does not change, while the next step depends on the issue's content. When the acceptance criteria are unverifiable, set the next step to "rewrite the criteria as verifiable before drafting the plan". When the title is `[Bug]` and the body states no root cause, set the next step to "pin down the root cause before drafting the plan". Write both when both apply, and keep "draft the plan" when neither does.
 
-1. Locate them with `ugrep -n "const validate = |const UNIT_CAPS = |const oversizedUnits = " ~/.claude/workflows/build.js`
+With a `## Plan` section, read build.js's own conditions at run time, apply them, and treat every violation as a blocker. Build stops on the same conditions, so every severity stays blocker. Carrying the inspection on without reading those conditions leaves the output unable to separate no violation from conditions never applied.
+
+1. Locate them by running ugrep over ${CLAUDE_SKILL_DIR}/../../workflows/build.js for the lines matching `const validate = |const UNIT_CAPS = |const oversizedUnits = `. When any of them goes unmatched, report the anchor you could not read and stop
 2. Read the places it hits
 3. Apply what you read to the issue's Plan section and list the violations
 
 ### Id cross-check
 
-Build compares the U-NNN and T-NNN id sets in the body against the extraction by exact match. qualify's inspection covers the body alone, so check that the body's own ids are unique and consecutive. Collect the ids from lines starting with `### U-NNN` and from a `T-NNN` right after a list marker. Duplicates and gaps are blockers.
+Build compares the U-NNN and T-NNN id sets in the body against the extraction by exact match. qualify's inspection covers the body alone, so check that the body's own ids are unique. Collect the ids from lines starting with `### U-NNN` and from a `T-NNN` right after a list marker. Duplicates are blockers. A gap is not among the conditions that stop build, so it goes uninspected.
 
 ## Phase 3: Inspect the format and the premises
 
 Check that the issue follows `/issue`'s output format and that the plan's premises still match the current code. Inspect exactly the axes in the table below. When acceptance criteria are unverifiable, nobody can judge whether the implementation is right and build's conformance check loses what it compares against. "Errors are announced to screen readers" passes; "the UX improves" does not. When a file marked for creation already exists, no build stage looks at it before overwriting. The Revalidate stage owns the verdict on whether preconditions exist, so the check here lands as advice that forecasts where build would stop.
+
+When Phase 1's match finds the owner/repo differ, leave Preconditions exist and Creation collision uninspected. The local code is not what the issue targets, so applying them reads an existing file as absent and an absent file as present. An axis left uninspected goes into the advice along with why.
 
 | Axis                        | Passing condition                                                                                                                                                                                        | Severity |
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | Title type                  | Starts with one of `[Feature]` / `[Bug]` / `[Docs]` / `[Chore]`                                                                                                                                          | advice   |
 | What & Why                  | States whose pain it is and the evidence for it                                                                                                                                                          | advice   |
 | Verifiable criteria         | Each item states an observable result an outside observer can judge                                                                                                                                      | blocker  |
-| tentative marks             | Undecided judgments carry `(tentative: <action at pickup>)`                                                                                                                                              | advice   |
 | priority label              | One of `priority:critical` / `high` / `medium` / `low` is attached                                                                                                                                       | advice   |
 | Preconditions exist         | Each {path, pattern} is found in the current code                                                                                                                                                        | advice   |
 | Creation collision          | Files whose contract reads as new do not exist yet                                                                                                                                                       | blocker  |
@@ -64,7 +67,9 @@ Turn a finding into a question when reading the body alone does not settle it, w
 
 Raise one question per finding, and put the answer you expect first among the options as the hypothesis. Word each option as an action the user decides on, not as an operation qualify performs. Use multiSelect only when one finding's options are not mutually exclusive. With 5 or more findings that need a decision, put the 4 most severe into AskUserQuestion and list the rest as question text with its hypothesis.
 
-Add the answers you get to the next-step line. With 0 findings that need a decision, make no AskUserQuestion call and place no questions section. Raise no questions either when Phase 2 stopped at needs-plan. The next step is already settled as drafting the plan, so an answer does not change what happens at pickup.
+Return the answers you get as a proposal for what in the body to rewrite and how. qualify never rewrites the body, so that proposal is the route by which an answer reaches it. Add the answer to the next-step line as well.
+
+With 0 findings that need a decision, make no AskUserQuestion call and place no questions section. Under needs-plan, turn only the Verifiable criteria finding into a question. Drafting the plan is already settled, so any other answer does not change what happens at pickup.
 
 ## Rules
 

@@ -138,3 +138,8 @@ git commit
 _Created: 2026-02-07_
 _Author: thkt_
 _ADR Number: 0009_
+
+## Reassessment Triggers
+
+- brew 配布のバイナリ更新がハーネス側の変更に追いつかず、機能を止めるようになったとき
+- セッションログの形式が変わり、Rust 側を追随させるコストがシェル版を上回ったとき

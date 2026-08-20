@@ -1,5 +1,5 @@
 ---
-status: "superseded by ADR-0055"
+status: "superseded by DR-0055"
 date: 2026-04-23
 decision-makers: thkt
 ---

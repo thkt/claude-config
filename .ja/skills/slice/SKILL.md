@@ -2,7 +2,7 @@
 name: slice
 description: 計画 / spec / PRD を独立して着手可能な tracer-bullet 垂直スライス issue 群に分解し、依存順で GitHub に公開する。各 issue は全レイヤーを貫く 1 本の細い縦串。1 件の要求を起票するだけなら使わない (代わりに /issue)。
 when_to_use: 計画を issue に分解, plan を issue 化, spec を issue 群に, vertical slice, tracer bullet, issue 分割, slice
-allowed-tools: Bash(gh:*) Bash(ugrep:*) Bash(bfs:*) Read LS Task AskUserQuestion
+allowed-tools: Bash(gh:*) Bash(ugrep:*) Bash(bfs:*) Read LS Agent AskUserQuestion
 model: opus
 argument-hint: "[plan / spec / PRD / issue ref]"
 ---
@@ -51,11 +51,16 @@ slice が生む issue には `## Plan` がまだ無く、そのまま `/build` �
 
 承認後、batch publish の前に AskUserQuestion で「これら N 件の issue を作成するか」と最終確認する。N 件作成は外向きで巻き戻しにくいため、確認なしの自動 publish はしない。
 
-承認したら blocker を先にする依存順で publish する。"Blocked by" に実 issue 番号を書けるよう、blocker を先に作りその番号を捕捉する。各 issue は下記のテンプレート選択で決めた骨格を使い、本文を一時ファイルに書き出して `gh issue create --title "<title>" --body-file <path>` で起票する。複数行の markdown は `--body` では壊れるので `--body-file` を使う。`<path>` は変数でなくリテラルの絶対パスで書く。hook は変数を展開できず、起票が止まる。triage label は付けない。AFK consumer 連携は対象外。親 issue は close せず、内容も変更しない。publish 後は作成した issue を依存順に列挙し、各行に issue 番号と blocker の番号を書く。blocker が無ければ「なし」と書く。
+承認したら、blocker を先にする依存順で publish する。"Blocked by" に実 issue 番号を書けるよう、blocker を先に作ってその番号を捕捉する。
+
+1. テンプレート選択で決めた骨格に本文を流し込み、一時ファイルへ書き出す。`<path>` は変数でなくリテラルの絶対パスで書く。hook は変数を展開できず、起票が止まる
+2. `gh issue create --title "<title>" --body-file <path>` で起票する。複数行の markdown は `--body` では壊れるので `--body-file` を使う
+3. triage label は付けない。AFK consumer 連携は対象外。親 issue は close せず、内容も変更しない
+4. 作成した issue を依存順に列挙し、各行に issue 番号と blocker の番号を書く。blocker が無ければ「なし」と書く
 
 ### テンプレート選択
 
-`gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` で `.md` を列挙する。feature 相当のテンプレートがあればそれを、無くてテンプレートが 1 つだけならそれを骨格にし、本文を読んで先頭 frontmatter の `name`、`about`、`labels`、`title` を外す。候補が無ければ `${CLAUDE_SKILL_DIR}/../issue/templates/feature.md` を使う。
+`gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` で `.md` を列挙する。feature 相当のテンプレートがあればそれを、無くてテンプレートが 1 つだけならそれを骨格にし、本文を読んで先頭 frontmatter の `name`、`about`、`labels`、`title` を外す。候補が無ければ ${CLAUDE_SKILL_DIR}/../issue/templates/feature.md を使う。
 
 どちらの骨格を選んでも `## Parent` を先頭に、`## Blocked by` を末尾に足す。当てはまらない任意節は落とす。確信度マーキングは適用しない。Phase 3 で粒度と依存をユーザーが承認済みなので、publish するスライスに未決の判断は残らない。
 
@@ -65,9 +70,9 @@ slice が生む issue には `## Plan` がまだ無く、そのまま `/build` �
 
 ## エラー処理
 
-| Error                | Action                                     |
+| エラー               | アクション                                 |
 | -------------------- | ------------------------------------------ |
 | issue 参照が解決不可 | ref を報告して停止                         |
-| No git repository    | "Not a git repo" を報告                    |
-| gh auth failure      | auth エラーを報告                          |
-| publish 途中失敗     | 作成済み番号を報告し、残りの再開可否を問う |
+| git リポジトリでない | git リポジトリでない旨を報告               |
+| gh の認証に失敗      | 認証エラーを報告                           |
+| publish 途中で失敗   | 作成済み番号を報告し、残りの再開可否を問う |

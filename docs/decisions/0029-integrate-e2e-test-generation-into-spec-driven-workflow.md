@@ -1,5 +1,5 @@
 ---
-status: "superseded by ADR-0082"
+status: "superseded by DR-0082"
 date: 2026-07-05
 ---
 

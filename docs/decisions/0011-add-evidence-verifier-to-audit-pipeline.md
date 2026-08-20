@@ -130,3 +130,8 @@ After:
 _Created: 2026-02-10_
 _Author: thkt_
 _ADR Number: 0011_
+
+## Reassessment Triggers
+
+- Challenger と Evidence Verifier の出力が重なり、Integrator が両方を読む必要が無くなったとき
+- 並列実行のコストが audit 全体の所要時間を支配するようになったとき

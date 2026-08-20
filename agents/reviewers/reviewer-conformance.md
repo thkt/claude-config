@@ -65,7 +65,7 @@ Every finding carries Category + quoted spec line + Location + Severity. A findi
 | ------- | ---------------------------------- | ---------------------- |
 | Lens    | Does the impl match the spec?      | Is the fix root-cause? |
 | Timing  | Post-implementation (diff vs spec) | At fix review          |
-| Output  | 3 categories + spec quote          | 5 Whys + patch detect  |
+| Output  | 3 categories + spec quote          | Root cause + patch detect |
 | /audit  | Out of pool                        | Once after Wave 1      |
 
 ## Output

@@ -4,7 +4,7 @@
 slug の語とファイル名の語の重なり数を数え、重なりを持つ .md ファイルを降順で返す。
 ファイル名の日付プレフィックス (YYYY-MM-DD-) は語の照合対象から外れる。
 
-stdout: JSON { candidates: [{file, shared}, ...] }  (shared 降順)
+stdout: JSON { candidates: [{file, shared}, ...], slug_words: int }  (shared 降順)
 exit: 0
 """
 
@@ -12,21 +12,27 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import TypedDict
 
 DATE_PREFIX = re.compile(r"^\d{4}-\d{2}-\d{2}-")
 
 
-def words(text):
+class Candidate(TypedDict):
+    file: str
+    shared: int
+
+
+def words(text: str) -> set[str]:
     """text を "-" 区切りで語集合にする。"""
-    return set(w for w in text.split("-") if w)
+    return {w for w in text.split("-") if w}
 
 
-def main():
+def main() -> None:
     slug = sys.argv[1] if len(sys.argv) > 1 else ""
     search_dir = sys.argv[2] if len(sys.argv) > 2 else ""
     slug_words = words(slug)
 
-    candidates = []
+    candidates: list[Candidate] = []
     directory = Path(search_dir)
     if directory.is_dir():
         for path in directory.iterdir():
@@ -38,7 +44,9 @@ def main():
                 candidates.append({"file": path.name, "shared": shared})
         candidates.sort(key=lambda c: c["shared"], reverse=True)
 
-    print(json.dumps({"candidates": candidates}, indent=2))
+    # slug が 1 語のとき shared は 2 に届かない。語数を返し、
+    # 完全一致かどうかを呼び出し側が判定できるようにする。
+    print(json.dumps({"candidates": candidates, "slug_words": len(slug_words)}, indent=2))
     sys.exit(0)
 
 

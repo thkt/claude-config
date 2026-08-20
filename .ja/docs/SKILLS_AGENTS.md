@@ -23,7 +23,7 @@ graph LR
         CMD[Command] --> S1
         CMD --> A1
         CTX[Context] -.-> S2
-        TASK[Task Tool] --> A2
+        AGENT[Agent Tool] --> A2
     end
 ```
 
@@ -34,7 +34,7 @@ graph LR
 | 観点         | Skills                              | Agents           |
 | ------------ | ----------------------------------- | ---------------- |
 | 役割         | ナレッジベースまたは手順 (What/How) | 実行者 (Do)      |
-| 起動         | 自動ロードまたはコマンド参照        | Task ツール経由  |
+| 起動         | 自動ロードまたはコマンド参照        | Agent ツール経由 |
 | コンテキスト | メイン または fork                  | 常に fork        |
 | 状態         | 読み取りまたは変更                  | 可変             |
 | 出力         | 情報、ファイル、または実行結果      | アーティファクト |
@@ -54,7 +54,7 @@ Skills は「ナレッジモジュール」。AI がタスク実行時にドメ�
 | Workflow       | use-workflow-tdd-cycle, use-workflow-pageshot                                                                                   | 多段ワークフロー定義         |
 | Context        | use-context-reviewer-\*, use-context-root-cause-analysis                                                                        | エージェント向けドメイン知識 |
 | CLI ラッパー   | use-cli-codegraph, use-cli-recall, use-cli-scout, use-cli-gcloud                                                                | CLI ツール統合               |
-| User-invocable | census, challenge, checkout, commit, dr, fix, issue, outcome, pr, preview, qualify, research, scribe, slice, stock, think, xlsx | スラッシュコマンドの入口     |
+| User-invocable | census, challenge, checkout, commit, dr, fix, issue, outcome, pr, preview, qualify, research, scribe, slice, think, xlsx | スラッシュコマンドの入口     |
 
 ### ロード機構
 
@@ -104,7 +104,7 @@ user-invocable: false # スラッシュコマンドとして起動可能か
 
 ### 用途
 
-エージェントは「専門実行者」。Task ツール経由で起動し、特定の分析や生成タスクを自律的に行う。
+エージェントは「専門実行者」。Agent ツール経由で起動し、特定の分析や生成タスクを自律的に行う。
 
 ### カテゴリ
 
@@ -123,7 +123,7 @@ agents/
 | Agent                  | 焦点                              |
 | ---------------------- | --------------------------------- |
 | reviewer-accessibility | WCAG 2.2 適合                     |
-| reviewer-causation     | 5 Whys 根本原因分析               |
+| reviewer-causation     | 根本原因分析                      |
 | reviewer-conformance   | diff と spec の適合性             |
 | reviewer-coverage      | テストカバレッジ品質              |
 | reviewer-design        | deletion test による module depth |
@@ -141,10 +141,10 @@ agents/
 | reviewer-silence       | サイレント失敗の検出              |
 | reviewer-testability   | テスト可能なコード設計            |
 
-### Task ツールでの起動
+### Agent ツールでの起動
 
 ```markdown
-Task tool で:
+Agent tool で:
 
 - subagent_type: "reviewer-security"
 - prompt: "Review the authentication module for vulnerabilities"

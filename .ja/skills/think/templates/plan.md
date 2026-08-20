@@ -2,7 +2,7 @@
 
 `/think` が Phase 3 の下書き `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md` をこの骨格で生成する。`/issue` は `## Plan` と `## Backlog candidates` の 2 節をそのまま issue の Plan 節へ移設する。
 
-## テンプレート
+## Template
 
 `{...}` は生成時に内容へ置き換える。下書きは次の 2 節だけで構成し、見出しと箇条書きの形を崩さない。build workflow は Plan 節を LLM 抽出で build.js の EXTRACT_SCHEMA へ写し、U-NNN/T-NNN id の決定論クロスチェックで欠落と捏造を止める。骨格を崩すと、この抽出も崩れる。機械用の隠し block は置かない。
 
@@ -23,6 +23,12 @@ reference_module: {kind + reason を object で (kind: module/no-module/new-shap
 - instances: {この形を既に共有する既存機能の数。2 以上なら「N 例目」と書く}
 - files: {複製する各ファイルのパスのみ (`src/foo/list.tsx`, `src/foo/detail.tsx`)。役割は conventions へ書く}
 - conventions: {後続 unit が維持する共有慣例 (合成する共有コンポーネント、フォーマット処理の置き場所、状態の渡し方)}
+
+### 決まりごと
+
+{unit を跨いで効く決まりごとを、出典と逐語の引用で並べる。無ければ小節ごと省略する}
+
+- `docs/wiki/<ページ>.md`: {定型手順または内容の行を逐語で}
 
 ### 前提
 

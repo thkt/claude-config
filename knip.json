@@ -15,5 +15,8 @@
     "skills/**/*.{js,mjs}",
     ".ja/skills/**/*.{js,mjs}"
   ],
-  "ignoreDependencies": ["oxfmt", "^@?textlint"]
+  "ignoreDependencies": [
+    "oxfmt",
+    "^@?textlint"
+  ]
 }

@@ -38,7 +38,7 @@ Chosen option: "問いを強制発火させ、何を残すかは人間が選ぶ"
 
 ### Confirmation
 
-`hooks/lifecycle/reflection-ask.py` が Stop hook に配線され、`additionalContext` に問いを載せて返すこと。問いは agent に宛てたものなので、`systemMessage` へ載せると同じ 700 字が端末へ出てターン自身の答えを埋める。同スクリプトが LLM を起動しないこと (`claude` を呼ぶ行を持たないこと) をコードレビューで確認する。直前に尋ねた session_id が記録され、同一セッション内の 2 回目以降が無出力で終わることをテストで確認する。
+`hooks/lifecycle/reflection-ask.py` が Stop hook に配線され、`additionalContext` に問いを載せて返すこと。問いは agent に宛てたものなので、`systemMessage` へ載せると同じ 700 字が端末へ出てターン自身の答えを埋める。直前に尋ねた session_id が記録され、同一セッション内の 2 回目以降が無出力で終わることをテストで確認する。
 
 ## Pros and Cons of the Options
 
@@ -91,3 +91,33 @@ Stop hook が debounce つきで問いを出し、答えを受けて規則ファ
 `hooks/lifecycle/reflection-ask.sh` が対象列を集計するようになり、同じ対象を指す行が 3 行以上溜まっていれば、その対象への統合まで同じ subagent へ指示する。閾値は対象ごとに見るので、蒸留に値するだけ育ったクラスタが発火する。1 回に発火するのは最大の 1 対象に限り、ターンの長さを抑える。
 
 同時に `CORRECTIONS.md` 自身の矛盾も外した。「統合済みの行はここから消す」と「教訓が適用済みであることは削除の理由にならない」が両方とも無条件で書かれており、後者が前者を打ち消していた。削除の対象を「対象ファイルへ書いた内容の行」へ、削除の禁止を「対象ファイルへまだ移していない行」へ、それぞれ限定した。
+
+### Trigger fired: 2026-08-18
+
+Confirmation の「`claude` を呼ぶ行を持たない」条項が、守るべきものを守らなくなった。この条項が禁じたのは LLM に抽出させて自動で書くことだが、2026-08-14 の変更で `## ask` が追記を subagent へ委ねた時点で、LLM が抽出して LLM が書く形になっている。条項が縛っていたのは、その LLM がどのプロセスで走るかだけだった。
+
+却下した「LLM に抽出させ、結果を自動で書く」の理由 3 つを、分離した `claude -p` へ当てはめ直した。
+
+| 却下理由                                  | 分離した `claude -p` で成立するか                                                            |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------- |
+| 毎ターン 17 秒から 83 秒のブロック        | しない。`start_new_session` で切り離すので hook は数ミリ秒で返り、10 秒の timeout に届かない |
+| 25 秒 timeout で placeholder へ退避       | しない。timeout が掛からず、退避先の placeholder も持たない                                  |
+| 空 placeholder 492 個。抽出の質を測れない | する。しかも会話に 1 行も出なくなるので、旧実装より気付きにくい                              |
+
+3 つ目だけが残り、気付く経路を別に用意する。子の stdout と stderr を `~/.cache/claude-reflection_ask/runs/<session>/log.txt` へ落とし、wrapper が終了コードを追記する。次のセッションの hook がその行を読み、`exit=0` でない run があれば `systemMessage` で 1 行だけ端末へ出す。報告した log は改名するので、同じ失敗は 1 度しか出ない。`additionalContext` でなく `systemMessage` を使うのは、対処できるのが端末を読む人間だからで、モデルの context は分離が空けたかった場所そのものだから。
+
+分離を選んだのは Reassessment Trigger 2 の想定対処 (発火点を作業の区切りへ移す) では動機を満たさないため。動機は 3 つある。メインセッションの context を使わないこと、作業の途中で問われないこと、会話の末尾に報告行を残さないこと。発火点を移しても 1 つ目は残る。
+
+子セッションは自分の Stop でこの hook を再び走らせ、その session_id は新しいので `_claim` を素通りする。sentinel ファイル `~/.cache/claude-reflection_ask/spawning` で再帰を止める。同じファイルが、同時に Stop した 2 セッションが 1 つの `CORRECTIONS.md` へ子を 2 体送る事態も止める。30 分の TTL を付けるのは、cleanup の前に死んだ子が sentinel を残して振り返りを黙って止めてしまうため。
+
+気付く経路には未計測の前提が 1 つ残る。`systemMessage` が `suppressOutput: true` と同時に端末へ描画されるかは、2.1.233 で `additionalContext` について計測しただけで、`systemMessage` では確かめていない。描画されなくても失敗の記録は `runs/<session>/log.seen.txt` に残るので、経路が 1 本減るだけで証拠は失わない。
+
+計測は 2.1.234 で行った。子セッションでも Stop hook は発火する。旧版で記録していた権限 default 強制 (`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`) は現行版には掛からない。
+
+`--permission-mode acceptEdits` では追記先を書けない。`.claude/` 配下は sensitive file と判定され、Edit が `which is a sensitive file` で拒否される。`--settings` に `permissions.allow` で絶対パスを並べても上書きできず、通るのは `--permission-mode bypassPermissions` だけ。1 階層外の通常パスなら acceptEdits で書けるので、判定は権限モードでなく追記先の位置で決まる。
+
+拒否されても CLI は exit 0 で終わる。そのため終了コードだけでは、仕事をした run と理由を述べただけの run を見分けられない。`_failures` は終了コードに加えて、ログに件数「追記 N 件」があるかを見る。書式は緩く受ける。prompt が「追記 N 件、削除 M 件、統合 K 件」の 1 行だけを求めても、子は「フォーマット済み。追記 1 件、削除 0 件、統合 0 件。」のように空白を詰めて前置きを付けた行を返す。拒否された run が返さないのは件数そのものなので、判定はそこだけに置く。
+
+Edit を拒否された子は Bash へ回って同じファイルを書く。`--disallowedTools` で Bash を落とさないと、権限モードを絞っても書き込み経路は残る。ツール名は実在するものに限る。存在しない名前を渡すと `matches no known tool` の警告がログへ出る (`SlashCommand` が該当)。
+
+`bypassPermissions` でも PreToolUse hook は発火し、`permissionDecision: deny` を返せば書き込みは止まる。外れるのは権限ルールと sensitive file の判定であって、guardrails の層ではない。`--allowedTools` は「確認なしで通すツール」の指定であってツール集合の制限ではないので、子は Bash も Agent も持つ。絞るには `--disallowedTools` を渡す。

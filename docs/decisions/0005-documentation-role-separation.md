@@ -98,3 +98,8 @@ Claude設定ディレクトリ（`.claude/`）には複数のドキュメント�
 
 - ADR-0004: skill-centric-architecture-restructuring（スキル中心アーキテクチャ）
 - `rules/conventions/DOCUMENTATION.md` - ドキュメント規約
+
+## Reassessment Triggers
+
+- AI 読み手と人間読み手が同じファイルを共用する必要が出たとき
+- 重複排除ルールが働かず、同じ知識が 3 箇所以上に現れたとき

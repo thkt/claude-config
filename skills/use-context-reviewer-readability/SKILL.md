@@ -2,7 +2,7 @@
 name: use-context-reviewer-readability
 description: Code readability review. Do NOT use for security (use-context-reviewer-security), error handling (use-context-reviewer-silence), or test design (use-context-reviewer-testability).
 when_to_use: 可読性, 明確, 命名, 変数名, 関数名, ネスト, 関数設計, コメント, 複雑, Miller's Law, ミラーの法則, 認知負荷, AI-generated, 過剰設計
-allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Read Agent Bash(ugrep:*) Bash(bfs:*)
 agent: reviewer-readability
 context: fork
 user-invocable: false
@@ -10,7 +10,7 @@ user-invocable: false
 
 # Readability Review
 
-Thresholds are based on cognitive limits such as working memory and one-screen focus, and established metrics such as McCabe complexity.
+Thresholds are based on cognitive limits such as working memory and one-screen focus, and established metrics such as McCabe complexity. The table below carries the recommended values; the detection table lists the deviations worth reporting rather than every crossing of them. Arguments are recommended at 3 and detected above 5.
 
 | Target                | Recommended | Why                                          |
 | --------------------- | ----------- | -------------------------------------------- |

@@ -1,0 +1,13 @@
+# 既存コードの最長行が 99 文字で、ruff 既定の 88 では 430 行が違反になる。
+line-length = 100
+
+[lint]
+select = ["E", "W", "F", "I", "UP", "B", "SIM", "C4", "RET", "PTH", "ARG", "RUF"]
+# 日本語を書くファイルでは全角の記号が正しい表記なので、曖昧文字の検出は誤検出になる。
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+# deny() へ渡す日本語メッセージは 1 本のリテラルで、折り返すと文面を grep で追えなくなる。
+# hook のテストは日本語の入力データと説明コメントを持ち、行長は実行時の挙動に関わらない。
+[lint.per-file-ignores]
+"hooks/**/tests/*.py" = ["E501"]
+"hooks/pre-bash/issue_body_gate.py" = ["E501"]

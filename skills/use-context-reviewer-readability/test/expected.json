@@ -1,0 +1,26 @@
+[
+  {
+    "file": "cases/flag/deep-nesting.ts",
+    "expected": "detected",
+    "category": "RD2",
+    "severity_min": "medium",
+    "note": "Nesting runs 5 deep, past the 3 the target table allows"
+  },
+  {
+    "file": "cases/flag/single-impl-interface.ts",
+    "expected": "detected",
+    "category": "RD4",
+    "severity_min": "low",
+    "note": "An interface with one implementation buys indirection and nothing else"
+  },
+  {
+    "file": "cases/clean/guard-clauses.ts",
+    "expected": "no_finding",
+    "note": "Guard clauses keep the nesting at one"
+  },
+  {
+    "file": "cases/clean/plain-function.ts",
+    "expected": "no_finding",
+    "note": "A plain function with no interface over it"
+  }
+]

@@ -1,8 +1,8 @@
 ---
 name: use-context-reviewer-readability
-description: コードの可読性レビュー。セキュリティは use-context-reviewer-security、エラーハンドリングは use-context-reviewer-silence、テスト設計は use-context-reviewer-testability に使う。
+description: コードの可読性レビュー。セキュリティ (use-context-reviewer-security)、エラーハンドリング (use-context-reviewer-silence)、テスト設計 (use-context-reviewer-testability) には使わない。
 when_to_use: 可読性, 明確, 命名, 変数名, 関数名, ネスト, 関数設計, コメント, 複雑, Miller's Law, ミラーの法則, 認知負荷, AI-generated, 過剰設計
-allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Read Agent Bash(ugrep:*) Bash(bfs:*)
 agent: reviewer-readability
 context: fork
 user-invocable: false
@@ -10,7 +10,7 @@ user-invocable: false
 
 # 可読性レビュー
 
-しきい値は、作業記憶や 1 画面集中といった認知限界と、McCabe complexity のような確立されたメトリクスに基づく。
+しきい値は、作業記憶や 1 画面集中といった認知限界と、McCabe complexity のような確立されたメトリクスに基づく。下表は推奨値で、検出表はそれを超えた全件でなく報告に値する逸脱だけを挙げる。関数引数の推奨は 3、検出は 5 超。
 
 | 目標         | 推奨値 | 根拠                                |
 | ------------ | ------ | ----------------------------------- |

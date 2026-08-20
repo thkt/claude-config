@@ -2,7 +2,7 @@
 name: use-cli-scout
 description: scout CLI 経由で Web 検索、ページ取得、GitHub リポジトリ探索を行う。
 when_to_use: http:// または https:// を含む入力, URL を渡された, このページ, この記事, リンク先, github.com の URL, slack.com の permalink, web search, page fetch, deep research, GitHub repo exploration, latest docs, release notes, library docs, external info, WebFetch alternative, WebSearch alternative, 最新ドキュメント, リリースノート, 外部情報
-allowed-tools: Bash Read
+allowed-tools: Bash(scout:*) Read
 user-invocable: false
 ---
 

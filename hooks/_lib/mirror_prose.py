@@ -26,6 +26,7 @@ TARGET_SUFFIXES = (".py", ".js", ".ts", ".sh", ".md")
 ENGLISH_SUFFIX = ".en.md"
 
 COMMENT_LINE = re.compile(r"^\s*(#|//|\*)")
+QUOTED = re.compile(r"\"[^\"]*\"|'[^']*'|`[^`]*`")
 SHEBANG_OR_ENCODING = re.compile(r"^#!|^# -\*- coding")
 
 
@@ -121,6 +122,51 @@ def check(path: str) -> str | None:
         f"{path} の{label} {count} 行に日本語が 1 文字もない。"
         f"英語で書き直していないか確認する。"
         f'過去訳は git log --oneline -- "{path}" から取れる。'
+    )
+
+
+def _ja_counterpart(path: Path) -> Path | None:
+    """The .ja/ copy of an English-side file, found by walking up to the directory holding .ja/."""
+    for parent in path.parents:
+        if (parent / ".ja").is_dir():
+            return parent / ".ja" / path.relative_to(parent)
+    return None
+
+
+def is_english_target(path: str) -> bool:
+    """The English side of a mirrored pair, for the extensions whose prose sits in comments.
+
+    Markdown is out: an English SKILL.md carries its when_to_use trigger phrases in Japanese on
+    purpose, and _markdown_prose cannot tell those from prose left untranslated.
+    """
+    p = Path(path)
+    if p.suffix not in (".py", ".js", ".ts", ".sh") or ".ja" in p.parts:
+        return False
+    counterpart = _ja_counterpart(p)
+    return counterpart is not None and counterpart.is_file()
+
+
+def check_english(path: str) -> str | None:
+    """The warning for an English-side file still holding Japanese prose, or None.
+
+    Mirroring a file that carries prose means translating the prose; only a file with none is
+    copied as is. An untranslated copy passes review as a faithful mirror, so nothing marks it
+    as unfinished.
+    """
+    if not is_english_target(path):
+        return None
+    # English prose quoting a Japanese literal names data, which keeps its original language.
+    # extract_prose hands back docstring content without its delimiters, so stripping quoted
+    # spans takes the quoted example and leaves the sentence around it.
+    lines = [
+        line for line in extract_prose(path) if has_japanese(QUOTED.sub("", line), threshold=1)
+    ]
+    if not lines:
+        return None
+    return (
+        f"mirror_prose_guard: 英語側の prose は英語 (MIRROR.md)。"
+        f"{path} のコメント / docstring {len(lines)} 行が日本語のまま。"
+        f".ja/ 側からの複製で止まっていないか確認する。"
     )
 
 

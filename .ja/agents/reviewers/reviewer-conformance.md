@@ -65,7 +65,7 @@ diff の固定点は呼び出し元の指定 (commit SHA、branch、tag、merge-
 | ------- | ---------------------------- | ------------------- |
 | Lens    | 実装は spec どおりか         | 修正は根本原因か    |
 | Timing  | 実装後 (diff vs spec)        | 修正レビュー時      |
-| Output  | 3 カテゴリ + spec 引用       | 5 Whys + patch 検出 |
+| Output  | 3 カテゴリ + spec 引用       | 根本原因 + patch 検出 |
 | /audit  | pool 外                      | Wave 1 後に 1 回    |
 
 ## アウトプット

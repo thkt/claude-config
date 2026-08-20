@@ -1,8 +1,8 @@
 ---
 name: fix
-description: 開発環境で小さなバグや軽微な改善を素早く修正する。起票済み issue の番号を渡せば、1〜3 ファイルに収まる修正はそのまま引き継ぐ。新機能実装や 4 ファイル以上の変更には使わない (/think と /issue で Plan 節を作り build workflow に渡す)。
+description: 開発環境で 1〜3 ファイルに収まるバグ修正を実行する。起票済み issue の番号を渡せば、その修正はそのまま引き継ぐ。新機能実装や 4 ファイル以上の変更には使わない (/think と /issue で Plan 節を作り build workflow に渡す)。
 when_to_use: バグ修正, 直して, 修正して, fix bug, 不具合
-allowed-tools: Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit Read LS Agent AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../scribe/scripts/*) Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit Read LS Agent AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
 model: opus
 argument-hint: "[bug or issue description]"
 ---
@@ -11,24 +11,14 @@ argument-hint: "[bug or issue description]"
 
 ## 入力
 
-`$ARGUMENTS` は次の 4 形式のいずれか。バグ説明。`/audit` が `${CLAUDE_SKILL_DIR}/../../history/` に作成した snapshot の finding ID (例: `RC-001`, `SEC-003`)。audit workflow 単体実行が返した finding そのもの。起票済み issue の番号。対象は十分に理解できている 1〜3 ファイル規模の問題に限る。Finding 直接入力に複数件が渡されたら、severity 降順に 1 件ずつ直す。影響が 4 ファイル以上に及ぶ場合は先に § エスカレーションの複数ファイル判定を確認する。
+`$ARGUMENTS` の形が入り口を決める。対象は十分に理解できている 1〜3 ファイル規模の問題に限る。audit が返した finding をそのまま渡すときは、複数あれば severity の高い順に 1 件ずつ直す。影響が 4 ファイル以上に及ぶ場合は先に § エスカレーションの複数ファイル判定を確認する。
 
-| パターン                                        | モード           | 動作                                                                                                                                                                     |
-| ----------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/^[A-Z][A-Z0-9]*-[0-9]+$/`                     | Finding ID 解決  | snapshot を読み findings[] の ID 一致を探す。severity と summary を保持し Outcome Anchor とビルドチェックを省いてトリアージへ。不在ならエラー提示 + Standard Flow 提案   |
-| file / line / severity / summary を含む finding | Finding 直接入力 | audit workflow の返り値。JSON 1 件、または file:line + severity + summary のテキスト。file:line を RCA の起点に使い、Outcome Anchor とビルドチェックを省いてトリアージへ |
-| `/^#?[0-9]+$/`                                  | Issue 引き継ぎ   | `gh issue view <番号>` で本文を読む。Why と再現手順をバグ説明に、Premises を前提に使う。Outcome Anchor を省いてビルドチェックへ                                          |
-| 空                                              | Fix プロンプト   | AskUserQuestion で Fix type を Bug fix / Error message / Test failure から、Description を Other の自由記述で尋ねて実行                                                  |
-| その他                                          | Standard Flow    | バグ説明とみなし Outcome Anchor から実行                                                                                                                                 |
-
-## 委譲マップ
-
-| 種別      | 委譲先                                               | 目的                                        |
-| --------- | ---------------------------------------------------- | ------------------------------------------- |
-| Skill     | `use-context-root-cause-analysis`                    | 非自明バグへの 5 Whys                       |
-| Agent     | `generator-test`                                     | symptom + 再現手順から regression test 生成 |
-| Agent     | `resolver-build`                                     | TypeScript やビルドエラーの triage          |
-| Reference | `${CLAUDE_SKILL_DIR}/references/defense-in-depth.md` | Recurring / Systematic への多層検証         |
+| パターン                               | 読み方                              | 開始点         |
+| -------------------------------------- | ----------------------------------- | -------------- |
+| `file:line` と severity を持つ finding | そのまま使う                        | トリアージ     |
+| `/^#?[0-9]+$/`                         | `gh issue view <番号>` で本文を読む | ビルドチェック |
+| 空                                     | AskUserQuestion でバグ説明を尋ねる  | アウトカム参照 |
+| その他                                 | バグ説明とみなす                    | アウトカム参照 |
 
 ## アウトカム参照
 
@@ -47,39 +37,47 @@ package.json やプロジェクト設定からビルドコマンドを検出し�
 
 Obvious は RCA と regression test 生成の双方を省くため、誤修正リスクの低い finding に限る。
 
-| 入力                    | 条件                                            | パス        |
-| ----------------------- | ----------------------------------------------- | ----------- |
-| バグ説明                | 単一箇所が特定 + 1〜3 行修正 + 類似パターンなし | Obvious     |
-| バグ説明                | 断続的、複数の再現条件、または根本原因が不明    | Non-obvious |
-| finding (ID / 直接入力) | severity low / medium かつ 1〜3 行修正          | Obvious     |
-| finding (ID / 直接入力) | severity critical / high、または修正が非自明    | Non-obvious |
+| 入力     | 条件                                            | パス        |
+| -------- | ----------------------------------------------- | ----------- |
+| バグ説明 | 単一箇所が特定 + 1〜3 行修正 + 類似パターンなし | Obvious     |
+| バグ説明 | 断続的、複数の再現条件、または根本原因が不明    | Non-obvious |
+| finding  | severity low / medium かつ 1〜3 行修正          | Obvious     |
+| finding  | severity critical / high、または修正が非自明    | Non-obvious |
+
+## 決まりごとの参照
+
+修正するファイルが定まったら、着手の前に `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <バグの語> <触るファイル>` を実行する。`matched` のページは今回触るファイルに効く決まりごとなので全て読んでから直す。`/think` を通らないこの経路にも決まりごとが届くようにするための手順で、plan が無いぶん引くのはこの 1 回きりになる。
 
 ## Obvious
 
-1. 最小限の修正を適用
-2. 影響コードをカバーするテストがあれば実行
+1. 最小限の修正を適用する
+2. テストを実行し、他のテストに regression がないことを確認する
 
 ## Non-obvious
 
-1. `Skill("use-context-root-cause-analysis")` を起動して 5 Whys を実行する。Finding ID または Finding 直接入力経由なら、finding の file:line と summary を 5 Whys の起点として渡す。Symptom/Root cause/Pattern を出力する。Issue Handoff 経由で issue 本文が原因を file:line まで特定しているときは 5 Whys を省き、その原因を Root cause として引き継いで Pattern だけ判定する。
-2. `Agent(subagent_type: generator-test)` で regression test を生成する。渡すのは symptom、再現手順、step 1 の root cause。この起動はバックグラウンドで走り、結果は完了通知で届く
-3. 完了通知を受け取ってから、regression test が Red であることを確認する
-4. 修正を適用
-5. regression test が Green、他のテストに regression がないことを確認
-6. Pattern が Recurring または Systematic なら `${CLAUDE_SKILL_DIR}/references/defense-in-depth.md` を適用
+RCA の起点は経路で変わる。下表に無い経路はバグ説明から始める。
+
+| 経路                                                      | RCA の扱い                                                       |
+| --------------------------------------------------------- | ---------------------------------------------------------------- |
+| finding をそのまま渡した                                  | その file:line と summary を起点として渡す                       |
+| issue 番号を渡し、本文が原因を file:line まで特定している | 省く。その原因を Root cause として引き継ぎ、Pattern だけ判定する |
+
+1. `Skill("use-context-root-cause-analysis")` を起動して RCA を実行する
+2. `Agent(subagent_type: generator-test)` で regression test を生成する。渡すのは symptom、再現手順、RCA が出した root cause
+3. 生成の完了を待ち、regression test が Red であることを確認する
+4. 修正を適用する
+5. regression test が Green で、他のテストに regression がないことを確認する
+6. Pattern に応じて ${CLAUDE_SKILL_DIR}/references/defense-in-depth.md を適用する
 
 ## エスカレーション
 
-客観的トリガーで分岐し、自己評価による信頼度判断はしない。エスカレーションなしで 4 回目の修正を試みない。Issue 引き継ぎ経路から委譲するときは、起票済みの issue に `## Plan` 節があることを確かめてから番号を build workflow に渡す。
+客観的トリガーで分岐し、自己評価による信頼度判断はしない。issue 番号を渡した経路から委譲するときは、起票済みの issue に `## Plan` 節があることを確かめてから番号を build workflow に渡す。
 
-| トリガー                          | 動作                                                              |
-| --------------------------------- | ----------------------------------------------------------------- |
-| RCA で根本原因が特定できない      | `/research` にエスカレーション                                    |
-| 修正後もテスト失敗                | 根本原因を再分析。3 回失敗で `/research` にエスカレーション       |
-| 複数ファイル影響 (4 ファイル以上) | `/think` と `/issue` で Plan 節まで作り build workflow に委譲     |
-| 新機能スコープ                    | `/think` と `/issue` で Plan 節まで作り build workflow に委譲     |
-| Pattern = Systematic              | `/research` にエスカレーション                                    |
-| Fix が OUTCOME.md スコープ外      | ユーザーに確認。Non-goals を再定義するか Plan 節まで作り build へ |
+| 行き先         | トリガー                                                                                                             |
+| -------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `/research`    | RCA で根本原因が特定できない。Pattern = Systematic。修正後のテスト失敗が 3 回続く (2 回目までは根本原因を再分析する) |
+| build workflow | 4 ファイル以上に影響する。新機能のスコープに入る。渡す前に `/think` と `/issue` で Plan 節まで作る                   |
+| ユーザーへ確認 | Fix が OUTCOME.md のスコープ外。Non-goals を再定義するか、Plan 節まで作って build へ回すかを決める                   |
 
 ## エラー処理
 
@@ -96,4 +94,4 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 - [ ] 全テスト pass
 - [ ] RCA から Pattern フィールドを記録 (Non-obvious パス)
 - [ ] defense-in-depth を適用 (Recurring/Systematic のみ)
-- [ ] Finding ID 経由なら再 audit を提案 (Finding ID/Finding 直接入力パス)
+- [ ] 再 audit を提案 (finding を渡した経路)

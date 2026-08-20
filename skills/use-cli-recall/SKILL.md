@@ -2,7 +2,7 @@
 name: use-cli-recall
 description: Search past Claude Code/Codex sessions via recall CLI.
 when_to_use: 前に, あの時, また同じ, あの件, past decisions, recurring mistake, module first contact, temporal reference, structural echo, vague back-reference
-allowed-tools: Bash Read
+allowed-tools: Bash(recall:*) Read
 user-invocable: false
 ---
 

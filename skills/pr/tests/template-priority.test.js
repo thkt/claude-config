@@ -1,7 +1,3 @@
-// The PR template priority lives in two places: /pr's SKILL.md and build.js's ship prompt. The
-// ship agent is a subagent and cannot read SKILL.md, so the duplication cannot be removed
-// structurally. Changing one side alone drops nothing at run time, so this static match forces
-// both to follow in the same commit.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
@@ -17,6 +13,27 @@ function read(path) {
   return readFileSync(path, "utf8");
 }
 
+const skill = (lang) => read(at(lang, "skills", "pr", "SKILL.md"));
+const template = (lang) => read(at(lang, "skills", "pr", "templates", "pr.md"));
+const pageshot = (lang) => read(at(lang, "skills", "use-workflow-pageshot", "SKILL.md"));
+
+// pr reads pageshot's stdout line and branches on the mode token. A second spelling on either side
+// leaves the branch matching nothing, and pr then reports no artifact for a capture that ran.
+const MODE_LINES = ["mode=screenshot", "mode=video", "mode=failed"];
+
+test("the mode tokens pr branches on are the ones pageshot emits", () => {
+  for (const lang of LANGS) {
+    const helper = pageshot(lang);
+    const caller = skill(lang);
+    for (const token of MODE_LINES) {
+      assert.ok(helper.includes(token), `${lang}: pageshot emits ${token}`);
+      assert.ok(caller.includes(token), `${lang}: pr SKILL.md branches on ${token}`);
+    }
+    assert.doesNotMatch(helper, /mode: (failed|screenshot|video)/, `${lang}: no second spelling`);
+  }
+});
+
+
 // The order itself is checked. Matching sets in a swapped order change which template gets used.
 const PRIORITY = [
   ".github/pull_request_template.md",
@@ -24,22 +41,33 @@ const PRIORITY = [
   "docs/pull_request_template.md",
   "PULL_REQUEST_TEMPLATE/",
 ];
+const BASE_BLOCK = /## Base (?:Branch Detection|ブランチ検出)[\s\S]*?```bash\n([\s\S]*?)```/;
+const BODY_RULES = "references/pr-writing.md";
 
-const positions = (text) => PRIORITY.map((p) => text.indexOf(p));
-
-test("the PR template priority appears in the same order in pr SKILL.md and build.js's ship prompt", () => {
+// /pr's SKILL.md and build.js's ship prompt both write a PR body. The ship agent is a subagent and
+// cannot be handed the skill, so the rules can only be shared as a file both point at. With either
+// side stating them inline instead, the two drift and nothing fails at run time.
+test("both /pr and build.js's ship prompt point at the shared body rules", () => {
   for (const lang of LANGS) {
     for (const [name, path] of [
       ["pr SKILL.md", at(lang, "skills", "pr", "SKILL.md")],
       ["build.js", at(lang, "workflows", "build.js")],
     ]) {
-      const found = positions(read(path));
-      found.forEach((idx, i) => {
-        assert.ok(idx >= 0, `${lang}: ${name} writes ${PRIORITY[i]}`);
-      });
-      const sorted = [...found].sort((a, b) => a - b);
-      assert.deepEqual(found, sorted, `${lang}: ${name} keeps the defined priority order`);
+      assert.ok(read(path).includes(BODY_RULES), `${lang}: ${name} points at ${BODY_RULES}`);
     }
+  }
+});
+
+// The rules are only shared if the file carries them. The priority order is the part that decides
+// which skeleton gets used, so a swapped order changes the output without any other signal.
+test("the shared body rules carry the template priority in order", () => {
+  for (const lang of LANGS) {
+    const rules = read(at(lang, "skills", "pr", "references", "pr-writing.md"));
+    const found = PRIORITY.map((entry) => rules.indexOf(entry));
+    found.forEach((idx, i) => {
+      assert.ok(idx >= 0, `${lang}: the rules write ${PRIORITY[i]}`);
+    });
+    assert.deepEqual(found, [...found].sort((a, b) => a - b), `${lang}: it keeps the order`);
   }
 });
 
@@ -48,7 +76,7 @@ test("the PR template priority appears in the same order in pr SKILL.md and buil
 // links silently.
 test("the bundled template carries the required sections downstream depends on", () => {
   for (const lang of LANGS) {
-    const tpl = read(at(lang, "skills", "pr", "templates", "pr.md"));
+    const tpl = template(lang);
     for (const heading of ["## How to Test", "## Related", "## Review focus"]) {
       assert.ok(tpl.includes(heading), `${lang}: the skeleton carries ${heading}`);
     }
@@ -58,16 +86,79 @@ test("the bundled template carries the required sections downstream depends on",
 
 // build.js's ship prompt names the bundled template by a literal path. Moving the path leaves the
 // reference pointing at nothing.
-test("the bundled PR template build.js names exists", () => {
-  const bundled = "skills/pr/templates/pr.md";
+test("the shared rules reach the bundled template by a path that resolves", () => {
   for (const lang of LANGS) {
+    const rulesPath = at(lang, "skills", "pr", "references", "pr-writing.md");
+    const rel = read(rulesPath).match(/`(\.\.\/[^`]+)`/)?.[1];
+    assert.ok(rel, `${lang}: the rules name the bundled skeleton by a relative path`);
+    assert.ok(existsSync(join(dirname(rulesPath), rel)), `${lang}: ${rel} resolves from the rules`);
+  }
+});
+
+// The create step passes the body through --body-file because a template-derived body carries
+// backticks and `$`. Without a tool that writes a file, that step cannot run, and the skill stops
+// at the last step with no way forward.
+test("allowed-tools grants a way to write the body file the create step needs", () => {
+  for (const lang of LANGS) {
+    const doc = skill(lang);
+    const tools = doc.match(/^allowed-tools: (.+)$/m)?.[1] ?? "";
+    assert.match(doc, /--body-file/, `${lang}: the create step uses --body-file`);
     assert.ok(
-      read(at(lang, "workflows", "build.js")).includes(bundled),
-      `${lang}: build.js names ${bundled}`,
+      /Bash\(cat:\*\)/.test(tools) || /\bWrite\b/.test(tools),
+      `${lang}: allowed-tools carries cat or Write (actual: ${tools})`,
     );
-    assert.ok(
-      existsSync(at(lang, "skills", "pr", "templates", "pr.md")),
-      `${lang}: the bundled target exists`,
-    );
+  }
+});
+
+// The pageshot skill reads two things out of the body: a Preview URL line and a numbered How to
+// Test section. SKILL.md states the requirement and the bundled template is what supplies it, so
+// dropping either side leaves the handoff failing at mode=failed with nothing naming the cause.
+test("the pageshot handoff names the same two items in SKILL.md and the bundled template", () => {
+  for (const lang of LANGS) {
+    const doc = skill(lang);
+    const tpl = template(lang);
+    assert.match(doc, /Preview URL/, `${lang}: SKILL.md names the Preview URL line`);
+    assert.match(doc, /How to Test/, `${lang}: SKILL.md names the How to Test section`);
+    assert.match(tpl, /^Preview URL:/m, `${lang}: the skeleton carries the Preview URL line`);
+    assert.match(tpl, /^## How to Test$/m, `${lang}: the skeleton carries How to Test`);
+  }
+});
+
+// The reflog lookup is what makes the base the branch this one was cut from. Falling back to
+// origin's default alone would put every PR against main regardless of where it branched, and the
+// ancestor check is what stops a stale reflog entry from becoming the base.
+test("base detection reads the reflog and guards the result with an ancestor check", () => {
+  for (const lang of LANGS) {
+    const block = skill(lang).match(BASE_BLOCK)?.[1];
+    assert.ok(block, `${lang}: the detection carries a bash block`);
+    assert.match(block, /git reflog/, `${lang}: it reads the reflog`);
+    assert.match(block, /--is-ancestor/, `${lang}: it guards the result against HEAD`);
+    assert.match(block, /symbolic-ref refs\/remotes\/origin\/HEAD/, `${lang}: it falls back`);
+    assert.match(block, /BASE=\$\{BASE:-main\}/, `${lang}: main is the last resort`);
+  }
+});
+
+// Nothing asks before the PR goes up. Draft is what stands between an unreviewed body and a PR
+// requesting review, and the base on the result line is the only place the detected branch is
+// shown. Dropping either leaves the run with no signal at all.
+test("the PR goes up as a draft, since nothing confirms before creating it", () => {
+  for (const lang of LANGS) {
+    const doc = skill(lang);
+    assert.match(doc, /gh pr create --draft/, `${lang}: the create step passes --draft`);
+    assert.doesNotMatch(doc, /AskUserQuestion/, `${lang}: no step asks for confirmation`);
+    assert.match(doc, /\(base: <base>\)/, `${lang}: the result line shows the detected base`);
+  }
+});
+
+// The title rule differs from a commit subject: no Conventional Commits prefix. With build.js
+// stating its own rule, its PRs carried a `feat:` prefix that /pr strips, so the two produced
+// different titles for the same work.
+test("the title rule lives with the shared writing rules, not in build.js", () => {
+  for (const lang of LANGS) {
+    const rules = read(at(lang, "skills", "pr", "references", "pr-writing.md"));
+    assert.match(rules, /^## (Title|タイトル)$/m, `${lang}: the rules carry a title section`);
+    assert.match(rules, /feat:/, `${lang}: it names the prefix to strip`);
+    const ship = read(at(lang, "workflows", "build.js"));
+    assert.doesNotMatch(ship, /Conventional Commits subject/, `${lang}: build.js states no title rule`);
   }
 });

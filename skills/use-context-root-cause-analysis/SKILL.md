@@ -1,62 +1,57 @@
 ---
 name: use-context-root-cause-analysis
-description: Root cause analysis with 5 Whys.
+description: Root cause analysis by eliminating hypotheses.
 when_to_use: root cause, 5 Whys, なぜなぜ分析, 根本原因, 原因分析, symptom fix, 対症療法
-allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Read Agent Bash(ugrep:*) Bash(bfs:*)
 context: fork
 user-invocable: false
 ---
 
-# Root Cause Analysis - 5 Whys
+# Root Cause Analysis
 
 ## Principle
 
 Fix the root cause, not the symptom. Symptom fixes add complexity; root-cause fixes prevent recurrence.
 
-## 5 Whys Process
+## Method
 
-Ask "why" five times, descending through abstraction levels.
+${CLAUDE_SKILL_DIR}/../../rules/core/OPERATION.md § Debug Investigation Protocol is canonical. A forked run does not receive the always-loaded rules, so the steps are copied here.
 
-| Step | Level                    |
-| ---- | ------------------------ |
-| 1    | Observable fact          |
-| 2    | Implementation detail    |
-| 3    | Design decision          |
-| 4    | Architectural constraint |
-| 5    | Root cause               |
+1. Diff working similar code against the broken code and list the differences
+2. Raise three or more hypotheses for the cause. Candidates come from ${CLAUDE_SKILL_DIR}/references/symptom-patterns.md
+3. Eliminate each by testing. Reach no conclusion while more than one survives
+4. The surviving hypothesis is the root cause. Check it with "does fixing this make the symptom go away?"
 
-## Tips
+| Pitfall                          | Treatment                                                          |
+| -------------------------------- | ------------------------------------------------------------------ |
+| Stopping at the first hypothesis | Start no testing until three are on the table                      |
+| Dropping one without a test      | Drop on a run result or on evidence, never on plausibility         |
+| Drifting into the abstract       | Stop at the height where an action exists. Do not reach for design |
+| Every hypothesis survives        | Sharpen the diff and separate the differences one at a time        |
 
-| Tip                      | Description                                                                                                                            |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Stay factual             | Evidence, not assumptions                                                                                                              |
-| Don't stop early         | First "why" is rarely root cause                                                                                                       |
-| Don't go deep            | Stop when actionable                                                                                                                   |
-| Validate                 | "Because [5], therefore [4]..."                                                                                                        |
-| Verify fix               | "Will this prevent the problem?"                                                                                                       |
-| Watch complexity signals | When intermittent / multiple independent changes overlap / behavior unexplained, enumerate ≥3 cause-layer candidates before converging |
+## Deciding the Pattern
+
+Pattern turns on whether a recurrence path exists, not on how deep the cause sits. Sweep for code shaped like the root cause and classify.
+
+| Value      | Test                                                  |
+| ---------- | ----------------------------------------------------- |
+| Isolated   | The shape appears nowhere else                        |
+| Recurring  | The same shape sits nearby                            |
+| Systematic | It comes from the design and the shape crosses layers |
 
 ## Output Format
 
-| Field      | Description                              |
-| ---------- | ---------------------------------------- |
-| Symptom    | User-facing failure                      |
-| Root cause | Why the failure occurred (5 Whys result) |
-| Pattern    | Isolated / Recurring / Systematic        |
+Callers branch on Pattern. `/fix` decides between applying defense-in-depth and delegating to `/research`.
 
-### Pattern Enum
-
-Consumers such as the `/fix` Non-obvious flow branch on the Pattern field to decide whether to apply defense-in-depth or escalate.
-
-| Value      | Meaning                                           |
-| ---------- | ------------------------------------------------- |
-| Isolated   | Single location, no recurrence path               |
-| Recurring  | Similar code exists nearby, recurrence possible   |
-| Systematic | Design-rooted, architecture-level recurrence risk |
+| Field      | Description                       |
+| ---------- | --------------------------------- |
+| Symptom    | The failure as the user sees it   |
+| Root cause | The hypothesis testing left       |
+| Pattern    | Isolated / Recurring / Systematic |
 
 ## References
 
-| Topic                | File                                               |
-| -------------------- | -------------------------------------------------- |
-| Worked examples      | ${CLAUDE_SKILL_DIR}/references/five-whys.md        |
-| Symptom → Root Cause | ${CLAUDE_SKILL_DIR}/references/symptom-patterns.md |
+| What you are unsure of      | File                                                  |
+| --------------------------- | ----------------------------------------------------- |
+| How to raise the hypotheses | ${CLAUDE_SKILL_DIR}/references/symptom-patterns.md    |
+| How the elimination runs    | ${CLAUDE_SKILL_DIR}/references/hypothesis-examples.md |

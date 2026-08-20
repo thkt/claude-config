@@ -20,7 +20,9 @@ stdout: JSON {results: [{name, found}]}。names は入力順に平坦化する�
 import json
 import re
 import sys
+from collections.abc import Sequence
 from pathlib import Path
+from typing import NoReturn, cast
 
 # textlint は issue 本文の markdown に半角と全角の間の空白を入れる (「0件」から「0 件」) が、
 # test コード内の文字列リテラルには入れない。plan は issue 本文から読むので、空白を落として
@@ -28,11 +30,11 @@ from pathlib import Path
 _WHITESPACE = re.compile(r"\s+")
 
 
-def squeeze(text):
+def squeeze(text: str) -> str:
     return _WHITESPACE.sub("", text)
 
 
-def read_text(root, path):
+def read_text(root: Path, path: str) -> str:
     """ファイルの文字列。存在しない / 読めないときは空を返す (fail-closed)。"""
     target = root / path
     if not target.is_file():
@@ -43,15 +45,22 @@ def read_text(root, path):
         return ""
 
 
-def run(checks, root=Path(".")):
-    """各 unit の names をその unit 自身のファイルに照合する。入力順を保つ。"""
-    results = []
+def _strings(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in cast("list[object]", value) if item]
+
+
+def run(checks: Sequence[object], root: Path | None = None) -> list[dict[str, object]]:
+    base = Path() if root is None else root
+    results: list[dict[str, object]] = []
     for entry in checks:
         if not isinstance(entry, dict):
             continue
-        files = [str(f) for f in entry.get("files", []) if f]
-        names = [str(n) for n in entry.get("names", []) if n]
-        contents = [squeeze(read_text(root, f)) for f in files]
+        mapping = cast("dict[str, object]", entry)
+        files = _strings(mapping.get("files"))
+        names = _strings(mapping.get("names"))
+        contents = [squeeze(read_text(base, f)) for f in files]
         for name in names:
             # 空白だけの name は squeeze すると空になり、どのファイルにも含まれる扱いになる。
             needle = squeeze(name)
@@ -64,19 +73,19 @@ def run(checks, root=Path(".")):
     return results
 
 
-def fail(message):
+def fail(message: str) -> NoReturn:
     print(message, file=sys.stderr)
     sys.exit(1)
 
 
-def main():
+def main() -> None:
     try:
-        checks = json.loads(sys.stdin.read())
+        loaded = cast("object", json.loads(sys.stdin.read()))
     except json.JSONDecodeError as exc:
         fail(f"Error: checks is not valid JSON: {exc}")
-    if not isinstance(checks, list):
+    if not isinstance(loaded, list):
         fail("Error: checks must be a JSON array of {files, names}")
-    print(json.dumps({"results": run(checks)}))
+    print(json.dumps({"results": run(cast("list[object]", loaded))}))
 
 
 if __name__ == "__main__":

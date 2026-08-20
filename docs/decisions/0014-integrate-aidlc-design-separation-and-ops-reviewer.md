@@ -94,3 +94,8 @@ reviewer-operations を作成し、既存の /audit Phase 4 でカバー。
 - [ikeisuke/ai-dlc-starter-kit](https://github.com/ikeisuke/ai-dlc-starter-kit)
 - [SOW](../workspace/planning/2026-02-22-aidlc-integration/sow.md) (local planning artifact, not committed)
 - [Spec](../workspace/planning/2026-02-22-aidlc-integration/spec.md) (local planning artifact, not committed)
+
+## Reassessment Triggers
+
+- Step 数が Miller's Law の範囲を超え、AI がステップを飛ばす事象が観測されたとき
+- 設計分離のサブセクションが、独立した Phase を要する規模に育ったとき

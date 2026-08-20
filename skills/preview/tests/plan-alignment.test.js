@@ -28,10 +28,10 @@ test("think's skeleton numbers in the U-NNN and T-NNN formats", () => {
   }
 });
 
-test("preview's checklist and build.js name the plan's id format with the same words", () => {
+test("preview and build.js name the plan's id format with the same words", () => {
   for (const lang of LANGS) {
     const sites = [
-      ["the preview checklist", at(lang, "skills", "preview", "references", "review-checklist.md")],
+      ["preview SKILL.md", at(lang, "skills", "preview", "SKILL.md")],
       ["build.js", at(lang, "workflows", "build.js")],
     ];
     for (const [name, path] of sites) {
@@ -45,9 +45,20 @@ test("preview's checklist and build.js name the plan's id format with the same w
 
 // preview takes the plan from the issue's `## Plan` section. That section name is the contract
 // issue transfers into and build demands.
-test("preview's checklist names the plan's location as the ## Plan section", () => {
+test("preview names the plan's location as the ## Plan section", () => {
   for (const lang of LANGS) {
-    const doc = read(at(lang, "skills", "preview", "references", "review-checklist.md"));
-    assert.ok(doc.includes("## Plan"), `${lang}: the checklist names the ## Plan section`);
+    const doc = read(at(lang, "skills", "preview", "SKILL.md"));
+    assert.ok(doc.includes("## Plan"), `${lang}: it names the ## Plan section`);
+  }
+});
+
+// Code quality belongs to /code-review and a deep pass to the audit workflow. With those checks
+// back in, preview overlaps both and the plan match stops being what it is for.
+test("preview screens the plan alignment alone", () => {
+  for (const lang of LANGS) {
+    const doc = read(at(lang, "skills", "preview", "SKILL.md"));
+    for (const gone of ["[must]", "[nits]", "Code smells", "Security", "Performance"]) {
+      assert.ok(!doc.includes(gone), `${lang}: ${gone} stays out of preview`);
+    }
   }
 });

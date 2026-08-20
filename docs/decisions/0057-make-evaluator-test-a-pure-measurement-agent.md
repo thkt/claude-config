@@ -1,10 +1,12 @@
 ---
-status: "retired 2026-07-05. evaluator-test agent removed; Spec-conformance role moved to reviewer-conformance wired into build.js Audit"
+status: "deprecated"
 date: 2026-05-01
 decision-makers: thkt
 ---
 
 # Make evaluator-test a Pure Measurement Agent
+
+> Deprecated 2026-07-05: the evaluator-test agent was removed, and the Spec-conformance role moved to reviewer-conformance wired into build.js Audit. No successor DR records that move.
 
 ## Context and Problem Statement
 

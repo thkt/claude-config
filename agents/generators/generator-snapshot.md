@@ -25,7 +25,7 @@ Writes the audit run's JSON payload to a temp file and runs `snapshot.py` agains
 
 ## Input
 
-Receives the fenced payload and the script path via the Task spawn prompt.
+Receives the fenced payload and the script path via the Agent spawn prompt.
 
 | Field       | Type          | Example                                 |
 | ----------- | ------------- | --------------------------------------- |
@@ -52,7 +52,7 @@ Receives the fenced payload and the script path via the Task spawn prompt.
 
 ## Output
 
-Return the following fields on Task completion, taken from `snapshot.py`'s stdout verbatim.
+Return the following fields on Agent completion, taken from `snapshot.py`'s stdout verbatim.
 
 | Field  | Type   | Value                                                                                   |
 | ------ | ------ | --------------------------------------------------------------------------------------- |

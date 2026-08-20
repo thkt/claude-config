@@ -1,4 +1,18 @@
 {
-  "extraPaths": ["hooks/_lib", "workflows/build"],
-  "exclude": ["**/node_modules", "**/__pycache__", "plugins"]
+  "extraPaths": [
+    "hooks/_lib",
+    "workflows/build",
+    "skills/dr/scripts",
+    ".ja/skills/dr/scripts",
+    "skills/scribe/scripts",
+    ".ja/skills/scribe/scripts",
+    "skills/_lib",
+    ".ja/skills/_lib"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "plugins",
+    "jobs"
+  ]
 }

@@ -93,3 +93,8 @@ oxc_parserベースの独立Rustバイナリ `litmus` を新規構築し、gates
 - SOW/Spec: `.claude/workspace/planning/2026-03-20-test-quality/`
 - gates: `~/GitHub/gates/`
 - ADR-0013: Hook Trinityパターン（guardrails/formatter/reviews + gates）
+
+## Reassessment Triggers
+
+- oxc_parser の API 変更に追随するコストが、既存 linter へ相乗りするコストを上回ったとき
+- gates から外部コマンドとして呼ぶ形が、実行時間の面で成立しなくなったとき

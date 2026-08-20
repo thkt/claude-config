@@ -14,7 +14,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 
@@ -27,6 +27,14 @@ const featureTemplate = join(root, "skills", "issue", "templates", "feature.md")
 
 // The body is written to a temporary file before being passed. validate-outcome.py also takes a
 // file path argument, so this matches the shape the caller (/issue's Phase 4 validation) uses.
+// The floor is read from the script so a change there fails these fixtures instead of drifting.
+const floorFor = (type) => {
+  const src = readFileSync(script, "utf8");
+  const block = src.match(/^FLOOR = \{([\s\S]*?)^\}/m)?.[1] ?? "";
+  const row = block.match(new RegExp(`"${type}":\\s*\\(([^)]*)\\)`))?.[1] ?? "";
+  return [...row.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+};
+
 const runValidate = (templatePath, title, bodyText) => {
   const dir = mkdtempSync(join(tmpdir(), "validate-issue-body-"));
   try {
@@ -203,4 +211,177 @@ test("T-004 a body whose section order differs from the skeleton does not become
     [],
     `a difference in order does not become an error (actual: ${JSON.stringify(out.errors)})`,
   );
+});
+
+// Template source ranks a repository's own .github/ISSUE_TEMPLATE/<type>.md second, ahead of the
+// skill's templates. That file carries no "## Template" fence, so reading only the fenced skeleton
+// finds no section and faults every heading of a correct body as unknown_section. Following
+// validation-errors.md from there deletes sections that were right.
+test("T-012 a repository .md template is read as the skeleton and does not close the section set", () => {
+  const dir = mkdtempSync(join(tmpdir(), "issue-repo-template-"));
+  try {
+    const template = join(dir, "feature.md");
+    writeFileSync(
+      template,
+      "---\nname: Feature request\nlabels: enhancement\n---\n\n## What & Why\n\n## Scope\n",
+      "utf8",
+    );
+    const floor = floorFor("feature")
+      .map((s) => `## ${s}\n\nx\n`)
+      .join("\n");
+    const body = `## What & Why\n\nx\n\n## Scope\n\ny\n\n${floor}\n## Notes\n\nz\n`;
+    const { status, out } = runValidate(template, "[Feature] Add CSV export", body);
+    assert.equal(status, 0, `a correct body passes (${JSON.stringify(out)})`);
+    assert.deepEqual(out.errors, [], "no error is raised");
+    assert.ok(
+      out.checks.includes("section:What & Why=ok"),
+      `the repository template's headings are read (${out.checks.join(", ")})`,
+    );
+    assert.ok(
+      out.checks.some((c) => c.startsWith("unknown_section=skipped")),
+      "an added section is not faulted against a repository template",
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// skeleton_sections anchors on the literal "## Template" heading, so that heading is a parse
+// anchor rather than prose and stays identical on both sides per MIRROR.md. Translating it on the
+// Japanese side made the fallback branch read `テンプレート` as a section name of its own.
+test("T-013 both languages anchor the skeleton on the same heading", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  for (const type of ["bug", "chore", "docs", "feature"]) {
+    for (const prefix of ["", ".ja"]) {
+      const path = join(root, prefix, "skills", "issue", "templates", `${type}.md`);
+      const doc = await readFile(path, "utf8");
+      assert.match(doc, /^## Template$/m, `${prefix || "en"}/${type}: the skeleton anchor`);
+    }
+  }
+});
+
+// The four templates are the skeleton Phase 4 validates the body against, so a body built from a
+// template's own required sections has to pass. The other cases here use synthetic skeletons; this
+// one runs the real files, which is what an edit to a template actually breaks.
+const TYPES = ["bug", "chore", "docs", "feature"];
+
+test("T-014 a body built from each template's own required sections passes validation", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  for (const type of TYPES) {
+    const path = join(root, "skills", "issue", "templates", `${type}.md`);
+    const src = await readFile(path, "utf8");
+    const after = src.slice(src.search(/^## Template$/m));
+    const fence = after.match(/```(?:markdown)?\n([\s\S]*?)```/)[1];
+    let optional = false;
+    const body = fence
+      .split("\n")
+      .filter((line) => {
+        const heading = line.match(/^## (.+?)\s*$/);
+        if (heading) optional = /\((optional|任意)\)$/.test(heading[1]);
+        return !optional;
+      })
+      .join("\n")
+      .replace(/\{[^}]*\}/g, "x");
+    const title = `[${type[0].toUpperCase()}${type.slice(1)}] sample`;
+    const { status, out } = runValidate(path, title, `${body}\n`);
+    assert.deepEqual(out.errors, [], `${type}: a body from its own skeleton raises no error`);
+    assert.equal(status, 0, `${type}: it exits 0`);
+  }
+});
+
+// Zero sections used to mean zero requirements: a .yml whose body: key the parser missed raised
+// no error and passed any body. These run the repository's own forms, which rank first as the
+// skeleton, and assert the parser finds their sections rather than falling through silently.
+test("T-015 the repository's own forms are read as skeletons rather than passing empty", async () => {
+  const { readFile, readdir } = await import("node:fs/promises");
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  const dir = join(root, ".github", "ISSUE_TEMPLATE");
+  const forms = (await readdir(dir)).filter((f) => f.endsWith(".yml"));
+  assert.ok(forms.length > 0, "the repository ships issue forms");
+  for (const form of forms) {
+    const path = join(dir, form);
+    const labels = [...(await readFile(path, "utf8")).matchAll(/^\s*label:\s*(.+?)\s*$/gm)];
+    assert.ok(labels.length > 0, `${form}: it declares labels`);
+    const type = form.replace(/\.yml$/, "");
+    const rows = labels.map((m) => m[1]).concat(floorFor(type));
+    const body = rows.map((s) => `## ${s}\n\nx\n`).join("\n");
+    const title = `[${type[0].toUpperCase()}${type.slice(1)}] sample`;
+    const { status, out } = runValidate(path, title, body);
+    assert.equal(status, 0, `${form}: a body carrying every label passes (${JSON.stringify(out)})`);
+    assert.ok(
+      out.checks.some((c) => c.startsWith("section:")),
+      `${form}: the parser reported the sections it read (${out.checks.join(", ")})`,
+    );
+  }
+});
+
+// A skeleton the parser cannot read is not a skeleton with no requirements. Without this the
+// required check has nothing to compare and the unknown check is skipped for a form, so every
+// body exits 0 against a broken template.
+test("T-016 a skeleton yielding no section is an error, not a free pass", () => {
+  const dir = mkdtempSync(join(tmpdir(), "issue-empty-skeleton-"));
+  try {
+    const form = join(dir, "feature.yml");
+    writeFileSync(form, "name: Feature\nentries:\n  - type: textarea\n", "utf8");
+    const { status, out } = runValidate(form, "[Feature] sample", "## Anything\n\nx\n");
+    assert.equal(status, 1, "it exits 1");
+    assert.ok(
+      out.errors.some((e) => e.startsWith("unreadable_skeleton:")),
+      `the error names the unreadable skeleton (${out.errors.join(", ")})`,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// A repository form states the web UI's minimum, which is thinner than what a filed issue has to
+// carry: feature.yml requires Priority and the problem statement and nothing else. Without a floor
+// of its own the skill files a feature with no acceptance criteria and a bug with no reproduction.
+test("T-017 a body meeting the form but missing the type's floor is an error", async () => {
+  const { readdir } = await import("node:fs/promises");
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  const dir = join(root, ".github", "ISSUE_TEMPLATE");
+  for (const form of (await readdir(dir)).filter((f) => f.endsWith(".yml"))) {
+    const type = form.replace(/\.yml$/, "");
+    const floor = floorFor(type);
+    assert.ok(floor.length > 0, `${type}: the floor is readable`);
+    const path = join(dir, form);
+    const labels = [...readFileSync(path, "utf8").matchAll(/^\s*label:\s*(.+?)\s*$/gm)];
+    const body = labels.map((m) => `## ${m[1]}\n\nx\n`).join("\n");
+    const { status, out } = runValidate(path, `[${type[0].toUpperCase()}${type.slice(1)}] x`, body);
+    assert.equal(status, 1, `${form}: it exits 1 without the floor`);
+    for (const name of floor) {
+      assert.ok(
+        out.errors.includes(`missing_section:${name}`),
+        `${form}: ${name} is reported missing (${out.errors.join(", ")})`,
+      );
+    }
+  }
+});
+
+// The split assessment publishes the issue as an epic. Rewriting the prefix to [Epic] leaves the
+// title naming a type no skeleton answers to, and validation-errors.md then tells the writer to
+// pick the matching template, which does not exist. The type detection table is the closed set.
+test("T-018 only a type the detection table carries clears the title check", async () => {
+  const { readdir } = await import("node:fs/promises");
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+  const dir = join(root, ".github", "ISSUE_TEMPLATE");
+  const form = join(dir, "feature.yml");
+  const labels = [...readFileSync(form, "utf8").matchAll(/^\s*label:\s*(.+?)\s*$/gm)];
+  const body = labels
+    .map((m) => m[1])
+    .concat(floorFor("feature"))
+    .map((s) => `## ${s}\n\nx\n`)
+    .join("\n");
+  assert.equal(runValidate(form, "[Feature] x", body).status, 0, "the detected type clears it");
+  const epic = runValidate(form, "[Epic] x", body);
+  assert.equal(epic.status, 1, "a type with no skeleton does not clear it");
+  assert.ok(
+    epic.out.errors.some((e) => e.startsWith("type_mismatch:")),
+    `the error names the mismatch (${epic.out.errors.join(", ")})`,
+  );
+  const types = (await readdir(dir)).map((f) => f.replace(/\.(yml|md)$/, ""));
+  assert.ok(!types.includes("epic"), "no epic skeleton exists to answer an [Epic] title");
 });

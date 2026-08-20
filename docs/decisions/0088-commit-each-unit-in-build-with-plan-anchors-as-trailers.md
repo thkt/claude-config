@@ -63,3 +63,8 @@ Option B を却下した理由は上述の帰属推測にある。Option C は P
 - ADR-0085 の選択ベース検証 (Verify は plan のアンカーとの比較) を変えるものではない。基準となる diff の取り方だけを変える
 - ADR-0064 の always-rerun pre-commit gate がコミット回数に比例してコストを増やす。unit 数が増えると Code phase の実時間に効く
 - staging ガードは `workflows/build.js` の Ship prompt と `workflows/code.js` の `commitUnit` の 2 箇所。片方を変えるときはもう片方も同一コミットで揃える (Premise)
+
+### Reassessment Triggers
+
+- pre-commit gate の同期ブロックが積み上がり、実行時間が unit 単位コミットの便益を上回ったとき
+- squash merge が既定になり、unit 粒度が常にマージ時点で消えるようになったとき

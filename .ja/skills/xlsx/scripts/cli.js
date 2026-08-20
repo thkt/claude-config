@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// xlsx の中身を読むための CLI。
 //   list    <xlsx>                          シート一覧と充填率を出す
 //   extract <xlsx> --out <dir> [options]    シートを Markdown へ変換する
 //   verify  <xlsx> <dir>                    元の全セルが出力に残っているか照合する
@@ -133,8 +132,10 @@ if (command === "verify") {
     let sample = "";
     for (const row of sheet.rows) {
       const cells = row
-        .map((cell) => cellText(cell).replace(/ /g, " ").trim())
+        .map((cell) => cellText(cell).trim())
         .filter((t) => t !== "");
+      // 1,2,3,... だけが並ぶ行は列番号のものさしで、変換後の Markdown には残らない。
+      // 落とすと欠落として毎シート報告され、本物の欠落が埋もれる。
       if (cells.length >= 10 && cells.every((t, i) => t === String(i + 1))) continue;
       for (const text of cells) {
         if (flat.includes(text.replace(/\s+/g, ""))) continue;

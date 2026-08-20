@@ -2,7 +2,7 @@
 name: think
 description: critic-design による敵対的批判を伴う設計探索。生き残った案を構造化 plan にまとめ、自己点検して呼び出し元に返す。plan の永続先は issue の Plan 節が唯一。計画意図のないコードベース調査には使わない (代わりに /research)。
 when_to_use: 計画して, 設計して, アプローチ検討, 方針決め, planning, design exploration
-allowed-tools: Read Write LS Task AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(test:*) Bash(git cat-file:*) Bash(git show:*) Bash(git rev-parse:*)
+allowed-tools: Read Write LS Agent AskUserQuestion Bash(${CLAUDE_SKILL_DIR}/../research/scripts/*) Bash(${CLAUDE_SKILL_DIR}/../scribe/scripts/*) Bash(ugrep:*) Bash(bfs:*) Bash(test:*) Bash(git cat-file:*) Bash(git show:*) Bash(git rev-parse:*)
 model: opus
 argument-hint: "[task description]"
 ---
@@ -17,11 +17,11 @@ argument-hint: "[task description]"
 
 ## Phase 1: Why の確立
 
-`.claude/OUTCOME.md` を読む。存在しない場合は `/outcome` で生成する。Why は 3 点で構成し、タスクが Bug のときは 4 点目として原因を足す。誰がどんな痛みを抱えて必要としているか、何を成功とみなすか、なぜ今やるか、Bug なら原因は何か。痛みには根拠を添える。原因は再現手順やログなど根拠とともに特定し、原因が未確定なら設計へ進まず `/research` に回す。設計はこの Why が $ARGUMENTS と会話から読めてから始める。曖昧なまま仮置きせず、AskUserQuestion で詰める。
+`.claude/OUTCOME.md` を読む。存在しない場合は `/outcome` で生成する。Why は 3 点で構成し、タスクが Bug のときは 4 点目として原因を足す。誰がどんな痛みを抱えて必要としているか、何を成功とみなすか、なぜ今やるか、Bug なら原因は何か。痛みには根拠を添える。原因は再現手順やログなど根拠とともに特定し、原因が未確定なら設計へ進まず `/research` に回す。戻ってきた調査レポートに仮説ログがあれば、それを原因の根拠として読む。設計はこの Why が $ARGUMENTS と会話から読めてから始める。曖昧なまま仮置きせず、AskUserQuestion で詰める。
 
 ## Phase 2: 設計探索
 
-案を現実のコードと既存の調査に接地させる。関連コードを読み、`.claude/workspace/research/` からタスクに該当する調査出力を探して読む。調査レポートの発見のうち、次のアクションが「記録のみ」のものは背景知識として扱い、plan のスコープに入れない。案を生成する前に、ドメインを問わず画面の組か layer の組が一致する既存モジュールを reference_module 候補として探索する。結果は kind (module/no-module/new-shape) と理由で控える。異なる視点 (動く最小解/構造と拡張性/開発体験) から 2 つ以上の案を生成する。独立した技術判断は 1 つの質問に束ねず、推奨とトレードオフを添えて別々に問う。
+案を現実のコードと既存の調査に接地させる。関連コードを読み、タスクの語から小文字ハイフン区切りの slug を作って ${CLAUDE_SKILL_DIR}/../research/scripts/find-prior-research.py <slug> .claude/workspace/research を実行する。標準出力の候補から該当するレポートを読み、候補が 0 件なら調査レポートは無いものとして進む。案を生成する前に、ドメインを問わず画面の組か layer の組が一致する既存モジュールを reference_module 候補として探索する。結果は kind (module/no-module/new-shape) と理由で控える。触る領域の当たりが付いた時点で `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <触りそうなパス>` を実行し、`matched` のページを読んでから案を作る。決まりごとは unit の切り方と files の選び方に効くので、分割の後に読むと割り直しになる。異なる視点 (動く最小解/構造と拡張性/開発体験) から 2 つ以上の案を生成する。独立した技術判断は 1 つの質問に束ねず、推奨とトレードオフを添えて別々に問う。
 
 タスク、issue、調査レポートのいずれかがモック画像やスクリーンショットを参照しているなら、その画像ファイルを Read で開いてから設計する。テキスト側に記載が無いことを、その要素が存在しない根拠にしない。
 
@@ -29,18 +29,33 @@ argument-hint: "[task description]"
 2. NO-GO は blocker をその場で解消してから進む。生き残った設計をトレードオフの根拠とともにユーザーに提示し、承認を待つ
 3. 承認後、技術判断に DR が必要か問う
 
+### 調査レポートの扱い
+
+読んだレポートの各箇所を下表のとおり扱う。表に無い箇所は plan の材料にしない。
+
+| レポートの箇所                                       | plan での扱い                                                                          |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 制約 表                                              | 設計の制約とする。OUTCOME 由来の行は Phase 1 で読み終えているので、調査で発見された行だけを新しい制約とする |
+| Same-origin Sweep の兄弟欠陥                         | この plan の unit に入れるか、Backlog candidates に落とすかを決める                     |
+| 次のアクションが「記録のみ」の発見                   | 背景知識とし、plan のスコープに入れない                                                |
+| ソースが `unknown, requires` で始まる発見            | 未検証なので、背景知識とし、plan のスコープに入れない                                  |
+| カバレッジ注記の unknown 項目と unverified external claim | 同じく plan の前提にしない                                                          |
+
 ## Phase 3: Plan 生成
 
 承認された設計を、独立して実装可能な成果の束 (unit) に実装順で分解する。分解の結果は PLAN_SCHEMA 相当の JSON `{ test_command, reference_module, units: [{ id, goal, contract, files: string[], tests: [{ id, name }], seam }] }` に直列化する。分解はテスト先行で構成し、unit の大きさはテストの束から機械的に決める。設計全体から受け入れテスト候補を列挙し、成果のまとまりごとの束へ分け、各束が触るファイルを割り当てて unit にする。束の大きさは non-seam unit の上限に収め、超える束はさらに分ける。検証可能な振る舞いの無い成果 (docs/設定) からは受け入れテスト候補が出ないので、束とは別に unit を立てる。
 
-1. id は U-001/T-001 形式の連番で、T-NNN は plan 全体で一意にする。対象 repo のテストが接頭辞つきの id を使っているなら、その規約に合わせて T-SK077 のように採番し、同じ接頭辞の repo 全体での最大番号の次から振る。plan だけ接頭辞なしにすると、実装時の改番に頼ることになる。接頭辞なしの repo では plan 全体の一意性が同じファイル内までは届かないので、テストを書き込むファイルで既に使われている番号を避けて振る
-2. tests[].name は条件 + 期待結果の 1 行言明。code workflow がテスト名として逐語使用し、build が固定文字列で照合する
-3. 検証可能な振る舞いが無い unit (docs/設定) は tests を空配列にする。build はその unit を Red-Green ではなく直接実装の 1 ステップとして進める
-4. 各 unit のテストは自分の境界をテストダブルへ置き換えるので、tests を持つ unit が 2 つ以上になったら seam unit をちょうど 1 つ最後に置き `seam: true` を付ける。その tests は unit 間の境界を跨いで実モジュールを動かし、テストダブルへ置き換えるのはシステム外部との I/O に限り、unit どうしをつなぐ接続を assert する。seam unit が無い plan は build の `validate()` が reject する
-5. non-seam unit の上限は files 3 つ、tests 4 個。seam unit の tests は unit 境界を跨ぐので files が増え、この上限の対象外になる。上限を超えた unit は成果を軸に分割し、生じた新しい unit 構成をユーザーと確認する。スコープ外へ切り出した候補は plan から外し、backlog candidates に回す。この上限は seam の除外も含めて `workflows/build.js` の `UNIT_CAPS` が決定論的に強制する。変更はこの記述と `UNIT_CAPS` を同一コミットで揃える
-6. 自己点検 (必須フィールドの欠落、id の重複、units、files、goal、contract のいずれかが空) と書き出し前検証を通す。通ったら `${CLAUDE_SKILL_DIR}/templates/plan.md` の骨格で `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md` に書き出す。slug はタイトルの小文字ハイフン区切り。`## Plan` と `## Backlog candidates` の両節を含める
-7. 受け入れテスト候補のうち test_command で実行できない基準 (画面の見た目確認、外部サービスとの手動連携など) は T-NNN にせず、`### 実機確認` へ委譲する。委譲した基準には、それを引き取る機構 (test-storybook、コードレビューなど) を添える
-8. ドメインフィールドを描画する unit は、表示するフィールドを T-NNN に 1 フィールド 1 件で列挙する。まとめて 1 件にすると個別フィールドの欠落を検出できない
+1. id は U-001/T-001 形式の連番で振り、T-NNN は plan 全体で一意にする
+2. 対象 repo のテストが接頭辞つきの id を使っているなら、T-SK077 のようにその規約へ合わせ、同じ接頭辞の repo 全体での最大番号の次から振る。plan だけ接頭辞なしにすると、実装時の改番に頼ることになる
+3. 接頭辞なしの repo では、plan 全体の一意性が同じファイル内までは届かない。テストを書き込むファイルで既に使われている番号を避けて振る
+4. tests[].name は条件 + 期待結果の 1 行言明。code workflow がテスト名として逐語使用し、build が固定文字列で照合する
+5. 検証可能な振る舞いが無い unit (docs/設定) は tests を空配列にする。build はその unit を Red-Green ではなく直接実装の 1 ステップとして進める
+6. 各 unit のテストは自分の境界をテストダブルへ置き換えるので、tests を持つ unit が 2 つ以上になったら seam unit をちょうど 1 つ最後に置き `seam: true` を付ける。その tests は unit 間の境界を跨いで実モジュールを動かし、テストダブルへ置き換えるのはシステム外部との I/O に限り、unit どうしをつなぐ接続を assert する。seam unit が無い plan は build の `validate()` が reject する
+7. non-seam unit の上限は files 3 つ、tests 4 個。seam unit の tests は unit 境界を跨ぐので files が増え、この上限の対象外になる。上限を超えた unit は成果を軸に分割し、生じた新しい unit 構成をユーザーと確認する。スコープ外へ切り出した候補は plan から外し、backlog candidates に回す。この上限は seam の除外も含めて `workflows/build.js` の `UNIT_CAPS` が決定論的に強制する。変更はこの記述と `UNIT_CAPS` を同一コミットで揃える
+8. unit が出そろったら `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <units[].files を並べる>` を実行し、Phase 2 で読んだ分との差を取る。`matched` の各ページは、引用するか、この plan には当たらない理由を prose に書くかのどちらかにする。`related` は語が重なるだけなので、引くときは当たる理由を添える
+9. 自己点検 (必須フィールドの欠落、id の重複、units、files、goal、contract のいずれかが空) を通し、${CLAUDE_SKILL_DIR}/references/pre-write-check.md の書き出し前検証を通す。通ったら ${CLAUDE_SKILL_DIR}/templates/plan.md の骨格で `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md` に書き出す。slug はタイトルの小文字ハイフン区切り。`## Plan` と `## Backlog candidates` の両節を含める
+10. 受け入れテスト候補のうち test_command で実行できない基準 (画面の見た目確認、外部サービスとの手動連携など) は T-NNN にせず、`### 実機確認` へ委譲する。委譲した基準には、それを引き取る機構 (test-storybook、コードレビューなど) を添える
+11. ドメインフィールドを描画する unit は、表示するフィールドを T-NNN に 1 フィールド 1 件で列挙する。まとめて 1 件にすると個別フィールドの欠落を検出できない
 
 ### test_command
 
@@ -48,7 +63,7 @@ test_command の失敗は計画スコープだけに帰着できなければな�
 
 ### base
 
-`base:` には plan を実装するブランチ (PR のベースブランチ) を書く。タスク説明か会話から読み取り、指定が無ければ現在の checkout のブランチを書く。
+`base:` には plan を実装するブランチ (PR のベースブランチ) を書く。タスク説明か会話から読み取り、指定が無ければ現在の checkout のブランチを書く。build はこの行を読まないので、build へ渡すときは args の `base` にも同じ値を入れる。
 
 ### reference_module
 
@@ -66,22 +81,9 @@ contract が引用できるのは 1 箇所の振る舞いだけで、周辺構�
 
 ### contract
 
-生成でなく選択で書く。prose で振る舞いを素描したりコード片を新造したりせず、contract は引用 + やりたいこと 1 行のセットにする。引用は、コードベースの既存の形 (path + 公開シンボル、前提と同じ stable anchor 規則) > docs/wiki のページ > pinned version の公式 docs への deep link の優先順で選び、外部ライブラリは SOURCING.md に従う。引用できる出典が無い新規の形は signature を発明せず、形の決定は実装に委ねて受け入れテストが振る舞いを固定する。引用した path + シンボルは `### 前提` にも載せる。
+生成でなく選択で書く。prose で振る舞いを素描したりコード片を新造したりせず、contract は引用 + やりたいこと 1 行のセットにする。引用は、コードベースの既存の形 (path + 公開シンボル、前提と同じ stable anchor 規則) > docs/wiki のページ > pinned version の公式 docs への deep link の優先順で選び、外部ライブラリは SOURCING.md に従う。docs/wiki を引く場合は、該当する定型手順の行を逐語で写す。定型手順に当たる行が無く `内容` の一文が該当するなら、そちらを逐語で写す。ページには公開シンボルが無いので、`### 前提` には path 単独の行で載せる。unit を跨いで効く決まりごとは contract でなく `### 決まりごと` へ書く。引用できる出典が無い新規の形は signature を発明せず、形の決定は実装に委ねて受け入れテストが振る舞いを固定する。引用した path + シンボルは `### 前提` にも載せる。
 
 モックや設計資料が UI 文言 (ラベル、placeholder、ボタン名、選択肢名) を逐語で持つなら、出典のパスを添えて contract にそのまま写す。
-
-### 書き出し前検証
-
-build workflow の Revalidate と同じリポジトリルートで検証し、失敗した行は修正するか落とす。`base:` が現在の checkout と異なるブランチを指すときは、base ブランチ側の内容で検証する。ファイルの実在は `test -f <path>` の代わりに `git cat-file -e <base>:<path>` を使い、anchor は `git show <base>:<path> | ugrep -F '<pattern>'` を使う。
-
-1. `### 前提` の各行。path は `test -f <path>`、anchor は `ugrep -F '<pattern>' <path>` (base が異なるときは上記の base ブランチ形式)
-2. `units[].files` と `reference_module.files` のうち既存ファイルを指す行を `test -f <path>` で確認 (同じく base ブランチ形式に置き換え)
-3. 既存ファイルを触る unit があるのに `### 前提` が空か不在なら失敗。要となる依存を anchor する行を足す
-4. `reference_module: null` は理由の明記が prose に無ければ失敗
-5. templates/plan.md が定める行数規則を超えていないこと
-6. 各 non-seam unit の `files` と T-NNN の個数を数え、unit 上限に収まっていること。超えていれば分割してから再検証する
-7. test_command をリポジトリルートで 1 回実行する。plan より前から在る原因 (script 不在/リポジトリ全体の負債) で失敗したら、`### test_command` に従ってコマンドを絞り直し、絞った理由を plan の prose に書く
-8. T-NNN のうち test_command で実行できない基準が紛れていないこと。紛れていれば `### 実機確認` へ移す
 
 ## 出力
 

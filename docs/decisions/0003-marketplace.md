@@ -1,5 +1,5 @@
 ---
-status: "superseded by 0083-collapse-marketplace-to-single-build-plugin.md"
+status: "superseded by DR-0083"
 date: 2026-01-03
 decision-makers: thkt
 ---

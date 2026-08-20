@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -29,23 +29,23 @@ const sites = {
 
 // The three places instructing how to fetch docs. The means is scout everywhere. Narrowing it
 // in one place alone leaves the reader unable to tell which to reach for first.
-test("every site names scout as the way to fetch docs", () => {
+test("every site names scout as the way to fetch docs", async () => {
   for (const [name, path] of Object.entries(sites)) {
-    assert.match(readFileSync(path, "utf8"), /scout fetch/, `${name}: the means is scout fetch`);
+    assert.match(await readFile(path, "utf8"), /scout fetch/, `${name}: the means is scout fetch`);
   }
 });
 
 // A PreToolUse hook can deny WebFetch and WebSearch, so neither works as a fallback. Naming
 // one makes the reader take it as a second route, so the mention itself is prohibited.
-test("no site offers WebFetch or WebSearch as a fallback route", () => {
+test("no site offers WebFetch or WebSearch as a fallback route", async () => {
   for (const [name, path] of Object.entries(sites)) {
-    assert.doesNotMatch(readFileSync(path, "utf8"), /WebFetch|WebSearch/, `${name}: no mention`);
+    assert.doesNotMatch(await readFile(path, "utf8"), /WebFetch|WebSearch/, `${name}: no mention`);
   }
 });
 
 // What happens when scout cannot read it. With no fallback, memory must not be written down as
 // confirmed fact.
-test("every site marks an unreadable source as unverified", () => {
+test("every site marks an unreadable source as unverified", async () => {
   const unverified = {
     "code.js (ja)":
       /scout が無い、または fetch が失敗して読めなければ、その API 使用を未確認として/,
@@ -57,6 +57,6 @@ test("every site marks an unreadable source as unverified", () => {
       /or scout not being installed, keep the finding but mark it `unverified external claim`/,
   };
   for (const [name, path] of Object.entries(sites)) {
-    assert.match(readFileSync(path, "utf8"), unverified[name], `${name}: marked unverified`);
+    assert.match(await readFile(path, "utf8"), unverified[name], `${name}: marked unverified`);
   }
 });

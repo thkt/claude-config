@@ -15,34 +15,48 @@ HEADING = re.compile(r"^## (.+?)\s*$", flags=re.MULTILINE)
 CODE_BLOCK = re.compile(r"```(?:markdown)?\n(.*?)```", flags=re.DOTALL)
 OPTIONAL_SUFFIX = re.compile(r"\s*\((?:optional|任意)\)\s*$")
 FORM_SUFFIXES = (".yml", ".yaml")
+FRONTMATTER = re.compile(r"\A---\n.*?\n---\n", flags=re.DOTALL)
+# The floor the skill keeps whatever the skeleton requires. A repository form states the web UI's
+# minimum, which is thinner than what a filed issue has to carry: without this a feature issue
+# passes with no acceptance criteria and a bug with no reproduction.
+FLOOR = {
+    "feature": ("Acceptance Criteria", "Testing Decisions"),
+    "bug": ("Steps to Reproduce", "Expected vs Actual"),
+}
 # Headings that stay out of errors despite being absent from the skeleton. An issue
 # carrying a transferred /think plan always has these two, and Phase 3 of
 # skills/issue/SKILL.md is what puts them there.
 ALLOWED_EXTRA = frozenset({"Plan", "Backlog candidates"})
 
 
-def skeleton_sections(template_text):
+def skeleton_sections(template_text: str) -> list[tuple[str, bool]]:
     """(name, optional) pairs read from the first code block under "## Template".
 
     Reading up to the next heading is not available here: the skeleton itself is
     markdown full of "## " headings inside the code fence, so that bound stops at the
     first of those instead of at "## Guidelines". The code fence closes itself, so this
     locates the heading start only and looks for the first fence after it.
+
+    A file without "## Template" is a repository's own .github/ISSUE_TEMPLATE/<type>.md,
+    whose body is the skeleton as it stands. Without this branch no section is read and
+    every heading in a correct body is faulted as unknown_section.
     """
     heading_match = re.search(r"^## Template\s*$", template_text, flags=re.MULTILINE)
     if heading_match is None:
-        return []
-    code_match = CODE_BLOCK.search(template_text[heading_match.end() :])
-    skeleton = code_match.group(1) if code_match else ""
-    sections = []
-    for name in HEADING.findall(skeleton):
+        skeleton = FRONTMATTER.sub("", template_text)
+    else:
+        code_match = CODE_BLOCK.search(template_text[heading_match.end() :])
+        skeleton = code_match.group(1) if code_match else ""
+    sections: list[tuple[str, bool]] = []
+    names: list[str] = HEADING.findall(skeleton)
+    for name in names:
         optional = bool(OPTIONAL_SUFFIX.search(name))
         bare = OPTIONAL_SUFFIX.sub("", name)
         sections.append((bare, optional))
     return sections
 
 
-def form_sections(form_text):
+def form_sections(form_text: str) -> list[tuple[str, bool]]:
     """(name, optional) pairs read from a GitHub issue form's (.yml) body entries.
 
     The form turns each label into a heading when someone files through the web UI.
@@ -57,7 +71,7 @@ def form_sections(form_text):
     if body_start is None:
         return []
     entries = re.split(r"^\s*- type:\s*", form_text[body_start.end() :], flags=re.MULTILINE)[1:]
-    sections = []
+    sections: list[tuple[str, bool]] = []
     for entry in entries:
         if entry.split("\n", 1)[0].strip() == "markdown":
             continue
@@ -70,11 +84,19 @@ def form_sections(form_text):
     return sections
 
 
-def body_section_names(body_text):
-    return {OPTIONAL_SUFFIX.sub("", name) for name in HEADING.findall(body_text)}
+def body_section_names(body_text: str) -> set[str]:
+    """Section names in the body, counting nothing inside a code fence.
+
+    The skeleton is read from inside a fence, but a `## ` fenced in the body is a quotation
+    rather than a section. Counting it turns a quotation the skeleton lacks into
+    unknown_section and fails a body that was right.
+    """
+    outside = CODE_BLOCK.sub("", body_text)
+    names: list[str] = HEADING.findall(outside)
+    return {OPTIONAL_SUFFIX.sub("", name) for name in names}
 
 
-def main():
+def main() -> None:
     if len(sys.argv) < 4:
         print("Usage: validate-issue-body.py <template-file> <title> <body-file>", file=sys.stderr)
         sys.exit(1)
@@ -84,7 +106,7 @@ def main():
     template_text = template.read_text(encoding="utf-8")
     body_text = Path(body_path).read_text(encoding="utf-8")
 
-    results = {"errors": [], "warnings": [], "checks": []}
+    results: dict[str, list[str]] = {"errors": [], "warnings": [], "checks": []}
 
     title_match = TYPE_PREFIX.match(title)
     template_type = template.stem
@@ -98,19 +120,27 @@ def main():
         results["errors"].append("type_mismatch:title has no bracketed type prefix")
 
     is_form = template.suffix in FORM_SUFFIXES
+    own_template = re.search(r"^## Template\s*$", template_text, flags=re.MULTILINE) is not None
     sections = form_sections(template_text) if is_form else skeleton_sections(template_text)
+    # Zero sections is not an absence of requirements; it is a skeleton that could not be read.
+    # Both the required and the unknown checks then pass over anything, so stop here instead.
+    if not sections:
+        results["errors"].append(f"unreadable_skeleton:{template.name}")
     required = [name for name, optional in sections if not optional]
     present = body_section_names(body_text)
+    for name in FLOOR.get(template_type, ()):
+        if name not in present and name not in required:
+            required.append(name)
     for name in required:
         if name in present:
             results["checks"].append(f"section:{name}=ok")
         else:
             results["errors"].append(f"missing_section:{name}")
 
-    # A .yml lists a web form's minimum, not a closed set of sections. A CLI filing that
-    # adds to it is not deviating, so off-skeleton headings are only faulted for .md.
-    if is_form:
-        results["checks"].append("unknown_section=skipped (form template)")
+    # A repository template states the web UI's minimum, so a CLI filing that adds sections to
+    # it is not deviating. Only the skill's own templates are a closed set.
+    if is_form or not own_template:
+        results["checks"].append("unknown_section=skipped (repository template)")
     else:
         known = {name for name, _ in sections} | ALLOWED_EXTRA
         extra = sorted(present - known)

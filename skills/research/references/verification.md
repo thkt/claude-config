@@ -1,12 +1,12 @@
 # Verification Procedures
 
-Defines the procedures referenced by the /research Phase 4 close and the Phase 5 sweep.
+Defines the procedures referenced by /research's Phase 4 and the Phase 5 sweep.
 
-Which one applies is decided by the kind of finding. Use Cross-method verification for exhaustiveness findings and Primary-source verification for external-behavior claims, structurally, with no self-judged exclusion of a finding. Verifying library API behavior applies `~/.claude/rules/development/SOURCING.md`.
+Which one applies is decided by the kind of finding. Use Cross-method verification for exhaustiveness findings and Primary-source verification for external-behavior claims, structurally, with no self-judged exclusion of a finding. Verifying library API behavior applies ${CLAUDE_SKILL_DIR}/../../rules/development/SOURCING.md.
 
 ## Cross-method verification
 
-Apply each trigger structurally; no self-judged exclusion of a finding is allowed. Apply this verification when a finding claiming exhaustiveness drives downstream PR scope or crosses a repo boundary. The targets are claims like "no caller", "X is the only Y", "exhaustive list", and "unused in [repo set]". Verify each with at least 2 of ugrep, bfs, Task(Explore), and targeted Read. On disagreement, flag the discrepancy and identify the tool error before recording. A single-tool zero result is suspect, not authoritative.
+Apply each trigger structurally; no self-judged exclusion of a finding is allowed. Apply this verification when a finding claiming exhaustiveness drives downstream PR scope or crosses a repo boundary. The targets are claims like "no caller", "X is the only Y", "exhaustive list", and "unused in [repo set]". Verify each with at least 2 of ugrep, bfs, Agent(Explore), and targeted Read. On disagreement, flag the discrepancy and identify the tool error before recording. A single-tool zero result is suspect, not authoritative.
 
 ## Primary-source verification
 

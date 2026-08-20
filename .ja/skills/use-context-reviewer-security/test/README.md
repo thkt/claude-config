@@ -26,41 +26,13 @@ test/
 
 ## 使い方
 
-現状は手動実行。runner はハーネスが育ってから実装する。
+プロトコル、verdict の集合、expected.json のスキーマは `skills/_lib/review-harness.md` にある。ここにはこのハーネス固有の事情だけを置く。
 
-測定は blind protocol で行う。dispatch prompt にラベル・期待値・脆弱性ヒントを含めると Recall が汚染される (2026-06-04 判明、旧ベースライン無効化)。
+blind protocol の漏れはここで 2026-06-04 に見つかった。過去のベースライン (2026-05-02 easy、2026-05-02 hard、2026-05-07 llm01) は prompt に vuln/safe のディレクトリの役割を書いており、hard の回はさらに各ファイルの脆弱性を説明していた。これらの Recall は汚染されている。モデルも違う (opus-4-7 と opus-4-8) ので、差分はプロトコルとモデルの混合になる。
 
-1. cases を一時ディレクトリに中立名でコピー (case-01.ts のように連番、vuln/safe を交互に)。`./db` などフレームワーク規約名は文脈なので保持
-2. reviewer-security agent を Task tool で起動。prompt には対象パス・出力フォーマット・cross-file ペアの関連性のみ記載。「vuln」「safe」「テスト」「期待」の語と各ファイルの脆弱性説明は禁止
-3. 照合基準を dispatch 前に固定する。後出しで基準を動かさない
-4. 結果を `expected.json` と照合し `results/YYYY-MM-DD-*.json` に記録
+`cases/cross-file/` のペアは複数ファイルを合わせて初めて検出できるので、dispatch prompt にはペアの関連性だけを書く。このハーネスが agent へ渡す唯一の構造がこれ。
 
-注: 連番命名とペア構造から agent が「テスト集合」と推測しうる (2026-06-04 観測)。完全な blind には現実的な scaffolding への埋め込みが要るが、現状はラベル漏洩の除去を優先する。
-
-## expected.json スキーマ
-
-```json
-[
-  {
-    "file": "cases/vuln/<name>.ts",
-    "expected": "detected",
-    "category": "A03",
-    "severity_min": "high",
-    "difficulty": "easy" | "hard" | "cross-file",
-    "min_findings": 1,
-    "note": "<任意の補足>"
-  },
-  {
-    "file": "cases/safe/<name>.ts",
-    "expected": "no_finding",
-    "note": "<安全である理由>"
-  }
-]
-```
-
-`min_findings` は省略時 1。複数の独立した脆弱性が同一ファイルに含まれる場合のみ明示する (例: cross-file/middleware.ts は matcher gap と unsigned cookie role の 2 件)。
-
-`notes` (複数形) は `min_findings` の各件について何を期待しているかを列挙するときに使う。
+`min_findings` は 1 ファイルに独立した脆弱性が複数あるときだけ書く (cross-file/middleware.ts は matcher gap と unsigned cookie role の 2 件)。`notes` (複数形) はその各件に何を期待するかを列挙する。
 
 ## 出典
 

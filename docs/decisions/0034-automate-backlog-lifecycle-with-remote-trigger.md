@@ -1,12 +1,12 @@
 ---
-status: "superseded"
+status: "deprecated"
 date: 2026-03-24
 decision-makers: thkt
 ---
 
 # ADR-0034: LaunchAgent によるバックログライフサイクル自動化
 
-> Superseded 2026-08-15: この決定が定めた構成要素はどれも現存しない。BACKLOG.md も pending.md も無く、書き込みを担う `/inbox` skill も `scheduled_tasks.json` も消えている。タスクの置き場は `~/todo/dotclaude.txt` と GitHub issue へ移った。唯一残っていた `hooks/lifecycle/statusline.sh` の期限表示は、読む先が無いまま毎回外れるだけだったので同じ回に削除した。
+> Deprecated 2026-08-15: この決定が定めた構成要素はどれも現存しない。BACKLOG.md も pending.md も無く、書き込みを担う `/inbox` skill も `scheduled_tasks.json` も消えている。タスクの置き場は `~/todo/dotclaude.txt` と GitHub issue へ移った。唯一残っていた `hooks/lifecycle/statusline.sh` の期限表示は、読む先が無いまま毎回外れるだけだったので同じ回に削除した。
 
 ## Context and Problem Statement
 

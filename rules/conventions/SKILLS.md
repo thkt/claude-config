@@ -11,7 +11,7 @@ Conventions for skill files under `skills/`.
 
 ## Naming
 
-Generic names like helper, utils, tools are not allowed.
+Name a skill after the operation it performs. Replace generic names like helper, utils, tools with the operation name.
 
 | user-invocable | Binding    | Pattern               | Examples                                      |
 | -------------- | ---------- | --------------------- | --------------------------------------------- |
@@ -52,12 +52,14 @@ skills/
 
 Write reference paths inside SKILL.md, scripts/, templates/, references/ with bare `${CLAUDE_SKILL_DIR}` substitution.
 
-| Form                                          | Use         | Reason                                                                                             |
-| --------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------- |
-| `${CLAUDE_SKILL_DIR}/references/foo.md`       | Always      | Harness expands the variable to absolute path. Read tool resolves directly                         |
-| `${CLAUDE_SKILL_DIR}/../<dir>/foo.md`         | Cross-skill | Harness expands the variable; Read normalizes the .. segment. Used for shared \_lib/ across skills |
-| `[references/foo.md](references/foo.md)`      | Never       | Harness does not expand markdown links; AI infers relative path                                    |
-| `` `${CLAUDE_SKILL_DIR}/references/foo.md` `` | Avoid       | Harness behavior inside backticks is undocumented; safer to omit                                   |
+| Form                                          | Use         | Reason                                                                                                                    |
+| --------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `${CLAUDE_SKILL_DIR}/references/foo.md`       | Always      | Harness expands the variable to absolute path. Read tool resolves directly                                                |
+| `${CLAUDE_SKILL_DIR}/../<dir>/foo.md`         | Cross-skill | Harness expands the variable; Read normalizes the .. segment. Used for shared \_lib/ across skills                        |
+| `${CLAUDE_SKILL_DIR}/../../rules/<path>`      | Rules       | Harness expands it and it resolves inside the plugin install, so the skill reads the rules that shipped with it           |
+| `~/.claude/rules/<path>`                      | Never       | Names the dev tree. A plugin install reads another copy, or none. `~/.claude/settings.json` is the running side and stays |
+| `[references/foo.md](references/foo.md)`      | Never       | Harness does not expand markdown links; AI infers relative path                                                           |
+| `` `${CLAUDE_SKILL_DIR}/references/foo.md` `` | Avoid       | Harness behavior inside backticks is undocumented; safer to omit                                                          |
 
 ## Argument variables
 

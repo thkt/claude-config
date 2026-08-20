@@ -1,14 +1,6 @@
 # MADR: Markdown Architectural Decision Records
 
-MADR is a streamlined markdown template for recording decisions. This file assumes v4. The A expanded to Any in 2022 and back to Architectural in 2024, yet upstream allowed recording any decision throughout; what moved was the focus. This skill steps off the wobbling name by saying DR, covering decisions beyond architecture.
-
-## Key Points
-
-| Aspect      | Convention                                                          |
-| ----------- | ------------------------------------------------------------------- |
-| Granularity | One markdown file per decision                                      |
-| Filename    | `nnnn-title-with-dashes.md`. 4-digit number, lowercase dashed title |
-| Location    | `docs/decisions/`. The MADR default, fixed by this skill            |
+MADR is a streamlined markdown template for recording decisions, one file per decision. This file assumes v4. The A expanded to Any in 2022 and back to Architectural in 2024, yet upstream allowed recording any decision throughout; what moved was the focus. This skill steps off the wobbling name by saying DR, covering decisions beyond architecture.
 
 ## Required Sections
 
@@ -22,6 +14,14 @@ Confirmation is optional in upstream MADR v4 but treated as required by this ski
 | Decision Outcome              | Chosen option and the immediate justification |
 | Confirmation (under Outcome)  | How to verify implementation matches decision |
 
+## Recommended Sections
+
+These go under More Information as an h3. A DR without a More Information section may carry one as a standalone h2, and validate-dr.py accepts either level. A missing one returns a warning rather than an error.
+
+| Section               | Purpose                                                                                                  |
+| --------------------- | -------------------------------------------------------------------------------------------------------- |
+| Reassessment Triggers | Conditions for revisiting the decision. Whoever proposes removing or merging existing structure reads it |
+
 ## Optional Sections
 
 | Section                      | When to include                             |
@@ -29,7 +29,7 @@ Confirmation is optional in upstream MADR v4 but treated as required by this ski
 | Decision Drivers             | Criteria guiding the choice                 |
 | Consequences (under Outcome) | `Good, because ...` / `Bad, because ...`    |
 | Pros and Cons of the Options | Per-option detail with `### {option}` heads |
-| More Information             | Migration plan, triggers, related links     |
+| More Information             | Migration plan, related links               |
 
 ## Status Lifecycle
 

@@ -5,15 +5,15 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import NoReturn
 
 
-def fail(*lines):
+def fail(*lines: str) -> NoReturn:
     print(*lines, sep="\n", file=sys.stderr)
     sys.exit(1)
 
 
-def resolve_dr_dir(arg=None):
-    """DR_DIR env > arg > <git-root>/docs/decisions."""
+def resolve_dr_dir(arg: str | None = None) -> Path:
     if os.environ.get("DR_DIR"):
         return Path(os.environ["DR_DIR"])
     if arg:
@@ -27,28 +27,22 @@ def resolve_dr_dir(arg=None):
     if git.returncode != 0:
         fail(
             "Error: not inside a git repository. Decision Records require"
-            " <git-root>/docs/decisions/. Set DR_DIR env var to override."
+            + " <git-root>/docs/decisions/. Set DR_DIR env var to override."
         )
     return Path(git.stdout.strip()) / "docs" / "decisions"
 
 
-def guard_skill_dir(dr_dir, hint):
-    """Reject the skill-definition directory itself as a Decision Record archive."""
+def guard_skill_dir(dr_dir: Path, hint: str) -> None:
     if (dr_dir / "SKILL.md").is_file():
         fail(
             f"Error: {dr_dir} contains SKILL.md (skill-definition directory,"
-            " not a Decision Record archive)",
+            + " not a Decision Record archive)",
             hint,
         )
 
 
-def split_frontmatter(text):
-    """(frontmatter lines, body lines).
-
-    Frontmatter only when the file opens with a --- line and has a closing ---
-    line. A --- elsewhere (e.g. a body horizontal rule) is never a delimiter, and
-    an unclosed opening --- yields no frontmatter.
-    """
+def split_frontmatter(text: str) -> tuple[list[str], list[str]]:
+    """A --- past the opening line is never a delimiter, so a body rule cannot split the file."""
     lines = text.splitlines()
     fence = re.compile(r"^---[ \t]*$")
     if not lines or not fence.match(lines[0]):

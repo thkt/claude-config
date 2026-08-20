@@ -22,7 +22,7 @@ PLACEHOLDER_LINE = re.compile(r"^[ \t]*(\{[^{}\n]+\})[ \t]*$", flags=re.MULTILIN
 PLACEHOLDER_CELL = re.compile(r"\|[ \t]*(\{[^{}\n]+\})[ \t]*(?=\|)")
 
 
-def section_body(text, heading):
+def section_body(text: str, heading: str) -> str | None:
     """Text under `heading` up to the next heading of the same or higher level."""
     match = re.search(rf"^(#{{2,3}}) {re.escape(heading)}\s*$", text, flags=re.MULTILINE)
     if not match:
@@ -33,7 +33,7 @@ def section_body(text, heading):
     return rest[: stop.start()] if stop else rest
 
 
-def is_unfilled(body):
+def is_unfilled(body: str) -> bool:
     """True when nothing but TBD markers sits under the heading."""
     for line in body.splitlines():
         content = re.sub(r"^\s*([-*]|\d+\.)\s*", "", line).strip()
@@ -43,7 +43,7 @@ def is_unfilled(body):
     return True
 
 
-def main():
+def main() -> None:
     target = sys.argv[1] if len(sys.argv) > 1 else ""
     path = Path(target)
     if not target:
@@ -66,7 +66,7 @@ def main():
         sys.exit(0)
 
     text = path.read_text(encoding="utf-8")
-    results = {"errors": [], "warnings": [], "checks": []}
+    results: dict[str, list[str]] = {"errors": [], "warnings": [], "checks": []}
 
     for section in REQUIRED_SECTIONS:
         if section_body(text, section) is None:

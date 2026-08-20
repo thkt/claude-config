@@ -13,6 +13,8 @@ Test behavior via public API. Mock only at system boundaries.
 
 ## Variant Selection
 
+When the table below does not settle the variant, and when checking whether a test verifies implementation rather than behavior, read ${CLAUDE_SKILL_DIR}/references/test-philosophy.md.
+
 | Trigger                           | Variant         | Reference                                        |
 | --------------------------------- | --------------- | ------------------------------------------------ |
 | spec.md / new feature (`/code`)   | Feature-driven  | ${CLAUDE_SKILL_DIR}/references/feature-driven.md |
@@ -36,44 +38,26 @@ Test behavior via public API. Mock only at system boundaries.
 | Simple one-off scripts   | Shorter than the test would be    |
 | UI experiments           | Visual first, extract logic later |
 
-## Feature-Driven vs Bug-Driven
-
-| Aspect     | Feature-Driven              | Bug-Driven            |
-| ---------- | --------------------------- | --------------------- |
-| Trigger    | Specification               | Bug report            |
-| Test state | Skip state initially        | Active                |
-| Test count | All tests generated upfront | 1 main + edge cases   |
-| Activation | User-controlled             | Immediate             |
-| Focus      | Feature completion          | Regression prevention |
-
-## Test Philosophy (Classical/Detroit)
-
-| Principle                    | Rule                                                      |
-| ---------------------------- | --------------------------------------------------------- |
-| Behavior over implementation | Test public API output, not internal calls                |
-| State verification           | Assert on result values, not "was X called"               |
-| Real objects first           | Use real dependencies. Mock only external I/O             |
-| Black-box perspective        | Treat the unit as a black box via its public interface    |
-| Sociable tests               | Let collaborators participate. Isolate only at boundaries |
-
 ## RGRC Cycle
 
-| Phase    | Goal         | Rule                                                                                   | Common Mistake                 |
-| -------- | ------------ | -------------------------------------------------------------------------------------- | ------------------------------ |
-| Red      | Failing test | Verify failure matches the intended behavior gap, not syntax/import errors             | Test passes immediately        |
-| Green    | Pass test    | "You can sin" - dirty OK                                                               | Over-implementing              |
-| Refactor | Refine       | Keep tests green. Shrink only while it reads easier, per ~/.claude/rules/PRINCIPLES.md | Changing behavior; compressing |
-| Commit   | Save state   | All checks pass                                                                        | Skipping checks                |
+Before writing the test in Red, read ${CLAUDE_SKILL_DIR}/references/writing-tests.md and apply its design techniques, assertion quality, and mock boundaries.
 
-## Baby Steps (2-min cycle)
+| Phase    | Goal         | Rule                                                                                                   | Common Mistake                 |
+| -------- | ------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------ |
+| Red      | Failing test | Verify failure matches the intended behavior gap, not syntax/import errors                             | Test passes immediately        |
+| Green    | Pass test    | "You can sin" - dirty OK                                                                               | Over-implementing              |
+| Refactor | Refine       | Keep tests green. Shrink only while it reads easier, per ${CLAUDE_SKILL_DIR}/../../rules/PRINCIPLES.md | Changing behavior; compressing |
+| Commit   | Save state   | All checks pass                                                                                        | Skipping checks                |
 
-30s: Write failing test → 1min: Make pass → 10s: Run tests → 30s: Tiny refactor → 20s: Commit if green. Bugs are always in the last 2-minute change.
+## Baby Steps (2.5 min per cycle)
+
+30s. Write failing test → 1min. Make pass → 10s. Run tests → 30s. Tiny refactor → 20s. Commit if green. Bugs are always in the last cycle's change.
 
 ## Vertical Slices Only
 
 Stack RGRC cycles vertically per behavior. Never expand horizontally by writing all tests first and all implementations later.
 
-```
+```text
 Wrong (horizontal):
   Red:   test1, test2, test3, test4, test5
   Green: impl1, impl2, impl3, impl4, impl5
@@ -84,12 +68,12 @@ Right (vertical):
   ...
 ```
 
-| #   | Hazard from horizontal slices                                             |
-| --- | ------------------------------------------------------------------------- |
-| 1   | Bulk-written tests verify imagined behavior instead of real behavior      |
-| 2   | Tests degrade into structural assertions of data shape or signature only  |
-| 3   | Sensitivity to behavior change drops: pass when broken, fail when correct |
-| 4   | Implementation knowledge follows test structure instead of guiding it     |
+| #   | Hazard from horizontal slices                                            |
+| --- | ------------------------------------------------------------------------ |
+| 1   | Bulk-written tests verify imagined behavior instead of real behavior     |
+| 2   | Tests degrade into structural assertions of data shape or signature only |
+| 3   | Sensitivity to behavior change drops, passing when broken                |
+| 4   | Implementation knowledge follows test structure instead of guiding it    |
 
 ## Test Failure Judgment
 
@@ -101,80 +85,13 @@ When a test fails, decide whether to fix the test or the implementation. For `/f
 | Test bug | Test diverges from spec   | Fix test                             |
 | Unclear  | Spec ambiguous or missing | Escalate to user                     |
 
-## Test Design
-
-| Technique                | Use For               | Example                |
-| ------------------------ | --------------------- | ---------------------- |
-| Equivalence Partitioning | Group same behavior   | Age: <18, 18-120       |
-| Boundary Value           | Test edges            | 17, 18, 120, 121       |
-| Decision Table           | Multi-condition logic | isLoggedIn × isPremium |
-
-## Assertion Quality
-
-Every test must verify a specific outcome. Weak assertions alone are forbidden. Bad is `expect(result).toBeTruthy()`; good is `expect(result).toEqual({ id: 1, name: "Alice" })`. One test, one concept: if two tests assert the same function with the same argument pattern, merge or parameterize with `test.each`.
-
-| Category           | Matchers                                                                | When acceptable                                   |
-| ------------------ | ----------------------------------------------------------------------- | ------------------------------------------------- |
-| Weak (existence)   | toBeTruthy, toBeDefined, toBeFalsy, toBeNull, toBeUndefined             | Only with a meaningful assertion in the same test |
-| Meaningful (value) | toBe, toEqual, toStrictEqual, toMatch, toContain, toThrow, toHaveLength | Always preferred                                  |
-| Meaningful (call)  | toHaveBeenCalledWith, toHaveBeenCalledTimes, toHaveReturnedWith         | When verifying side effects                       |
-
-## Mock
-
-Mock at system boundaries: external APIs, databases, file system, network, non-deterministic dependencies such as time and random, and slow dependencies that block the 2-min cycle.
-
-| Rule                | Threshold                        |
-| ------------------- | -------------------------------- |
-| Mock count per test | Must not exceed assertion count  |
-| Mock scope          | External dependencies only       |
-| Mock target         | Never mock the module under test |
-
-| Anti-Pattern                | Problem                                     | Instead                                    |
-| --------------------------- | ------------------------------------------- | ------------------------------------------ |
-| Assert mock was called      | Tests mock behavior, not component behavior | Assert on observable output or side effect |
-| Test-only production method | Pollutes production API for test access     | Extract to test utility or use public API  |
-| Mock before understanding   | Hides real dependency behavior              | Understand dependency first, then mock     |
-| Partial mock structure      | Missing fields cause false passes           | Mirror complete real API structure         |
-| Mock overuse                | More mocks than assertions = testing wiring | Reduce mocks or add meaningful assertions  |
-
-### UT Isolation
-
-Unit tests import only: target module + types + test infrastructure. Build test data from types or literals.
-
-## Test Construction
-
-### AAA Pattern
-
-```typescript
-test("name", () => {
-  // Arrange - Setup
-  // Act - Execute
-  // Assert - Verify
-});
-```
-
-### Naming
-
-| Level | Pattern                                          |
-| ----- | ------------------------------------------------ |
-| Suite | `describe("[Target]", ...)`                      |
-| Group | `describe("[Method]", ...)`                      |
-| Test  | `it("when [condition], should [expected]", ...)` |
-
-## Framework Detection
-
-| Condition          | Framework |
-| ------------------ | --------- |
-| `vitest` in deps   | Vitest    |
-| `jest` in deps     | Jest      |
-| `bun` as runtime   | Bun test  |
-| No framework found | Vitest    |
-
 ## References
 
-| Topic          | File                                                    |
-| -------------- | ------------------------------------------------------- |
-| Feature-driven | ${CLAUDE_SKILL_DIR}/references/feature-driven.md        |
-| Bug-driven     | ${CLAUDE_SKILL_DIR}/references/bug-driven.md            |
-| Flaky tests    | ${CLAUDE_SKILL_DIR}/references/flaky-test-management.md |
-| Coverage       | ${CLAUDE_SKILL_DIR}/../../rules/development/TESTING.md  |
+| When to read it                                  | File                                                    |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| Before writing the test in Red                   | ${CLAUDE_SKILL_DIR}/references/writing-tests.md         |
+| The variant will not settle, or the test is suspect | ${CLAUDE_SKILL_DIR}/references/test-philosophy.md    |
+| Feature-driven was chosen                        | ${CLAUDE_SKILL_DIR}/references/feature-driven.md        |
+| Bug-driven was chosen                            | ${CLAUDE_SKILL_DIR}/references/bug-driven.md            |
+| A test changes its result between runs           | ${CLAUDE_SKILL_DIR}/references/flaky-test-management.md |
+| Deciding how far to test                         | ${CLAUDE_SKILL_DIR}/../../rules/development/TESTING.md  |

@@ -1,8 +1,8 @@
 ---
 name: use-context-reviewer-silence
-description: サイレント失敗の検出。セキュリティは use-context-reviewer-security、可読性は use-context-reviewer-readability に使う。
+description: サイレント失敗の検出。セキュリティ (use-context-reviewer-security)、可読性 (use-context-reviewer-readability) には使わない。
 when_to_use: silent failure, empty catch, エラーハンドリング, 握りつぶし, swallowed error
-allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Read Agent Bash(ugrep:*) Bash(bfs:*)
 agent: reviewer-silence
 context: fork
 user-invocable: false
@@ -26,6 +26,4 @@ user-invocable: false
 
 ## 参照ファイル
 
-| トピック  | ファイル                                             |
-| --------- | ---------------------------------------------------- |
-| Detection | ${CLAUDE_SKILL_DIR}/references/detection-patterns.md |
+検出パターンの詳細は ${CLAUDE_SKILL_DIR}/references/detection-patterns.md。

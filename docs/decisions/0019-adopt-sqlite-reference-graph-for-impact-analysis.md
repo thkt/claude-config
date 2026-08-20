@@ -127,3 +127,8 @@ graph TD
 
 - `status` ツールの出力に参照数（total references）を追加
 - パス解決失敗率を tracing ログで確認可能にする
+
+## Reassessment Triggers
+
+- 対象プロジェクトが 10k ファイル規模に達し、recursive CTE の応答が 100ms を超えたとき
+- 最短パスなど SQL で表現しにくいグラフクエリが必要になったとき

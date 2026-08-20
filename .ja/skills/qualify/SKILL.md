@@ -1,8 +1,8 @@
 ---
 name: qualify
-description: issue が build に投入できる形かを検分し、verdict (build-ready / needs-plan / needs-fix) と指摘を返す。起票には使わない (/issue)。PR のスクリーニングには使わない (/preview)。
+description: issue が build に投入できる形かを検分し、verdict (build-ready / needs-plan / needs-fix) と指摘を返す。起票には使わない (/issue)。PR と plan の突合には使わない (/preview)。
 when_to_use: 実装可否, build-ready 判定, issue 品質チェック, qualify issue, check issue before build
-allowed-tools: Bash(gh issue view:*) Bash(ugrep:*) Bash(bfs:*) Read AskUserQuestion
+allowed-tools: Bash(gh issue view:*) Bash(gh repo view:*) Bash(ugrep:*) Bash(bfs:*) Read AskUserQuestion
 model: opus
 argument-hint: "[issue number or URL]"
 ---
@@ -17,32 +17,35 @@ issue を build に渡す前に検分し、投入して進むか、先に手を�
 
 ## Phase 1: 取得
 
-`gh issue view <ref> --json number,title,body,labels` で本文とラベルを取る。取得に失敗したら ref を報告して停止する。
+`gh issue view <ref> --json number,title,body,labels,url` で本文とラベルを取る。取得に失敗したら ref を報告して停止する。`gh repo view --json nameWithOwner` で手元のリポジトリを取り、url の owner/repo と突き合わせる。
 
 ## Phase 2: Plan 契約の検分
 
-`## Plan` 節が無ければ verdict を needs-plan にして Phase 4 へ進み、検分はそこで終える。着手の判断は変わらないが、次の手は issue の種別で変わる。title が `[Bug]` なら、本文に原因の言明があるかを見て、無ければ次の手を「原因を特定してから plan を書く」にする。それ以外の種別は次の手が「plan を書く」のままなので、他の指摘を並べても判断は変わらない。
+`## Plan` 節が無ければ verdict を needs-plan にして、Phase 3 の軸のうち AC の検証可能性だけを見てから Phase 4 へ進む。plan の無い issue には contract が無いため、新規作成の衝突と表示フィールドの列挙は判定する材料を持たない。残りの軸は advice なので、次の手を変えない。AC が検証不能なまま `/think` へ送ると、その AC へ向けて plan を設計することになる。
 
-Plan 節があるときは、build.js の判定条件を実行時に読んで適用し、違反した項目をすべて blocker として扱う。build が同じ条件で止まるため、重大度は blocker のままにする。
+needs-plan では着手の判断が変わらない一方、次の手は issue の内容で変わる。AC が検証不能なら、次の手を「AC を検証可能に書き直してから plan を書く」にする。title が `[Bug]` で本文に原因の言明が無ければ、次の手を「原因を特定してから plan を書く」にする。どちらにも当たるときは両方を書き、どちらにも当たらなければ次の手は「plan を書く」のままになる。
 
-1. `ugrep -n "const validate = |const UNIT_CAPS = |const oversizedUnits = " ~/.claude/workflows/build.js` で位置を特定する
+Plan 節があるときは、build.js の判定条件を実行時に読んで適用し、違反した項目をすべて blocker として扱う。build が同じ条件で止まるため、重大度は blocker のままにする。条件を読めないまま検分を続けると、違反が無い状態と条件を当てていない状態を出力が区別できない。
+
+1. ugrep で ${CLAUDE_SKILL_DIR}/../../workflows/build.js を探し、`const validate = |const UNIT_CAPS = |const oversizedUnits = ` に一致する行の位置を特定する。いずれかがヒットしなければ、読めなかったアンカーを報告して停止する
 2. Read でヒットした箇所を読む
 3. issue 本文の Plan 節を読んだ条件に当てて、違反を列挙する
 
 ### id クロスチェック
 
-build は本文の U-NNN と T-NNN の id 集合を抽出結果と厳密比較する。qualify の検分は本文だけを対象とするので、本文側の id が一意で連番になっているかを見る。id は `### U-NNN` で始まる行と、リストマーカー直後の `T-NNN` から集める。重複と欠番は blocker。
+build は本文の U-NNN と T-NNN の id 集合を抽出結果と厳密比較する。qualify の検分は本文だけを対象とするので、本文側の id が一意かを見る。id は `### U-NNN` で始まる行と、リストマーカー直後の `T-NNN` から集める。重複は blocker。欠番は build が止まる条件に無いので、検分しない。
 
 ## Phase 3: 形式と前提の検分
 
 issue の書式が `/issue` の出力形式に沿うか、plan の前提が現在のコードと噛み合うかを見る。検査する軸は次の表のものに限る。AC が検証不能なら、実装した結果が正しいかを誰も判定できず、build の conformance も照合先を失う。「エラーがスクリーンリーダーに通知される」は通り、「UX が改善される」は通らない。新規作成先に既存ファイルがあると、build のどの段もそれを見ないまま上書きへ進む。preconditions の実在は build の Revalidate が正なので、ここでの照合は build で止まる可能性の予告として advice に置く。
+
+Phase 1 の突き合わせで owner/repo が食い違ったときは、preconditions の実在と新規作成の衝突を検分しない。手元のコードは issue の対象ではないため、当てれば実在するファイルを無いと読み、無いファイルを在ると読む。検分しなかった軸は、その理由とともに advice に置く。
 
 | 軸                   | 通る条件                                                                                                                                                                 | 重大度  |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
 | title の種別         | `[Feature]` / `[Bug]` / `[Docs]` / `[Chore]` のいずれかで始まる                                                                                                          | advice  |
 | What & Why           | 誰の何の痛みかと、その根拠が書かれている                                                                                                                                 | advice  |
 | AC の検証可能性      | 各項目が観測可能な結果を述べ、達成を外部の観察者が判定できる                                                                                                             | blocker |
-| tentative マーク     | 未決の判断に `(tentative: <着手時のアクション>)` が付く                                                                                                                  | advice  |
 | priority ラベル      | `priority:critical` / `high` / `medium` / `low` のいずれかが付く                                                                                                         | advice  |
 | preconditions の実在 | 各 {path, pattern} が現在のコードで見つかる                                                                                                                              | advice  |
 | 新規作成の衝突       | contract が新規作成と読める files が、まだ存在しない                                                                                                                     | blocker |
@@ -64,7 +67,9 @@ issue の書式が `/issue` の出力形式に沿うか、plan の前提が現�
 
 1 件の指摘につき 1 問を立て、期待する答えを仮説として先頭の選択肢に置く。選択肢はユーザーが決める行動として書き、qualify が行う操作としては書かない。1 件の指摘の中で選択肢が排他でないときだけ multiSelect にする。判断が要る指摘が 5 件以上あるときは、重大度の高い 4 件を AskUserQuestion に載せ、残りは質問文と仮説をテキストに並べる。
 
-得られた答えは次の手の行に書き足す。判断が要る指摘が 0 件のときは AskUserQuestion を呼ばず、質問の節も置かない。needs-plan で止めたときも質問を立てない。次の手が plan を書くことに定まっており、答えても着手の内容が変わらない。
+得られた答えは、本文のどこをどう書き換えるかの案にして返す。qualify は本文を書き換えないので、その案が答えを本文へ入れる経路になる。次の手の行にも答えを書き足す。
+
+判断が要る指摘が 0 件のときは AskUserQuestion を呼ばず、質問の節も置かない。needs-plan のときは、AC の検証可能性の指摘だけを質問にする。plan を書くことは決まっているため、それ以外の答えは着手の内容を変えない。
 
 ## ルール
 

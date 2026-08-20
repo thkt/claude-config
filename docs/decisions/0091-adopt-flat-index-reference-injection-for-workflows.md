@@ -1,5 +1,5 @@
 ---
-status: "accepted"
+status: "superseded by DR-0103"
 date: 2026-07-28
 decision-makers: thkt
 consulted: masuP9
@@ -48,3 +48,8 @@ code.js がインデックスの glob と `units[].files` の照合結果を実�
 ## More Information
 
 実験レポート 3 部 (report.md/report-v3.md/report-final.md、2026-07-28 時点で ~/Downloads)。実験 PR は Nikkei/ise-pl-app #2305 (baseline)/#2306 (v1)/#2307 (v3)。ADR-0089 (draftPlan 退役) により、レポート推奨の draftPlan 注入は plan 側 (/think 様式) と実装側 (code.js) への翻訳が必要になった。
+
+### Reassessment Triggers
+
+- インデックスと実配置の glob がずれ、注入漏れが実際に起きたとき
+- 観察 run で本構成の効果が確認できず、実験の GO を引き継げないと分かったとき

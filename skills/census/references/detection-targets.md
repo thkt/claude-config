@@ -1,6 +1,8 @@
 # /census detection targets
 
-Phase 2 scans file patterns. Phase 3 commit-message mining and Phase 4 document-prose extraction scan decision verbs.
+Phase 1 doc collection scans file patterns. Phase 2 commit-message mining and document-prose extraction scan decision verbs.
+
+## Filename patterns
 
 | Filename pattern                                                     | Likely content                       |
 | -------------------------------------------------------------------- | ------------------------------------ |

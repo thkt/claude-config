@@ -47,7 +47,7 @@ Before flagging, check execution frequency.
 | ------------------------------------- | ---------------------------------------- |
 | "Is this doing unnecessary work?"     | "Is this a patch or a fix?"              |
 | TOCTOU as performance/correctness bug | Race condition as symptom of design flaw |
-| Hot/cold path analysis                | 5 Whys to find root cause                |
+| Hot/cold path analysis                | Eliminating hypotheses to find the cause |
 | Fix direction: optimize               | Fix direction: redesign                  |
 
 ## Calibration

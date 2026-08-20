@@ -41,10 +41,7 @@ res.status(500).json({ error: err.message, stack: err.stack });
 
 // SAFE: generic message in production, details in logs only
 const isProd = process.env.NODE_ENV === "production";
-res.status(500).json({
-  error: isProd ? "Internal server error" : err.message,
-  ...(isProd ? {} : { stack: err.stack }),
-});
+res.status(500).json({ error: isProd ? "Internal server error" : err.message });
 logger.error({ err }, "Unhandled error");
 ```
 
@@ -81,11 +78,11 @@ logger.warn("Login failed", {
 
 ## 10. SSRF
 
-| Check    | Reject                             |
-| -------- | ---------------------------------- |
-| Protocol | Not http/https                     |
-| Hostname | localhost, 127._, 192.168._, 10.\* |
-| Domain   | Not in allowlist                   |
+| Check    | Reject                                    |
+| -------- | ----------------------------------------- |
+| Protocol | Not http/https                            |
+| Hostname | `localhost`, `127.*`, `192.168.*`, `10.*` |
+| Domain   | Not in allowlist                          |
 
 ```typescript
 function isAllowedUrl(input: string, allowlist: string[]): boolean {
@@ -99,13 +96,3 @@ function isAllowedUrl(input: string, allowlist: string[]): boolean {
   }
 }
 ```
-
-## Master Checklist
-
-| Category | Items                                   |
-| -------- | --------------------------------------- |
-| Auth     | Endpoints protected, ownership verified |
-| Input    | SQL/XSS/command injection prevented     |
-| Data     | Encrypted, HTTPS, no sensitive in logs  |
-| Config   | Debug off, headers set, CORS restricted |
-| Deps     | No vulns, updated, unused removed       |

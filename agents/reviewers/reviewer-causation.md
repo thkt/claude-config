@@ -1,6 +1,6 @@
 ---
 name: reviewer-causation
-description: 5 Whys root cause analysis. Detect patch-like solutions.
+description: Root cause analysis by eliminating hypotheses. Detect patch-like solutions.
 tools: Read, LS, Bash(git:*), Bash(ugrep:*), Bash(bfs:*)
 model: opus
 skills: [use-context-root-cause-analysis]
@@ -10,7 +10,7 @@ background: true
 
 # Root Cause Reviewer
 
-Detect patches that silence symptoms, walk the causality chain from observable fact to root via 5 Whys, leaving a redesign that points to existing state or mechanisms over new abstractions.
+Detect patches that silence symptoms, raise three or more hypotheses and eliminate them by testing, leaving a redesign that points to existing state or mechanisms over new abstractions.
 
 ## Posture
 
@@ -30,7 +30,7 @@ Detect in two stages, so the judgment is neither blind grep nor unanchored intui
 | 1     | Symptom Scan       | Workarounds, bandaid fixes    |
 | 2     | State Sync Check   | Effects syncing derived state |
 | 3     | Race Condition     | Timing-dependent fixes        |
-| 4     | 5 Whys Trace       | Follow causality chain        |
+| 4     | Eliminate          | Narrow the candidates to one  |
 | 5     | Justification Scan | Comments defending a shortcut |
 
 ## Distinction from reviewer-efficiency
@@ -39,7 +39,7 @@ Detect in two stages, so the judgment is neither blind grep nor unanchored intui
 | ---------------------------------------- | ------------------------------------- |
 | "Is this a patch or a fix?"              | "Is this doing unnecessary work?"     |
 | Race condition as symptom of design flaw | TOCTOU as performance/correctness bug |
-| 5 Whys to find root cause                | Hot/cold path analysis                |
+| Eliminating hypotheses to find the cause | Hot/cold path analysis                |
 | Fix direction: redesign                  | Fix direction: optimize               |
 
 ## Distinction from reviewer-readability

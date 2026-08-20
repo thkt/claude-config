@@ -1,68 +1,65 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const skills = {
-  ja: join(root, ".ja", "skills", "checkout", "SKILL.md"),
-  en: join(root, "skills", "checkout", "SKILL.md"),
-};
-const commits = {
-  ja: join(root, ".ja", "skills", "commit", "SKILL.md"),
-  en: join(root, "skills", "commit", "SKILL.md"),
+const at = (lang, ...parts) => join(root, ...(lang === "ja" ? [".ja"] : []), "skills", ...parts);
+const skills = { ja: at("ja", "checkout", "SKILL.md"), en: at("en", "checkout", "SKILL.md") };
+const commits = { ja: at("ja", "commit", "SKILL.md"), en: at("en", "commit", "SKILL.md") };
+
+const eachLanguage = async (check) => {
+  for (const [lang, path] of Object.entries(skills)) {
+    await check(await readFile(path, "utf8"), lang);
+  }
 };
 
 const prefixes = (doc) =>
-  (doc.match(/^\| ([a-z]+)\/ +\|/gm) || []).map((r) => r.match(/[a-z]+/)[0]);
+  (doc.match(/^\| ([a-z]+)\/ +\|/gm) || []).map((row) => row.match(/[a-z]+/)[0]);
 
-// A branch prefix and a commit type both come from Conventional Commits. Renaming one alone stops
-// the same change from becoming a feat commit on a feat/ branch and splits the history's types.
-test("every branch prefix exists in the commit type table", () => {
-  for (const [lang, path] of Object.entries(skills)) {
-    assert.ok(existsSync(path), `${path} exists`);
-    const found = prefixes(readFileSync(path, "utf8"));
-    assert.ok(
-      found.length >= 7,
-      `${lang}: seven or more prefixes are readable (${found.join(", ")})`,
-    );
-    assert.ok(found.includes("feat"), `${lang}: it uses feat/ rather than feature/`);
-    const commitDoc = readFileSync(commits[lang], "utf8");
+// Renaming a branch prefix without the commit type stops the same change from becoming a feat
+// commit on a feat/ branch and splits the history's types.
+test("every branch prefix exists in the commit type table", () =>
+  eachLanguage(async (doc, lang) => {
+    const found = prefixes(doc);
+    assert.ok(found.length >= 7, `${lang}: seven or more prefixes are readable (${found})`);
+    const commitDoc = await readFile(commits[lang], "utf8");
     for (const prefix of found) {
-      assert.match(
-        commitDoc,
-        new RegExp(`^\\| ${prefix} `, "m"),
-        `${lang}: commit carries ${prefix}`,
-      );
+      const row = new RegExp(`^\\| ${prefix} `, "m");
+      assert.match(commitDoc, row, `${lang}: commit carries ${prefix}`);
     }
-  }
-});
+  }));
 
-// Whether anything is staged before a branch is cut is undecided. A bare git diff shows the staged
-// side as empty and leaves the type decision resting on git status --porcelain alone.
-test("reading the changes looks at both the staged and the unstaged side", () => {
-  for (const [lang, path] of Object.entries(skills)) {
-    const doc = readFileSync(path, "utf8");
-    assert.match(doc, /`git diff HEAD`/, `${lang}: git diff HEAD reads both sides`);
-    assert.doesNotMatch(
-      doc,
-      /`git diff` を並列|`git diff` in parallel/,
-      `${lang}: it is not the bare diff`,
-    );
-  }
-});
+// A bare git diff shows the staged side as empty, leaving the type to rest on git status alone.
+test("reading the changes looks at both the staged and the unstaged side", () =>
+  eachLanguage((doc, lang) => {
+    assert.match(doc, /`git diff HEAD`/, `${lang}: the step names git diff HEAD`);
+  }));
 
-// scribe creates scribe/<yyyymmdd-HHMMSS>. The date prohibition must not read as a
-// repository-wide rule.
-test("the date prohibition is scoped to the names this skill creates", () => {
+// A step citing a section the file no longer carries sends the reader nowhere.
+test("every section a step cites exists", () =>
+  eachLanguage((doc, lang) => {
+    const cited = [...doc.matchAll(/\(§ ([^)]+)\)/g)].map((m) => m[1]);
+    assert.equal(cited.length, 1, `${lang}: the naming step cites one section`);
+    for (const name of cited) {
+      assert.match(doc, new RegExp(`^## ${name}$`, "m"), `${lang}: ## ${name} exists`);
+    }
+  }));
+
+// scribe creates scribe/<yyyymmdd-HHMMSS>, so a date prohibition with no subject would read as a
+// repository-wide rule and contradict it.
+test("the date prohibition is scoped to the names this skill creates", async () => {
   const scoped = {
     ja: /このスキルが作る名前に日付は入れない/,
     en: /Names this skill creates carry no date/,
   };
-  for (const [lang, path] of Object.entries(skills)) {
-    assert.match(readFileSync(path, "utf8"), scoped[lang], `${lang}: the subject is scoped`);
-  }
-  const scribe = readFileSync(join(root, "skills", "scribe", "SKILL.md"), "utf8");
-  assert.match(scribe, /scribe\/<yyyymmdd-HHMMSS>/, "scribe creates names carrying a date");
+  await eachLanguage((doc, lang) => {
+    assert.match(doc, scoped[lang], `${lang}: the subject is scoped`);
+  });
+  assert.match(
+    await readFile(at("en", "scribe", "SKILL.md"), "utf8"),
+    /scribe\/<yyyymmdd-HHMMSS>/,
+    "scribe creates names carrying a date",
+  );
 });

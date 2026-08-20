@@ -2,7 +2,7 @@
 
 `.claude/OUTCOME.md` の stub テンプレート。`/outcome` スキルが生成と更新のときに読む。
 
-## テンプレート
+## Template
 
 各リポジトリの `.claude/OUTCOME.md` は以下の構造に従う。`{...}` は生成時に内容へ置き換える。Behavior は必須。Indicators は任意で、Behavior を裏付ける場合のみ書き、なければセクションごと省略する。決めきれない項目は TBD と書き、全項が TBD のファイルは下流がアウトカム不在として扱う。
 

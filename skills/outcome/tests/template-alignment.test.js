@@ -161,9 +161,11 @@ test("SKILL.md branches on validate-outcome.py and runs it through the validatio
     assert.match(doc, /^\| ok {5}\|/m, `${lang}: the state ok row`);
     assert.match(
       doc,
-      /Bash\(\$HOME\/\.claude\/skills\/outcome\/scripts\/\*\)/,
+      /Bash\(\$\{CLAUDE_SKILL_DIR\}\/scripts\/\*\)/,
       `${lang}: allowed-tools grants running the script`,
     );
+    // A home-anchored grant names the dev tree, which a plugin copy of the skill never matches.
+    assert.doesNotMatch(doc.split("---")[1], /\$HOME|~\//, `${lang}: no hardcoded home path`);
     const validateSteps = doc.match(/validate-outcome\.py/g) || [];
     assert.ok(
       validateSteps.length >= 3,

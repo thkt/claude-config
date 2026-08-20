@@ -21,8 +21,8 @@ machine-written record must not crush it. The three that stay visible while fold
 answer whether opening it is needed, so the safety-critical facts and every
 non-zero deviation count live in the status line.
 
-The failure log (a nested <details>) and the informational lists (assumptions,
-scope deviations, missing test statements, anomalies) are shown only when
+The failure log (a nested <details>) and the informational lists (scope
+deviations, missing test statements, anomalies) are shown only when
 non-empty, so a clean run stays short instead of repeating "None" per section.
 Only a run with something to fold gets a <details>; one with nothing to show
 keeps the status line alone. A conformance / structure
@@ -39,7 +39,7 @@ safety-critical key (tests_pass / gates_pass) exits 1 with nothing on
 stdout, rather than a plausible-looking "clean" body -- a missing key must surface
 (via the caller's `&&` chain aborting the PR), not default to a reassuring value.
 
-stdin:  JSON {issue, assumptions[], scope_deviations[], untouched_plan_files[],
+stdin:  JSON {issue, scope_deviations[], untouched_plan_files[],
               missing_tests[], code_anomalies[], tests_pass, gates_pass,
               verify_output, conformance[], structure[]}
 stdout: the markdown fact tail, led by a blank line + horizontal rule.
@@ -48,21 +48,21 @@ exit 0 on a completed run. exit 1 on a parse error or a missing required key.
 
 import json
 import sys
+from collections.abc import Callable, Mapping
 from pathlib import Path
+from typing import NoReturn, cast
 
 REQUIRED_KEYS = ("tests_pass", "gates_pass")
 
-# Human-facing labels by body language. Only prose labels translate; the GitHub
-# keyword `Closes`, the code-fenced status line, and command names like `/issue`
-# stay verbatim so auto-close and copy-paste keep working. Unknown languages fall
-# back to English. Kept in code (not agent-provided) so the tail stays deterministic.
+# Only prose labels translate; the GitHub keyword `Closes`, the code-fenced status
+# line, and command names like `/issue` stay verbatim so auto-close and copy-paste
+# keep working. Kept in code, not agent-provided, so the tail stays deterministic.
 LABELS = {
     "english": {
         "tail_header": "_Below is the build workflow's automated verification. It checks the diff against the plan and does not hunt for code defects. It sits off the PR's main thread, so reading it is optional. Open it when a deviation count in the status line is non-zero._",
         "verify_output": "verify output",
         "evidence": "{n} evidence lines",
         "manual_checks": "Manual verification checklist (complete before merge)",
-        "assumptions": "Assumptions (veto targets)",
         "scope_deviations": "Files outside the plan's scope",
         "untouched_plan_files": "Planned files never changed",
         "missing_tests": "Planned test statements not found",
@@ -75,7 +75,6 @@ LABELS = {
         "verify_output": "verify 出力",
         "evidence": "根拠 {n} 件",
         "manual_checks": "実機確認 (merge 前に実施)",
-        "assumptions": "前提 (veto 対象)",
         "scope_deviations": "Plan スコープ外の変更ファイル",
         "untouched_plan_files": "一度も変更されていない plan の files",
         "missing_tests": "テストとして見つからない plan の言明",
@@ -86,35 +85,39 @@ LABELS = {
 }
 
 
-def _default_language():
-    """The user's PR-body language from the dotclaude settings. Best-effort: any
-    read/parse failure falls back to English so the tail still renders."""
+def _mapping(value: object) -> dict[str, object]:
+    """The value as a string-keyed mapping, empty for anything that is not one."""
+    return cast("dict[str, object]", value) if isinstance(value, dict) else {}
+
+
+def _default_language() -> str:
+    """Any read/parse failure falls back to English so the tail still renders."""
     try:
-        with open(Path.home() / ".claude" / "settings.json") as f:
-            return json.load(f).get("language") or "english"
+        with (Path.home() / ".claude" / "settings.json").open() as f:
+            settings = _mapping(cast("object", json.load(f)))
     except (OSError, json.JSONDecodeError):
         return "english"
+    language = settings.get("language")
+    return language if isinstance(language, str) and language else "english"
 
 
-def fail(message):
+def fail(message: str) -> NoReturn:
     print(f"Error: {message}", file=sys.stderr)
     sys.exit(1)
 
 
-def _tag(f):
-    """A finding's lead. With a severity present, high and trivial findings separate
-    at a glance."""
+def _tag(f: dict[str, object]) -> str:
+    """With a severity present, high and trivial findings separate at a glance."""
     severity = f.get("severity")
     category = f.get("category", "?")
     return f"[{severity}] {category}" if severity else f"[{category}]"
 
 
-def _evidence(location, label, value):
-    """The continuation line pointing at a finding's evidence. It always opens with a
-    backtick or a word, so an indented continuation line cannot become a heading.
-    Empty when neither part is present. label comes from the spec_line / reference
-    field names, so it is an identifier and stays English rather than joining LABELS."""
-    parts = []
+def _evidence(location: object, label: str, value: object) -> str:
+    """Always opens with a backtick or a word, so an indented continuation line cannot
+    become a heading. label comes from the spec_line / reference field names, so it is
+    an identifier and stays English rather than joining LABELS."""
+    parts: list[str] = []
     if location:
         parts.append(f"`{location}`")
     if value:
@@ -122,13 +125,12 @@ def _evidence(location, label, value):
     return " · ".join(parts)
 
 
-def _list(items):
-    return items if isinstance(items, list) else []
+def _list(items: object) -> list[object]:
+    return cast("list[object]", items) if isinstance(items, list) else []
 
 
-def _fence(text):
-    """A backtick fence at least one longer than the longest backtick run in text,
-    so a code block never terminates early on content that itself contains ```."""
+def _fence(text: str) -> str:
+    """A code block must not terminate early on content that itself contains ```."""
     longest = current = 0
     for ch in text:
         current = current + 1 if ch == "`" else 0
@@ -136,7 +138,29 @@ def _fence(text):
     return "`" * max(3, longest + 1)
 
 
-def render(payload):
+def _finding(f: object, label: str, source_key: str) -> list[str]:
+    """A non-mapping raises, which routes it to section's degrade path as a raw string."""
+    if not isinstance(f, dict):
+        raise TypeError("finding is not a mapping")
+    d = cast("dict[str, object]", f)
+    return [
+        f"`{_tag(d)}` {d.get('detail', '')}".rstrip(),
+        _evidence(d.get("location"), label, d.get(source_key)),
+    ]
+
+
+def _anomaly(a: object) -> list[str]:
+    """A non-mapping raises, which routes it to section's degrade path as a raw string."""
+    if not isinstance(a, dict):
+        raise TypeError("anomaly is not a mapping")
+    d = cast("dict[str, object]", a)
+    return [
+        f"{d.get('unit', '?')} ({d.get('kind', '?')}): {d.get('notes', '')}".rstrip(),
+        *(str(e) for e in _list(d.get("evidence"))),
+    ]
+
+
+def render(payload: Mapping[str, object]) -> str:
     issue = str(payload.get("issue", "")).strip()
     tests = "pass" if payload.get("tests_pass") else "FAIL"
     gates = "pass" if payload.get("gates_pass") else "FAIL"
@@ -145,34 +169,32 @@ def render(payload):
     missing = _list(payload.get("missing_tests"))
     conformance = _list(payload.get("conformance"))
     structure = _list(payload.get("structure"))
-    lang = (payload.get("language") or "english").lower()
+    raw_lang = payload.get("language")
+    lang = raw_lang.lower() if isinstance(raw_lang, str) and raw_lang else "english"
     L = LABELS.get(lang, LABELS["english"])
 
     out = [L["tail_header"], f"Closes #{issue}" if issue else "Closes #"]
 
-    # Everything below the status line folds into one <details> (reviewer request:
-    # the tail should not dominate the PR body). The status line itself is the
-    # <summary>, so pass/FAIL stays visible while collapsed; markdown does not
-    # render inside <summary>, hence <code> instead of backticks.
+    # The status line itself is the <summary>, so pass/FAIL stays visible while
+    # collapsed; markdown does not render inside <summary>, hence <code> instead of
+    # backticks.
     summary = (
         f"<code>verify tests={tests} gates={gates}</code> · "
         f"<code>scope-deviations {len(scope)}</code> · "
         f"<code>missing-tests {len(missing)}</code>"
     )
-    # The summary is all that shows while the tail is folded, so every non-zero count
-    # the open-or-not decision rests on surfaces here; a count absent from the summary
-    # goes unnoticed inside the fold. The high breakdown is there because a bare count
-    # makes a wording nit and a gap that defeats an acceptance criterion look like the
-    # same single finding.
+    # A count absent from the summary goes unnoticed inside the fold, so every non-zero
+    # count the open-or-not decision rests on surfaces here. The high breakdown is there
+    # because a bare count makes a wording nit and a defeated acceptance criterion look alike.
     if untouched:
         summary += f" · <code>untouched-plan-files {len(untouched)}</code>"
     if conformance:
-        high = sum(1 for f in conformance if isinstance(f, dict) and f.get("severity") == "high")
+        high = sum(1 for f in conformance if _mapping(f).get("severity") == "high")
         summary += f" · <code>conformance {len(conformance)}"
         summary += f" ({high} high)</code>" if high else "</code>"
     if structure:
         summary += f" · <code>structure {len(structure)}</code>"
-    folded = []
+    folded: list[str] = []
 
     if tests == "FAIL" or gates == "FAIL":
         detail = payload.get("verify_output")
@@ -183,21 +205,25 @@ def render(payload):
                 f"<details><summary>{L['verify_output']}</summary>\n\n{fence}\n{body}\n{fence}\n\n</details>"
             )
 
-    def section(label, items, render_item, fold=None):
+    def section(
+        label: str,
+        items: object,
+        render_item: Callable[[object], str | list[str]],
+        fold: str | None = None,
+    ) -> None:
         items = _list(items)
         if not items:
             return
-        lines = []
+        lines: list[str] = []
         for x in items:
             try:
                 text = render_item(x)
             except (AttributeError, TypeError, KeyError):
                 # A malformed (e.g. non-dict) item must not crash the render and drop
-                # the whole fail-closed tail; degrade to its raw string instead.
+                # the whole fail-closed tail.
                 text = str(x)
-            # A render_item returning a list turns everything past the first element
-            # into a continuation line. Keep each element on one line so an embedded
-            # newline can't break the list or promote a following line to a heading.
+            # Keep each element on one line: an embedded newline breaks the list and
+            # promotes a following line to a heading.
             parts = text if isinstance(text, list) else [text]
             parts = [" ".join(str(p).split("\n")) for p in parts if str(p).strip()]
             if not parts:
@@ -217,68 +243,43 @@ def render(payload):
 
     # Rendered as task-list items so the reviewer can tick them off on the PR.
     section(L["manual_checks"], payload.get("manual_checks"), lambda s: f"[ ] {s}")
-    section(L["assumptions"], payload.get("assumptions"), str)
     section(L["scope_deviations"], scope, lambda f: f"`{f}`")
     # The inverse of scope_deviations: a file the plan named but nothing touched can be
     # the trace of a unit that went unimplemented and still passed.
     section(L["untouched_plan_files"], untouched, lambda f: f"`{f}`")
     section(L["missing_tests"], missing, str)
-    section(
-        L["conformance"],
-        conformance,
-        lambda f: [
-            f"`{_tag(f)}` {f.get('detail', '')}".rstrip(),
-            _evidence(f.get("location"), "spec", f.get("spec_line")),
-        ],
-    )
-    section(
-        L["structure"],
-        structure,
-        lambda f: [
-            f"`{_tag(f)}` {f.get('detail', '')}".rstrip(),
-            _evidence(f.get("location"), "ref", f.get("reference")),
-        ],
-    )
-    # The evidence is verbatim command output whose line count buries the conclusion.
-    # Being verbatim is what makes it evidence, so translation cannot shrink it and the
-    # renderer is the only place it can be shortened.
-    section(
-        L["anomalies"],
-        payload.get("code_anomalies"),
-        lambda a: [
-            f"{a.get('unit', '?')} ({a.get('kind', '?')}): {a.get('notes', '')}".rstrip(),
-            *(str(e) for e in _list(a.get("evidence"))),
-        ],
-        fold=L["evidence"],
-    )
+    section(L["conformance"], conformance, lambda f: _finding(f, "spec", "spec_line"))
+    section(L["structure"], structure, lambda f: _finding(f, "ref", "reference"))
+    # The evidence is verbatim command output whose line count buries the conclusion, and
+    # being verbatim is what makes it evidence, so the renderer is the only place to shorten it.
+    section(L["anomalies"], payload.get("code_anomalies"), _anomaly, fold=L["evidence"])
 
-    # Blank lines around the folded content keep GitHub rendering the markdown
-    # inside the HTML <details> block. Only a run with something to fold gets a
-    # <details>; an empty one asks the reviewer to open something with nothing in it.
+    # Blank lines around the folded content keep GitHub rendering the markdown inside the
+    # HTML <details> block. An empty <details> asks the reviewer to open nothing.
     out.append(
         f"<details>\n<summary>{summary}</summary>\n\n" + "\n\n".join(folded) + "\n\n</details>"
         if folded
         else summary
     )
 
-    # Lead with a blank line + rule so this machine tail stays separated when appended
-    # (>>) below the agent's Summary, without turning the summary's last line into a
-    # setext heading, and to signal where the auto-generated section begins.
+    # The blank line + rule keeps this machine tail separated when appended (>>) below
+    # the agent's Summary, and stops the summary's last line becoming a setext heading.
     return "\n\n---\n\n" + "\n\n".join(out) + "\n"
 
 
-def main():
+def main() -> None:
     try:
-        payload = json.loads(sys.stdin.read())
+        loaded = cast("object", json.loads(sys.stdin.read()))
     except json.JSONDecodeError as exc:
         fail(f"ship payload is not valid JSON: {exc}")
-    if not isinstance(payload, dict):
+    if not isinstance(loaded, dict):
         fail("ship payload must be a JSON object")
+    payload = cast("dict[str, object]", loaded)
     missing = [k for k in REQUIRED_KEYS if k not in payload]
     if missing:
         fail(f"ship payload missing required key(s): {', '.join(missing)}")
-    payload.setdefault("language", _default_language())
-    sys.stdout.write(render(payload))
+    _ = payload.setdefault("language", _default_language())
+    _ = sys.stdout.write(render(payload))
 
 
 if __name__ == "__main__":

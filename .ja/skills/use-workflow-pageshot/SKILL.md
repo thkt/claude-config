@@ -11,7 +11,7 @@ user-invocable: false
 
 ## 入力
 
-PR 本文は `/pr` から文字列として渡される。下表のいずれかが欠落していれば、`mode: failed` と欠落フィールド名を返し、判断は `/pr` に任せる。
+PR 本文は `/pr` から文字列として渡される。下表のいずれかが欠落していれば、`mode=failed reason=<欠落フィールド名>` を返し、判断は `/pr` に任せる。
 
 | フィールド  | ソース                                                    |
 | ----------- | --------------------------------------------------------- |
@@ -31,12 +31,12 @@ PR 本文は `/pr` から文字列として渡される。下表のいずれか�
 
 ## 実行
 
-| ステップ | アクション                                                                                   |
-| -------- | -------------------------------------------------------------------------------------------- |
-| 1        | 出力ディレクトリを作成。${CLAUDE_SKILL_DIR}/../../workspace/pageshot/$(date +%Y%m%d-%H%M%S)/ |
-| 2        | `agent-browser open {Preview URL}`                                                           |
-| 3        | モードに応じて Screenshot Flow または Video Flow を実行                                      |
-| 4        | 成果物の絶対パスを stdout に出力                                                             |
+| ステップ | アクション                                                                   |
+| -------- | ---------------------------------------------------------------------------- |
+| 1        | 出力ディレクトリを作成。`.claude/workspace/pageshot/$(date +%Y%m%d-%H%M%S)/` |
+| 2        | `agent-browser open {Preview URL}`                                           |
+| 3        | モードに応じて Screenshot Flow または Video Flow を実行                      |
+| 4        | 成果物の絶対パスを stdout に出力                                             |
 
 ## Screenshot Flow (1 step)
 
@@ -59,20 +59,11 @@ step 間に `agent-browser wait 500` を挟む。各操作の前に `snapshot` �
 
 ## 出力
 
-stdout の 1 行。
+stdout に mode 行を 1 つ返す。`/pr` はこの行を読んで分岐する。
 
-```text
-mode=screenshot artifact=/absolute/path/to/step-01.png
-```
-
-動画を撮ったとき。
-
-```text
-mode=video artifact=/absolute/path/to/capture.mp4
-```
-
-失敗時。
-
-```text
-mode=failed reason=<one-line reason>
-```
+| 状況               | 行                                                        |
+| ------------------ | --------------------------------------------------------- |
+| 静止画を撮った     | `mode=screenshot artifact=/absolute/path/to/step-01.png`  |
+| 動画を撮った       | `mode=video artifact=/absolute/path/to/capture.mp4`       |
+| 入力が欠けた       | `mode=failed reason=<欠落フィールド名>`                   |
+| 撮影中に失敗した   | `mode=failed reason=<1 行の理由>`                         |

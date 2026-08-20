@@ -111,3 +111,8 @@ recallのembedderは同期（sync）で実装する。kiku/yomuの既存 `Embed`
 - Ruri v3: <https://huggingface.co/cl-nagoya/ruri-v3-310m>
 - ort crate: <https://crates.io/crates/ort>
 - kiku ADR: [ADR-0021](0021-build-slack-semantic-search-mcp-kiku.md)
+
+## Reassessment Triggers
+
+- ort が RC を出た後に破壊的変更を入れ、バージョンピンで吸収できなくなったとき
+- 768 次元の互換要件が外れ、より高品質なモデルへ移れる状況になったとき

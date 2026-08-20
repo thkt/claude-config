@@ -24,6 +24,12 @@ reference_module: {kind + reason as an object (kind: module/no-module/new-shape)
 - files: {path only, one per file (`src/foo/list.tsx`, `src/foo/detail.tsx`). Roles go in conventions}
 - conventions: {shared conventions later units must keep (composed components, where formatting lives, how state is passed)}
 
+### Rules
+
+{Rules bearing across units, each with its source and a verbatim quote. Omit the whole subsection when there are none}
+
+- `docs/wiki/<page>.md`: {the 定型手順 or 内容 line, verbatim}
+
 ### Preconditions
 
 - {existing dependency, as path only or path + stable anchor (`src/storage/mod.rs` `open_db`)}

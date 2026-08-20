@@ -1,8 +1,8 @@
 ---
 name: fix
-description: Rapidly fix small bugs and minor improvements in development environment. Hand it a filed issue number and a fix confined to 1-3 files carries straight through. Do NOT use for new feature implementation or changes spanning 4 or more files (write the plan via /think and /issue, then hand the number to the build workflow).
+description: Fix bugs confined to 1-3 files in a development environment. Hand it a filed issue number and that fix carries straight through. Do NOT use for new feature implementation or changes spanning 4 or more files (write the plan via /think and /issue, then hand the number to the build workflow).
 when_to_use: バグ修正, 直して, 修正して, fix bug, 不具合
-allowed-tools: Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit Read LS Agent AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../scribe/scripts/*) Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit Read LS Agent AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
 model: opus
 argument-hint: "[bug or issue description]"
 ---
@@ -11,24 +11,14 @@ argument-hint: "[bug or issue description]"
 
 ## Input
 
-`$ARGUMENTS` holds one of four forms: a bug description, a finding ID from a `/audit` snapshot in `${CLAUDE_SKILL_DIR}/../../history/` (e.g., `RC-001`, `SEC-003`), a finding returned by a standalone audit workflow run, or the number of a filed issue. Scope is limited to small, well-understood issues of 1-3 files. When Direct Finding Input carries multiple findings, fix them one at a time in descending severity order. When the impact spans 4+ files, check the multi-file trigger in § Escalation first.
+The shape of `$ARGUMENTS` decides the entry point. Scope is limited to small, well-understood issues of 1-3 files. When several findings are handed over directly, fix them one at a time, highest severity first. When the impact spans 4+ files, check the multi-file trigger in § Escalation first.
 
-| Pattern                                       | Mode                  | Action                                                                                                                                                                                                                                  |
-| --------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/^[A-Z][A-Z0-9]*-[0-9]+$/`                   | Finding ID Resolution | Read the latest snapshot from `${CLAUDE_SKILL_DIR}/../../history/` and find the ID match in findings[]. Carry severity and summary, skip Outcome Anchor and Build Check, enter Triage. If absent, present error + suggest Standard Flow |
-| Finding with file / line / severity / summary | Direct Finding Input  | Return value of the audit workflow: a single JSON finding, or text carrying file:line + severity + summary. Use file:line as the RCA starting point, skip Outcome Anchor and Build Check, enter Triage                                  |
-| `/^#?[0-9]+$/`                                | Issue Handoff         | Read the body with `gh issue view <number>`. Use Why and the repro steps as the bug description, Premises as the givens. Skip Outcome Anchor and enter Build Check                                                                      |
-| empty                                         | Fix Prompt            | Ask via AskUserQuestion for Fix type from Bug fix / Error message / Test failure and Description as free text via Other, then execute                                                                                                   |
-| otherwise                                     | Standard Flow         | Treat as a bug description and run from Outcome Anchor                                                                                                                                                                                  |
-
-## Delegation Map
-
-| Type      | Target                                               | Purpose                                           |
-| --------- | ---------------------------------------------------- | ------------------------------------------------- |
-| Skill     | `use-context-root-cause-analysis`                    | 5 Whys for non-obvious bugs                       |
-| Agent     | `generator-test`                                     | Regression test from symptom + repro steps        |
-| Agent     | `resolver-build`                                     | TypeScript or build error triage                  |
-| Reference | `${CLAUDE_SKILL_DIR}/references/defense-in-depth.md` | Multi-layer validation for Recurring / Systematic |
+| Pattern                                     | How it is read                                  | Enters at      |
+| ------------------------------------------- | ----------------------------------------------- | -------------- |
+| A finding carrying `file:line` and severity | Use it as it stands                             | Triage         |
+| `/^#?[0-9]+$/`                              | Read the body via `gh issue view <number>`      | Build Check    |
+| empty                                       | Ask for the bug description via AskUserQuestion | Outcome Anchor |
+| otherwise                                   | Take the text as a bug description              | Outcome Anchor |
 
 ## Outcome Anchor
 
@@ -47,39 +37,47 @@ Detect the build command from package.json or project config and run it.
 
 Obvious skips both RCA and regression test generation, so it is limited to findings with low misfix risk.
 
-| Input                 | Condition                                                      | Path        |
-| --------------------- | -------------------------------------------------------------- | ----------- |
-| Bug desc              | Single location identified + 1-3 line fix + no similar pattern | Obvious     |
-| Bug desc              | Intermittent, multiple repro conditions, or unknown root cause | Non-obvious |
-| finding (ID / direct) | severity low / medium and a 1-3 line fix                       | Obvious     |
-| finding (ID / direct) | severity critical / high, or the fix is non-obvious            | Non-obvious |
+| Input     | Condition                                                      | Path        |
+| --------- | -------------------------------------------------------------- | ----------- |
+| Bug desc  | Single location identified + 1-3 line fix + no similar pattern | Obvious     |
+| Bug desc  | Intermittent, multiple repro conditions, or unknown root cause | Non-obvious |
+| A finding | severity low / medium and a 1-3 line fix                       | Obvious     |
+| A finding | severity critical / high, or the fix is non-obvious            | Non-obvious |
+
+## Reading the rules
+
+Once the files to change are settled, run `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <the bug's words> <the files to touch>` before starting. Read every page under `matched`, since its rule bears on a file this fix touches. This route never passes through `/think`, so this is the one place a rule reaches it; with no plan to carry them, there is no second chance.
 
 ## Obvious
 
 1. Apply minimal fix
-2. Run tests covering affected code if any exist
+2. Run the tests and confirm no other test regressed
 
 ## Non-obvious
 
-1. Run 5 Whys via `Skill("use-context-root-cause-analysis")`. If via Finding ID or Direct Finding Input, pass the finding's file:line and summary as the 5 Whys starting point. Output Symptom / Root cause / Pattern. When an Issue Handoff body already names the cause down to a file:line, skip the 5 Whys, carry that cause as the Root cause, and judge only the Pattern.
-2. `Agent(subagent_type: generator-test)` for the regression test. Pass symptom, repro steps, and the root cause from step 1. The spawn runs in the background and its result arrives as a completion notification
-3. Verify the regression test is Red once the completion notification arrives
+Where the RCA starts depends on the route. A route absent from the table starts from the bug description.
+
+| Route                                                          | What happens to the RCA                                                |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| The finding was handed over directly                           | Pass its file:line and summary as the starting point                   |
+| An issue number whose body names the cause down to a file:line | Skip it. Carry that cause as the Root cause and judge only the Pattern |
+
+1. Run the RCA via `Skill("use-context-root-cause-analysis")`
+2. `Agent(subagent_type: generator-test)` for the regression test. Pass symptom, repro steps, and the root cause the RCA produced
+3. Wait for the generation to finish, then verify the regression test is Red
 4. Apply fix
 5. Verify regression test is Green and no other tests regressed
-6. If Pattern is Recurring or Systematic, apply `${CLAUDE_SKILL_DIR}/references/defense-in-depth.md`
+6. Apply ${CLAUDE_SKILL_DIR}/references/defense-in-depth.md according to the Pattern
 
 ## Escalation
 
-Branch on objective triggers, not confidence self-assessment. Do not attempt fix #4 without escalating. When delegating from the Issue Handoff path, confirm the filed issue carries a `## Plan` section, then hand the build workflow its number.
+Branch on objective triggers, not confidence self-assessment. When delegating from the issue-number route, confirm the filed issue carries a `## Plan` section, then hand the build workflow its number.
 
-| Trigger                        | Action                                                                        |
-| ------------------------------ | ----------------------------------------------------------------------------- |
-| RCA cannot identify root cause | Escalate to `/research`                                                       |
-| Tests still fail after fix     | Re-analyze root cause. After 3 failures, escalate to `/research`              |
-| Multi-file impact (4+ files)   | Write the Plan via `/think` and `/issue`, then delegate to build              |
-| New feature scope              | Write the Plan via `/think` and `/issue`, then delegate to build              |
-| Pattern = Systematic           | Escalate to `/research`                                                       |
-| Fix outside OUTCOME.md scope   | Confirm with user; redefine Non-goals or write the Plan and delegate to build |
+| Destination        | Trigger                                                                                                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `/research`        | RCA cannot identify a root cause. Pattern is Systematic. Tests still fail on the third fix (re-analyze on the first two) |
+| The build workflow | The impact spans 4+ files. The scope is a new feature. Write the Plan via `/think` and `/issue` before handing it over   |
+| Ask the user       | The fix falls outside OUTCOME.md scope. Decide whether to redefine Non-goals or write the Plan and delegate to build     |
 
 ## Error Handling
 
@@ -96,4 +94,4 @@ Not done until every item holds. A parenthesized item is required only when it a
 - [ ] All tests pass
 - [ ] Pattern field recorded from RCA (Non-obvious path)
 - [ ] defense-in-depth applied (Recurring / Systematic only)
-- [ ] Re-audit suggested (Finding ID / Direct Finding Input path)
+- [ ] Re-audit suggested (findings handed over directly)

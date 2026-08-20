@@ -121,3 +121,8 @@ API フォールバックで動作し続ける（概念発見は不可だが、�
 - ADR-0017: Build frontend code search MCP (yomu)
 - DA review: .claude/workspace/planning/2026-03-03-kiku/plan.md
 - SOW/Spec: .claude/workspace/planning/2026-03-03-kiku/sow.md, spec.md
+
+## Reassessment Triggers
+
+- コピーフォークした embedder.rs と storage が yomu と乖離し、同じ修正を 2 回入れる事態が続いたとき
+- 日本語会話の embedding 品質が実測で足りず、用語発見に使えなくなったとき

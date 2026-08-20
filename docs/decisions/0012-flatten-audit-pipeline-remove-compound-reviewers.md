@@ -103,3 +103,8 @@ Compound-reviewer layer removed in all tiers.
 - Sub-reviewer definitions unchanged
 - Challenger/Verifier/Integrator unchanged (Large tier only)
 - Snapshot format unchanged
+
+## Reassessment Triggers
+
+- The tier boundaries stop matching real audit sizes, so a Small run spawns as many agents as a Large one
+- Leader review becomes the bottleneck that removing the compound layer was meant to avoid

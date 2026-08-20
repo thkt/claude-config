@@ -117,3 +117,8 @@ Disposition of the three Context irregularities under this boundary:
 - Related: ADR-0005 (documentation role separation), ADR-0042 (skill-specific scripts colocation), ADR-0058 (inline single-consumer agent context skills), ADR-0062 (delta-based coverage gate, MADR v4 frontmatter precedent).
 - Pilot results (2026-05-13): 5 ADRs tagged (`~/.claude/0028`, `~/.claude/0062`, `~/.claude/0066`, `rurico/0003`, `amici/0002`); aggregator MVP at `~/.claude/skills/audit-undocumented/scripts/audit-adr-scopes.py`; cluster detection successfully flagged the `rurico/0003 ↔ amici/0002` pair as RESOLVED after the status patch.
 - Future work: `/adr` skill prompts for `scope:`; `scope` vocabulary governance (when to add a new scope token); promotion pipeline ADR (Step 4 of the backcasting path).
+
+### Reassessment Triggers
+
+- A new decision has no obvious home on first attempt, so the boundary stops answering the routing question
+- The scope-tagged aggregation needs a contract the boundary does not supply

@@ -18,7 +18,7 @@ Shows that an audit finding maps to a concrete execution path by tracing it, sta
 
 ## Input
 
-Accept a finding with an optional verification_hint via the Task spawn prompt. When the caller has not broken it into structured fields, read finding_id, location (file:line), evidence, reasoning, and verification_hint (if present) from the text. When the input is empty, return empty verifications with a note.
+Accept a finding with an optional verification_hint via the Agent spawn prompt. When the caller has not broken it into structured fields, read finding_id, location (file:line), evidence, reasoning, and verification_hint (if present) from the text. When the input is empty, return empty verifications with a note.
 
 ## Check Types
 

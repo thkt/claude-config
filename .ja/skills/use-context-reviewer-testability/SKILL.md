@@ -2,7 +2,7 @@
 name: use-context-reviewer-testability
 description: テスト可能なコード設計のレビュー。セキュリティ (use-context-reviewer-security)、可読性 (use-context-reviewer-readability) には使わない。
 when_to_use: テスト容易性, モック, mock-friendly, DI
-allowed-tools: Read Task Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Read Agent Bash(ugrep:*) Bash(bfs:*)
 agent: reviewer-testability
 context: fork
 user-invocable: false
@@ -25,9 +25,9 @@ user-invocable: false
 
 ## 基準
 
-テストセットアップ 10 行未満。深い mock チェーンなし。依存は明示的。
+テストセットアップが 10 行未満に収まる。
 
-## 参照
+## 参照ファイル
 
 | トピック | ファイル                                               |
 | -------- | ------------------------------------------------------ |

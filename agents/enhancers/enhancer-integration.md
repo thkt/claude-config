@@ -8,14 +8,14 @@ skills: [use-context-root-cause-analysis]
 
 # Progressive Integrator
 
-Match challenger and verifier verdicts by finding_id, group cross-domain findings into root causes via 5 Whys, and return a structured `findings` array. The caller owns persistence and rendering.
+Match challenger and verifier verdicts by finding_id, group cross-domain findings into root causes, and return a structured `findings` array. The caller owns persistence and rendering.
 
 ## Posture
 
 - Reconcile before integrate. Apply reconciliation rules to challenger + verifier verdicts before any dedup, correlation, or root cause synthesis. Skipping order produces inconsistent results
 - Synthesize, don't list. Cross-domain findings must be grouped into shared root causes when 2+ domains flag the same area. A flat finding list misses the convergence signal
 - Don't force correlation. Standalone single-domain findings are valid. Forced grouping fabricates relationships that don't exist
-- Banned shortcuts inside synthesis: count-based severity upgrades (two mediums do not add up to a high), skipping the 5 Whys on convergence clusters
+- Banned shortcuts inside synthesis: count-based severity upgrades (two mediums do not add up to a high), skipping the root cause analysis on convergence clusters
 
 ## Input
 
@@ -87,8 +87,8 @@ Run from `file:line:category` deduplication through per-cluster root cause synth
 3. Group findings by location (file, module, boundary) and identify convergence signals where 2+ domains flag the same area
 4. Re-evaluate severity per convergence cluster (rules below)
 5. Single-domain findings with no correlation remain as standalone items
-6. For each convergence cluster, synthesize one root cause that explains all findings, and apply 5 Whys on the root cause, not individual findings
-7. Apply 5 Whys individually to standalone findings
+6. For each convergence cluster, synthesize one root cause that explains all findings, and run the root cause analysis on the root cause, not on individual findings
+7. Run the root cause analysis on each standalone finding
 8. Classify each root cause by category (below)
 9. Score root causes (`findings_resolved × max_severity × fixability`) and generate a unified action plan per root cause (one action resolves many findings)
 10. Generate auto-fixable suggestions (auto-fix detection below, target the root cause where possible)

@@ -102,3 +102,8 @@ Phase 2: reviewing-security skill にフロントエンド taint チェックリ
 - guardrails で eval/ハードコード秘匿情報/mixed content/HTML結合/open redirect が検知される
 - false positive rate が既存ルールと同等以下（<5%）
 - reviewing-security が dangerouslySetInnerHTML + サニタイザ確認等の taint パターンをチェックする
+
+## Reassessment Triggers
+
+- Semgrep OSS の解析力が単一ファイル taint を超え、自前実装との差が開いたとき
+- 手動キャッチアップが追いつかず、OWASP ルールの取り込み漏れが検出漏れとして出たとき

@@ -13,27 +13,13 @@ const schema = join(root, "agents", "_lib", "finding-schema.md");
 const integrator = join(root, "agents", "enhancers", "enhancer-integration.md");
 const generator = join(root, "agents", "generators", "generator-test.md");
 
-// The registry in finding-schema.md decides the ID prefixes. Some carry digits, A11Y among them,
-// so a regex admitting letters alone drops the Finding ID and falls to the Standard Flow. It
-// raises no error and quietly runs the Outcome Anchor and the Build Check.
-test("the Finding ID regex admits every prefix in the registry", () => {
-  const registry = readFileSync(schema, "utf8");
-  const prefixes = [...registry.matchAll(/^\| ([A-Z0-9]+) {2,}\| reviewer-/gm)].map((m) => m[1]);
-  assert.ok(prefixes.includes("A11Y"), "the registry carries a prefix with digits");
-  assert.ok(prefixes.length >= 10, `the prefixes are readable from the registry (${prefixes.length})`);
-
+// DR-0099 retired the Finding ID route: the audit snapshot stopped carrying a per-finding id, so
+// resolving one against ~/.claude/history/ matched nothing.
+test("no route resolves a finding through the snapshot history", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
-    const found = doc.match(/`\/(\^\[[^`]+?)\/`/);
-    assert.ok(found, `${lang}: the Finding ID regex is readable from SKILL.md`);
-    const pattern = new RegExp(found[1]);
-    for (const prefix of prefixes) {
-      assert.match(`${prefix}-001`, pattern, `${lang}: ${prefix}-001 passes as a Finding ID`);
-    }
-    assert.doesNotMatch("just a bug description", pattern, `${lang}: prose does not become a Finding ID`);
-    // This keeps it from clashing with the issue handoff input. Without demanding a letter in the
-    // prefix, 1-2 would match both rows.
-    assert.doesNotMatch("1-2", pattern, `${lang}: a digits-only prefix does not become a Finding ID`);
+    assert.doesNotMatch(doc, /history\//, `${lang}: it does not read the snapshot history`);
+    assert.doesNotMatch(doc, /Finding ID/, `${lang}: no Finding ID route remains`);
   }
 });
 
@@ -68,6 +54,25 @@ test("fix does not branch on a field absent from the snapshot", () => {
   }
 });
 
+// defense-in-depth sends the reader into another skill's section, so a rename there leaves the
+// pointer resolving to nothing.
+test("the section defense-in-depth cites exists in the analysis skill", () => {
+  const rca = {
+    ja: join(root, ".ja", "skills", "use-context-root-cause-analysis", "SKILL.md"),
+    en: join(root, "skills", "use-context-root-cause-analysis", "SKILL.md"),
+  };
+  const depth = {
+    ja: join(root, ".ja", "skills", "fix", "references", "defense-in-depth.md"),
+    en: join(root, "skills", "fix", "references", "defense-in-depth.md"),
+  };
+  for (const lang of ["ja", "en"]) {
+    const cited = readFileSync(depth[lang], "utf8").match(/\(§ ([^)]+)\)/);
+    assert.ok(cited, `${lang}: defense-in-depth cites a section`);
+    const heading = new RegExp(`^## ${cited[1]}$`, "m");
+    assert.match(readFileSync(rca[lang], "utf8"), heading, `${lang}: ## ${cited[1]} exists`);
+  }
+});
+
 // generator-test takes root_cause as optional and binds it to the behavior once passed. fix's
 // Non-obvious path obtains the root cause at step 1, so not passing it leaves that optional
 // permanently empty.
@@ -77,19 +82,18 @@ test("what is handed to generator-test matches the agent's Input", () => {
   assert.match(agent, /When a root cause is passed/, "the agent states what root_cause is for");
   assert.match(
     readFileSync(skills.ja, "utf8"),
-    /渡すのは symptom、再現手順、step 1 の root cause/,
+    /渡すのは symptom、再現手順、RCA が出した root cause/,
     "ja: all three are passed",
   );
   assert.match(
     readFileSync(skills.en, "utf8"),
-    /Pass symptom, repro steps, and the root cause from step 1/,
+    /Pass symptom, repro steps, and the root cause the RCA produced/,
     "en: all three are passed",
   );
 });
 
 // The handoff from issue to fix. Without issue's guidance, fix's input route, and the escalation
-// threshold all in step, fix rereads a number issue recommended /fix for as a Standard Flow
-// input.
+// threshold all in step, fix rereads a number issue recommended /fix for as plain bug prose.
 test("the handoff from issue to fix lines up on both sides", () => {
   const issues = {
     ja: join(root, ".ja", "skills", "issue", "SKILL.md"),
@@ -105,15 +109,12 @@ test("the handoff from issue to fix lines up on both sides", () => {
     const doc = readFileSync(path, "utf8");
     assert.match(doc, /`\/\^#\?\[0-9\]\+\$\/`/, `${lang}: fix carries the issue number pattern`);
     assert.match(doc, /gh issue view/, `${lang}: the body is read with gh issue view`);
-    assert.match(
-      doc,
-      /(次の 4 形式|one of four forms)/,
-      `${lang}: the input enumeration counts the issue number`,
-    );
-    assert.match(
-      doc,
-      /(起票済み issue の番号|the number of a filed issue)/,
-      `${lang}: the issue number is listed in the enumeration`,
+    // A route dropped from the input table leaves that shape of $ARGUMENTS falling to the last row.
+    const routes = doc.split("\n\n").find((block) => block.startsWith("| "));
+    assert.equal(
+      routes.split("\n").length - 2,
+      4,
+      `${lang}: the input table lists four routes`,
     );
     assert.match(
       doc.split("---")[1],
@@ -130,13 +131,38 @@ test("the handoff from issue to fix lines up on both sides", () => {
   assert.match(frontmatter, /Bash\(gh issue view:\*\)/, "allowed-tools grants gh issue view");
 });
 
-// The completion conditions are a checklist. Reverting them to a table turns the Required column
-// into a row of Yes and leaves nothing to fill in.
+// Each condition here is done or it is not, with nothing to state past that. Splitting them into
+// a name and a condition, the way census does, leaves the condition column echoing the name.
 test("the completion conditions take checklist form in both languages", () => {
   for (const [lang, path] of Object.entries(skills)) {
     assert.ok(existsSync(path), `${path} exists`);
     const doc = readFileSync(path, "utf8");
     const items = doc.match(/^- \[ \] /gm) || [];
     assert.equal(items.length, 5, `${lang}: there are five completion conditions (actual ${items.length})`);
+  }
+});
+
+// /fix never passes through /think, so a rule reaches this route only here. Without it the same
+// convention holds for a planned change and lapses for a one-off fix.
+test("fix reads the wiki rules before it changes anything, and is granted that path", () => {
+  const skills = {
+    ja: join(root, ".ja", "skills", "fix", "SKILL.md"),
+    en: join(root, "skills", "fix", "SKILL.md"),
+  };
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    assert.match(doc, /find_wiki_rule\.py/, `${lang}: it runs the finder`);
+    const grant = doc.match(/^allowed-tools:.*$/m)?.[0] ?? "";
+    assert.match(
+      grant,
+      /Bash\(\$\{CLAUDE_SKILL_DIR\}\/\.\.\/scribe\/scripts\/\*\)/,
+      `${lang}: allowed-tools grants running it`,
+    );
+    // Reading after the fix lands is reading too late.
+    const heading = lang === "ja" ? "## 決まりごとの参照" : "## Reading the rules";
+    assert.ok(
+      doc.indexOf(heading) < doc.indexOf("## Obvious"),
+      `${lang}: the rules are read before either lane starts`,
+    );
   }
 });

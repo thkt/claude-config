@@ -2,7 +2,7 @@
 name: slice
 description: Break a plan / spec / PRD into independently-grabbable tracer-bullet vertical-slice issues and publish them to GitHub in dependency order. Each issue is one thin slice cutting through every layer. Do NOT use to file a single request (use /issue instead).
 when_to_use: break plan into issues, plan to issues, spec to issues, vertical slice, tracer bullet, split into issues, slice
-allowed-tools: Bash(gh:*) Bash(ugrep:*) Bash(bfs:*) Read LS Task AskUserQuestion
+allowed-tools: Bash(gh:*) Bash(ugrep:*) Bash(bfs:*) Read LS Agent AskUserQuestion
 model: opus
 argument-hint: "[plan / spec / PRD / issue ref]"
 ---
@@ -51,11 +51,16 @@ Present the proposed breakdown as a numbered list, then add one Uncovered line a
 
 After approval, confirm once more via AskUserQuestion before batch publish: "Create these N issues?". Creating N issues is outward-facing and hard to unwind, so never auto-publish without confirmation.
 
-On approval, publish in dependency order with blockers first. Create blockers first and capture their numbers so "Blocked by" can reference real issue numbers. Per issue, use the skeleton chosen by Template selection below, write the body to a temp file, and file it with `gh issue create --title "<title>" --body-file <path>`. Multi-line markdown breaks through `--body`, so use `--body-file`. Write `<path>` as a literal absolute path, not a variable. The hook cannot expand a variable, and the filing stops. Do not attach a triage label; AFK consumer wiring is out of scope. Do not close or modify any parent issue. After publishing, list the created issues in dependency order, each line carrying its issue number and its blocker's number; write "none" when a slice has no blocker.
+On approval, publish in dependency order with blockers first. Create blockers first and capture their numbers so "Blocked by" can reference real issue numbers.
+
+1. Pour the body into the skeleton chosen by Template selection and write it to a temp file. Write `<path>` as a literal absolute path, not a variable. The hook cannot expand a variable, and the filing stops
+2. File it with `gh issue create --title "<title>" --body-file <path>`. Multi-line markdown breaks through `--body`, so use `--body-file`
+3. Attach no triage label. AFK consumer wiring is out of scope. Close or modify no parent issue
+4. List the created issues in dependency order, each line carrying its issue number and its blocker's number. Write "none" when a slice has no blocker
 
 ### Template selection
 
-Enumerate `.md` files via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'`. Take the feature-equivalent template if one exists, or the only template if there is exactly one, and strip its leading `name`, `about`, `labels`, and `title` frontmatter to get the skeleton. With no candidate, use `${CLAUDE_SKILL_DIR}/../issue/templates/feature.md`.
+Enumerate `.md` files via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'`. Take the feature-equivalent template if one exists, or the only template if there is exactly one, and strip its leading `name`, `about`, `labels`, and `title` frontmatter to get the skeleton. With no candidate, use ${CLAUDE_SKILL_DIR}/../issue/templates/feature.md.
 
 Whichever skeleton wins, add `## Parent` at the top and `## Blocked by` at the bottom. Drop the optional sections that do not apply. Confidence marking does not apply: Phase 3 already had the user approve granularity and dependencies, so a published slice carries no open decisions.
 
