@@ -26,6 +26,7 @@ class Report(TypedDict):
     warnings: list[str]
     checks: list[str]
 
+
 FILLED = """# OUTCOME
 
 ## Outcome state
@@ -66,6 +67,23 @@ TBD
 ## Constraints
 
 TBD
+"""
+
+NO_INDICATORS = """# OUTCOME
+
+## Outcome state
+
+### Behavior
+
+- A user sees the total.
+
+## Non-goals
+
+- None.
+
+## Constraints
+
+- None.
 """
 
 
@@ -149,11 +167,7 @@ class ValidateOutcome(unittest.TestCase):
         self.assertIn("missing_section:Constraints", out["errors"])
 
     def test_omitted_indicators_draws_no_warning(self) -> None:
-        body = (
-            "# OUTCOME\n\n## Outcome state\n\n### Behavior\n\n- A user sees the total.\n\n"
-            "## Non-goals\n\n- None.\n\n## Constraints\n\n- None.\n"
-        )
-        code, out = run(self.write(body))
+        code, out = run(self.write(NO_INDICATORS))
         self.assertEqual(code, 0)
         self.assertIn("indicators=omitted", out["checks"])
         self.assertEqual(out["warnings"], [])

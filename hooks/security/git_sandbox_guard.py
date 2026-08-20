@@ -70,12 +70,11 @@ READ_ARGUMENTS = {
 
 REASON = (
     "git-sandbox-guard: このリポジトリで作業ツリーを書き換える git は sandbox 内で走らせない。"
-    "agents/ rules/ skills/ hooks/ commands/ workflows/ への書き込みが拒否され、"
-    "HEAD だけ進んで作業ツリーと食い違う。"
-    "dangerouslyDisableSandbox: true を付けて同じコマンドを実行し直す。"
-    "それも拒否されたら、ユーザーに `! <コマンド>` での実行を依頼する。"
+    + "agents/ rules/ skills/ hooks/ commands/ workflows/ への書き込みが拒否され、"
+    + "HEAD だけ進んで作業ツリーと食い違う。"
+    + "dangerouslyDisableSandbox: true を付けて同じコマンドを実行し直す。"
+    + "それも拒否されたら、ユーザーに `! <コマンド>` での実行を依頼する。"
 )
-
 
 
 def _clean_only_lists(rest: list[str]) -> bool:
@@ -90,14 +89,20 @@ def _clean_only_lists(rest: list[str]) -> bool:
 
 
 def _flags(rest: list[str]) -> list[str]:
-    """The arguments up to the path separator. What follows names files, and reading those as
-    flags would let `git rm -- -h` pass as a request for help."""
+    """The arguments up to the path separator.
+
+    What follows names files, and reading those as flags would let `git rm -- -h` pass as a
+    request for help.
+    """
     return rest[: rest.index(PATH_SEPARATOR)] if PATH_SEPARATOR in rest else rest
 
 
 def _rewrites_tree(tokens: list[str]) -> bool:
-    # -C names another repository, which this guard denies rather than resolves: the escape
-    # hatch would be one flag away and the miss would be silent.
+    """Whether one git call rewrites the tree.
+
+    -C names another repository, which this guard denies rather than resolves: the escape
+    hatch would be one flag away and the miss would be silent.
+    """
     subcommand, rest = command_scan.git_subcommand(tokens)
     if subcommand not in REWRITES:
         return False
@@ -134,8 +139,10 @@ def rewrites(command: str) -> bool:
 
 
 def _guarded_root() -> Path | None:
-    """The config directory the sandbox protects. CLAUDE_CONFIG_DIR relocates it, and the
-    physical path is what rev-parse reports back."""
+    """The config directory the sandbox protects.
+
+    CLAUDE_CONFIG_DIR relocates it, and the physical path is what rev-parse reports back.
+    """
     named = os.environ.get("CLAUDE_CONFIG_DIR") or str(Path.home() / ".claude")
     try:
         return Path(named).resolve(strict=True)
@@ -143,7 +150,7 @@ def _guarded_root() -> Path | None:
         return None
 
 
-def _toplevel(cwd: str) -> Path | None:
+def _toplevel(cwd: str | Path) -> Path | None:
     result = subprocess.run(
         ["git", "-C", cwd, "rev-parse", "--show-toplevel"],
         capture_output=True,
@@ -179,7 +186,7 @@ def main() -> None:
         return
     cwd = payload.get("cwd")
     # A repository checked out anywhere else writes freely, so only this one needs the guard.
-    if _toplevel(cwd if isinstance(cwd, str) and cwd else os.getcwd()) != guarded:
+    if _toplevel(cwd if isinstance(cwd, str) and cwd else Path.cwd()) != guarded:
         return
     deny(REASON)
 

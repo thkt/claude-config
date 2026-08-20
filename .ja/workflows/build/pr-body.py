@@ -47,12 +47,18 @@ from typing import NoReturn, cast
 
 REQUIRED_KEYS = ("tests_pass", "gates_pass")
 
+# 走らなかったチェックと何も見つからなかったチェックはどちらも 0 件なので、status 行で両者を
+# 分けるのは status だけになる。no-tests と no-reference は検査対象が無かったという意味で、
+# それは 0 が既に言っている。
+NOT_RUN = ("agent-failed", "no-spec")
+
 # 翻訳するのは prose ラベルのみで、GitHub キーワード `Closes`、code-fence の status 行、
 # `/issue` のようなコマンド名は auto-close と copy-paste が動くよう verbatim。tail を
 # 決定的に保つため agent 提供でなくコード内に置く。
 LABELS = {
     "english": {
         "tail_header": "_Below is the build workflow's automated verification. It checks the diff against the plan and does not hunt for code defects. It sits off the PR's main thread, so reading it is optional. Open it when a deviation count in the status line is non-zero._",
+        "not_run": "not run",
         "verify_output": "verify output",
         "evidence": "{n} evidence lines",
         "manual_checks": "Manual verification checklist (complete before merge)",
@@ -65,6 +71,7 @@ LABELS = {
     },
     "japanese": {
         "tail_header": "_下は build workflow の自動検証結果。plan との突合までで、コードの欠陥を探すレビューはしていない。PR の本筋からは外れるので任意だが、status 行の逸脱件数が非ゼロなら見る。_",
+        "not_run": "未実行",
         "verify_output": "verify 出力",
         "evidence": "根拠 {n} 件",
         "manual_checks": "実機確認 (merge 前に実施)",
@@ -170,22 +177,32 @@ def render(payload: Mapping[str, object]) -> str:
 
     # status 行自体を <summary> にするので pass/FAIL は畳んだままでも見える。markdown は
     # <summary> 内で描画されないため backtick でなく <code> を使う。
-    summary = (
-        f"<code>verify tests={tests} gates={gates}</code> · "
-        f"<code>scope-deviations {len(scope)}</code> · "
-        f"<code>missing-tests {len(missing)}</code>"
-    )
+    def cell(label: str, key: str, count: int, always: bool, suffix: str = "") -> str:
+        """チェックが走ったら件数、走らなかったら "not run"、出すものが無ければ ""。status キーを
+        持たない payload はそれ以前の呼び出し元から来たものなので、件数をそのまま信じる。"""
+        status = payload.get(f"{key}_status")
+        if isinstance(status, str) and status in NOT_RUN:
+            return f"<code>{label} {L['not_run']}</code>"
+        return f"<code>{label} {count}{suffix}</code>" if always or count else ""
+
+    high = sum(1 for f in conformance if _mapping(f).get("severity") == "high")
+    cells = [
+        f"<code>verify tests={tests} gates={gates}</code>",
+        cell("scope-deviations", "scope", len(scope), True),
+        cell("missing-tests", "test_presence", len(missing), True),
+    ]
     # summary に無い件数は畳まれたまま気づかれないので、開くかどうかの判断に要る件数は
     # 0 件でなければここに出す。high の内訳を出すのは、件数だけでは表記の差と、受け入れ
     # 条件を満たさない欠落が同じ 1 件に見えるため。
     if untouched:
-        summary += f" · <code>untouched-plan-files {len(untouched)}</code>"
-    if conformance:
-        high = sum(1 for f in conformance if _mapping(f).get("severity") == "high")
-        summary += f" · <code>conformance {len(conformance)}"
-        summary += f" ({high} high)</code>" if high else "</code>"
-    if structure:
-        summary += f" · <code>structure {len(structure)}</code>"
+        cells.append(f"<code>untouched-plan-files {len(untouched)}</code>")
+    cells.append(
+        cell(
+            "conformance", "conformance", len(conformance), False, f" ({high} high)" if high else ""
+        )
+    )
+    cells.append(cell("structure", "structure", len(structure), False))
+    summary = " · ".join(c for c in cells if c)
     folded: list[str] = []
 
     if tests == "FAIL" or gates == "FAIL":

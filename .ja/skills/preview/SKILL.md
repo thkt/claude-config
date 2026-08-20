@@ -1,80 +1,54 @@
 ---
 name: preview
-description: PR への AI スクリーニングレビュー。人間レビュー前の予備チェック。深い multi-reviewer コード品質監査には使わない (/audit を使う)。
-when_to_use: スクリーニング, PRレビュー, プレビュー, preview PR, pre-review
-allowed-tools: Bash(git:*) Bash(gh:*) Read AskUserQuestion Bash(ugrep:*) Bash(bfs:*)
+description: PR の diff を issue の `## Plan` 節と突き合わせ、未実装の unit、欠けたテスト、スコープ外の変更を返す。
+when_to_use: plan 整合性, PR確認, preview PR, plan と突き合わせ
+allowed-tools: Bash(git:*) Bash(gh:*) Read
 model: opus
 argument-hint: "[PR URL or number]"
 ---
 
-# /preview - PR スクリーニングレビュー
+# /preview - Plan 整合性の確認
 
 ## 入力
 
-`$ARGUMENTS` は URL、番号、または空。空なら現在ブランチから検出する。
+`$ARGUMENTS` は PR の URL、番号、または空。空なら現在ブランチから検出する。
 
 ## 実行
 
-1. `gh pr view $ARGUMENTS --json number,title,body,labels,files,url` で PR を識別する。失敗したら `$ARGUMENTS` なしで再実行する
-2. PR がない、または作業ツリーが dirty なら中止する。判定は `git status --porcelain`
-3. `gh pr checkout $PR` で PR を checkout する
-4. PR コンテキストを並列収集する (§ PR コンテキスト収集)
-5. 各変更ファイルを diff hunks 外も含めて全体を読む
-6. プロセスに沿ってレビュー: 概観 → ファイルごと → 依存影響 → findings
-7. 構造化スクリーニングレポートを出力
+1. `gh pr view $ARGUMENTS --json number,title,body,files,url` で PR を識別する。失敗したら `$ARGUMENTS` なしで再実行する
+2. PR が無い、または作業ツリーが dirty なら中止する。判定は `git status --porcelain`
+3. 意図のソースを特定する (§ 意図のソース)
+4. `gh pr diff $PR` を読み、§ チェックの各項目を判定する
+5. § 出力形式で結果を出す
 
-### PR コンテキスト収集
+## 意図のソース
 
-gh の出力フィールドに `author` を含めない。
+上から順に探し、最初に見つかったものを使う。
 
-```bash
-# 差分
-gh pr diff $PR
+1. 起点の issue の `## Plan` 節。ブランチ名や commit message の issue 参照から `gh issue view <N>` で取る
+2. `.claude/workspace/planning/` の `*.plan.md`。ブランチ名か PR タイトルに一致するもの
+3. PR 説明と commit message。ここまで落ちたときは U-NNN と T-NNN の行を飛ばし、Scope creep と Impl-wrong だけを見る
 
-# 既存コメント
-gh pr view --comments $PR
+## チェック
 
-# inline コメント
-gh api repos/{owner}/{repo}/pulls/{number}/comments \
-  --jq '.[] | {file: .path, user: .user.login, comment: .body}'
+各フラグには根拠となる plan の行を引用する。引用の無い `missing` と `wrong` は根拠が無いので落とす。
+
+| チェック      | ソース                               | 条件      | フラグ       |
+| ------------- | ------------------------------------ | --------- | ------------ |
+| Unit coverage | `## Plan` 節の U-NNN unit            | plan あり | missing      |
+| Test coverage | `## Plan` 節の T-NNN 受け入れテスト  | plan あり | missing      |
+| Scope creep   | diff vs 意図のソース                 | 常時      | out-of-scope |
+| Impl-wrong    | diff の振る舞い vs unit goal / T-NNN | 常時      | wrong        |
+
+## 出力形式
+
+会話に出す。ファイルには保存せず、PR にも投稿しない。
+
+```text
+Plan Alignment: [CLEAN | MISSING <N> | OUT-OF-SCOPE <N> | WRONG <N> | MIXED]
+Intent source: <issue #N Plan section | *.plan.md path | PR description | commit messages>
+Missing (U): U-NNN - <description> (plan: "<quoted line>")
+Missing (T): T-NNN - <description> (plan: "<quoted line>")
+Out-of-scope: <file or area> - not traceable to stated intent
+Wrong: <U-NNN/T-NNN> - implemented but <gap> (plan: "<quoted line>")
 ```
-
-## コメントラベル
-
-| ラベル   | 意味                             | 重大度 |
-| -------- | -------------------------------- | ------ |
-| `[must]` | merge 前に修正必須               | High   |
-| `[want]` | 修正すべき、ブロックしない       | Medium |
-| `[imo]`  | 個人意見、採用は任意             | Low    |
-| `[ask]`  | 明確化のための質問               | -      |
-| `[nits]` | 軽微なスタイル/フォーマット問題  | Low    |
-| `[info]` | コンテキスト共有、アクション不要 | -      |
-
-## コメントトーン
-
-| ルール   | 詳細                                                                       |
-| -------- | -------------------------------------------------------------------------- |
-| 形式     | `[label] <observed behavior or risk>. <suggestion>. (file:line)`           |
-| 簡潔     | `[imo]`/`[nits]`/`[info]` は 3 行、`[must]`/`[want]` は根拠付きで最大 5 行 |
-| 敬意     | 努力を認める、命令を避ける                                                 |
-| 提案的   | "Consider..." を使い、"This is wrong" は避ける                             |
-| 著者向け | コメントはそのまま投稿されうるため、PR 著者向けに詳細度を調整              |
-
-## 出力
-
-${CLAUDE_SKILL_DIR}/templates/screening-report.md の骨格でレポートを生成し、会話に出力する。
-
-## ルール
-
-| ルール         | 詳細                                                                   |
-| -------------- | ---------------------------------------------------------------------- |
-| 自動投稿しない | コメントを PR に自動投稿しない                                         |
-| dirty で中止   | uncommitted changes があれば警告して中止                               |
-| 深さより速さ   | これはスクリーニング、フル監査ではない                                 |
-| flag 前に検証  | [ask]/[want]+ 前に、問題を到達可能なランタイム呼び出し箇所まで追跡する |
-
-## 参照
-
-| トピック         | ファイル                                           |
-| ---------------- | -------------------------------------------------- |
-| Review Checklist | ${CLAUDE_SKILL_DIR}/references/review-checklist.md |

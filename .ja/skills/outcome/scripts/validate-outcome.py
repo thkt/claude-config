@@ -3,7 +3,7 @@
 
 stdout: JSON { file, state, flow, errors, warnings, checks }
   state: absent | empty | ok
-  flow:  generate | update  (このファイルが振り分ける /outcome の分岐)
+  flow:  generate | update
 exit: 0 if no errors (warnings allowed), 1 if errors
 """
 
@@ -15,9 +15,8 @@ from pathlib import Path
 REQUIRED_SECTIONS = ("Outcome state", "Behavior", "Non-goals", "Constraints")
 FILLED_SECTIONS = ("Behavior", "Non-goals", "Constraints")
 INDICATORS = ("Time", "Error rate", "Value")
-# テンプレートはプロンプトを {...} として、行全体か表セル全体を占める形で書く。
-# 位置を問わず brace に一致させると、{status, findings} のような JSON 形を挙げた
-# Behavior まで検出してしまう。
+# テンプレートの穴埋めは {...} の形で、行全体か表セル全体を占める。位置を問わず
+# brace に一致させると、{status, findings} のような JSON の形を書いた Behavior まで拾う。
 PLACEHOLDER_LINE = re.compile(r"^[ \t]*(\{[^{}\n]+\})[ \t]*$", flags=re.MULTILINE)
 PLACEHOLDER_CELL = re.compile(r"\|[ \t]*(\{[^{}\n]+\})[ \t]*(?=\|)")
 
@@ -34,7 +33,7 @@ def section_body(text: str, heading: str) -> str | None:
 
 
 def is_unfilled(body: str) -> bool:
-    """heading 配下に TBD マーカーしか無いとき True。"""
+    """見出しの下に箇条書き記号と TBD しか無いとき True。"""
     for line in body.splitlines():
         content = re.sub(r"^\s*([-*]|\d+\.)\s*", "", line).strip()
         if not content or content.upper() == "TBD":
@@ -43,30 +42,35 @@ def is_unfilled(body: str) -> bool:
     return True
 
 
-def main() -> None:
-    target = sys.argv[1] if len(sys.argv) > 1 else ""
-    path = Path(target)
-    if not target:
-        print("Usage: validate-outcome.py <outcome-file>", file=sys.stderr)
-        sys.exit(1)
-    if not path.is_file():
-        print(
-            json.dumps(
-                {
-                    "file": target,
-                    "state": "absent",
-                    "flow": "generate",
-                    "errors": [],
-                    "warnings": [],
-                    "checks": ["file=absent"],
-                },
-                indent=2,
-            )
+def report(target: str, state: str, results: dict[str, list[str]]) -> None:
+    """報告を出力して終了する。errors があれば 1、無ければ 0。"""
+    print(
+        json.dumps(
+            {
+                "file": target,
+                "state": state,
+                "flow": "update" if state == "ok" else "generate",
+                **results,
+            },
+            indent=2,
         )
-        sys.exit(0)
+    )
+    sys.exit(1 if results["errors"] else 0)
+
+
+def main() -> None:
+    if len(sys.argv) < 2:
+        print(__doc__, file=sys.stderr)
+        sys.exit(1)
+    target = sys.argv[1]
+    path = Path(target)
+
+    results: dict[str, list[str]] = {"errors": [], "warnings": [], "checks": []}
+    if not path.is_file():
+        results["checks"].append("file=absent")
+        report(target, "absent", results)
 
     text = path.read_text(encoding="utf-8")
-    results: dict[str, list[str]] = {"errors": [], "warnings": [], "checks": []}
 
     for section in REQUIRED_SECTIONS:
         if section_body(text, section) is None:
@@ -97,19 +101,7 @@ def main() -> None:
             else:
                 results["warnings"].append(f"missing_indicator:{label}")
 
-    state = "empty" if behavior_unfilled else "ok"
-    print(
-        json.dumps(
-            {
-                "file": target,
-                "state": state,
-                "flow": "generate" if state == "empty" else "update",
-                **results,
-            },
-            indent=2,
-        )
-    )
-    sys.exit(1 if results["errors"] else 0)
+    report(target, "empty" if behavior_unfilled else "ok", results)
 
 
 if __name__ == "__main__":

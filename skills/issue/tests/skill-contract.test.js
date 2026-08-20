@@ -30,7 +30,7 @@ test("transferring a Plan into an existing issue exists in both languages and qu
     const doc = readFileSync(path, "utf8");
     assert.match(
       doc,
-      lang === "ja" ? /issue 番号か URL だけを受け取ったとき/ : /only an issue number or URL/,
+      lang === "ja" ? /issue 番号または URL だけを受け取った場合/ : /only an issue number or URL/,
       `${lang}: a branch taking a bare number is present`,
     );
     assert.match(
@@ -84,7 +84,7 @@ test("each language's duplication-match.md defines the match target as a duplica
     const matchRef = readFileSync(path, "utf8");
     const [target, criterion, independent] =
       lang === "ja"
-        ? [/同じ知識が重なる/, /片方を直すともう片方も直る/, /独立に変わりうる/]
+        ? [/同じ知識が重なる/, /片方を直すともう片方も直す必要がある/, /独立に変わりうる/]
         : [
             /carry the same knowledge/i,
             /editing one forces the other to change/i,
@@ -124,7 +124,10 @@ test("each language's duplication-match.md lists the three overlapping pairs and
     }
     const [overlap, why] =
       lang === "ja"
-        ? [/Acceptance Criteria も Outcome と重なる/, /build に届かないので本文に残す/]
+        ? [
+            /Acceptance Criteria も Outcome と重なる/,
+            /build には渡らず、人間がマージを判断する際に使う/,
+          ]
         : [
             /Acceptance Criteria overlaps Outcome/i,
             /drives the human merge call and never reaches build/i,
@@ -143,7 +146,11 @@ test("each language's duplication-match.md states the reference runs from the bo
         /参照は本文から `## Plan` へ向ける/,
         "ja: the direction of the reference",
       );
-      assert.match(matchRef, /本文の節はそのあとに生まれる/, "ja: why the direction is fixed");
+      assert.match(
+        matchRef,
+        /plan を独立したファイルへ書き出した後で、本文の節が作られる/,
+        "ja: why the direction is fixed",
+      );
     } else {
       assert.match(
         matchRef,
@@ -190,7 +197,7 @@ test("each language's duplication-match.md states the duplicated body side is re
       );
       assert.match(
         matchRef,
-        /見出しが何をする変更かを述べる 1 行/,
+        /見出しが何を変更するかを述べる 1 行/,
         "ja: the rule of leaving one line per heading",
       );
     } else {
@@ -229,8 +236,8 @@ test("each language's SKILL.md states the match is skipped when there is no plan
   for (const [lang, path] of Object.entries(skills)) {
     const refine = phase2(readFileSync(path, "utf8"));
     if (lang === "ja") {
-      assert.match(refine, /(plan 下書きが)?無ければ/, "ja: the mention of having no plan draft");
-      assert.match(refine, /照合を省く/, "ja: the mention of skipping the match");
+      assert.match(refine, /plan 下書きがなければ/, "ja: the mention of having no plan draft");
+      assert.match(refine, /この照合は省略する/, "ja: the mention of skipping the match");
     } else {
       assert.match(
         refine,
@@ -261,7 +268,7 @@ test("the plan draft is selected in one place", () => {
     assert.match(skill, /scripts\/pick-plan\.py/, `${lang}: the transfer calls the same script`);
     assert.match(
       phase2(skill),
-      lang === "ja" ? /どの下書きを選ぶか/ : /which draft to match against/,
+      lang === "ja" ? /照合する下書きの選択/ : /which draft to match against/,
       `${lang}: Phase 2 sends the selection to the reference`,
     );
   }
@@ -280,18 +287,18 @@ test("Phase 1's steps reach the minor-bug branch", () => {
   }
 });
 
-// The number route edits an issue somebody else wrote. Running the prose refinement on it rewrites
+// Updating a filed issue touches something somebody else wrote. Running the prose refinement on it rewrites
 // their words for a request that only asked to transfer a plan. Each delta sits on the step it
 // changes rather than in one list up front, so a step added later carries its own.
-test("the number route leaves the existing body's prose alone", () => {
+test("updating a filed issue leaves the existing body's prose alone", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const steps = [...phase2(readFileSync(path, "utf8")).matchAll(/^\d+\. .*/gm)].map((m) => m[0]);
     const [route, skipped, approval] =
       lang === "ja"
-        ? [/番号経路/, /行わない/, /承認/]
-        : [/number route/i, /does not run/i, /approv/i];
+        ? [/既存 issue の更新時/, /行わない/, /承認/]
+        : [/updating a filed issue/i, /does not run/i, /approv/i];
     const marked = steps.filter((step) => route.test(step));
-    assert.equal(marked.length, 3, `${lang}: every Phase 2 step carries the number-route delta`);
+    assert.equal(marked.length, 3, `${lang}: every Phase 2 step carries the update-route delta`);
     assert.ok(
       marked.slice(0, 2).every((step) => skipped.test(step)),
       `${lang}: the refinement and the challenge fold-in are stated as not running`,
@@ -300,7 +307,7 @@ test("the number route leaves the existing body's prose alone", () => {
   }
 });
 
-// The number route edits an existing issue, so a single wording announces a filing that is not
+// Updating a filed issue is not a filing, so a single wording announces something that is not
 // happening.
 test("the confirmation names both routes", () => {
   for (const [lang, path] of Object.entries(skills)) {
@@ -347,7 +354,7 @@ test("the outcome check states what to do on both branches", () => {
     const step = [...phase1.matchAll(/^\d+\. .*/gm)].map((m) => m[0])[0];
     assert.match(step, /OUTCOME\.md/, `${lang}: the first step reads OUTCOME.md`);
     assert.match(step, /\/outcome/, `${lang}: it says where a missing file comes from`);
-    const outside = lang === "ja" ? /外側なら/ : /falls outside/;
+    const outside = lang === "ja" ? /範囲外の場合/ : /sits outside/;
     assert.match(step, outside, `${lang}: it states the treatment for work outside the outcome`);
   }
 });
@@ -358,7 +365,8 @@ test("the outcome check states what to do on both branches", () => {
 test("the prose review settles guesses after the body is drafted", () => {
   for (const [lang, path] of Object.entries(reviewRefs)) {
     const doc = readFileSync(path, "utf8");
-    const settle = lang === "ja" ? /推測は AskUserQuestion か Read で潰して/ : /Settle a guess via/;
+    const settle =
+      lang === "ja" ? /推測は AskUserQuestion または Read で確認してから/ : /Settle a guess via/;
     assert.match(doc, settle, `${lang}: the structure table checks for a guess left in the body`);
   }
 });
@@ -386,7 +394,7 @@ test("the selection rule stays within the tools the skill is allowed", () => {
 test("the split question carries whether each criterion can be started", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = readFileSync(path, "utf8");
-    const ready = lang === "ja" ? /今着手できるか/ : /can be started now/;
+    const ready = lang === "ja" ? /現時点で着手可能か/ : /can be started now/;
     assert.match(doc, ready, `${lang}: the split assessment asks about readiness`);
   }
 });
@@ -432,8 +440,14 @@ test("a stated approach routes to /think rather than into the body", () => {
     assert.ok(step, `${lang}: a step suggests /think`);
     const [direction, skipOnly] =
       lang === "ja"
-        ? [/実装方針を名指す/, /言い切れる修正だけ省く/]
-        : [/names an implementation direction/, /Skip only a fix you can call/];
+        ? [
+            /実装方針が明示されている/,
+            /変更が 1〜3 ファイルに収まると判断できる修正に限り、提案を省略/,
+          ]
+        : [
+            /names an implementation direction/,
+            /Skipping the suggestion is allowed only for a fix/,
+          ];
     assert.match(step, direction, `${lang}: a stated direction is a trigger`);
     assert.match(step, skipOnly, `${lang}: the rule states what to skip, not what to catch`);
   }
@@ -442,5 +456,42 @@ test("a stated approach routes to /think rather than into the body", () => {
     const dir = lang === "ja" ? [root, ".ja"] : [root];
     const doc = readFileSync(join(...dir, "skills", "issue", "templates", "feature.md"), "utf8");
     assert.match(doc, /critic-design/, `${lang}: the Approach section names what has to clear it`);
+  }
+});
+
+// Updating a filed issue validates through the --content-only flag alone. With the flag named in one place
+// and implemented in the other, either side can lose it while every other test still passes, and
+// the route goes back to writing an unvalidated body.
+test("the update route's validation flag exists in both the instruction and the script", () => {
+  const script = readFileSync(
+    join(root, "skills", "issue", "scripts", "validate-issue-body.py"),
+    "utf8",
+  );
+  assert.match(script, /"--content-only"/, "the validator carries the flag");
+  assert.match(script, /^def content_only_report\(/m, "the flag reaches its own branch");
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    const step = doc.split(/^## Phase 4/m)[1].split(/^###/m)[0];
+    assert.match(
+      step,
+      /--content-only <body-file>/,
+      `${lang}: Phase 4 tells the update route to pass it`,
+    );
+  }
+});
+
+// Confirming first and validating after shows the user one body and files another, because fixing
+// placeholder_left or unfilled_section rewrites what they just approved.
+test("Phase 4 validates before it asks for confirmation", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const phase4 = readFileSync(path, "utf8")
+      .split(/^## Phase 4/m)[1]
+      .split(/^###/m)[0];
+    const steps = [...phase4.matchAll(/^\d+\. .*/gm)].map((m) => m[0]);
+    const validate = steps.findIndex((step) => step.includes("validate-issue-body.py"));
+    const confirm = steps.findIndex((step) => /AskUserQuestion/.test(step));
+    assert.ok(validate >= 0, `${lang}: a step runs the validator`);
+    assert.ok(confirm >= 0, `${lang}: a step asks for confirmation`);
+    assert.ok(validate < confirm, `${lang}: validation comes first (${validate} < ${confirm})`);
   }
 });

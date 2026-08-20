@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 """PreToolUse hook: block a package install when ignore-scripts is not configured.
 
-The decision value has to be one of allow / deny / ask / defer. Anything else fails schema
-validation, which Claude Code reports as a non-blocking hook error before running the tool
-call, so a gate written with an invalid value stops nothing.
-
 Failure mode: fail-closed (security enforcement).
 """
 
@@ -54,17 +50,16 @@ REASONS = {
     ),
     "override": (
         "npm-safe-install: --ignore-scripts=false / --no-ignore-scripts は .npmrc の設定を"
-        "打ち消し、依存の install script が任意のコードを実行できる。"
-        "このフラグを外して再試行する。"
+        + "打ち消し、依存の install script が任意のコードを実行できる。"
+        + "このフラグを外して再試行する。"
     ),
     "install": (
         "npm-safe-install: ignore-scripts=true が有効でなく、依存の install script が"
-        "任意のコードを実行できる。"
-        "echo 'ignore-scripts=true' >> ~/.npmrc を実行してから再試行する。"
-        "走らせる先の .npmrc が false で打ち消しているなら、そちらを直す。"
+        + "任意のコードを実行できる。"
+        + "echo 'ignore-scripts=true' >> ~/.npmrc を実行してから再試行する。"
+        + "走らせる先の .npmrc が false で打ち消しているなら、そちらを直す。"
     ),
 }
-
 
 
 def _installs(tokens: list[str]) -> bool:
@@ -76,8 +71,7 @@ def _installs(tokens: list[str]) -> bool:
 
 
 def _target(command: str) -> tuple[str, Path] | None:
-    """Which verdict the command line earns and where it would run, or None when it installs
-    nothing.
+    """The verdict for the command line and where it would run, or None when nothing installs.
 
     Not the first token of the raw string: `cd /tmp && npm install` reads as `cd`, and the two
     spaces in `npm  install` leave the subcommand empty. The directory follows every cd ahead

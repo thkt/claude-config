@@ -81,6 +81,35 @@ Add CSV export so users can analyze offline.
 """
 
 
+# The first entry carries no label, so Impact is the only section the form makes required.
+BUG_FORM = """name: Bug report
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for filing
+  - type: input
+    attributes:
+      label: Impact
+    validations:
+      required: true
+"""
+
+# The form's label plus the floor the validator keeps for a bug whatever the skeleton requires.
+FORM_SHAPED_BODY = """## Impact
+
+Login is down for everyone.
+
+## Steps to Reproduce
+
+1. Sign in
+
+## Expected vs Actual
+
+- Expected: 200
+- Actual: 500
+"""
+
+
 def _field(node: object, *keys: str) -> str | None:
     """Walk a parsed JSON payload by key, returning None the moment the shape stops matching.
 
@@ -134,6 +163,16 @@ class TestIssueBodyGate(unittest.TestCase):
     def with_body_file(self, body: str, name: str = "body.md") -> Path:
         directory = Path(tempfile.mkdtemp(dir=self.root))
         path = directory / name
+        _ = path.write_text(body, encoding="utf-8")
+        return path
+
+    def staged_form(self, body: str, form: str = BUG_FORM) -> Path:
+        """A body file in a checkout whose .github/ISSUE_TEMPLATE carries one bug form."""
+        stage = Path(tempfile.mkdtemp(dir=self.root))
+        forms = stage / ".github" / "ISSUE_TEMPLATE"
+        forms.mkdir(parents=True)
+        _ = (forms / "bug.yml").write_text(form, encoding="utf-8")
+        path = stage / "body.md"
         _ = path.write_text(body, encoding="utf-8")
         return path
 
@@ -267,7 +306,7 @@ class TestIssueBodyGate(unittest.TestCase):
     def test_filing_words_in_a_heredoc_body_do_not_deny(self) -> None:
         """T-024 The words of a filing command in a heredoc body do not draw a deny"""
         # A commit message passed through a heredoc has each body line scanned as a command line,
-        # which denied a git commit whose body opened a line with gh issue create.
+        # which denies a git commit whose body opens a line with gh issue create.
         message = self.root / "msg.txt"
         command = "\n".join(
             [
@@ -323,36 +362,9 @@ class TestIssueBodyGate(unittest.TestCase):
 
     def test_repository_issue_form_becomes_the_skeleton(self) -> None:
         """T-012 With an issue form in the repository, that form's labels become the skeleton"""
-        stage = Path(tempfile.mkdtemp(dir=self.root))
-        form_dir = stage / ".github" / "ISSUE_TEMPLATE"
-        form_dir.mkdir(parents=True)
-        _ = (form_dir / "bug.yml").write_text(
-            """name: Bug report
-body:
-  - type: markdown
-    attributes:
-      value: Thanks for filing
-  - type: input
-    attributes:
-      label: Impact
-    validations:
-      required: true
-""",
-            encoding="utf-8",
-        )
-        # A body holding the form's labels plus the floor the validator keeps for a bug whatever
-        # the skeleton requires. Without the form chosen as the skeleton, templates/bug.md's own
-        # required sections would be missing and missing_section would deny it.
-        path = stage / "body.md"
-        _ = path.write_text(
-            "## Impact\n\nLogin is down for everyone.\n\n"
-            "## Steps to Reproduce\n\n1. Sign in\n\n"
-            "## Expected vs Actual\n\n- Expected: 200\n- Actual: 500\n",
-            encoding="utf-8",
-        )
-        out, stdout, status = self.run_hook(
-            f'cd {stage} && gh issue create --title "[Bug] Login is down" --body-file {path}'
-        )
+        # Without the form chosen as the skeleton, templates/bug.md's own required sections
+        # would be missing and missing_section would deny this body.
+        out, stdout, status = self.run_hook(self.bug_issue_cmd(self.staged_form(FORM_SHAPED_BODY)))
         with self.subTest("exit 0"):
             self.assertEqual(status, 0, f"actual: {stdout!r}")
         with self.subTest("not denied"):
@@ -362,19 +374,8 @@ body:
         """T-025 A body meeting the repository form but missing the type's floor is denied"""
         # A form states the web UI's minimum, which is thinner than what a filed issue carries.
         # Letting the skeleton set the floor files a bug with no reproduction and nothing says so.
-        stage = Path(tempfile.mkdtemp(dir=self.root))
-        forms = stage / ".github" / "ISSUE_TEMPLATE"
-        forms.mkdir(parents=True)
-        _ = (forms / "bug.yml").write_text(
-            "name: Bug\nbody:\n  - type: input\n    attributes:\n      label: Impact\n"
-            "    validations:\n      required: true\n",
-            encoding="utf-8",
-        )
-        path = stage / "body.md"
-        _ = path.write_text("## Impact\n\nLogin is down.\n", encoding="utf-8")
-        out, stdout, status = self.run_hook(
-            f'cd {stage} && gh issue create --title "[Bug] Login is down" --body-file {path}'
-        )
+        path = self.staged_form("## Impact\n\nLogin is down.\n")
+        out, stdout, status = self.run_hook(self.bug_issue_cmd(path))
         with self.subTest("exit 0"):
             self.assertEqual(status, 0, f"actual: {stdout!r}")
         with self.subTest("denied"):

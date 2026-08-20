@@ -8,10 +8,10 @@ deletion, and `gh issue create` inside a commit message is not a filing.
 
 from __future__ import annotations
 
-import os
 import re
 import shlex
 from collections.abc import Iterator, Sequence
+from pathlib import Path
 
 # Anything taking a subcommand of its own (git, npm) stays out: there the first token
 # already is the command.
@@ -96,7 +96,7 @@ def _resolve(tokens: list[str]) -> Iterator[list[str]]:
     while index < len(tokens):
         if ENV_ASSIGNMENT.match(tokens[index]):
             index += 1
-        elif os.path.basename(tokens[index]) in WRAPPERS:
+        elif Path(tokens[index]).name in WRAPPERS:
             index += 1
             while index < len(tokens) and tokens[index].startswith("-"):
                 index += 2 if tokens[index] in VALUED_WRAPPER_FLAGS else 1
@@ -108,7 +108,7 @@ def _resolve(tokens: list[str]) -> Iterator[list[str]]:
             break
     if index >= len(tokens):
         return
-    resolved = [os.path.basename(tokens[index])] + tokens[index + 1 :]
+    resolved = [Path(tokens[index]).name, *tokens[index + 1 :]]
     yield resolved
 
     for position, token in enumerate(resolved):

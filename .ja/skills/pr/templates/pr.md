@@ -44,12 +44,12 @@ Preview URL: http://localhost:3000
 
 ## ガイドライン
 
-| フィールド       | OK                                                    | NG                                       |
-| ---------------- | ----------------------------------------------------- | ---------------------------------------- |
-| What & Why       | オフライン分析を解除するため CSV エクスポートを追加   | CSV エクスポート機能を追加 (Why なし)    |
-| Review focus     | 並列度の上限計算を重点的に。README の差分は流し読みで | 省略 (reviewer が全体を等しく読む)       |
-| Changes          | ExportButton を追加。1-click のためメニューより選択   | 触ったファイルの列挙 (diff が運ぶ)       |
-| Scope            | 認証トークンのリフレッシュは含めない (別 PR)          | 大きな PR で省略 (reviewer が境界を推測) |
-| Design Decisions | 大規模データセットの OOM 回避にストリーミングを採用   | 省略 (reviewer が理由推測を強いられる)   |
-| How to Test      | Export をクリック → .csv が 3 行でダウンロードを確認  | 機能をテスト (曖昧)                      |
-| Preview URL      | Preview URL: <http://localhost:3000/dashboard>        | UI 変更があるのに欠落                    |
+| フィールド       | OK                                                    | NG                                         |
+| ---------------- | ----------------------------------------------------- | ------------------------------------------ |
+| What & Why       | オフライン分析を解除するため CSV エクスポートを追加   | CSV エクスポート機能を追加 (Why なし)      |
+| Review focus     | 並列度の上限計算を重点的に。README の差分は流し読みで | 省略 (reviewer が全体を等しく読む)         |
+| Changes          | ExportButton を追加。1-click のためメニューより選択   | 触ったファイルの列挙 (diff を見れば足りる) |
+| Scope            | 認証トークンのリフレッシュは含めない (別 PR)          | 大きな PR で省略 (reviewer が境界を推測)   |
+| Design Decisions | 大規模データセットの OOM 回避にストリーミングを採用   | 省略 (reviewer が理由推測を強いられる)     |
+| How to Test      | Export をクリック → .csv が 3 行でダウンロードを確認  | 機能をテスト (曖昧)                        |
+| Preview URL      | Preview URL: <http://localhost:3000/dashboard>        | UI 変更があるのに欠落                      |

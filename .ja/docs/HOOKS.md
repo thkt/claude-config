@@ -92,7 +92,7 @@ Bash ゲートの hook はすべての Bash 呼び出しで発火し、実際の
 | ----------------- | ----------------- | ---------- | --------------------------------------------------------------------------- |
 | statusline.sh     | statusLine        | fail-open  | ステータスライン表示と、自身が持つセッション単位 state の TTL 掃除          |
 | recall_index.py   | SessionStart      | fail-open  | recall のクロスセッション索引をバックグラウンド更新                         |
-| reflection_ask.py | Stop              | fail-open  | 次のセッションへ持ち越す価値のある訂正を 1 件求める                         |
+| reflection_ask.py | Stop              | fail-open  | 振り返りを分離した headless セッションへ渡す                                |
 | failure-alert.sh  | Stop, StopFailure | fail-open  | 悪い終わり方をしたターンを音で知らせる。end_turn と subagent では鳴らさない |
 
 ### integrations/

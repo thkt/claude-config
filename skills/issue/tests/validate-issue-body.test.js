@@ -385,3 +385,133 @@ test("T-018 only a type the detection table carries clears the title check", asy
   const types = (await readdir(dir)).map((f) => f.replace(/\.(yml|md)$/, ""));
   assert.ok(!types.includes("epic"), "no epic skeleton exists to answer an [Epic] title");
 });
+
+// The headings alone were the whole gate: a body carrying nothing but the template's own prompts
+// passed with no error, which is the state a filing reaches when nobody wrote it.
+test("T-019 a body still carrying the template's prompts is an error", () => {
+  const src = readFileSync(featureTemplate, "utf8");
+  const fence = src.slice(src.search(/^## Template$/m)).match(/```(?:markdown)?\n([\s\S]*?)```/)[1];
+  const { status, out } = runValidate(featureTemplate, "[Feature] sample", fence);
+  assert.equal(status, 1, "it exits 1");
+  assert.ok(
+    out.errors.some((e) => e.startsWith("placeholder_left:")),
+    `expected placeholder_left, got ${JSON.stringify(out.errors)}`,
+  );
+});
+
+// A checkbox with nothing after it satisfies the heading check while stating no criterion.
+test("T-020 a required section holding nothing but an empty checkbox is an error", () => {
+  const body = [
+    "## What & Why",
+    "",
+    "Users export orders by hand every morning.",
+    "",
+    "## Acceptance Criteria",
+    "",
+    "- [ ]",
+    "",
+    "## Scope",
+    "",
+    "- In scope: CSV export from the orders list",
+    "",
+    "## Testing Decisions",
+    "",
+    "- Test the CSV serializer",
+    "",
+  ].join("\n");
+  const { status, out } = runValidate(featureTemplate, "[Feature] sample", body);
+  assert.equal(status, 1, "it exits 1");
+  assert.deepEqual(out.errors, ["unfilled_section:Acceptance Criteria"]);
+});
+
+// Matching braces anywhere would fault a criterion that names a payload shape, so a written body
+// would have to avoid its own domain vocabulary to pass.
+test("T-021 braces naming a shape in prose are not read as an unwritten prompt", () => {
+  const body = [
+    "## What & Why",
+    "",
+    "Callers cannot tell a failed run from an empty one.",
+    "",
+    "## Acceptance Criteria",
+    "",
+    "- [ ] The CLI returns {status, findings} without a wrapper",
+    "",
+    "## Scope",
+    "",
+    "- In scope: the CLI envelope",
+    "",
+    "## Testing Decisions",
+    "",
+    "- Assert the two keys against the parsed stdout",
+    "",
+  ].join("\n");
+  const { status, out } = runValidate(featureTemplate, "[Feature] sample", body);
+  assert.equal(status, 0, `it exits 0, got ${JSON.stringify(out.errors)}`);
+  assert.ok(out.checks.includes("placeholder=none"), "it records that no prompt is left");
+});
+
+// TBD is what a section carries while the writer is still deciding, and filing it hands build a
+// requirement nobody settled.
+test("T-022 a required section holding nothing but TBD is an error", () => {
+  const body = [
+    "## What & Why",
+    "",
+    "Users export orders by hand every morning.",
+    "",
+    "## Acceptance Criteria",
+    "",
+    "- [ ] When a user clicks Export, a .csv downloads",
+    "",
+    "## Scope",
+    "",
+    "- In scope: CSV export from the orders list",
+    "",
+    "## Testing Decisions",
+    "",
+    "TBD",
+    "",
+  ].join("\n");
+  const { status, out } = runValidate(featureTemplate, "[Feature] sample", body);
+  assert.equal(status, 1, "it exits 1");
+  assert.deepEqual(out.errors, ["unfilled_section:Testing Decisions"]);
+});
+
+const runContentOnly = (bodyText) => {
+  const dir = mkdtempSync(join(tmpdir(), "validate-issue-body-"));
+  try {
+    const bodyPath = join(dir, "body.md");
+    writeFileSync(bodyPath, bodyText, "utf8");
+    const res = spawnSync("python3", [script, "--content-only", bodyPath], { encoding: "utf8" });
+    return { status: res.status, out: JSON.parse(res.stdout) };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+};
+
+// The number route edits an issue filed against a template nobody recorded, so the skeleton checks
+// have nothing to run against. Leaving the whole validation out let a transfer that wrote a prompt
+// instead of content reach the issue.
+test("T-023 --content-only needs no skeleton and still catches a body left unwritten", () => {
+  const unwritten = ["## Plan", "", "{Outcome}", ""].join("\n");
+  const written = ["## Plan", "", "Outcome: the exporter writes one row per order.", ""].join("\n");
+  assert.equal(runContentOnly(unwritten).status, 1, "an unwritten body exits 1");
+  assert.equal(runContentOnly(written).status, 0, "a written body exits 0");
+});
+
+// A body quoting a payload or a config sample carries braces that belong to the quotation. Counting
+// them makes an issue that documented its own interface unfileable.
+test("T-024 braces inside a fenced block are not read as prompts", () => {
+  const body = [
+    "## Plan",
+    "",
+    "The exporter writes one row per order.",
+    "",
+    "```json",
+    "{version}",
+    "```",
+    "",
+  ].join("\n");
+  const { status, out } = runContentOnly(body);
+  assert.equal(status, 0, `it exits 0, got ${JSON.stringify(out.errors)}`);
+  assert.ok(out.checks.includes("placeholder=none"), "it records that no prompt is left");
+});

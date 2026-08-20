@@ -11,3 +11,7 @@ ignore = ["RUF001", "RUF002", "RUF003"]
 [lint.per-file-ignores]
 "hooks/**/tests/*.py" = ["E501"]
 "hooks/pre-bash/issue_body_gate.py" = ["E501"]
+# LABELS の tail_header は PR body へそのまま出る 1 文で、折り返すと出力された文面を
+# grep でこのファイルまで辿れなくなる。
+"workflows/build/pr-body.py" = ["E501"]
+".ja/workflows/build/pr-body.py" = ["E501"]

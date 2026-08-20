@@ -54,12 +54,18 @@ from typing import NoReturn, cast
 
 REQUIRED_KEYS = ("tests_pass", "gates_pass")
 
+# A check that did not run and a check that found nothing both count 0, so the status is what
+# separates them on the status line. no-tests and no-reference mean there was nothing to check,
+# which a 0 already says.
+NOT_RUN = ("agent-failed", "no-spec")
+
 # Only prose labels translate; the GitHub keyword `Closes`, the code-fenced status
 # line, and command names like `/issue` stay verbatim so auto-close and copy-paste
 # keep working. Kept in code, not agent-provided, so the tail stays deterministic.
 LABELS = {
     "english": {
         "tail_header": "_Below is the build workflow's automated verification. It checks the diff against the plan and does not hunt for code defects. It sits off the PR's main thread, so reading it is optional. Open it when a deviation count in the status line is non-zero._",
+        "not_run": "not run",
         "verify_output": "verify output",
         "evidence": "{n} evidence lines",
         "manual_checks": "Manual verification checklist (complete before merge)",
@@ -72,6 +78,7 @@ LABELS = {
     },
     "japanese": {
         "tail_header": "_下は build workflow の自動検証結果。plan との突合までで、コードの欠陥を探すレビューはしていない。PR の本筋からは外れるので任意だが、status 行の逸脱件数が非ゼロなら見る。_",
+        "not_run": "未実行",
         "verify_output": "verify 出力",
         "evidence": "根拠 {n} 件",
         "manual_checks": "実機確認 (merge 前に実施)",
@@ -178,22 +185,33 @@ def render(payload: Mapping[str, object]) -> str:
     # The status line itself is the <summary>, so pass/FAIL stays visible while
     # collapsed; markdown does not render inside <summary>, hence <code> instead of
     # backticks.
-    summary = (
-        f"<code>verify tests={tests} gates={gates}</code> · "
-        f"<code>scope-deviations {len(scope)}</code> · "
-        f"<code>missing-tests {len(missing)}</code>"
-    )
+    def cell(label: str, key: str, count: int, always: bool, suffix: str = "") -> str:
+        """The count when the check ran, "not run" when it did not, "" when there is nothing to
+        show. A payload without the status key comes from a caller that predates them, so its
+        counts are taken at face value."""
+        status = payload.get(f"{key}_status")
+        if isinstance(status, str) and status in NOT_RUN:
+            return f"<code>{label} {L['not_run']}</code>"
+        return f"<code>{label} {count}{suffix}</code>" if always or count else ""
+
+    high = sum(1 for f in conformance if _mapping(f).get("severity") == "high")
+    cells = [
+        f"<code>verify tests={tests} gates={gates}</code>",
+        cell("scope-deviations", "scope", len(scope), True),
+        cell("missing-tests", "test_presence", len(missing), True),
+    ]
     # A count absent from the summary goes unnoticed inside the fold, so every non-zero
     # count the open-or-not decision rests on surfaces here. The high breakdown is there
     # because a bare count makes a wording nit and a defeated acceptance criterion look alike.
     if untouched:
-        summary += f" · <code>untouched-plan-files {len(untouched)}</code>"
-    if conformance:
-        high = sum(1 for f in conformance if _mapping(f).get("severity") == "high")
-        summary += f" · <code>conformance {len(conformance)}"
-        summary += f" ({high} high)</code>" if high else "</code>"
-    if structure:
-        summary += f" · <code>structure {len(structure)}</code>"
+        cells.append(f"<code>untouched-plan-files {len(untouched)}</code>")
+    cells.append(
+        cell(
+            "conformance", "conformance", len(conformance), False, f" ({high} high)" if high else ""
+        )
+    )
+    cells.append(cell("structure", "structure", len(structure), False))
+    summary = " · ".join(c for c in cells if c)
     folded: list[str] = []
 
     if tests == "FAIL" or gates == "FAIL":
