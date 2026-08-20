@@ -27,7 +27,6 @@ const plan = {
 
 const redNullStub = (prompt, opts) => {
   const label = opts.label ?? "";
-  if (label === "reference-index") return { found: false, table: "" };
   if (label.startsWith("red:")) return null;
   throw new Error(`unexpected label: ${label}`);
 };
@@ -42,31 +41,10 @@ test("includes why in the stopped: red-failed return value when the red agent re
   assert.equal(typeof result.why, "string", "why is a string stating the reason");
 });
 
-// Neither an exception from the reader agent nor a partial parse failure of a readable table
-// stops the whole run; the loss stays recorded at granularity (WORKFLOWS.md § Degradation
-// recording). The anomalies element shape {unit, kind, notes} does not change, and a run-level
-// anomaly belonging to no particular unit carries the fixed value "run" in unit.
-const directImplPlan = {
-  test_command: "echo test",
-  units: [
-    {
-      id: "U-1",
-      goal: "docs goal",
-      files: ["sample.js"],
-      contract: "docs contract",
-      tests: [],
-      seam: false,
-    },
-  ],
-};
-
-// Only reference-index throws; every other label returns the minimum the single direct
-// implementation step needs to run through.
 // A unit whose Red stays unconfirmed was never implemented. Counting it in completed lets the
 // caller's units_completed report work that did not happen, so it is reported in skipped.
 const noRedStub = (prompt, opts) => {
   const label = opts.label ?? "";
-  if (label === "reference-index") return { found: false, table: "" };
   if (label.startsWith("red:") || label.startsWith("red2:"))
     return {
       red_confirmed: false,
