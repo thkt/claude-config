@@ -131,10 +131,9 @@ test("the axes that read code are left uninspected when the issue's repository i
   });
 });
 
-// Listing other findings on an issue with no Plan section does not change whether to start, so a
-// broken decision order misreads it as needs-fix.
-// needs-split sits after needs-fix because a blocker stops build whatever the size, and before
-// build-ready because an issue past the threshold should be cut rather than handed over.
+// First match wins, so the order carries the decision. needs-plan leads because other findings on
+// a plan-less issue do not change whether to start. needs-split follows needs-fix because a blocker
+// stops build whatever the size, and precedes build-ready because an oversized issue gets cut.
 test("the four verdict values and their decision order match across both languages", () => {
   const VERDICTS = ["needs-plan", "needs-fix", "needs-split", "build-ready"];
   eachSkill((doc, lang) => {
@@ -147,14 +146,12 @@ test("the four verdict values and their decision order match across both languag
       order,
       `${lang}: the verdict table runs ${VERDICTS.join(", ")} in order`,
     );
-    // The description enumerates the set, and a reader picking a skill goes by that line.
     const description = /^description:.*$/m.exec(doc)[0];
     for (const verdict of VERDICTS)
       assert.ok(description.includes(verdict), `${lang}: the description names ${verdict}`);
   });
 });
 
-// The verdict is only reachable if the axis that produces it names where the count comes from.
 // Inventing a threshold here would put a second set of numbers beside PREFLIGHT's.
 test("the split axis counts against PREFLIGHT and names what it cannot count", () => {
   eachSkill((doc, lang) => {
@@ -179,8 +176,8 @@ test("the split axis counts against PREFLIGHT and names what it cannot count", (
   });
 });
 
-// The numbers are copied so the skill reads on its own, which makes them a second place they
-// live. PREFLIGHT stays the source; this keeps the copy from drifting off it.
+// The numbers are copied so the skill reads on its own. PREFLIGHT stays the source, and this
+// keeps the copy from drifting off it.
 test("the split thresholds match the ones PREFLIGHT declares", () => {
   const preflight = readFileSync(join(root, "rules", "core", "PREFLIGHT.md"), "utf8");
   const declared = {};

@@ -31,9 +31,8 @@ FLOOR = {
     "feature": ("Acceptance Criteria", "Testing Decisions"),
     "bug": ("Steps to Reproduce", "Expected vs Actual"),
 }
-# 骨格に無くても errors にしない節。Plan と Backlog candidates は /think の plan を転記した
-# issue が持ち、skills/issue/SKILL.md の Phase 3 が書く。Parent と Blocked by は /slice が持ち、
-# 選んだ骨格が何であれこの 2 節で挟む。
+# Plan と Backlog candidates は /think の plan を転記した issue が持ち、Parent と Blocked by は
+# /slice が骨格を挟む形で必ず付ける。骨格に無いという理由で errors にすると全て落ちる。
 ALLOWED_EXTRA = frozenset({"Plan", "Backlog candidates", "Parent", "Blocked by"})
 
 

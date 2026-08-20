@@ -8,14 +8,15 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const langs = ["en", "ja"];
 const at = (lang, ...parts) => join(root, ...(lang === "ja" ? [".ja"] : []), ...parts);
 const skill = (lang) => readFileSync(at(lang, "skills", "slice", "SKILL.md"), "utf8");
-const grant = (lang) => /^allowed-tools:.*$/m.exec(skill(lang))[0];
+const validatorPath = join(root, "skills", "issue", "scripts", "validate-issue-body.py");
+const validator = () => readFileSync(validatorPath, "utf8");
 
 // A command a phase invokes without a matching grant is refused at run time, and the refusal
 // reads as a permission prompt rather than as a missing line in the frontmatter.
 test("every command the phases invoke is covered by a grant", () => {
   for (const lang of langs) {
-    const line = grant(lang);
     const body = skill(lang);
+    const line = /^allowed-tools:.*$/m.exec(body)[0];
     for (const [needle, permission] of [
       ["gh issue create", "Bash(gh:*)"],
       ["cat", "Bash(cat:*)"],
@@ -27,8 +28,8 @@ test("every command the phases invoke is covered by a grant", () => {
   }
 });
 
-// slice files N issues in one batch. Without the validator, one body short of the floor becomes
-// N bodies short of it, and nothing between here and build reports the gap.
+// N issues are filed in one batch, so one body short of the floor becomes N of them, and
+// nothing between here and build reports the gap.
 test("publishing runs the same validator /issue runs", () => {
   for (const lang of langs) {
     const body = skill(lang);
@@ -37,21 +38,14 @@ test("publishing runs the same validator /issue runs", () => {
       /\$\{CLAUDE_SKILL_DIR\}\/\.\.\/issue\/scripts\/validate-issue-body\.py/,
       `${lang}: it names the validator by a path that resolves from this skill`,
     );
-    assert.ok(
-      existsSync(join(root, "skills", "issue", "scripts", "validate-issue-body.py")),
-      "the validator is where the path points",
-    );
+    assert.ok(existsSync(validatorPath), "the validator is where the path points");
   }
 });
 
-// The two wrapper sections are slice's own convention, so the validator has to know them by name.
-// Otherwise every slice body comes back as unknown_section and the run stops on its own output.
+// Unknown to the validator, the two wrapper sections make every slice body come back as
+// unknown_section, and the run stops on its own output.
 test("the sections slice wraps every body in are the ones the validator permits", () => {
-  const source = readFileSync(
-    join(root, "skills", "issue", "scripts", "validate-issue-body.py"),
-    "utf8",
-  );
-  const allowed = /^ALLOWED_EXTRA = frozenset\(\{(.*?)\}\)/ms.exec(source)[1];
+  const allowed = /^ALLOWED_EXTRA = frozenset\(\{(.*?)\}\)/ms.exec(validator())[1];
   for (const lang of langs) {
     for (const section of ["## Parent", "## Blocked by"]) {
       assert.ok(skill(lang).includes(section), `${lang}: slice adds ${section}`);
@@ -63,14 +57,10 @@ test("the sections slice wraps every body in are the ones the validator permits"
   }
 });
 
-// The validator requires a bracketed type in the title. A field telling the author to write a
-// plain name produces a body that is correct and a title the validator rejects.
+// A field telling the author to write a plain name produces a correct body under a title the
+// validator rejects for having no bracketed type.
 test("the title field requires the bracketed type the validator checks for", () => {
-  const source = readFileSync(
-    join(root, "skills", "issue", "scripts", "validate-issue-body.py"),
-    "utf8",
-  );
-  assert.match(source, /TYPE_PREFIX = re\.compile/, "the validator reads a bracketed prefix");
+  assert.match(validator(), /TYPE_PREFIX = re\.compile/, "the validator reads a bracketed prefix");
   for (const lang of langs) {
     const row = skill(lang)
       .split("\n")
@@ -80,8 +70,8 @@ test("the title field requires the bracketed type the validator checks for", () 
   }
 });
 
-// Both skills file into one tracker, so the ladder has to live in one place. A copy in slice
-// drifts from /issue's and the same repository ends up with two shapes of body.
+// Both skills file into one tracker. A second copy of the ladder drifts from /issue's, and the
+// same repository ends up with two shapes of body.
 test("both filing skills take the skeleton from the one shared reference", () => {
   const reference = join("issue", "references", "template-source.md");
   assert.ok(existsSync(join(root, "skills", reference)), "the shared reference exists");
@@ -99,8 +89,8 @@ test("both filing skills take the skeleton from the one shared reference", () =>
   }
 });
 
-// A slice reaches build only through this chain. Naming the plan step without naming the route
-// that writes it leaves the reader hand-editing the issue body.
+// Naming the plan step without naming the route that writes it leaves the reader hand-editing
+// the issue body.
 test("the handoff names the route that writes the plan into the issue", () => {
   for (const lang of langs) {
     const section = skill(lang).split("\n## Phase 1")[0];
@@ -114,8 +104,8 @@ test("the handoff names the route that writes the plan into the issue", () => {
   }
 });
 
-// A source that already carries a plan has its units settled. Running /think once per slice
-// re-derives what the source states, and the two answers then disagree on the same work.
+// Running /think once per slice re-derives units the source already settled, and the two
+// answers then disagree on the same work.
 test("a source carrying a plan is distributed rather than re-planned", () => {
   for (const lang of langs) {
     const body = skill(lang);
@@ -139,9 +129,8 @@ test("a source carrying a plan is distributed rather than re-planned", () => {
   }
 });
 
-// Build's Revalidate matches every precondition against the current codebase. A precondition
-// naming what a sibling slice has yet to write fails there, and "not there yet" reads the same
-// as a wrong plan.
+// A precondition naming what a sibling slice has yet to write fails build's Revalidate, where
+// "not there yet" reads the same as a wrong plan.
 test("what a sibling slice creates travels as a dependency, not a precondition", () => {
   for (const lang of langs) {
     // Scoped to the section that states the rule. Both words also appear elsewhere in the file,
@@ -168,9 +157,8 @@ test("the parent-child relation is set through gh, with the heading as its copy"
   }
 });
 
-// The layer names differ per repository. Naming schema / API / UI as the fixed set leaves the
-// all-layers rule and the hand-back check unevaluable anywhere those three do not exist, which
-// a dry run against this repository showed.
+// Naming schema / API / UI as the fixed set leaves the all-layers rule and the hand-back check
+// unevaluable in any repository without those three, this one included.
 test("the layers are settled per repository rather than fixed in the wording", () => {
   for (const lang of langs) {
     const body = skill(lang);

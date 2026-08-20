@@ -6,11 +6,10 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
-// The phrasing that hands an issue to build. Matches both the Japanese and the English wording.
-// A routing table's destination cell carries no prose particles, so the row-start alternative is
-// what catches it; anchoring there keeps a passing mention such as "the build workflow's
-// Revalidate" out. `/build` is its own alternative because a skill naming the slash command hands
-// an issue over just as much as one writing the words out.
+// The phrasing that hands an issue to build, in either language. A routing table's destination
+// cell carries no prose particles, so the row-start alternative catches it, and anchoring there
+// keeps a passing mention such as "the build workflow's Revalidate" out. `/build` is listed
+// because naming the slash command hands an issue over as much as writing the words out.
 const HANDOFF =
   /build workflow に|build に渡|build に委譲|build へ|to the build workflow|delegate to build|`\/build`|^\|\s*(The )?build workflow/;
 // qualify branches on the presence of a Plan section earlier in its verdict table, so by the
