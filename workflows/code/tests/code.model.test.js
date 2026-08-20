@@ -40,7 +40,6 @@ const noTestPlan = {
 // red / green fail on the first call, which is the only way red2 / green2 come to exist.
 const retryingAgentStub = (prompt, opts) => {
   const label = opts.label ?? "";
-  if (label === "reference-index") return { found: false, table: "" };
   if (label.startsWith("red2:"))
     return { red_confirmed: true, test_files: ["t.test.js"], notes: "" };
   if (label.startsWith("red:"))
@@ -57,7 +56,6 @@ const retryingAgentStub = (prompt, opts) => {
 
 const happyAgentStub = (prompt, opts) => {
   const label = opts.label ?? "";
-  if (label === "reference-index") return { found: false, table: "" };
   if (label.startsWith("red:"))
     return { red_confirmed: true, test_files: ["t.test.js"], notes: "" };
   if (label.startsWith("green:")) return { green: true, notes: "" };
@@ -142,8 +140,7 @@ test("only a unit with seam: true carries the inner-layer stub ban and the wirin
 test("the direct impl, Red, and Green prompts carry the advisor ban and the anomaly routing while Verify does not", async () => {
   const directStub = (prompt, opts) => {
     const label = opts.label ?? "";
-    if (label === "reference-index") return { found: false, table: "" };
-    if (label.startsWith("impl:")) return { green: true, notes: "" };
+      if (label.startsWith("impl:")) return { green: true, notes: "" };
     if (label === "verify") return { tests_pass: true, gates_pass: true, output_tail: "" };
     throw new Error(`unexpected label: ${label}`);
   };
@@ -172,8 +169,7 @@ test("the direct impl, Red, and Green prompts carry the advisor ban and the anom
 test("a unit with no tests skips Red / Green, completes in one direct impl step, and propagates model and effort", async () => {
   const directStub = (prompt, opts) => {
     const label = opts.label ?? "";
-    if (label === "reference-index") return { found: false, table: "" };
-    if (label.startsWith("impl:")) return { green: true, notes: "" };
+      if (label.startsWith("impl:")) return { green: true, notes: "" };
     if (label === "verify") return { tests_pass: true, gates_pass: true, output_tail: "" };
     throw new Error(`unexpected label: ${label}`);
   };
@@ -197,8 +193,7 @@ test("a unit with no tests skips Red / Green, completes in one direct impl step,
 test("fails closed with stopped: unit-failed when the direct implementation fails twice", async () => {
   const failingStub = (prompt, opts) => {
     const label = opts.label ?? "";
-    if (label === "reference-index") return { found: false, table: "" };
-    if (label.startsWith("impl2:")) return { green: false, notes: "still red" };
+      if (label.startsWith("impl2:")) return { green: false, notes: "still red" };
     if (label.startsWith("impl:")) return { green: false, notes: "suite failed" };
     throw new Error(`unexpected label: ${label}`);
   };
@@ -233,7 +228,6 @@ test("the static gates pass on the JA and EN code.js and on tests/*.js", () => {
 // contract before that second derivation is retired in favour of this one.
 const verificationStub = (prompt, opts) => {
   const label = opts.label ?? "";
-  if (label === "reference-index") return { found: false, table: "" };
   if (label.startsWith("impl:")) return { green: true, notes: "", deferred: [] };
   if (label.startsWith("red:"))
     return { red_confirmed: true, test_files: ["a.test.js"], notes: "", evidence: [] };
