@@ -1,6 +1,6 @@
 ---
 name: qualify
-description: issue が build に投入できる形かを検分し、verdict (build-ready / needs-plan / needs-fix) と指摘を返す。起票には使わない (/issue)。PR と plan の突合には使わない (/preview)。
+description: issue が build に投入できる形かを検分し、verdict (build-ready / needs-plan / needs-fix / needs-split) と指摘を返す。起票には使わない (/issue)。PR と plan の突合には使わない (/preview)。
 when_to_use: 実装可否, build-ready 判定, issue 品質チェック, qualify issue, check issue before build
 allowed-tools: Bash(gh issue view:*) Bash(gh repo view:*) Bash(ugrep:*) Bash(bfs:*) Read AskUserQuestion
 model: opus
@@ -50,6 +50,20 @@ Phase 1 の突き合わせで owner/repo が食い違ったときは、precondit
 | preconditions の実在 | 各 {path, pattern} が現在のコードで見つかる                                                                                                                              | advice  |
 | 新規作成の衝突       | contract が新規作成と読める files が、まだ存在しない                                                                                                                     | blocker |
 | 表示フィールドの列挙 | 表示するドメインフィールドを追加・変更する場合、そのフィールドを列挙している、または agent が読める出典を引いている。欠落時の指摘は AC と plan の T-NNN への列挙先を示す | blocker |
+| 分割の要否           | plan の規模が `rules/core/PREFLIGHT.md` の Task Decomposition の閾値に収まる                                                                                             | split   |
+
+### 分割の要否の数え方
+
+重大度 `split` は build を止めない。blocker と advice のどちらの一覧にも載せず、verdict だけを動かす。`## Plan` 節があるときにだけ当て、無ければこの軸を飛ばす。
+
+閾値は PREFLIGHT の Task Decomposition から取り、4 行のうち当てられる 2 行だけを使う。Lines は plan に出どころが無い。Layers は層の名前を決める工程が qualify に無いので、数える対象が定まらない。当てなかった 2 行は理由とともに advice に置く。
+
+| 数えるもの | 数え方                                                                                                       | 閾値 |
+| ---------- | -------------------------------------------------------------------------------------------------------------- | ---- |
+| Files      | 全 unit の files を集め、責務で数える。`.ja/` と英語側の対は 1、実装とそれを覆うテストは 1                   | ≥5   |
+| Features   | 互いに files を共有しない unit の塊の数。seam unit は定義上すべてを跨ぐので、塊には数えない                  | ≥3   |
+
+`/issue` の分割判定と同じ問いにはならない。あちらは本文生成の前に走るので plan を見ておらず、数えるのは説明から挙げた criteria になる。ここで数えるのは plan の files と unit で、`/issue` が判断した時点には存在しなかった。断られた提案の繰り返しではない。
 
 ## Phase 4: verdict と出力
 
@@ -59,6 +73,7 @@ Phase 1 の突き合わせで owner/repo が食い違ったときは、precondit
 | ----------- | ----------------------- | ---------------------------------------------- |
 | needs-plan  | `## Plan` 節が無い      | `/think` で plan を作り `/issue <番号>` で転記 |
 | needs-fix   | blocker が 1 件以上ある | blocker を解消してから再度 `/qualify`          |
+| needs-split | 分割の要否が閾値を超える | `/slice <番号>` で垂直スライスへ分ける         |
 | build-ready | blocker が 0 件         | build workflow に issue 番号を渡す             |
 
 ### 質問

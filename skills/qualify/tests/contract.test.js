@@ -133,8 +133,10 @@ test("the axes that read code are left uninspected when the issue's repository i
 
 // Listing other findings on an issue with no Plan section does not change whether to start, so a
 // broken decision order misreads it as needs-fix.
-test("the three verdict values and their decision order match across both languages", () => {
-  const VERDICTS = ["needs-plan", "needs-fix", "build-ready"];
+// needs-split sits after needs-fix because a blocker stops build whatever the size, and before
+// build-ready because an issue past the threshold should be cut rather than handed over.
+test("the four verdict values and their decision order match across both languages", () => {
+  const VERDICTS = ["needs-plan", "needs-fix", "needs-split", "build-ready"];
   eachSkill((doc, lang) => {
     const order = VERDICTS.map((v) => doc.indexOf(`| ${v}`));
     for (const [i, at] of order.entries()) {
@@ -143,8 +145,69 @@ test("the three verdict values and their decision order match across both langua
     assert.deepEqual(
       [...order].sort((a, b) => a - b),
       order,
-      `${lang}: the verdict table runs needs-plan, needs-fix, build-ready in order`,
+      `${lang}: the verdict table runs ${VERDICTS.join(", ")} in order`,
     );
+    // The description enumerates the set, and a reader picking a skill goes by that line.
+    const description = /^description:.*$/m.exec(doc)[0];
+    for (const verdict of VERDICTS)
+      assert.ok(description.includes(verdict), `${lang}: the description names ${verdict}`);
+  });
+});
+
+// The verdict is only reachable if the axis that produces it names where the count comes from.
+// Inventing a threshold here would put a second set of numbers beside PREFLIGHT's.
+test("the split axis counts against PREFLIGHT and names what it cannot count", () => {
+  eachSkill((doc, lang) => {
+    assert.match(
+      doc,
+      /rules\/core\/PREFLIGHT\.md/,
+      `${lang}: the axis takes its thresholds from PREFLIGHT`,
+    );
+    for (const row of ["Files", "Features"])
+      assert.match(
+        doc,
+        new RegExp(`\\| ${row} +\\|`),
+        `${lang}: the counting table carries the ${row} row`,
+      );
+    for (const skipped of ["Lines", "Layers"])
+      assert.ok(doc.includes(skipped), `${lang}: it says why ${skipped} is left out`);
+    assert.match(
+      doc,
+      /\/slice <(number|番号)>/,
+      `${lang}: the next step names the skill that does the cutting`,
+    );
+  });
+});
+
+// The numbers are copied so the skill reads on its own, which makes them a second place they
+// live. PREFLIGHT stays the source; this keeps the copy from drifting off it.
+test("the split thresholds match the ones PREFLIGHT declares", () => {
+  const preflight = readFileSync(join(root, "rules", "core", "PREFLIGHT.md"), "utf8");
+  const declared = {};
+  for (const row of preflight.matchAll(/^\| (Files|Features|Layers|Lines) +\| (≥\d+) +\|$/gm))
+    declared[row[1]] = row[2];
+  assert.deepEqual(Object.keys(declared).sort(), ["Features", "Files", "Layers", "Lines"]);
+  eachSkill((doc, lang) => {
+    for (const name of ["Files", "Features"]) {
+      const row = doc.split("\n").find((line) => new RegExp(`^\\| ${name} +\\|`).test(line));
+      assert.ok(row, `${lang}: the counting table carries ${name}`);
+      assert.ok(
+        row.includes(declared[name]),
+        `${lang}: ${name} reads ${declared[name]} as PREFLIGHT declares`,
+      );
+    }
+  });
+});
+
+// /issue already asks about splitting and records that a declined suggestion is not raised twice.
+// Without the reason written down, the next conformance pass reads this axis as that violation.
+test("the axis states why it is not /issue's declined question raised again", () => {
+  const marker = {
+    ja: /`\/issue` の分割判定と同じ問いにはならない/,
+    en: /not the same question `\/issue`'s split assessment asked/,
+  };
+  eachSkill((doc, lang) => {
+    assert.match(doc, marker[lang], `${lang}: the reason sits in the body, not only in a commit`);
   });
 });
 
