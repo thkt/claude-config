@@ -5,6 +5,10 @@
 
 ## 昇格待ち (根拠2件以上、cap 超過持ち越し)
 
+- hook のコマンド判定は語の有無でなく shlex による位置の解析で行う #349 #350 #351
+- テンプレート/skeleton は validator が要求するフィールドを載せ、seam テストで固定する #330 #338 #356
+- ローカルで通り CI や別の起動元で落ちる差は、環境が供給するものの違いから出る #354 #358 #381
+- 条件付き rules の paths が発火しないまま実装が先行し、規約と実態が乖離する #237 #240
 - plugin 配布は fix PR 後に marketplace.json の version bump を別 PR で行い、桁は fix=patch/呼び出し契約変更=minor #200 #203 #207
 - linter の false positive は緩和でなく理由コメント付き disable で抑止する #167 #168 #171 #176
 - prose/grep 照合だけの brittle テストや対象消滅した dead テストは理由記録付きで削除する #166 #167 #174 #180
