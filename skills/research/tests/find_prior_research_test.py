@@ -80,7 +80,8 @@ class FindPriorResearch(unittest.TestCase):
         self.assertEqual(shared["2026-07-01-schema-export.md"], 2)
 
     def test_candidates_come_back_with_the_largest_overlap_first(self) -> None:
-        """the caller reads the top candidate first, so the order carries which match is strongest"""
+        """The caller reads the top candidate first, so the order carries which match
+        is strongest."""
         directory = make_dir(
             "2026-06-01-user-flow.md",
             "2026-06-02-add-user-permission-flow.md",
