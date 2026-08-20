@@ -15,7 +15,7 @@ user-invocable: false
 
 ## 手法
 
-`~/.claude/rules/core/OPERATION.md` § Debug Investigation Protocol が正。fork 実行では常時ロードの rules が届かないので、手順をここに写す。
+${CLAUDE_SKILL_DIR}/../../rules/core/OPERATION.md § Debug Investigation Protocol が正。fork 実行では常時ロードの rules が届かないので、手順をここに写す。
 
 1. 動く類似コードと壊れたコードを差分比較し、違いを列挙する
 2. 原因の仮説を 3 つ以上立てる。候補の出どころは ${CLAUDE_SKILL_DIR}/references/symptom-patterns.md
@@ -41,15 +41,15 @@ Pattern は原因の深さでなく再発経路の有無で決まる。root caus
 
 ## 出力フォーマット
 
+利用側は Pattern で分岐する。`/fix` は defense-in-depth を適用するか `/research` へ委譲するかを決める。
+
 | フィールド | 説明                              |
 | ---------- | --------------------------------- |
 | Symptom    | ユーザーから見た失敗              |
 | Root cause | 検証で残った仮説                  |
 | Pattern    | Isolated / Recurring / Systematic |
 
-利用側は Pattern で分岐する。`/fix` は defense-in-depth を適用するか `/research` へ委譲するかを決める。
-
-## 参照
+## 参照ファイル
 
 | 迷うこと           | ファイル                                              |
 | ------------------ | ----------------------------------------------------- |

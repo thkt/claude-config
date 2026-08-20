@@ -11,7 +11,7 @@ user-invocable: false
 
 ## Input
 
-PR body is passed as a string from `/pr`. If either field below is missing, return `mode: failed` with the missing field name and let `/pr` decide.
+PR body is passed as a string from `/pr`. If either field below is missing, return `mode=failed reason=<missing field name>` and let `/pr` decide.
 
 | Field       | Source                                                      |
 | ----------- | ----------------------------------------------------------- |
@@ -59,20 +59,11 @@ Insert `agent-browser wait 500` between steps. Run `snapshot` before each operat
 
 ## Output
 
-Single stdout line.
+Return a single mode line on stdout. `/pr` branches on that line.
 
-```
-mode=screenshot artifact=/absolute/path/to/step-01.png
-```
-
-On video capture.
-
-```
-mode=video artifact=/absolute/path/to/capture.mp4
-```
-
-On failure.
-
-```
-mode=failed reason=<one-line reason>
-```
+| Situation             | Line                                                     |
+| --------------------- | -------------------------------------------------------- |
+| A screenshot was taken | `mode=screenshot artifact=/absolute/path/to/step-01.png` |
+| A video was taken      | `mode=video artifact=/absolute/path/to/capture.mp4`      |
+| An input was missing   | `mode=failed reason=<missing field name>`                |
+| The capture failed     | `mode=failed reason=<one-line reason>`                   |

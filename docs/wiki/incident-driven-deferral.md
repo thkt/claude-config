@@ -1,3 +1,7 @@
+---
+globs: []
+---
+
 # incident-driven deferral
 
 ## 内容

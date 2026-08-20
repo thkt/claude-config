@@ -51,6 +51,39 @@ test("no live instruction or convention still carries the old name ADR", async (
   assert.doesNotMatch(await readFile(join(root, "README.md"), "utf8"), /\bADRs?\b/, "README.md");
 });
 
+// SUBAGENT.md keeps ~/.claude/ as the agent form, since an agent body expands no
+// ${CLAUDE_SKILL_DIR}. A skill body does expand it, so a home-anchored path there names the dev
+// tree and a plugin install reads another copy of the file, or none at all.
+test("no skill names a bundled asset by a home-anchored path", async () => {
+  // settings.json belongs to the running side, so the same path holds under a plugin install.
+  const RUNNING_SIDE = /\.claude\/settings\.json/;
+  const HOME_ANCHORED = /~\/\.claude\/|\$HOME\/\.claude\//;
+  // A test under skills/ is not an instruction the harness reads, so a path it names is a fixture.
+  const files = (await instructionFiles()).filter(
+    (f) => f.rel.startsWith("skills/") && !f.rel.includes("/tests/"),
+  );
+  assert.ok(files.length > 40, `the number scanned (${files.length})`);
+  for (const { lang, rel, full } of files) {
+    const named = (await readFile(full, "utf8"))
+      .split("\n")
+      .filter((line) => HOME_ANCHORED.test(line) && !RUNNING_SIDE.test(line))
+      .map((line) => line.trim());
+    assert.deepEqual(named, [], `${lang}: ${rel} names a bundled asset by a home-anchored path`);
+  }
+});
+
+// A bare Bash grant hands a skill every shell command, and the commands it actually names are a
+// short list in its own body. Nothing at run time reports the gap: the wider grant only ever shows
+// up as a prompt that did not appear.
+test("no skill grants Bash without narrowing it to the commands it names", async () => {
+  const files = (await instructionFiles()).filter((f) => f.rel.endsWith("/SKILL.md"));
+  assert.ok(files.length > 40, `the number scanned (${files.length})`);
+  for (const { lang, rel, full } of files) {
+    const grant = (await readFile(full, "utf8")).match(/^allowed-tools:.*$/m)?.[0] ?? "";
+    assert.doesNotMatch(grant, /(^|\s)Bash(\s|$)/, `${lang}: ${rel} grants Bash unnarrowed`);
+  }
+});
+
 // DR-0090 unified work products under .claude/workspace/, so a bare workspace/ in a live
 // instruction points at a directory that sits under no project root.
 test("no live instruction or convention names a workspace/ without .claude/", async () => {

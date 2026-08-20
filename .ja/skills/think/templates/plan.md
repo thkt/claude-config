@@ -24,6 +24,12 @@ reference_module: {kind + reason を object で (kind: module/no-module/new-shap
 - files: {複製する各ファイルのパスのみ (`src/foo/list.tsx`, `src/foo/detail.tsx`)。役割は conventions へ書く}
 - conventions: {後続 unit が維持する共有慣例 (合成する共有コンポーネント、フォーマット処理の置き場所、状態の渡し方)}
 
+### 決まりごと
+
+{unit を跨いで効く決まりごとを、出典と逐語の引用で並べる。無ければ小節ごと省略する}
+
+- `docs/wiki/<ページ>.md`: {定型手順または内容の行を逐語で}
+
 ### 前提
 
 - {既存依存。path 単独か path + stable anchor (`src/storage/mod.rs` の `open_db`)}

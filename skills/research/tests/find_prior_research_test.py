@@ -25,6 +25,7 @@ class Candidate(TypedDict):
 
 class Report(TypedDict):
     candidates: list[Candidate]
+    slug_words: int
 
 
 def run(slug: str, directory: Path) -> tuple[int, Report]:
@@ -77,6 +78,32 @@ class FindPriorResearch(unittest.TestCase):
         self.assertEqual(code, 0)
         shared = {c["file"]: c["shared"] for c in out["candidates"]}
         self.assertEqual(shared["2026-07-01-schema-export.md"], 2)
+
+    def test_candidates_come_back_with_the_largest_overlap_first(self) -> None:
+        """the caller reads the top candidate first, so the order carries which match is strongest"""
+        directory = make_dir(
+            "2026-06-01-user-flow.md",
+            "2026-06-02-add-user-permission-flow.md",
+            "2026-06-03-permission.md",
+        )
+        code, out = run("add-user-permission-flow", directory)
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            [c["file"] for c in out["candidates"]],
+            [
+                "2026-06-02-add-user-permission-flow.md",
+                "2026-06-01-user-flow.md",
+                "2026-06-03-permission.md",
+            ],
+        )
+
+    def test_slug_words_lets_a_one_word_slug_read_as_a_complete_match(self) -> None:
+        """a one-word slug never reaches shared 2, so the count tells a full match from a partial"""
+        directory = make_dir("2026-06-01-qualify.md")
+        code, out = run("qualify", directory)
+        self.assertEqual(code, 0)
+        self.assertEqual(out["slug_words"], 1)
+        self.assertEqual(out["candidates"][0]["shared"], 1)
 
     def test_non_markdown_file_is_excluded(self) -> None:
         """a file whose extension is not .md is left out even when words overlap"""

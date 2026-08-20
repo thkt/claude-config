@@ -1,0 +1,26 @@
+[
+  {
+    "file": "cases/flag/empty-catch.ts",
+    "expected": "detected",
+    "category": "SF1",
+    "severity_min": "high",
+    "note": "The catch body is empty, so the failure reaches neither the log nor the caller"
+  },
+  {
+    "file": "cases/flag/default-on-catch.ts",
+    "expected": "detected",
+    "category": "SF5",
+    "severity_min": "medium",
+    "note": "A default is returned with the cause unlogged"
+  },
+  {
+    "file": "cases/clean/rethrown-catch.ts",
+    "expected": "no_finding",
+    "note": "Logged and rethrown"
+  },
+  {
+    "file": "cases/clean/validated-default.ts",
+    "expected": "no_finding",
+    "note": "The fallback warns before it is used"
+  }
+]

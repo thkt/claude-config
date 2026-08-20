@@ -4,7 +4,7 @@
 slug の語とファイル名の語の重なり数を数え、重なりを持つ .md ファイルを降順で返す。
 ファイル名の日付プレフィックス (YYYY-MM-DD-) は語の照合対象から外れる。
 
-stdout: JSON { candidates: [{file, shared}, ...] }  (shared 降順)
+stdout: JSON { candidates: [{file, shared}, ...], slug_words: int }  (shared 降順)
 exit: 0
 """
 
@@ -44,7 +44,9 @@ def main() -> None:
                 candidates.append({"file": path.name, "shared": shared})
         candidates.sort(key=lambda c: c["shared"], reverse=True)
 
-    print(json.dumps({"candidates": candidates}, indent=2))
+    # slug が 1 語のとき shared は 2 に届かない。語数を返し、
+    # 完全一致かどうかを呼び出し側が判定できるようにする。
+    print(json.dumps({"candidates": candidates, "slug_words": len(slug_words)}, indent=2))
     sys.exit(0)
 
 

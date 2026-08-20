@@ -1,8 +1,8 @@
 # 検証手順
 
-/research の Phase 4 の締めと Phase 5 の sweep から参照する手順を定義する。
+/research の Phase 4 と Phase 5 の sweep から参照する手順を定義する。
 
-どれを使うかは finding の種類で決まる。網羅性 finding には Cross-method 検証、外部システムの挙動に関する主張には一次ソース検証を構造的に適用し、自己判断による finding 除外は認めない。ライブラリ API 挙動の検証は `~/.claude/rules/development/SOURCING.md` を適用する。
+どれを使うかは finding の種類で決まる。網羅性 finding には Cross-method 検証、外部システムの挙動に関する主張には一次ソース検証を構造的に適用し、自己判断による finding 除外は認めない。ライブラリ API 挙動の検証は ${CLAUDE_SKILL_DIR}/../../rules/development/SOURCING.md を適用する。
 
 ## Cross-method 検証
 

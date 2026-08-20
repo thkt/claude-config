@@ -123,6 +123,62 @@ class Verdict(unittest.TestCase):
         self.assertIn("本文", message)
 
 
+class EnglishVerdict(unittest.TestCase):
+    """The other direction: the English copy of a mirrored file left as the Japanese original."""
+
+    tmp: tempfile.TemporaryDirectory[str]
+
+    def _write_pair(self, name: str, english: str) -> str:
+        """The English file plus the .ja/ counterpart that makes it a mirrored file."""
+        root = Path(self.tmp.name)
+        for path, body in ((root / name, english), (root / ".ja" / name, english)):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            _ = path.write_text(body, encoding="utf-8")
+        return str(root / name)
+
+    @override
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def test_a_japanese_docstring_on_the_english_side_is_reported(self) -> None:
+        path = self._write_pair("skills/x/scripts/m.py", '"""語の重なりを数える."""\nx = 1\n')
+        message = mirror_prose.check_english(path)
+        assert message is not None
+        self.assertIn("1 行", message)
+
+    def test_english_prose_passes(self) -> None:
+        path = self._write_pair("skills/x/scripts/m.py", '"""Count the shared words."""\nx = 1\n')
+        self.assertIsNone(mirror_prose.check_english(path))
+
+    def test_a_comment_quoting_a_japanese_literal_is_data(self) -> None:
+        path = self._write_pair("skills/x/scripts/m.py", '# The formatter turns "0件" into "0 件".\n')
+        self.assertIsNone(mirror_prose.check_english(path))
+
+    def test_a_japanese_string_literal_is_not_prose(self) -> None:
+        path = self._write_pair("skills/x/scripts/m.py", '# Label the row.\nLABEL = "保存"\n')
+        self.assertIsNone(mirror_prose.check_english(path))
+
+    def test_a_file_with_no_counterpart_is_not_mirrored(self) -> None:
+        root = Path(self.tmp.name)
+        (root / ".ja").mkdir(parents=True, exist_ok=True)
+        lone = root / "hooks" / "m.py"
+        lone.parent.mkdir(parents=True, exist_ok=True)
+        _ = lone.write_text('"""語の重なりを数える."""\n', encoding="utf-8")
+        self.assertFalse(mirror_prose.is_english_target(str(lone)))
+
+    def test_markdown_stays_out_of_this_direction(self) -> None:
+        # An English SKILL.md keeps its when_to_use trigger phrases in Japanese on purpose.
+        path = self._write_pair("skills/x/SKILL.md", "when_to_use: 調査して\n")
+        self.assertFalse(mirror_prose.is_english_target(path))
+
+    def test_the_ja_side_is_not_a_target_of_this_direction(self) -> None:
+        path = self._write_pair("skills/x/scripts/m.py", '"""語の重なりを数える."""\n')
+        ja_side = str(Path(self.tmp.name) / ".ja" / "skills" / "x" / "scripts" / "m.py")
+        self.assertTrue(mirror_prose.is_english_target(path))
+        self.assertFalse(mirror_prose.is_english_target(ja_side))
+
+
 class MirrorSweep(unittest.TestCase):
     """Every real .ja/ file, which is what the edit-time hook alone cannot cover."""
 
@@ -137,6 +193,15 @@ class MirrorSweep(unittest.TestCase):
             if mirror_prose.check(str(path)):
                 offenders.append(str(path.relative_to(REPO)))
         self.assertEqual(offenders, [], f".ja/ files that lost their Japanese: {offenders}")
+
+    def test_no_english_side_file_kept_the_japanese_original(self) -> None:
+        offenders: list[str] = []
+        for path in sorted(REPO.rglob("*")):
+            if not path.is_file() or "__pycache__" in path.parts or ".git" in path.parts:
+                continue
+            if mirror_prose.check_english(str(path)):
+                offenders.append(str(path.relative_to(REPO)))
+        self.assertEqual(offenders, [], f"English-side files still in Japanese: {offenders}")
 
 
 if __name__ == "__main__":

@@ -13,6 +13,10 @@ const skills = {
   ja: join(root, ".ja", "skills", "think", "SKILL.md"),
   en: join(root, "skills", "think", "SKILL.md"),
 };
+const preWriteChecks = {
+  ja: join(root, ".ja", "skills", "think", "references", "pre-write-check.md"),
+  en: join(root, "skills", "think", "references", "pre-write-check.md"),
+};
 
 function read(path) {
   assert.ok(existsSync(path), `${path} exists`);
@@ -32,7 +36,11 @@ test("the plan template defines the skeleton (id notation, implementation order,
       assert.match(doc, /分割.{0,40}で解消/, "ja: an overflow is resolved by splitting");
     } else {
       assert.match(doc, /^### Preconditions/m, "en: the Preconditions subsection");
-      assert.match(doc, /List units in implementation order/, "en: the order is the implementation order");
+      assert.match(
+        doc,
+        /List units in implementation order/,
+        "en: the order is the implementation order",
+      );
       assert.match(doc, /condition \+ expected result/, "en: a test is a one-line statement");
       assert.match(doc, /cap is the line count shown in the skeleton/, "en: the line-count rule");
       assert.match(doc, /splitting/i, "en: an overflow is resolved by splitting");
@@ -47,7 +55,11 @@ test("the plan template defines the skeleton (id notation, implementation order,
       assert.match(doc, /one citation line \+ one intent line/i, "en: the contract line format");
     }
     assert.match(doc, /EXTRACT_SCHEMA/, `${lang}: it states build.js owns the schema`);
-    assert.match(doc, /クロスチェック|cross-check/, `${lang}: the mention of the deterministic cross-check`);
+    assert.match(
+      doc,
+      /クロスチェック|cross-check/,
+      `${lang}: the mention of the deterministic cross-check`,
+    );
     assert.ok(!doc.includes("build-plan:v1"), `${lang}: no build-plan:v1 remnant`);
     assert.ok(!doc.includes("<details>"), `${lang}: no <details> remnant`);
     assert.ok(!doc.includes("```json"), `${lang}: no json fence is specified`);
@@ -60,7 +72,10 @@ test("the template's root_cause heading word matches the field name build.js che
   // schema's description would lose the field on an English rewording alone and break this seam
   // test for a reason unrelated to the token drift it is meant to catch.
   const fieldMatch = buildJs.match(/isBug\s*&&\s*!String\(plan\.(\w+)\s*\|\|/);
-  assert.ok(fieldMatch, "the name of the Bug-only required field is readable from build.js's validate");
+  assert.ok(
+    fieldMatch,
+    "the name of the Bug-only required field is readable from build.js's validate",
+  );
   const fieldName = fieldMatch[1];
   const headingToken = new RegExp(`^${fieldName}:`, "m");
   for (const [lang, path] of Object.entries(templates)) {
@@ -105,7 +120,11 @@ test("each language's template instructs that a reference module's files carry p
 test("each language's template presents reference_module in the kind-plus-reason form", () => {
   for (const [lang, path] of Object.entries(templates)) {
     const doc = read(path);
-    assert.match(doc, /reference_module: \{kind/, `${lang}: the reference_module row starts with kind`);
+    assert.match(
+      doc,
+      /reference_module: \{kind/,
+      `${lang}: the reference_module row starts with kind`,
+    );
     assert.match(
       doc,
       /module\/no-module\/new-shape/,
@@ -122,7 +141,10 @@ test("the field build.js requires when kind is module exists in the skeleton's r
   const fieldMatch = buildJs.match(
     /refModule\.kind === "module"[\s\S]{0,200}?String\(refModule\.(\w+)\s*\|\|/,
   );
-  assert.ok(fieldMatch, "the name of the kind-module-only required field is readable from build.js's validate");
+  assert.ok(
+    fieldMatch,
+    "the name of the kind-module-only required field is readable from build.js's validate",
+  );
   const fieldName = fieldMatch[1];
   const headings = { ja: "### 参照モジュール", en: "### Reference module" };
   for (const [lang, path] of Object.entries(templates)) {
@@ -132,12 +154,92 @@ test("the field build.js requires when kind is module exists in the skeleton's r
     assert.ok(start !== -1, `${lang}: the ${heading} heading exists`);
     const rest = doc.slice(start + heading.length);
     const nextHeading = rest.search(/^#{2,3}[ \t]/m);
-    assert.notStrictEqual(nextHeading, -1, `${lang}: another heading follows the reference module heading`);
+    assert.notStrictEqual(
+      nextHeading,
+      -1,
+      `${lang}: another heading follows the reference module heading`,
+    );
     assert.match(
       rest.slice(0, nextHeading),
       new RegExp(`^- ${fieldName}:`, "m"),
       `${lang}: the reference module subsection carries a ${fieldName} row`,
     );
+  }
+});
+
+// think names a wiki page as a citation source but had no way to find one; the pages the plan
+// should cite are the ones bearing on the files its units touch, which only the finder resolves.
+// A grant that misses the path leaves the call refused and the citation silently unsourced.
+test("think finds the wiki rules through scribe's finder and is granted that path", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    assert.match(
+      doc,
+      /\$\{CLAUDE_SKILL_DIR\}\/\.\.\/scribe\/scripts\/find_wiki_rule\.py/,
+      `${lang}: Phase 3 runs the finder`,
+    );
+    const grant = doc.match(/^allowed-tools:.*$/m)?.[0] ?? "";
+    assert.match(
+      grant,
+      /Bash\(\$\{CLAUDE_SKILL_DIR\}\/\.\.\/scribe\/scripts\/\*\)/,
+      `${lang}: allowed-tools grants running it`,
+    );
+  }
+  assert.ok(
+    existsSync(join(root, "skills", "scribe", "scripts", "find_wiki_rule.py")),
+    "the finder exists under scribe",
+  );
+});
+
+// A wiki page has no public symbol, so the Preconditions anchor rule cannot take it. Without the
+// path-only form stated, a cited page has nowhere to land and drops out of the plan.
+test("a cited wiki page lands in preconditions as a path-only line", () => {
+  const WIKI_CITATION = {
+    ja: [/定型手順の行を逐語/, /path 単独の行/],
+    en: [/定型手順 line verbatim/, /path-only line/],
+  };
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    for (const re of WIKI_CITATION[lang]) {
+      assert.match(doc, re, `${lang}: the wiki citation form is stated`);
+    }
+  }
+});
+
+// The only cross-unit slot the skeleton had was the reference module's conventions row, and that
+// subsection disappears whenever kind is not module. A rule like the mirror one bears on every
+// unit regardless, so without an unconditional slot it gets pushed into an arbitrary contract.
+test("the skeleton carries an unconditional place for a rule bearing across units", () => {
+  for (const [lang, path] of Object.entries(templates)) {
+    const doc = read(path);
+    const heading = lang === "ja" ? "### 決まりごと" : "### Rules";
+    assert.match(doc, new RegExp(`^${heading}$`, "m"), `${lang}: the cross-unit rules subsection`);
+    const start = doc.indexOf(heading);
+    const refModule = doc.indexOf(lang === "ja" ? "### 参照モジュール" : "### Reference module");
+    assert.ok(start > refModule, `${lang}: it sits after the reference module subsection`);
+    // The reference module subsection is dropped on a non-module kind; this one must not be.
+    const body = doc.slice(start, doc.indexOf("### ", start + 3));
+    assert.doesNotMatch(body, /kind/, `${lang}: its presence does not depend on kind`);
+  }
+});
+
+// Reading the rules after the units are cut means cutting them again when a rule lands.
+test("think reads the wiki rules before the approaches are generated", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
+    assert.match(phase2, /find_wiki_rule\.py/, `${lang}: Phase 2 runs the finder`);
+    const phase3 = doc.slice(doc.indexOf("## Phase 3"));
+    assert.match(phase3, /find_wiki_rule\.py/, `${lang}: Phase 3 runs it again on the settled files`);
+  }
+});
+
+// "Read them" leaves no trace of a page that was read and judged irrelevant, so the next reader
+// cannot tell it from one that was never found.
+test("every matched page is either cited or written off with a reason", () => {
+  const DISPOSITION = { ja: /当たらない理由/, en: /written off in the prose with the reason/ };
+  for (const [lang, path] of Object.entries(skills)) {
+    assert.match(read(path), DISPOSITION[lang], `${lang}: the disposition of a matched page`);
   }
 });
 
@@ -156,7 +258,11 @@ test("each language's template carries a root_cause row for a Bug task", () => {
 test("think SKILL.md's precondition rule and pre-writeout verification carry the stable anchor and the existence check", () => {
   const ja = read(skills.ja);
   assert.match(ja, /既存.{0,10}依存先のみ/, "ja: existing dependencies only");
-  assert.match(ja, /新しく作るファイル.{0,20}載せない/, "ja: a file the unit newly creates is not listed");
+  assert.match(
+    ja,
+    /新しく作るファイル.{0,20}載せない/,
+    "ja: a file the unit newly creates is not listed",
+  );
   assert.match(ja, /stable anchor/, "ja: stable anchor");
   assert.match(ja, /公開シンボル/, "ja: an exported symbol name");
   assert.match(
@@ -164,9 +270,10 @@ test("think SKILL.md's precondition rule and pre-writeout verification carry the
     /安定.{0,10}シンボルが無ければ.{0,10}path のみ/,
     "ja: with no stable symbol, the path alone",
   );
-  assert.match(ja, /test -f/, "ja: the test -f existence check");
-  assert.match(ja, /ugrep -F/, "ja: the ugrep -F existence check");
-  assert.match(ja, /^### 書き出し前検証/m, "ja: the pre-writeout verification section");
+  const jaCheck = read(preWriteChecks.ja);
+  assert.match(jaCheck, /test -f/, "ja: the test -f existence check");
+  assert.match(jaCheck, /ugrep -F/, "ja: the ugrep -F existence check");
+  assert.match(ja, /pre-write-check\.md/, "ja: Phase 3 reads the pre-writeout verification");
 
   const en = read(skills.en);
   assert.match(en, /existing dependenc/i, "en: existing dependencies only");
@@ -174,16 +281,21 @@ test("think SKILL.md's precondition rule and pre-writeout verification carry the
   assert.match(en, /stable anchor/i, "en: stable anchor");
   assert.match(en, /exported/i, "en: an exported symbol name");
   assert.match(en, /path only/i, "en: the path-only fallback");
-  assert.match(en, /test -f/, "en: the test -f existence check");
-  assert.match(en, /ugrep -F/, "en: the ugrep -F existence check");
-  assert.match(en, /^### Pre-writeout verification/m, "en: the pre-writeout verification section");
+  const enCheck = read(preWriteChecks.en);
+  assert.match(enCheck, /test -f/, "en: the test -f existence check");
+  assert.match(enCheck, /ugrep -F/, "en: the ugrep -F existence check");
+  assert.match(en, /pre-write-check\.md/, "en: Phase 3 reads the pre-writeout verification");
 });
 
 test("each language's SKILL.md carries the rule of asking for the cause and its grounds on a Bug task", () => {
   const ja = read(skills.ja);
   assert.match(ja, /Bug/, "ja: the mention of a Bug task");
   assert.match(ja, /Bug[\s\S]{0,150}原因/, "ja: it asks for the cause in the Bug context");
-  assert.match(ja, /原因[\s\S]{0,60}根拠|根拠[\s\S]{0,60}原因/, "ja: the cause and its grounds are asked for together");
+  assert.match(
+    ja,
+    /原因[\s\S]{0,60}根拠|根拠[\s\S]{0,60}原因/,
+    "ja: the cause and its grounds are asked for together",
+  );
 
   const en = read(skills.en);
   assert.match(en, /Bug/, "en: Bug task mention");
@@ -248,7 +360,11 @@ test("each language's SKILL.md puts the reference_module search before the desig
 test("each language's SKILL.md carries the rule of recording the search result as a kind plus a reason", () => {
   const ja = read(skills.ja);
   assert.match(ja, /kind/, "ja: recording through kind");
-  assert.match(ja, /module\/no-module\/new-shape/, "ja: the kind enum is module/no-module/new-shape");
+  assert.match(
+    ja,
+    /module\/no-module\/new-shape/,
+    "ja: the kind enum is module/no-module/new-shape",
+  );
   assert.match(
     ja,
     /kind[\s\S]{0,80}理由|理由[\s\S]{0,80}kind/,
@@ -310,9 +426,16 @@ test("each language's SKILL.md carries the rule of delegating a criterion test_c
     /test_command[\s\S]{0,120}実行できない[\s\S]{0,150}実機確認|実機確認[\s\S]{0,150}test_command[\s\S]{0,120}実行できない/,
     "ja: the rule delegating a criterion test_command cannot run to manual verification",
   );
-  assert.match(jaPhase3, /実機確認[\s\S]{0,40}(委譲|送る)/, "ja: it names manual verification as where it is delegated");
-  const jaVerification = jaPhase3.slice(jaPhase3.indexOf("### 書き出し前検証"));
-  assert.match(jaVerification, /実機確認/, "ja: the pre-writeout verification carries an item for manual verification");
+  assert.match(
+    jaPhase3,
+    /実機確認[\s\S]{0,40}(委譲|送る)/,
+    "ja: it names manual verification as where it is delegated",
+  );
+  assert.match(
+    read(preWriteChecks.ja),
+    /実機確認/,
+    "ja: the pre-writeout verification carries an item for manual verification",
+  );
 
   const en = read(skills.en);
   const enPhase3 = en.slice(en.indexOf("## Phase 3"), en.indexOf("## Output"));
@@ -326,9 +449,8 @@ test("each language's SKILL.md carries the rule of delegating a criterion test_c
     /[Mm]anual verification[\s\S]{0,40}(delegat|route|send)/i,
     "en: delegation destination named",
   );
-  const enVerification = enPhase3.slice(enPhase3.indexOf("### Pre-writeout verification"));
   assert.match(
-    enVerification,
+    read(preWriteChecks.en),
     /[Mm]anual verification/i,
     "en: pre-writeout verification covers manual verification routing",
   );
@@ -369,7 +491,10 @@ test("the template's manual verification heading matches build.js's extraction r
   // one), so this seam test turns the production regex literal into a RegExp as it stands and
   // applies it to the template.
   const regexLineMatch = buildJs.match(/manualHeading\s*=\s*body\.match\((\/.+\/m)\)/);
-  assert.ok(regexLineMatch, "the manual verification heading extraction regex line is readable from build.js");
+  assert.ok(
+    regexLineMatch,
+    "the manual verification heading extraction regex line is readable from build.js",
+  );
   const literal = regexLineMatch[1];
   const lastSlash = literal.lastIndexOf("/");
   const extractionRegex = new RegExp(literal.slice(1, lastSlash), literal.slice(lastSlash + 1));
@@ -398,8 +523,16 @@ test("each language requires naming the mechanism that takes over a delegated cr
     },
   };
   for (const [lang, re] of Object.entries(expected)) {
-    assert.match(read(skills[lang]), re.skill, `${lang}: SKILL.md carries the rule of naming the mechanism`);
-    assert.match(read(templates[lang]), re.template, `${lang}: the template asks for the mechanism`);
+    assert.match(
+      read(skills[lang]),
+      re.skill,
+      `${lang}: SKILL.md carries the rule of naming the mechanism`,
+    );
+    assert.match(
+      read(templates[lang]),
+      re.template,
+      `${lang}: the template asks for the mechanism`,
+    );
   }
 });
 

@@ -26,6 +26,4 @@ user-invocable: false
 
 ## References
 
-| Topic     | File                                                 |
-| --------- | ---------------------------------------------------- |
-| Detection | ${CLAUDE_SKILL_DIR}/references/detection-patterns.md |
+The detection patterns in detail live in ${CLAUDE_SKILL_DIR}/references/detection-patterns.md.

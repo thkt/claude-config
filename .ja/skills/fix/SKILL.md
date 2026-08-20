@@ -2,7 +2,7 @@
 name: fix
 description: 開発環境で 1〜3 ファイルに収まるバグ修正を実行する。起票済み issue の番号を渡せば、その修正はそのまま引き継ぐ。新機能実装や 4 ファイル以上の変更には使わない (/think と /issue で Plan 節を作り build workflow に渡す)。
 when_to_use: バグ修正, 直して, 修正して, fix bug, 不具合
-allowed-tools: Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit Read LS Agent AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../scribe/scripts/*) Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit Read LS Agent AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
 model: opus
 argument-hint: "[bug or issue description]"
 ---
@@ -43,6 +43,10 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 | バグ説明 | 断続的、複数の再現条件、または根本原因が不明    | Non-obvious |
 | finding  | severity low / medium かつ 1〜3 行修正          | Obvious     |
 | finding  | severity critical / high、または修正が非自明    | Non-obvious |
+
+## 決まりごとの参照
+
+修正するファイルが定まったら、着手の前に `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <バグの語> <触るファイル>` を実行する。`matched` のページは今回触るファイルに効く決まりごとなので全て読んでから直す。`/think` を通らないこの経路にも決まりごとが届くようにするための手順で、plan が無いぶん引くのはこの 1 回きりになる。
 
 ## Obvious
 

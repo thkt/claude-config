@@ -25,7 +25,7 @@ user-invocable: false
 
 ## Criteria
 
-Test setup < 10 lines. No deep mock chains. Dependencies explicit.
+Test setup fits in under 10 lines.
 
 ## References
 

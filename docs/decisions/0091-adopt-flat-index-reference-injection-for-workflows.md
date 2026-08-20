@@ -1,5 +1,5 @@
 ---
-status: "accepted"
+status: "superseded by DR-0103"
 date: 2026-07-28
 decision-makers: thkt
 consulted: masuP9

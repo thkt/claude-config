@@ -46,12 +46,12 @@ Red でテストを書く前に ${CLAUDE_SKILL_DIR}/references/writing-tests.md 
 | -------- | -------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | Red      | 失敗するテスト | 失敗が意図する挙動の差分と一致することを確認。syntax/import エラー不可                      | テストが即座にパスする                   |
 | Green    | テストをパス   | "罪を犯してよい" - 汚いコードでも OK                                                        | 実装しすぎ                               |
-| Refactor | 綺麗なコード   | テストを green に保つ。読みやすくなる場合に限り縮める。基準は ~/.claude/rules/PRINCIPLES.md | 振る舞いを変更してしまう。難読化する圧縮 |
+| Refactor | 綺麗なコード   | テストを green に保つ。読みやすくなる場合に限り縮める。基準は ${CLAUDE_SKILL_DIR}/../../rules/PRINCIPLES.md | 振る舞いを変更してしまう。難読化する圧縮 |
 | Commit   | 状態を保存     | 全チェックがパス                                                                            | チェックを飛ばす                         |
 
-## Baby Steps (2 分サイクル)
+## Baby Steps (1 サイクル 2 分半)
 
-30s. 失敗するテストを書く → 1min. パスさせる → 10s. テストを実行 → 30s. 小さくリファクタ → 20s. green ならコミット。バグは常に直近の 2 分の変更に潜む。
+30s. 失敗するテストを書く → 1min. パスさせる → 10s. テストを実行 → 30s. 小さくリファクタ → 20s. green ならコミット。バグは常に直近の 1 サイクル分の変更に潜む。
 
 ## Vertical Slices のみ
 
@@ -85,13 +85,13 @@ Right (vertical):
 | テストバグ | テストが spec から逸脱      | テストを修正                   |
 | 不明確     | spec が曖昧または欠落       | ユーザーにエスカレーション     |
 
-## 参照
+## 参照ファイル
 
-| トピック       | ファイル                                                |
-| -------------- | ------------------------------------------------------- |
-| テストの書き方 | ${CLAUDE_SKILL_DIR}/references/writing-tests.md         |
-| テスト哲学     | ${CLAUDE_SKILL_DIR}/references/test-philosophy.md       |
-| Feature-driven | ${CLAUDE_SKILL_DIR}/references/feature-driven.md        |
-| Bug-driven     | ${CLAUDE_SKILL_DIR}/references/bug-driven.md            |
-| Flaky tests    | ${CLAUDE_SKILL_DIR}/references/flaky-test-management.md |
-| Coverage       | ${CLAUDE_SKILL_DIR}/../../rules/development/TESTING.md  |
+| 読むとき                                   | ファイル                                                |
+| ------------------------------------------ | ------------------------------------------------------- |
+| Red でテストを書く前                       | ${CLAUDE_SKILL_DIR}/references/writing-tests.md         |
+| バリアントが決まらない / テストを疑うとき  | ${CLAUDE_SKILL_DIR}/references/test-philosophy.md       |
+| Feature-driven を選んだとき                | ${CLAUDE_SKILL_DIR}/references/feature-driven.md        |
+| Bug-driven を選んだとき                    | ${CLAUDE_SKILL_DIR}/references/bug-driven.md            |
+| テストが実行ごとに結果を変えるとき         | ${CLAUDE_SKILL_DIR}/references/flaky-test-management.md |
+| どの範囲までテストするかを決めるとき       | ${CLAUDE_SKILL_DIR}/../../rules/development/TESTING.md  |

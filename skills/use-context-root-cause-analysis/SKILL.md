@@ -15,7 +15,7 @@ Fix the root cause, not the symptom. Symptom fixes add complexity; root-cause fi
 
 ## Method
 
-`~/.claude/rules/core/OPERATION.md` § Debug Investigation Protocol is canonical. A forked run does not receive the always-loaded rules, so the steps are copied here.
+${CLAUDE_SKILL_DIR}/../../rules/core/OPERATION.md § Debug Investigation Protocol is canonical. A forked run does not receive the always-loaded rules, so the steps are copied here.
 
 1. Diff working similar code against the broken code and list the differences
 2. Raise three or more hypotheses for the cause. Candidates come from ${CLAUDE_SKILL_DIR}/references/symptom-patterns.md
@@ -41,13 +41,13 @@ Pattern turns on whether a recurrence path exists, not on how deep the cause sit
 
 ## Output Format
 
+Callers branch on Pattern. `/fix` decides between applying defense-in-depth and delegating to `/research`.
+
 | Field      | Description                       |
 | ---------- | --------------------------------- |
 | Symptom    | The failure as the user sees it   |
 | Root cause | The hypothesis testing left       |
 | Pattern    | Isolated / Recurring / Systematic |
-
-Callers branch on Pattern. `/fix` decides between applying defense-in-depth and delegating to `/research`.
 
 ## References
 

@@ -57,7 +57,7 @@ Skills. The User-invocable row lists all 17 current Skills.
 | Workflow       | use-workflow-tdd-cycle, use-workflow-pageshot                                                                                   | Multi-phase workflow definitions |
 | Context        | use-context-reviewer-\*, use-context-root-cause-analysis                                                                        | Domain knowledge for agents      |
 | CLI wrapper    | use-cli-codegraph, use-cli-recall, use-cli-scout, use-cli-gcloud                                                                | CLI tool integration             |
-| User-invocable | census, challenge, checkout, commit, dr, fix, issue, outcome, pr, preview, qualify, research, scribe, slice, stock, think, xlsx | Slash command entry points       |
+| User-invocable | census, challenge, checkout, commit, dr, fix, issue, outcome, pr, preview, qualify, research, scribe, slice, think, xlsx | Slash command entry points       |
 
 ### Loading Mechanism
 

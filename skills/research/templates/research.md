@@ -23,7 +23,7 @@ Prior research: {slug of inherited file, or "none found"}
 
 ## Key Findings
 
-<!-- Phase 4 findings, integrated, source-checked, and triaged in Phase 7. All findings, most important first. Sources follow the Phase 4 source notation. Only findings passing triage carry a Next Action, with the linkage (question / OUTCOME / incident) stated in the action cell. All others read record only. -->
+<!-- Phase 4 findings, integrated, source-checked, and triaged in Phase 7. All findings, most important first. Sources follow SKILL.md's source notation. Only findings passing triage carry a Next Action, with the linkage (question / OUTCOME / incident) stated in the action cell. All others read record only. -->
 
 | Priority   | Finding   | Source   | Next Action   |
 | ---------- | --------- | -------- | ------------- |

@@ -2,7 +2,7 @@
 name: xlsx
 description: Reads xlsx / ods / csv spreadsheets that the Read tool cannot open, converts merged-cell business documents into Markdown, and verifies that no cell was lost.
 when_to_use: a path to a .xlsx / .xls / .ods file was given, read an Excel file, inspect spreadsheet contents, read a design document, spreadsheet contents, xlsx
-allowed-tools: Bash Read
+allowed-tools: Bash(node:*) Read
 ---
 
 # xlsx
@@ -24,7 +24,7 @@ The sheet list and the fill ratio come out. The fill ratio is the share of cells
 | Fill ratio  | State                                                 | How to read                                               |
 | ----------- | ----------------------------------------------------- | --------------------------------------------------------- |
 | Under 20%   | Merges and layout-only empty cells take up most of it | Convert with extract, then read                           |
-| 20% or more | Close to one record per row                           | Name the sheet and read it directly. No conversion needed |
+| 20% or more | Close to one record per row                           | Narrow to the sheet with `--sheet` and extract it on `generic` |
 
 3. Convert. Write the output outside the repository, or wherever the user asked for.
 
@@ -61,9 +61,9 @@ Reach for `generic` first on an unknown layout. Add a profile only when you want
 
 ## What decides the approach
 
-A single question needs no intermediate file. Name the sheet, read it with `readXlsx`, and answer on the spot. Keep Markdown files only for repeated cross-file greps, for a human reader, or for tracking diffs in git.
+For a single question, point `extract --sheet <n|name> --out` at a temp directory, read from there, and leave nothing in the repository. Keep Markdown files only for repeated cross-file greps, for a human reader, or for tracking diffs in git.
 
-The fill ratio decides what conversion buys. In a design document at 2.2% fill, one sheet came to 62,668 characters as raw JSON, 14,809 as plain CSV, and 3,287 after conversion. The gap is what the empty cells would have spent in tokens.
+The fill ratio decides what conversion buys. The lower it runs, the more the empty cells spend in tokens, and the more conversion takes off.
 
 ## Dependency
 

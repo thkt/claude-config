@@ -42,16 +42,16 @@ When the table below does not settle the variant, and when checking whether a te
 
 Before writing the test in Red, read ${CLAUDE_SKILL_DIR}/references/writing-tests.md and apply its design techniques, assertion quality, and mock boundaries.
 
-| Phase    | Goal         | Rule                                                                                   | Common Mistake                 |
-| -------- | ------------ | -------------------------------------------------------------------------------------- | ------------------------------ |
-| Red      | Failing test | Verify failure matches the intended behavior gap, not syntax/import errors             | Test passes immediately        |
-| Green    | Pass test    | "You can sin" - dirty OK                                                               | Over-implementing              |
-| Refactor | Refine       | Keep tests green. Shrink only while it reads easier, per ~/.claude/rules/PRINCIPLES.md | Changing behavior; compressing |
-| Commit   | Save state   | All checks pass                                                                        | Skipping checks                |
+| Phase    | Goal         | Rule                                                                                                   | Common Mistake                 |
+| -------- | ------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------ |
+| Red      | Failing test | Verify failure matches the intended behavior gap, not syntax/import errors                             | Test passes immediately        |
+| Green    | Pass test    | "You can sin" - dirty OK                                                                               | Over-implementing              |
+| Refactor | Refine       | Keep tests green. Shrink only while it reads easier, per ${CLAUDE_SKILL_DIR}/../../rules/PRINCIPLES.md | Changing behavior; compressing |
+| Commit   | Save state   | All checks pass                                                                                        | Skipping checks                |
 
-## Baby Steps (2-min cycle)
+## Baby Steps (2.5 min per cycle)
 
-30s. Write failing test → 1min. Make pass → 10s. Run tests → 30s. Tiny refactor → 20s. Commit if green. Bugs are always in the last 2-minute change.
+30s. Write failing test → 1min. Make pass → 10s. Run tests → 30s. Tiny refactor → 20s. Commit if green. Bugs are always in the last cycle's change.
 
 ## Vertical Slices Only
 
@@ -87,11 +87,11 @@ When a test fails, decide whether to fix the test or the implementation. For `/f
 
 ## References
 
-| Topic           | File                                                    |
-| --------------- | ------------------------------------------------------- |
-| Writing tests   | ${CLAUDE_SKILL_DIR}/references/writing-tests.md         |
-| Test philosophy | ${CLAUDE_SKILL_DIR}/references/test-philosophy.md       |
-| Feature-driven  | ${CLAUDE_SKILL_DIR}/references/feature-driven.md        |
-| Bug-driven      | ${CLAUDE_SKILL_DIR}/references/bug-driven.md            |
-| Flaky tests     | ${CLAUDE_SKILL_DIR}/references/flaky-test-management.md |
-| Coverage        | ${CLAUDE_SKILL_DIR}/../../rules/development/TESTING.md  |
+| When to read it                                  | File                                                    |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| Before writing the test in Red                   | ${CLAUDE_SKILL_DIR}/references/writing-tests.md         |
+| The variant will not settle, or the test is suspect | ${CLAUDE_SKILL_DIR}/references/test-philosophy.md    |
+| Feature-driven was chosen                        | ${CLAUDE_SKILL_DIR}/references/feature-driven.md        |
+| Bug-driven was chosen                            | ${CLAUDE_SKILL_DIR}/references/bug-driven.md            |
+| A test changes its result between runs           | ${CLAUDE_SKILL_DIR}/references/flaky-test-management.md |
+| Deciding how far to test                         | ${CLAUDE_SKILL_DIR}/../../rules/development/TESTING.md  |

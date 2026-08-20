@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,14 +10,25 @@ const skills = {
   en: join(root, "skills", "qualify", "SKILL.md"),
 };
 const buildJs = join(root, "workflows", "build.js");
+const QUESTIONS_SECTION = { ja: ["### 質問", "## ルール"], en: ["### Questions", "## Rules"] };
 
-// Takes the body between two headings. Reused by the Phase 2, Phase 3, and Questions checks.
+// A loop that visited neither language would pass every caller without having read anything.
+function eachSkill(check) {
+  const seen = [];
+  for (const [lang, path] of Object.entries(skills)) {
+    check(readFileSync(path, "utf8"), lang);
+    seen.push(lang);
+  }
+  assert.deepEqual(seen, ["ja", "en"], "both language files were inspected");
+}
+
 function sliceSection(doc, head, tail) {
   return doc.slice(doc.indexOf(head), doc.indexOf(tail));
 }
 
-// Breaks Phase 3's axis table into cell arrays of [axis, pass condition, severity]. The header row
-// and the separator line (---) are left out of the check.
+const phase2Of = (doc) => sliceSection(doc, "## Phase 2", "## Phase 3");
+
+// The header and the separator row would answer a keyword search as if they were axes.
 function getPhase3DataRows(doc) {
   const phase3 = sliceSection(doc, "## Phase 3", "## Phase 4");
   const lines = phase3.split("\n").filter((line) => line.trim().startsWith("|"));
@@ -29,31 +40,32 @@ function getPhase3DataRows(doc) {
   );
 }
 
-// Decides, by per-language keywords, whether the row inspecting an added or changed displayed
-// domain field states where they are enumerated (the AC and the plan's T-NNN) in its pass
-// condition.
+// Matching by keyword rather than by row position keeps an inserted row from moving the check onto
+// another axis.
 const FIELD_ROW_KEYWORDS = {
   ja: [/ドメインフィールド/, /列挙/, /(出典|agent)/i, /\bAC\b/, /T-NNN/],
   en: [/domain field/i, /enumerat/i, /(source|cite)/i, /\bAC\b/, /T-NNN/],
 };
 
-// The conditions under which build stops at the Load stage live only in build.js's validate and
-// oversizedUnits. Were qualify to copy them, the verdict would go false the moment build alone
-// changed. The copy drops nothing at run time, so this static match enforces the single source of
-// truth. A copied threshold is worded differently per language (files <= 3 / files 3 個まで), so
-// it is detected by the absence of digits rather than by wording. Phase 2 needs no digit beyond
-// its step numbering.
+// A copy of build's thresholds goes stale the moment build alone changes. The wording differs per
+// language (files <= 3 / files 3 個まで), so a copy is caught as a digit rather than as a phrase.
+// Pinning the skill side alone would let a rename inside build.js empty the ugrep silently.
 test("build's stop conditions are never copied into the skill body", () => {
+  const buildSource = readFileSync(buildJs, "utf8");
   assert.match(
-    readFileSync(buildJs, "utf8"),
+    buildSource,
     /const UNIT_CAPS = \{ files: \d+, tests: \d+ \};/,
     "build.js holds UNIT_CAPS as numbers",
   );
+  assert.match(buildSource, /^const validate = /m, "build.js holds validate under that name");
+  assert.match(
+    buildSource,
+    /^const oversizedUnits = /m,
+    "build.js holds oversizedUnits under that name",
+  );
 
-  for (const [lang, path] of Object.entries(skills)) {
-    assert.ok(existsSync(path), `${path} exists`);
-    const doc = readFileSync(path, "utf8");
-    const phase2 = sliceSection(doc, "## Phase 2", "## Phase 3");
+  eachSkill((doc, lang) => {
+    const phase2 = phase2Of(doc);
     assert.ok(phase2.length > 0, `${lang}: Phase 2 is readable`);
     assert.doesNotMatch(
       phase2.replace(/^\d+\.\s/gm, "").replace(/Phase \d/g, ""),
@@ -63,27 +75,67 @@ test("build's stop conditions are never copied into the skill body", () => {
     assert.match(doc, /const validate = /, `${lang}: a step locates validate at run time`);
     assert.match(doc, /const oversizedUnits = /, `${lang}: oversizedUnits is among what gets read`);
     assert.match(doc, /workflows\/build\.js/, `${lang}: it states that what to read is build.js`);
-  }
+  });
 });
 
-// The inspection stays read-only. A broad gh grant would hand it the means to post a comment and
-// leave "does not post" resting on a prose promise alone.
+// A broad gh grant would leave "posts nothing" resting on a prose promise.
 test("allowed-tools stays closed to reading the issue", () => {
-  for (const [lang, path] of Object.entries(skills)) {
-    const tools = (readFileSync(path, "utf8").match(/^allowed-tools:.*$/m) || [""])[0];
+  eachSkill((doc, lang) => {
+    const tools = (doc.match(/^allowed-tools:.*$/m) || [""])[0];
     assert.match(tools, /Bash\(gh issue view:\*\)/, `${lang}: gh is limited to issue view`);
+    assert.match(
+      tools,
+      /Bash\(gh repo view:\*\)/,
+      `${lang}: reading the local repository name is granted`,
+    );
     assert.doesNotMatch(tools, /Bash\(gh:\*\)/, `${lang}: gh as a whole is not granted`);
     assert.doesNotMatch(tools, /Write|Edit/, `${lang}: the inspection holds no means of writing`);
-  }
+  });
 });
 
-// The verdict takes three values, with needs-plan first. Listing other findings on an issue with
-// no Plan section does not change whether to start, so a broken decision order misreads it as
-// needs-fix.
+// An unapplied plan contract raises no violation, and no violation reads as build-ready.
+test("an anchor that goes unmatched stops the inspection instead of reading as no violation", () => {
+  const STOP = { ja: [/いずれかがヒットしなければ/, /停止/], en: [/goes unmatched/i, /\bstop\b/i] };
+  eachSkill((doc, lang) => {
+    for (const re of STOP[lang]) {
+      assert.match(phase2Of(doc), re, `${lang}: Phase 2 stops when an anchor goes unmatched`);
+    }
+  });
+});
+
+// build.js checks the ids for duplicates alone, so U-001 then U-003 passes Load; a gap raised as a
+// blocker would hold back an issue build takes.
+test("a gap between ids is left uninspected rather than raised as a blocker", () => {
+  const GAP = {
+    ja: { stated: /欠番.*検分しない/, denied: /欠番.*blocker/ },
+    en: { stated: /gap is not among the conditions/i, denied: /gaps are blockers/i },
+  };
+  eachSkill((doc, lang) => {
+    const phase2 = phase2Of(doc);
+    assert.match(phase2, GAP[lang].stated, `${lang}: a gap is stated as uninspected`);
+    assert.doesNotMatch(phase2, GAP[lang].denied, `${lang}: a gap is not a blocker`);
+  });
+});
+
+// gh issue view takes a URL from any repository, and Creation collision carries severity blocker,
+// so matching unrelated code puts out a needs-fix the body never earned.
+test("the axes that read code are left uninspected when the issue's repository is not the local one", () => {
+  const MISMATCH = {
+    ja: [/gh repo view/, /owner\/repo/, /食い違/, /検分しない/],
+    en: [/gh repo view/, /owner\/repo/, /differ/i, /uninspected/i],
+  };
+  eachSkill((doc, lang) => {
+    for (const re of MISMATCH[lang]) {
+      assert.match(doc, re, `${lang}: the repository match and what it withholds are stated`);
+    }
+  });
+});
+
+// Listing other findings on an issue with no Plan section does not change whether to start, so a
+// broken decision order misreads it as needs-fix.
 test("the three verdict values and their decision order match across both languages", () => {
   const VERDICTS = ["needs-plan", "needs-fix", "build-ready"];
-  for (const [lang, path] of Object.entries(skills)) {
-    const doc = readFileSync(path, "utf8");
+  eachSkill((doc, lang) => {
     const order = VERDICTS.map((v) => doc.indexOf(`| ${v}`));
     for (const [i, at] of order.entries()) {
       assert.ok(at >= 0, `${lang}: the verdict table carries a ${VERDICTS[i]} row`);
@@ -93,46 +145,60 @@ test("the three verdict values and their decision order match across both langua
       order,
       `${lang}: the verdict table runs needs-plan, needs-fix, build-ready in order`,
     );
-  }
+  });
 });
 
-// An issue with no Plan section pins the verdict to needs-plan through Phase 2's early exit, but a
-// Bug must have its cause pinned down first and its next move differs from the other types.
-// Without this branch, what to do next drops out of a needs-plan Bug issue.
+// A plan-less issue carries no contract for the other axes to read, and criteria left unverifiable
+// here become what /think designs the plan against.
+test("an issue with no Plan section still has its acceptance criteria inspected", () => {
+  const EARLY_EXIT = {
+    ja: [/AC の検証可能性だけ/, /新規作成の衝突と表示フィールドの列挙/],
+    en: [/Verifiable criteria alone/, /Creation collision and Displayed field enumeration/],
+  };
+  eachSkill((doc, lang) => {
+    for (const re of EARLY_EXIT[lang]) {
+      assert.match(
+        phase2Of(doc),
+        re,
+        `${lang}: needs-plan inspects the criteria and states what it skips`,
+      );
+    }
+  });
+});
+
+// qualify holds no Write, so an answer that stops at the next-step line never reaches the body.
+test("an answer comes back as a proposal for rewriting the body", () => {
+  const PROPOSAL = {
+    ja: [/案にして返す/, /書き換えない/],
+    en: [/as a proposal/i, /never rewrites the body/i],
+  };
+  eachSkill((doc, lang) => {
+    const [head, tail] = QUESTIONS_SECTION[lang];
+    const section = sliceSection(doc, head, tail);
+    for (const re of PROPOSAL[lang]) {
+      assert.match(section, re, `${lang}: an answer comes back as a proposal for the body`);
+    }
+  });
+});
+
+// Without this branch a needs-plan Bug issue loses what to do next, since its cause has to be
+// pinned down before a plan can exist.
 test("each language's SKILL.md carries the rule of checking a Bug's stated cause even under needs-plan", () => {
-  for (const [lang, path] of Object.entries(skills)) {
-    const doc = readFileSync(path, "utf8");
-    const phase2 = sliceSection(doc, "## Phase 2", "## Phase 3");
+  eachSkill((doc, lang) => {
+    const phase2 = phase2Of(doc);
     assert.match(phase2, /Bug/, `${lang}: Phase 2 carries Bug as a branch condition`);
     assert.match(
       phase2,
       lang === "ja" ? /原因/ : /root cause/i,
       `${lang}: Phase 2 carries the rule of checking a Bug's stated cause`,
     );
-  }
+  });
 });
 
-// The contract is that the early-exit reason reads as "it does not change whether to start, but it
-// changes the next move". Digits are delegated to build.js, and mixing them into this section
-// breaks the single source of truth.
-test("it clears the existing check that no digit remains in the Phase 2 section", () => {
-  for (const [lang, path] of Object.entries(skills)) {
-    const doc = readFileSync(path, "utf8");
-    const phase2 = sliceSection(doc, "## Phase 2", "## Phase 3");
-    assert.doesNotMatch(
-      phase2.replace(/^\d+\.\s/gm, "").replace(/Phase \d/g, ""),
-      /\d/,
-      `${lang}: no digit remains in Phase 2`,
-    );
-  }
-});
-
-// An issue adding or changing a displayed field needs a blocker row inspecting whether the field
-// is enumerated, or whether a source the agent can read is cited. A UI issue leaving the fields
-// unchanged does not match this row and passes without it firing.
+// Making the row unconditional would fail every UI issue that leaves the displayed fields as they
+// are.
 test("each language's SKILL.md carries a displayed-field row at severity blocker in its axis table", () => {
-  for (const [lang, path] of Object.entries(skills)) {
-    const doc = readFileSync(path, "utf8");
+  eachSkill((doc, lang) => {
     const fieldRow = getPhase3DataRows(doc).find((cells) =>
       FIELD_ROW_KEYWORDS[lang].every((re) => re.test(cells[1])),
     );
@@ -145,34 +211,30 @@ test("each language's SKILL.md carries a displayed-field row at severity blocker
       "blocker",
       `${lang}: an issue missing the displayed-field enumeration stops as a blocker`,
     );
-  }
+  });
 });
 
-// Adding or dropping a row happens in both languages at once, per MIRROR.md. Changing one side
-// alone breaks the mirror. Whether a particular row exists is pinned by the tests above; counting
-// against a fixed baseline instead broke whenever an unrelated row was retired.
+// A count against a fixed baseline broke whenever an unrelated row was retired, so the languages
+// are counted against each other instead.
 test("the axis table row count matches across both languages", () => {
   const counts = {};
-  for (const [lang, path] of Object.entries(skills)) {
-    counts[lang] = getPhase3DataRows(readFileSync(path, "utf8")).length;
+  eachSkill((doc, lang) => {
+    counts[lang] = getPhase3DataRows(doc).length;
     assert.ok(counts[lang] > 0, `${lang}: Phase 3's axis table is readable`);
-  }
+  });
   assert.equal(counts.ja, counts.en, "the axis table row count matches across both languages");
 });
 
-// The questions come through AskUserQuestion after the verdict, blockers, and advice have all been
-// written out as text. A broken order makes the user choose without having seen the verdict. And
-// since qualify never rewrites the issue body, reading an answered blocker as resolved would flip
-// a needs-fix issue to build-ready and build would stop on the same condition.
+// A broken order makes the user choose before seeing the verdict. And since qualify never rewrites
+// the body, reading an answered blocker as resolved would flip needs-fix to build-ready while build
+// stops on the same condition.
 test("the Questions section names AskUserQuestion and the rules table states the verdict does not change", () => {
-  const SECTION = { ja: ["### 質問", "## ルール"], en: ["### Questions", "## Rules"] };
   const VERDICT_RULE = {
     ja: /verdict は取得した時点の issue 本文/,
     en: /verdict comes from the issue body as fetched/i,
   };
-  for (const [lang, path] of Object.entries(skills)) {
-    const doc = readFileSync(path, "utf8");
-    const [head, tail] = SECTION[lang];
+  eachSkill((doc, lang) => {
+    const [head, tail] = QUESTIONS_SECTION[lang];
     const section = sliceSection(doc, head, tail);
     assert.ok(section.length > 0, `${lang}: the Questions section is readable`);
     assert.match(section, /AskUserQuestion/, `${lang}: the questions come through AskUserQuestion`);
@@ -182,5 +244,5 @@ test("the Questions section names AskUserQuestion and the rules table states the
       VERDICT_RULE[lang],
       `${lang}: the rules table carries the rule that the verdict comes from the body`,
     );
-  }
+  });
 });

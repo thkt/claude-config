@@ -1,0 +1,144 @@
+"""Contract tests between skills/scribe's SKILL.md, its templates, and triage.py.
+
+Run: python3 skills/scribe/tests/skill_contract_test.py
+"""
+
+import re
+import sys
+import unittest
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[2]
+sys.path.insert(0, str(HERE.parent / "scripts"))
+
+from triage import triage  # noqa: E402
+
+LANGS = ["ja", "en"]
+
+
+def at(lang: str, *parts: str) -> Path:
+    return ROOT.joinpath(*(([".ja"] if lang == "ja" else []) + list(parts)))
+
+
+def skill(lang: str) -> str:
+    return at(lang, "skills", "scribe", "SKILL.md").read_text(encoding="utf-8")
+
+
+class SkillContract(unittest.TestCase):
+    def test_the_existing_values_the_skill_names_are_the_ones_triage_branches_on(self) -> None:
+        """A value only one side knows falls to the none branch, filing an existing page as new."""
+        for lang in LANGS:
+            doc = skill(lang)
+            for value in ("page", "candidate", "none"):
+                self.assertIn(f"`{value}`", doc, f"{lang}: {value}")
+        report = triage([{"name": "x", "evidence": ["#1", "#2"], "existing": "page"}])
+        self.assertEqual(report["pages"][0]["action"], "update")
+
+    def test_the_skill_defines_the_line_format_for_a_candidate_append(self) -> None:
+        """The next run reads _candidates.md back to decide existing, so the shape has to hold."""
+        expected = {"ja": "`- <内容 1 行> (<根拠>)`", "en": "`- <one-line content> (<evidence>)`"}
+        for lang in LANGS:
+            self.assertIn(expected[lang], skill(lang), lang)
+
+    def test_the_readme_template_describes_both_routes_to_a_page(self) -> None:
+        """A README naming only the promotion route describes a rule the tool does not follow."""
+        for lang in LANGS:
+            template = at(lang, "skills", "scribe", "templates", "readme.md").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("2 件目が現れたらページへ昇格", template, lang)
+            self.assertIn("初出でも根拠が 2 件揃っていれば直接ページ", template, lang)
+        report = triage(
+            [
+                {"name": "promoted", "evidence": ["#1", "#2"], "existing": "candidate"},
+                {"name": "fresh", "evidence": ["#3", "#4"], "existing": "none"},
+            ]
+        )
+        self.assertEqual(sorted(p["action"] for p in report["pages"]), ["create", "promote"])
+
+    def test_the_skill_runs_the_script_through_python(self) -> None:
+        """The grant and the command have to name the same runtime, or the call is refused."""
+        for lang in LANGS:
+            doc = skill(lang)
+            self.assertIn("scripts/triage.py", doc, lang)
+            grant = re.search(r"^allowed-tools:.*$", doc, re.MULTILINE)
+            assert grant is not None, f"{lang}: allowed-tools line"
+            self.assertIn("Bash(python3:*)", grant.group(0), lang)
+
+    def test_every_phase_before_six_defers_its_write_to_the_worktree(self) -> None:
+        """The worktree is created in Phase 6. An earlier Phase that writes touches the user's tree,
+        which is the one thing the invariant table forbids. Each writing Phase has to say so, since
+        one section carrying the note does not stop another from writing."""
+        defers = {"ja": "書き込みは Phase 6", "en": "happens inside Phase 6"}
+        for lang in LANGS:
+            doc = skill(lang)
+            for phase in (3, 4, 5):
+                body = doc[doc.index(f"## Phase {phase}") : doc.index(f"## Phase {phase + 1}")]
+                self.assertIn(defers[lang], body, f"{lang}: Phase {phase} defers its write")
+
+    def test_the_worktree_step_writes_every_kind(self) -> None:
+        """A kind of write missing from the step that holds the worktree has nowhere else it can
+        legally land. The step alone is the anchor: Phase 6's opening prose names the repairs too,
+        so scanning the whole Phase would pass on a step that dropped them."""
+        repairs = {"ja": "参照修理と由来修理", "en": "reference and 由来 repairs"}
+        for lang in LANGS:
+            doc = skill(lang)
+            phase6 = doc[doc.index("## Phase 6") :]
+            step = next(line for line in phase6.split("\n") if line.startswith("2. "))
+            for needle in ("templates/page.md", "_candidates.md", repairs[lang]):
+                self.assertIn(needle, step, f"{lang}: {needle}")
+
+
+    def test_the_page_reaches_a_plan_through_thinks_finder(self) -> None:
+        """The page a run writes reaches an implementation only by think citing it. No index and
+        no lookup at implementation time stand between the two, so this is the whole path."""
+        finder = ROOT / "skills" / "scribe" / "scripts" / "find_wiki_rule.py"
+        self.assertTrue(finder.exists(), "the finder scribe owns exists")
+        for lang in LANGS:
+            think = at(lang, "skills", "think", "SKILL.md").read_text(encoding="utf-8")
+            self.assertIn("find_wiki_rule.py", think, f"{lang}: think runs the finder")
+
+
+class WikiPageFormat(unittest.TestCase):
+    """The pages live in docs/wiki of this repository, which is also scribe's own output."""
+
+    def pages(self) -> list[Path]:
+        # README and _candidates are not rule pages, so they carry no globs.
+        return sorted(
+            p
+            for p in (ROOT / "docs" / "wiki").glob("*.md")
+            if p.name not in {"README.md", "_candidates.md"}
+        )
+
+    def test_every_rule_page_declares_the_files_it_bears_on(self) -> None:
+        """A page with no globs key cannot be told apart from one that bears on no file, and the
+        consumer would have to guess which it is."""
+        for page in self.pages():
+            head = page.read_text(encoding="utf-8").split("\n", 3)
+            self.assertEqual(head[0], "---", f"{page.name}: frontmatter opens the page")
+            self.assertTrue(head[1].startswith("globs: "), f"{page.name}: globs is declared")
+
+    def test_every_glob_parses_as_a_json_array(self) -> None:
+        """The globs are read by a script, so a hand-written form that only looks like a list
+        would fail at read time rather than here."""
+        import json
+
+        for page in self.pages():
+            line = page.read_text(encoding="utf-8").split("\n")[1]
+            value = json.loads(line[len("globs: ") :])
+            self.assertIsInstance(value, list, f"{page.name}: globs is a list")
+            for glob in value:
+                self.assertIsInstance(glob, str, f"{page.name}: each glob is a string")
+
+    def test_the_template_shows_the_globs_frontmatter(self) -> None:
+        """A page written from a skeleton without it would carry no globs at all."""
+        for lang in LANGS:
+            template = at(lang, "skills", "scribe", "templates", "page.md").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("globs:", template, f"{lang}: the skeleton carries globs")
+
+
+if __name__ == "__main__":
+    _ = unittest.main(verbosity=2)

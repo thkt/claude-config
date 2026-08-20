@@ -1,3 +1,7 @@
+---
+globs: []
+---
+
 # skill/agent の retire・rename 手順
 
 ## 内容

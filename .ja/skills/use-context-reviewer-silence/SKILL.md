@@ -26,6 +26,4 @@ user-invocable: false
 
 ## 参照ファイル
 
-| トピック  | ファイル                                             |
-| --------- | ---------------------------------------------------- |
-| Detection | ${CLAUDE_SKILL_DIR}/references/detection-patterns.md |
+検出パターンの詳細は ${CLAUDE_SKILL_DIR}/references/detection-patterns.md。

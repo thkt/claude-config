@@ -141,3 +141,28 @@ test("the completion conditions take checklist form in both languages", () => {
     assert.equal(items.length, 5, `${lang}: there are five completion conditions (actual ${items.length})`);
   }
 });
+
+// /fix never passes through /think, so a rule reaches this route only here. Without it the same
+// convention holds for a planned change and lapses for a one-off fix.
+test("fix reads the wiki rules before it changes anything, and is granted that path", () => {
+  const skills = {
+    ja: join(root, ".ja", "skills", "fix", "SKILL.md"),
+    en: join(root, "skills", "fix", "SKILL.md"),
+  };
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = readFileSync(path, "utf8");
+    assert.match(doc, /find_wiki_rule\.py/, `${lang}: it runs the finder`);
+    const grant = doc.match(/^allowed-tools:.*$/m)?.[0] ?? "";
+    assert.match(
+      grant,
+      /Bash\(\$\{CLAUDE_SKILL_DIR\}\/\.\.\/scribe\/scripts\/\*\)/,
+      `${lang}: allowed-tools grants running it`,
+    );
+    // Reading after the fix lands is reading too late.
+    const heading = lang === "ja" ? "## 決まりごとの参照" : "## Reading the rules";
+    assert.ok(
+      doc.indexOf(heading) < doc.indexOf("## Obvious"),
+      `${lang}: the rules are read before either lane starts`,
+    );
+  }
+});

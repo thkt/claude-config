@@ -1,8 +1,8 @@
 # Verification Procedures
 
-Defines the procedures referenced by the /research Phase 4 close and the Phase 5 sweep.
+Defines the procedures referenced by /research's Phase 4 and the Phase 5 sweep.
 
-Which one applies is decided by the kind of finding. Use Cross-method verification for exhaustiveness findings and Primary-source verification for external-behavior claims, structurally, with no self-judged exclusion of a finding. Verifying library API behavior applies `~/.claude/rules/development/SOURCING.md`.
+Which one applies is decided by the kind of finding. Use Cross-method verification for exhaustiveness findings and Primary-source verification for external-behavior claims, structurally, with no self-judged exclusion of a finding. Verifying library API behavior applies ${CLAUDE_SKILL_DIR}/../../rules/development/SOURCING.md.
 
 ## Cross-method verification
 

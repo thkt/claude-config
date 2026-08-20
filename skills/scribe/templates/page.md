@@ -4,9 +4,13 @@
 
 ## Template
 
-Each page is structured in the order 内容 → 定型手順 → 参照コード → 由来 → 根拠. In 参照コード, write the current-code locations verified in Phase 4 as `path` + symbol name (function/type/heading), with no line numbers. Transcribe a code excerpt only when the shape of the pattern itself is the point, up to a few lines. 由来 is an optional section; write only the DRs judged Yes in Phase 5, and omit the whole section when nothing qualifies. In 根拠, write the PR/issue numbers of the original discussions, and write `(research)` instead of a number for anything sourced from `.claude/workspace/research/`. Never write the research file path。
+Each page opens with a `globs` frontmatter and then runs 内容 → 定型手順 → 参照コード → 由来 → 根拠. `globs` names the implementation files this rule bears on; a process rule that never reaches a file edit carries an empty array. The empty array is itself the information that the rule does not arrive at implementation time. In 参照コード, write the current-code locations verified in Phase 4 as `path` + symbol name (function/type/heading), with no line numbers. Transcribe a code excerpt only when the shape of the pattern itself is the point, up to a few lines. 由来 is an optional section; write only the DRs that passed Phase 5's judgment, and omit the whole section when nothing qualifies. In 根拠, write the PR/issue numbers of the original discussions, and write `(research)` instead of a number for anything sourced from `.claude/workspace/research/`. Never write the research file path.
 
 ```markdown
+---
+globs: ["<pattern of the files this rule bears on>"]
+---
+
 # <共通項名>
 
 ## 内容

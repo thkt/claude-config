@@ -10,7 +10,7 @@ user-invocable: false
 
 # Readability Review
 
-Thresholds are based on cognitive limits such as working memory and one-screen focus, and established metrics such as McCabe complexity.
+Thresholds are based on cognitive limits such as working memory and one-screen focus, and established metrics such as McCabe complexity. The table below carries the recommended values; the detection table lists the deviations worth reporting rather than every crossing of them. Arguments are recommended at 3 and detected above 5.
 
 | Target                | Recommended | Why                                          |
 | --------------------- | ----------- | -------------------------------------------- |

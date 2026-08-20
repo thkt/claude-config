@@ -2,7 +2,7 @@
 name: fix
 description: Fix bugs confined to 1-3 files in a development environment. Hand it a filed issue number and that fix carries straight through. Do NOT use for new feature implementation or changes spanning 4 or more files (write the plan via /think and /issue, then hand the number to the build workflow).
 when_to_use: バグ修正, 直して, 修正して, fix bug, 不具合
-allowed-tools: Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit Read LS Agent AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/../scribe/scripts/*) Bash(git diff:*) Bash(git ls-files:*) Bash(gh issue view:*) Bash(npm test:*) Bash(npm run) Bash(npm run:*) Bash(yarn run:*) Bash(pnpm run:*) Bash(bun run:*) Edit Read LS Agent AskUserQuestion Skill Bash(ugrep:*) Bash(bfs:*)
 model: opus
 argument-hint: "[bug or issue description]"
 ---
@@ -43,6 +43,10 @@ Obvious skips both RCA and regression test generation, so it is limited to findi
 | Bug desc  | Intermittent, multiple repro conditions, or unknown root cause | Non-obvious |
 | A finding | severity low / medium and a 1-3 line fix                       | Obvious     |
 | A finding | severity critical / high, or the fix is non-obvious            | Non-obvious |
+
+## Reading the rules
+
+Once the files to change are settled, run `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <the bug's words> <the files to touch>` before starting. Read every page under `matched`, since its rule bears on a file this fix touches. This route never passes through `/think`, so this is the one place a rule reaches it; with no plan to carry them, there is no second chance.
 
 ## Obvious
 

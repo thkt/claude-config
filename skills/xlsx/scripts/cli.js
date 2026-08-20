@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// CLI for reading what is inside an xlsx.
 //   list    <xlsx>                          print the sheet list and the fill ratio
 //   extract <xlsx> --out <dir> [options]    convert sheets into Markdown
 //   verify  <xlsx> <dir>                    check that every source cell survived into the output
@@ -134,8 +133,10 @@ if (command === "verify") {
     let sample = "";
     for (const row of sheet.rows) {
       const cells = row
-        .map((cell) => cellText(cell).replace(/ /g, " ").trim())
+        .map((cell) => cellText(cell).trim())
         .filter((t) => t !== "");
+      // A row of nothing but 1,2,3,... is a column ruler and never survives into the Markdown.
+      // Counting it would report a loss on every sheet and bury the real ones.
       if (cells.length >= 10 && cells.every((t, i) => t === String(i + 1))) continue;
       for (const text of cells) {
         if (flat.includes(text.replace(/\s+/g, ""))) continue;
