@@ -4,7 +4,7 @@ Settle how each element of a plan reaches the slices' own Plan sections when the
 
 ## First, look at how the units were cut
 
-When the plan's units are cut per layer, a subset of units is not a slice. One slice would need part of several units, which distribution cannot produce. On finding that shape, stop distributing and hand it back to `/think` to be cut vertically instead. Judge it from the units' files: two or more units each confined to one of schema, API, or UI is the signal.
+When the plan's units are cut per layer, a subset of units is not a slice. One slice would need part of several units, which distribution cannot produce. On finding that shape, stop distributing and hand it back to `/think` to be cut vertically instead. Judge it from the units' files: two or more units each confined to a single one of the layers Phase 1 settled is the signal.
 
 ## What each element does
 
@@ -27,6 +27,12 @@ Build's Revalidate matches each precondition against the current codebase before
 
 Write it under Blocked by instead. It is the same treatment an acceptance criterion in that shape gets, and the ordering then travels as a dependency.
 
+## Report what no slice took
+
+Rules and Preconditions travel only to the slices they bear on, so some lines reach no slice at all. A line that lands nowhere means the original plan carried a rule bearing on none of its own files, or a precondition no unit's contract cites.
+
+Do not drop it in silence. List it in what Phase 3 presents as "lines the original plan lost". This is the only place the mistake on the plan's side shows.
+
 ## Check the distribution by counting
 
 Each slice's Plan has to stand on its own as something build accepts. Count these three.
@@ -34,3 +40,4 @@ Each slice's Plan has to stand on its own as something build accepts. Count thes
 1. The union of every slice's U-NNN covers the original plan's units exactly. An uncovered unit is what Phase 3 surfaces as the coverage check's uncovered line
 2. Each unit holds 3 files or fewer and 4 tests or fewer. Only a seam unit sits outside those caps
 3. At most one unit per slice carries `seam: true`
+4. Count the Rules and Preconditions no slice took. List them in what Phase 3 presents when the count is not zero

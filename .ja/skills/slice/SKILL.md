@@ -9,7 +9,7 @@ argument-hint: "[plan / spec / PRD / issue ref]"
 
 # /slice - 計画を垂直スライス issue に分解
 
-計画を独立して着手可能な issue へ分解する。各 issue は tracer bullet で、schema、API、UI、test の全レイヤーを端から端まで貫く 1 本の細い縦串になり、それ単体で demo または検証できる。
+計画を独立して着手可能な issue へ分解する。各 issue は tracer bullet で、そのリポジトリが持つ層を端から端まで貫く 1 本の細い縦串になり、それ単体で demo または検証できる。層はリポジトリごとに違う。Web アプリなら schema、API、UI、test で、ハーネスやライブラリなら入力の受け口、判定、出力、test になる。Phase 1 で層の名前を確定してから割る。
 
 ## 入力
 
@@ -29,9 +29,11 @@ argument-hint: "[plan / spec / PRD / issue ref]"
 
 既に構造化 plan を手元に持つなら、2 を飛ばして `/code` を使う。
 
-## Phase 1: コードベース探索 (任意)
+## Phase 1: 層を確定する
 
-未探索なら現状を把握する。issue のタイトルと説明はプロジェクトの用語集に従い、触る領域の DR を尊重する。実装を楽にする prefactor の機会を探す。横断的な探索が要るときだけ Explore エージェントを 1 体起動する。per-slice の spawn はしない。
+このリポジトリが持つ層を名前で挙げる。Web アプリなら schema、API、UI、test。ハーネスやライブラリなら入力の受け口、判定、出力、test。ディレクトリ構成と、既存の 1 機能が触るファイルの並びから読む。層が読めなければ AskUserQuestion で問う。以降の Phase はこの名前で割る。
+
+コードベースが未探索なら、あわせて現状を把握する。issue のタイトルと説明はプロジェクトの用語集に従い、触る領域の DR を尊重する。実装を楽にする prefactor の機会を探す。横断的な探索が要るときだけ Explore エージェントを 1 体起動する。per-slice の spawn はしない。
 
 ## Phase 2: 垂直スライスを起草する
 
@@ -39,7 +41,7 @@ argument-hint: "[plan / spec / PRD / issue ref]"
 
 | ルール       | 内容                                                  |
 | ------------ | ----------------------------------------------------- |
-| 全レイヤー   | 各スライスは schema、API、UI、test の全レイヤーを貫く |
+| 全レイヤー   | 各スライスは Phase 1 で確定した層をすべて貫く         |
 | 単独検証可能 | 完了スライスはそれ単体で demo または検証できる        |
 | prefactor 先 | prefactor が要るなら最初のスライスに置く              |
 

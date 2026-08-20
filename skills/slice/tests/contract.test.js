@@ -168,6 +168,52 @@ test("the parent-child relation is set through gh, with the heading as its copy"
   }
 });
 
+// The layer names differ per repository. Naming schema / API / UI as the fixed set leaves the
+// all-layers rule and the hand-back check unevaluable anywhere those three do not exist, which
+// a dry run against this repository showed.
+test("the layers are settled per repository rather than fixed in the wording", () => {
+  for (const lang of langs) {
+    const body = skill(lang);
+    const phase1 = body.split("\n## Phase 1")[1].split("\n## Phase 2")[0];
+    assert.match(
+      phase1,
+      lang === "ja" ? /層を名前で挙げる/ : /Name the layers/,
+      `${lang}: Phase 1 settles the layer names`,
+    );
+    const rule = body
+      .split("\n")
+      .find((line) => line.includes("| All layers") || line.includes("| 全レイヤー"));
+    assert.ok(rule, `${lang}: the rule table names the all-layers rule`);
+    assert.match(
+      rule,
+      lang === "ja" ? /Phase 1 で確定した層/ : /Phase 1 settled/,
+      `${lang}: the rule points at what Phase 1 settled rather than a fixed list`,
+    );
+  }
+});
+
+// A Rule or a precondition reaching no slice is a mistake on the plan's side. Dropping it in
+// silence is the one outcome that leaves nothing to fix it by.
+test("what no slice took is reported rather than dropped", () => {
+  for (const lang of langs) {
+    const text = readFileSync(
+      at(lang, "skills", "slice", "references", "plan-distribution.md"),
+      "utf8",
+    );
+    const heading =
+      lang === "ja" ? "## どのスライスも取らなかった" : "## Report what no slice took";
+    assert.ok(text.includes(heading), `${lang}: the reference states the rule in its own section`);
+    // Anchored to the numbered line, not the section: an earlier check names Phase 3 too, so a
+    // section-wide search stays green on a check that stopped routing the count anywhere.
+    const line = text
+      .slice(text.lastIndexOf(lang === "ja" ? "## 配分後の検算" : "## Check the distribution"))
+      .split("\n")
+      .find((row) => row.startsWith("4. "));
+    assert.ok(line, `${lang}: the counting checks reach a fourth item`);
+    assert.match(line, /Phase 3/, `${lang}: the count lands in what Phase 3 presents`);
+  }
+});
+
 // The parent issue is explicitly left unmodified, so a rationale settled in Phase 3 has nowhere
 // to live unless the closing report carries it.
 test("the deliberate exclusions settled in Phase 3 reach the closing report", () => {

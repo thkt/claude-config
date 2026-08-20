@@ -9,7 +9,7 @@ argument-hint: "[plan / spec / PRD / issue ref]"
 
 # /slice - Break a plan into vertical-slice issues
 
-Break a plan into independently-grabbable issues. Each issue is a tracer bullet, a thin slice cutting end-to-end through every layer (schema / API / UI / test), demoable or verifiable on its own.
+Break a plan into independently-grabbable issues. Each issue is a tracer bullet, a thin slice cutting end-to-end through the layers this repository has, demoable or verifiable on its own. Which layers those are differs per repository: a web app has schema, API, UI, and test, while a harness or a library has an entry point, a decision, an output, and test. Settle their names in Phase 1 before cutting anything.
 
 ## Input
 
@@ -29,19 +29,21 @@ When it did not, a sliced issue carries no `## Plan`, and handing it to the buil
 
 Skip step 2 and use `/code` when you already hold a structured plan.
 
-## Phase 1: Explore the codebase (optional)
+## Phase 1: Settle the layers
 
-If not yet explored, understand the current state. Issue titles / descriptions follow the project glossary and respect DRs in the area you touch. Look for prefactor opportunities that make the change easier. Spawn one Explore agent only when a cross-cutting sweep is needed; no per-slice spawns.
+Name the layers this repository has. A web app: schema, API, UI, test. A harness or a library: entry point, decision, output, test. Read them off the directory structure and the run of files one existing feature touches. When they do not read off, ask via AskUserQuestion. Every later Phase cuts by these names.
+
+If the codebase is not yet explored, understand the current state alongside that. Issue titles / descriptions follow the project glossary and respect DRs in the area you touch. Look for prefactor opportunities that make the change easier. Spawn one Explore agent only when a cross-cutting sweep is needed; no per-slice spawns.
 
 ## Phase 2: Draft vertical slices
 
 Split the plan into tracer-bullet issues. Vertical slices (through all layers), not horizontal (one layer only). Describe each slice by its end-to-end behavior, not by per-layer implementation steps. Leave out concrete file paths and code snippets: they go stale fast and mislead whoever picks the slice up. The exception is a state machine, reducer, schema, or type snippet a prototype produced, where it encodes the decision more precisely than prose; note it came from the prototype and trim it to the part that carries the decision. Write acceptance criteria that are demoable or verifiable on the slice alone; a criterion presupposing another slice's completion is a dependency and moves to Blocked by.
 
-| Rule            | Content                                                        |
-| --------------- | -------------------------------------------------------------- |
-| All layers      | Each slice cuts through every layer (schema / API / UI / test) |
-| Self-verifiable | A completed slice is demoable or verifiable on its own         |
-| Prefactor first | If prefactoring is needed, put it in the first slice           |
+| Rule            | Content                                                |
+| --------------- | ------------------------------------------------------ |
+| All layers      | Each slice cuts through every layer Phase 1 settled    |
+| Self-verifiable | A completed slice is demoable or verifiable on its own |
+| Prefactor first | If prefactoring is needed, put it in the first slice   |
 
 ### Distributing a source that carries a plan
 
