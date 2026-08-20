@@ -50,15 +50,7 @@ issue 番号または URL だけを受け取った場合は、起票済み issue
 
 ### テンプレート選択
 
-`gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` でテンプレートを列挙する。種別に対応する骨格を下表の上から順に探して採用する。リポジトリ内のテンプレートを優先し、Web UI と CLI から起票される issue の骨格を揃える。
-
-上の 2 種類は、Web UI で入力を求める最小要件を定める。CLI からの起票時に追加の節を設けても逸脱にはならない。骨格に含まれていない場合でも、feature には `Acceptance Criteria` と `Testing Decisions` を書く。bug には `Steps to Reproduce` と `Expected vs Actual` を書く。
-
-| 骨格                           | 節名の取り方                                                                                        |
-| ------------------------------ | --------------------------------------------------------------------------------------------------- |
-| リポジトリの `<type>.yml`      | 各 `body` 要素の `attributes.label` を節名とする。`validations.required` が真の要素だけを必須とする |
-| リポジトリの `<type>.md`       | 先頭の frontmatter から `name`/`about`/`labels`/`title` を除いた本文                                |
-| skill の `templates/<type>.md` | `## Template` 直下のコードフェンス                                                                  |
+骨格の取り方は ${CLAUDE_SKILL_DIR}/references/template-source.md に従う。`/slice` も同じ順で選ぶので、順序を変えるときはそちらを直す。
 
 ### 分割判定
 

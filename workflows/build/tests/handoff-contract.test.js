@@ -7,11 +7,12 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
 // The phrasing that hands an issue to build. Matches both the Japanese and the English wording.
-// The last alternative is a routing table whose destination cell names build: prose particles do
-// not appear there, so the earlier alternatives all miss it. Anchoring to the row start keeps a
-// passing mention such as "the build workflow's Revalidate" out.
+// A routing table's destination cell carries no prose particles, so the row-start alternative is
+// what catches it; anchoring there keeps a passing mention such as "the build workflow's
+// Revalidate" out. `/build` is its own alternative because a skill naming the slash command hands
+// an issue over just as much as one writing the words out.
 const HANDOFF =
-  /build workflow に|build に渡|build に委譲|build へ|to the build workflow|delegate to build|^\|\s*(The )?build workflow/;
+  /build workflow に|build に渡|build に委譲|build へ|to the build workflow|delegate to build|`\/build`|^\|\s*(The )?build workflow/;
 // qualify branches on the presence of a Plan section earlier in its verdict table, so by the
 // time the build-ready row is reached the Plan section is already established. issue settles the
 // plan at Phase 1: a step there suggests /think before the body is written, which its own
