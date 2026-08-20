@@ -12,7 +12,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
 # README はディレクトリの索引、_candidates は閾値未満の行の置き場。どちらも決まりごとではない。
 NOT_A_RULE = {"README.md", "_candidates.md"}
@@ -34,6 +34,11 @@ class Related(TypedDict):
     shared: int
 
 
+class Report(TypedDict):
+    matched: list[Matched]
+    related: list[Related]
+
+
 def glob_to_regexp(glob: str) -> re.Pattern[str]:
     body = "".join(
         "(?:.*/)?" if part == "**/" else "[^/]*" if part == "*" else _ESCAPE.sub(r"\\\g<0>", part)
@@ -48,14 +53,20 @@ def normalize(path: str) -> str:
 
 
 def read_globs(page: Path) -> list[str]:
-    """frontmatter の globs 行。ページが持たなければ空リスト。"""
+    """frontmatter の globs 行。ページが持たなければ空リスト。
+
+    配列でない値も空リストにする。`globs: "**/*"` を素直に回すと 1 文字ずつが glob になり、
+    ページが全ファイルに一致したように見える。
+    """
     for line in page.read_text(encoding="utf-8").split("\n")[:4]:
         if line.startswith("globs:"):
             try:
-                value = json.loads(line[len("globs:") :].strip())
+                value = cast(object, json.loads(line[len("globs:") :].strip()))
             except json.JSONDecodeError:
                 return []
-            return [g for g in value if isinstance(g, str)]
+            if not isinstance(value, list):
+                return []
+            return [g for g in cast(list[object], value) if isinstance(g, str)]
     return []
 
 
@@ -63,7 +74,7 @@ def words(text: str) -> set[str]:
     return {w for w in re.split(r"[-_\s]+", text.lower()) if w}
 
 
-def find(wiki_dir: str, slug: str, files: list[str]) -> dict[str, list[object]]:
+def find(wiki_dir: str, slug: str, files: list[str]) -> Report:
     pages = sorted(p for p in Path(wiki_dir).glob("*.md") if p.name not in NOT_A_RULE)
     normalized = [normalize(f) for f in files]
     slug_words = words(slug)

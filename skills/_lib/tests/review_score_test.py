@@ -7,29 +7,30 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from typing import cast
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE.parent))
 
-from review_score import VERDICTS, score  # noqa: E402
+from review_score import VERDICTS, Case, Previous, score  # noqa: E402
 
 # Derived rather than listed: a harness added later would otherwise sit outside these checks until
 # someone remembered to add its name here.
 HARNESS_SKILLS = sorted(p.parents[1].name for p in ROOT.glob("skills/*/test/expected.json"))
 
 
-def flagged(file: str, category: str = "A03") -> dict[str, object]:
+def flagged(file: str, category: str = "A03") -> Case:
     return {"file": file, "expected": "detected", "category": category, "severity_min": "high"}
 
 
-def clean(file: str) -> dict[str, object]:
+def clean(file: str) -> Case:
     return {"file": file, "expected": "no_finding"}
 
 
-def corpus(skill: str) -> list[dict[str, object]]:
+def corpus(skill: str) -> list[Case]:
     path = ROOT / "skills" / skill / "test" / "expected.json"
-    return json.loads(path.read_text(encoding="utf-8"))
+    return cast(list[Case], json.loads(path.read_text(encoding="utf-8")))
 
 
 class Scoring(unittest.TestCase):
@@ -83,7 +84,7 @@ class Scoring(unittest.TestCase):
         self.assertEqual(report["byCategory"]["LLM01"]["recall_strict"], 0.0)
 
     def test_the_diff_against_a_previous_run_is_taken_per_metric(self) -> None:
-        previous = {"metrics": {"recall_strict": 0.5, "fp_rate": 0.0}}
+        previous: Previous = {"metrics": {"recall_strict": 0.5, "fp_rate": 0.0}}
         report = score(
             [flagged("v1"), flagged("v2"), clean("s1")],
             [
@@ -93,8 +94,10 @@ class Scoring(unittest.TestCase):
             ],
             previous,
         )
-        self.assertEqual(report["diff"]["recall_strict"], 0.5)
-        self.assertEqual(report["diff"]["fp_rate"], 0.0)
+        diff = report["diff"]
+        assert diff is not None, "a previous run was passed, so a diff comes back"
+        self.assertEqual(diff["recall_strict"], 0.5)
+        self.assertEqual(diff["fp_rate"], 0.0)
 
 
 class Corpora(unittest.TestCase):
