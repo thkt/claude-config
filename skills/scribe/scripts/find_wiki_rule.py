@@ -35,6 +35,11 @@ class Related(TypedDict):
     shared: int
 
 
+class Report(TypedDict):
+    matched: list[Matched]
+    related: list[Related]
+
+
 def glob_to_regexp(glob: str) -> re.Pattern[str]:
     body = "".join(
         "(?:.*/)?" if part == "**/" else "[^/]*" if part == "*" else _ESCAPE.sub(r"\\\g<0>", part)
@@ -64,7 +69,7 @@ def words(text: str) -> set[str]:
     return {w for w in re.split(r"[-_\s]+", text.lower()) if w}
 
 
-def find(wiki_dir: str, slug: str, files: list[str]) -> dict[str, list[object]]:
+def find(wiki_dir: str, slug: str, files: list[str]) -> Report:
     pages = sorted(p for p in Path(wiki_dir).glob("*.md") if p.name not in NOT_A_RULE)
     normalized = [normalize(f) for f in files]
     slug_words = words(slug)

@@ -8,15 +8,20 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from typing import Literal
 
 HERE = Path(__file__).resolve().parent
 SCRIPT = HERE.parent / "scripts" / "triage.py"
 sys.path.insert(0, str(SCRIPT.parent))
 
-from triage import triage  # noqa: E402
+from triage import Pattern, triage  # noqa: E402
+
+# The same three values triage branches on. A plain str here widens the literal and the helper
+# stops building the shape the function accepts.
+Existing = Literal["page", "candidate", "none"]
 
 
-def pattern(name: str, count: int, existing: str = "none") -> dict[str, object]:
+def pattern(name: str, count: int, existing: Existing = "none") -> Pattern:
     return {"name": name, "evidence": [f"#{name}{i}" for i in range(count)], "existing": existing}
 
 
