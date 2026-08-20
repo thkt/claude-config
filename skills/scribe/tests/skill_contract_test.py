@@ -17,6 +17,13 @@ from triage import triage  # noqa: E402
 
 LANGS = ["ja", "en"]
 
+# The store this repository keeps, which is also what a scribe run reads back and rewrites.
+CANDIDATES = ROOT / "docs" / "wiki" / "_candidates.md"
+
+# The two headings Phase 3 sorts into. Both stay even while empty, or a carried-over line has
+# nowhere to land.
+SECTIONS = ("## 昇格待ち", "## 単発")
+
 
 def at(lang: str, *parts: str) -> Path:
     return ROOT.joinpath(*(([".ja"] if lang == "ja" else []) + list(parts)))
@@ -36,11 +43,50 @@ class SkillContract(unittest.TestCase):
         report = triage([{"name": "x", "evidence": ["#1", "#2"], "existing": "page"}])
         self.assertEqual(report["pages"][0]["action"], "update")
 
-    def test_the_skill_defines_the_line_format_for_a_candidate_append(self) -> None:
-        """The next run reads _candidates.md back to decide existing, so the shape has to hold."""
-        expected = {"ja": "`- <内容 1 行> (<根拠>)`", "en": "`- <one-line content> (<evidence>)`"}
+    def test_the_line_format_the_skill_defines_is_the_one_the_store_already_uses(self) -> None:
+        """A shape only the skill knows makes the next run rewrite every line it appends beside.
+        The store is the other half of the contract, so both sides are read here."""
+        expected = {"ja": "`- <内容 1 行> <根拠>`", "en": "`- <one-line content> <evidence>`"}
         for lang in LANGS:
             self.assertIn(expected[lang], skill(lang), lang)
+        lines = [
+            line
+            for line in CANDIDATES.read_text(encoding="utf-8").split("\n")
+            if line.startswith("- ")
+        ]
+        self.assertTrue(lines, "the store holds candidate lines to check against")
+        for line in lines:
+            self.assertRegex(line, r"^- \S.*?(?: (?:#\d+|\(research\)))+$", line)
+
+    def test_a_carried_over_candidate_returns_to_the_array_and_promotes(self) -> None:
+        """Nothing else re-reads the store, so a line the cap deferred never reaches a page again
+        unless Phase 3 puts it back. The array step and the run condition both have to say so."""
+        reads_back = {
+            "ja": "`docs/wiki/_candidates.md` の候補行を両方の節から全て読み",
+            "en": "Read every candidate line in `docs/wiki/_candidates.md`, both sections",
+        }
+        runs_anyway = {"ja": "0 件でも", "en": "Even with PRs, issues, and research all empty"}
+        for lang in LANGS:
+            doc = skill(lang)
+            phase3 = doc[doc.index("## Phase 3") : doc.index("## Phase 4")]
+            self.assertIn(reads_back[lang], phase3, f"{lang}: Phase 3 reads the store back")
+            phase2 = doc[doc.index("## Phase 2") : doc.index("## Phase 3")]
+            self.assertIn(runs_anyway[lang], phase2, f"{lang}: Phase 2 runs on the store alone")
+        report = triage([{"name": "carried", "evidence": ["#1", "#2"], "existing": "candidate"}])
+        self.assertEqual(report["pages"][0]["action"], "promote")
+
+    def test_the_store_template_carries_both_sections_the_skill_writes_into(self) -> None:
+        """Phase 3 sorts candidates and deferred into two named sections. A skeleton missing one
+        leaves the run writing into a heading that is not there."""
+        for lang in LANGS:
+            template = at(lang, "skills", "scribe", "templates", "candidates.md").read_text(
+                encoding="utf-8"
+            )
+            for section in SECTIONS:
+                self.assertIn(section, template, f"{lang}: {section}")
+        store = CANDIDATES.read_text(encoding="utf-8")
+        for section in SECTIONS:
+            self.assertIn(section, store, f"the store carries {section}")
 
     def test_the_readme_template_describes_both_routes_to_a_page(self) -> None:
         """A README naming only the promotion route describes a rule the tool does not follow."""
@@ -70,11 +116,12 @@ class SkillContract(unittest.TestCase):
     def test_every_phase_before_six_defers_its_write_to_the_worktree(self) -> None:
         """The worktree is created in Phase 6. An earlier Phase that writes touches the user's tree,
         which is the one thing the invariant table forbids. Each writing Phase has to say so, since
-        one section carrying the note does not stop another from writing."""
+        one section carrying the note does not stop another from writing. Phase 1 is on the list
+        because it is where the README and the store get created on a fresh repository."""
         defers = {"ja": "書き込みは Phase 6", "en": "happens inside Phase 6"}
         for lang in LANGS:
             doc = skill(lang)
-            for phase in (3, 4, 5):
+            for phase in (1, 3, 4, 5):
                 body = doc[doc.index(f"## Phase {phase}") : doc.index(f"## Phase {phase + 1}")]
                 self.assertIn(defers[lang], body, f"{lang}: Phase {phase} defers its write")
 

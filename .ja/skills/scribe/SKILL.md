@@ -23,8 +23,9 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 ## Phase 1: 前提確認とオンボーディング
 
 1. `gh pr list --label scribe --state open --limit 1` で未マージの scribe PR を確認する。あれば追い越さず、中断して報告する
-2. `docs/wiki/README.md` が無ければ ${CLAUDE_SKILL_DIR}/templates/readme.md のテンプレートで作成し、後続の PR に含める
-3. scribe ラベルが無ければ `gh label create scribe --description "scribe による wiki 提案"` で作成する
+2. `docs/wiki/README.md` が無ければ ${CLAUDE_SKILL_DIR}/templates/readme.md の内容を用意する
+3. `docs/wiki/_candidates.md` が無ければ ${CLAUDE_SKILL_DIR}/templates/candidates.md の内容を用意する。手順 2 と合わせ、書き込みは Phase 6 の worktree 内で行う
+4. scribe ラベルが無ければ `gh label create scribe --description "scribe による wiki 提案"` で作成する
 
 ## Phase 2: スコープ決定
 
@@ -32,16 +33,17 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 2. mergedAt が取れなければ初回。`gh pr list --state merged --search '-label:scribe'` と `gh issue list --state closed` の全件、および `find .claude/workspace/research -name '*.md'` の全件を対象にする
 3. mergedAt が取れたら差分だけを対象にする。PR は `gh pr list --state merged --search "-label:scribe merged:><mergedAt>"` で集める。issue は `gh issue list --state closed --search "closed:><mergedAt>"` で集める。調査ファイルは `find .claude/workspace/research -name '*.md' -newermt "<mergedAt>"` で集める
 4. research の対象は `*.md` だけとし、他の形式は読まない。cursor には mtime を使い、ファイル内の `Generated:` 行は使わない。`Generated:` は生成時の日付で、後から追記してもその日付のままなので、更新を取りこぼす
-5. PR/issue/research のいずれも 0 件なら「新規なし」と報告して終了する
+5. PR/issue/research のいずれも 0 件でも、`docs/wiki/_candidates.md` に根拠 2 件以上の行があれば Phase 3 へ進む。その行も無いときだけ「新規なし」と報告して終了する
 
 ## Phase 3: 抽出
 
-1. `docs/wiki/*.md` と `docs/wiki/_candidates.md` を読み、既存ページ/候補を把握する
-2. スコープの各 PR/issue を `gh pr view <番号> --comments`/`gh issue view <番号> --comments` で本文/コメントまで読む
-3. スコープの各 research ファイルを Read で全文読む。セクション名で絞らない
-4. 読んだ内容を共通項ごとにまとめ、`{name, evidence, existing}` の配列にする。設計判断とその経緯は `docs/decisions/` の領分なので対象外
-5. その配列を `python3 ${CLAUDE_SKILL_DIR}/scripts/triage.py '<共通項の JSON 配列>'` に渡す。script が閾値 2 件と 1 回あたりのページ上限を当て、`pages` (新規/昇格/更新)、`candidates`、`deferred` (今回は見送り) に分ける。閾値と上限を自分で判定しない
-6. `candidates` の各件について `docs/wiki/_candidates.md` へ足す行を `- <内容 1 行> (<根拠>)` の形で用意する。既に行があれば根拠だけを足す形にする。書き込みは Phase 6 の worktree 内で行う
+1. `docs/wiki/*.md` を読み、既存ページを把握する
+2. `docs/wiki/_candidates.md` の候補行を両方の節から全て読み、1 行ごとに `{name, evidence, existing: "candidate"}` として配列へ入れる。上限で持ち越した行が戻る経路はここだけ
+3. スコープの各 PR/issue を `gh pr view <番号> --comments`/`gh issue view <番号> --comments` で本文/コメントまで読む
+4. スコープの各 research ファイルを Read で全文読む。セクション名で絞らない
+5. 読んだ内容を共通項ごとにまとめ、配列へ足す。同じ共通項が配列にあれば根拠だけを足す。設計判断とその経緯は `docs/decisions/` の領分なので対象外
+6. その配列を `python3 ${CLAUDE_SKILL_DIR}/scripts/triage.py '<共通項の JSON 配列>'` に渡す。script が閾値 2 件と 1 回あたりのページ上限を当て、`pages` (新規/昇格/更新)、`candidates`、`deferred` (今回は見送り) に分ける。閾値と上限を自分で判定しない
+7. `docs/wiki/_candidates.md` を書き換える形を用意する。`candidates` は「単発」節へ、`deferred` は「昇格待ち」節へ置き、`pages` になった共通項の行は消す。行は `- <内容 1 行> <根拠>` の形にし、根拠は `#番号` と `(research)` をスペース区切りで並べる。既に行があれば根拠だけを足す。書き込みは Phase 6 の worktree 内で行う
 
 | フィールド | 値                                                                            |
 | ---------- | ------------------------------------------------------------------------------- |
@@ -75,7 +77,7 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 扱うページは Phase 3 の `pages` に限り、`deferred` は PR 本文に残しとして明記する。参照修理と由来修理は上限の外なので、`pages` が 0 件でも実施する。候補への追記だけでも PR を作り、変更が何も無いときだけ作らない。
 
 1. `git fetch origin <デフォルトブランチ>` の後、`origin/<デフォルトブランチ>` から隔離 worktree とブランチ `scribe/<yyyymmdd-HHMMSS>` を作る
-2. worktree 内で Phase 3-5 が決めた内容を書き込む。ページは ${CLAUDE_SKILL_DIR}/templates/page.md の骨格に従い、候補行は Phase 3 手順 6 の形で `_candidates.md` へ、参照修理と由来修理は Phase 4-5 が決めた張り替え先で書く
+2. worktree 内で Phase 3-5 が決めた内容を書き込む。ページは ${CLAUDE_SKILL_DIR}/templates/page.md の骨格に従い、候補行は Phase 3 手順 7 の形で `_candidates.md` へ、参照修理と由来修理は Phase 4-5 が決めた張り替え先で書く
 3. メッセージ `docs(wiki): <共通項名, ...> を追加/更新` でコミットする
 4. push して `gh pr create --base <デフォルトブランチ>` を実行する。タイトル `[scribe] <共通項名, ...> を追加/更新`、ラベル scribe
 5. 本文には追加/昇格/更新したページ、候補への追記、参照修理/由来修理したページ、読んだ PR/issue の範囲と research の件数、検証で落とした項目、打ち切った残しを書く
