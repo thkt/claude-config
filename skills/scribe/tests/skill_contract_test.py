@@ -7,6 +7,7 @@ import re
 import sys
 import unittest
 from pathlib import Path
+from typing import cast
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
@@ -173,9 +174,9 @@ class WikiPageFormat(unittest.TestCase):
 
         for page in self.pages():
             line = page.read_text(encoding="utf-8").split("\n")[1]
-            value = json.loads(line[len("globs: ") :])
+            value = cast(object, json.loads(line[len("globs: ") :]))
             self.assertIsInstance(value, list, f"{page.name}: globs is a list")
-            for glob in value:
+            for glob in cast(list[object], value):
                 self.assertIsInstance(glob, str, f"{page.name}: each glob is a string")
 
     def test_the_template_shows_the_globs_frontmatter(self) -> None:

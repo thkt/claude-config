@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
@@ -22,7 +23,7 @@ def wiki(**pages: str) -> str:
     """A temp wiki directory. Each keyword is a page stem, each value its globs line content."""
     tmp = Path(tempfile.mkdtemp())
     for stem, globs in pages.items():
-        (tmp / f"{stem.replace('_', '-')}.md").write_text(
+        _ = (tmp / f"{stem.replace('_', '-')}.md").write_text(
             f"---\nglobs: {globs}\n---\n\n# {stem}\n", encoding="utf-8"
         )
     return str(tmp)
@@ -51,12 +52,18 @@ class Frontmatter(unittest.TestCase):
     def test_a_page_with_no_globs_key_reads_as_an_empty_list(self) -> None:
         directory = Path(wiki())
         page = directory / "p.md"
-        page.write_text("# p\n", encoding="utf-8")
+        _ = page.write_text("# p\n", encoding="utf-8")
         self.assertEqual(read_globs(page), [])
 
     def test_a_malformed_globs_line_reads_as_empty_rather_than_throwing(self) -> None:
         """A page is prose a human edits. A broken line drops that page, not the whole run."""
         directory = Path(wiki(p="**/x/**"))
+        self.assertEqual(read_globs(directory / "p.md"), [])
+
+    def test_a_globs_string_reads_as_empty_rather_than_one_glob_per_character(self) -> None:
+        """A bare string is valid JSON, so it survives the parse and reaches the loop. Iterated
+        as written it yields every character, and the page then matches almost any file."""
+        directory = Path(wiki(p='"**/*"'))
         self.assertEqual(read_globs(directory / "p.md"), [])
 
 
@@ -82,7 +89,7 @@ class Ranking(unittest.TestCase):
     def test_readme_and_candidates_are_not_rule_pages(self) -> None:
         directory = Path(wiki(anything="[]"))
         for name in ("README.md", "_candidates.md"):
-            (directory / name).write_text('---\nglobs: ["**/*"]\n---\n', encoding="utf-8")
+            _ = (directory / name).write_text('---\nglobs: ["**/*"]\n---\n', encoding="utf-8")
         result = find(str(directory), "anything", ["x.ts"])
         self.assertEqual(result["matched"], [])
 
@@ -110,7 +117,8 @@ class RealWiki(unittest.TestCase):
             check=False,
         )
         self.assertEqual(proc.returncode, 0)
-        self.assertEqual(sorted(json.loads(proc.stdout)), ["matched", "related"])
+        report = cast(dict[str, object], json.loads(proc.stdout))
+        self.assertEqual(sorted(report), ["matched", "related"])
 
 
 if __name__ == "__main__":
