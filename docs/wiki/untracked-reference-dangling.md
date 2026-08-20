@@ -12,7 +12,7 @@ git 管理外のファイル (gitignore 配下、ローカル生成物) のパ�
 
 ## 参照コード
 
-- `skills/scribe/SKILL.md` の Reference traceability 不変条件 (`.claude/workspace/research/` のパスを `docs/wiki/` 配下に書かない)
+- `skills/scribe/SKILL.md` の No research paths 不変条件 (`.claude/workspace/research/` のパスを `docs/wiki/` 配下に書かない)
 - `skills/scribe/SKILL.md` Phase 4 の参照掃除 (ファイルの実在とシンボル名の grep 一致を機械的に確認し、壊れていれば共通項を不成立にする)
 
 ## 根拠
