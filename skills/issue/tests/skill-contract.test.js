@@ -414,13 +414,25 @@ test("the floor matches between the validator, the body, and the templates", () 
   for (const row of block.matchAll(/"(\w+)":\s*\(([^)]*)\)/g))
     floor[row[1]] = [...row[2].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
   assert.ok(Object.keys(floor).length >= 2, `the floor covers the types (${Object.keys(floor)})`);
+  // The prose stating the floor sits in the reference both /issue and /slice read, so that is
+  // where the name has to appear rather than in either skill body.
   for (const [type, names] of Object.entries(floor)) {
     for (const name of names) {
-      for (const [lang, path] of Object.entries(skills))
+      for (const lang of Object.keys(skills))
         assert.match(
-          readFileSync(path, "utf8"),
+          readFileSync(
+            join(
+              root,
+              ...(lang === "ja" ? [".ja"] : []),
+              "skills",
+              "issue",
+              "references",
+              "template-source.md",
+            ),
+            "utf8",
+          ),
           new RegExp(`\`${name}\``),
-          `${lang}: the body names ${name}`,
+          `${lang}: the shared reference names ${name}`,
         );
       const tmpl = readFileSync(join(root, "skills", "issue", "templates", `${type}.md`), "utf8");
       assert.match(tmpl, new RegExp(`^## ${name}$`, "m"), `${type}.md carries ${name} as required`);

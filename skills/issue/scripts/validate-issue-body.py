@@ -31,10 +31,10 @@ FLOOR = {
     "feature": ("Acceptance Criteria", "Testing Decisions"),
     "bug": ("Steps to Reproduce", "Expected vs Actual"),
 }
-# Headings that stay out of errors despite being absent from the skeleton. An issue
-# carrying a transferred /think plan always has these two, and Phase 3 of
-# skills/issue/SKILL.md is what puts them there.
-ALLOWED_EXTRA = frozenset({"Plan", "Backlog candidates"})
+# Plan and Backlog candidates come with a transferred /think plan; Parent and Blocked by come from
+# /slice, which wraps every skeleton it picks in the two. Faulting them for being absent from the
+# skeleton would fail every body those two routes produce.
+ALLOWED_EXTRA = frozenset({"Plan", "Backlog candidates", "Parent", "Blocked by"})
 
 
 def skeleton_text(template_text: str) -> str:

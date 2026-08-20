@@ -1,6 +1,6 @@
 ---
 name: qualify
-description: Inspect whether an issue is in shape to hand to build, returning a verdict (build-ready / needs-plan / needs-fix) and the findings. Do NOT use to file an issue (use /issue) or to match a PR against its plan (use /preview).
+description: Inspect whether an issue is in shape to hand to build, returning a verdict (build-ready / needs-plan / needs-fix / needs-split) and the findings. Do NOT use to file an issue (use /issue) or to match a PR against its plan (use /preview).
 when_to_use: 実装可否, build-ready 判定, issue 品質チェック, qualify issue, check issue before build
 allowed-tools: Bash(gh issue view:*) Bash(gh repo view:*) Bash(ugrep:*) Bash(bfs:*) Read AskUserQuestion
 model: opus
@@ -50,16 +50,31 @@ When Phase 1's match finds the owner/repo differ, leave Preconditions exist and 
 | Preconditions exist         | Each {path, pattern} is found in the current code                                                                                                                                                        | advice   |
 | Creation collision          | Files whose contract reads as new do not exist yet                                                                                                                                                       | blocker  |
 | Displayed field enumeration | When an issue adds or changes a displayed domain field, it enumerates that field or cites an agent-readable source. A missing enumeration's finding names the AC and the plan's T-NNN as the destination | blocker  |
+| Need for a split            | The plan's size stays within the Task Decomposition thresholds in `rules/core/PREFLIGHT.md`                                                                                                              | split    |
+
+### Counting the need for a split
+
+Severity `split` does not stop build. It goes on neither the blocker list nor the advice list, and moves the verdict alone. Apply it only when a `## Plan` section is there, and skip the axis when it is not.
+
+The thresholds come from PREFLIGHT's Task Decomposition, of whose four rows only the two that can be evaluated here are used. Lines has no source in a plan. Layers needs the layer names settled, and qualify has no step that settles them, so there is nothing to count against. Put the two rows left out in the advice list with that reason.
+
+| What is counted | How it is counted                                                                                                                      | Threshold |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| Files           | Collect every unit's files and count by responsibility. A file and its `.ja/` mirror count as one, as do a change and its tests        | ≥5        |
+| Features        | The number of unit groups sharing no files with each other. A seam unit crosses everything by definition, so it counts toward no group | ≥3        |
+
+This is not the same question `/issue`'s split assessment asked. That one runs before the body is written, so it never saw a plan, and what it counted were the criteria raised from the description. What is counted here is the plan's files and units, which did not exist when `/issue` decided. It is not a declined suggestion raised twice.
 
 ## Phase 4: Verdict and output
 
 Return the output in conversation. Write the text in the order the verdict on one line, the blockers, then the advice, and raise the questions after it via AskUserQuestion. Write "none" for a section with 0 entries. Evaluate the verdicts in the table below top to bottom and take the first one that matches. The table's value is the default next step; when Phase 2 settled a different next step from the issue type, that one replaces it.
 
-| Verdict     | Condition            | Next step                                                       |
-| ----------- | -------------------- | --------------------------------------------------------------- |
-| needs-plan  | No `## Plan` section | Draft a plan via `/think` and transfer it via `/issue <number>` |
-| needs-fix   | 1 or more blockers   | Clear the blockers, then run `/qualify` again                   |
-| build-ready | 0 blockers           | Hand the issue number to the build workflow                     |
+| Verdict     | Condition              | Next step                                                       |
+| ----------- | ---------------------- | --------------------------------------------------------------- |
+| needs-plan  | No `## Plan` section   | Draft a plan via `/think` and transfer it via `/issue <number>` |
+| needs-fix   | 1 or more blockers     | Clear the blockers, then run `/qualify` again                   |
+| needs-split | Over a split threshold | Cut it into vertical slices via `/slice <number>`               |
+| build-ready | 0 blockers             | Hand the issue number to the build workflow                     |
 
 ### Questions
 

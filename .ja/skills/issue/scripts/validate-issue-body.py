@@ -31,9 +31,9 @@ FLOOR = {
     "feature": ("Acceptance Criteria", "Testing Decisions"),
     "bug": ("Steps to Reproduce", "Expected vs Actual"),
 }
-# 骨格に無くても errors にしない節。/think の plan を転記した issue はこの 2 節を必ず持ち、
-# skills/issue/SKILL.md の Phase 3 がそれを指示している。
-ALLOWED_EXTRA = frozenset({"Plan", "Backlog candidates"})
+# Plan と Backlog candidates は /think の plan を転記した issue が持ち、Parent と Blocked by は
+# /slice が骨格を挟む形で必ず付ける。骨格に無いという理由で errors にすると全て落ちる。
+ALLOWED_EXTRA = frozenset({"Plan", "Backlog candidates", "Parent", "Blocked by"})
 
 
 def skeleton_text(template_text: str) -> str:

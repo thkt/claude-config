@@ -2,26 +2,38 @@
 name: slice
 description: 計画 / spec / PRD を独立して着手可能な tracer-bullet 垂直スライス issue 群に分解し、依存順で GitHub に公開する。各 issue は全レイヤーを貫く 1 本の細い縦串。1 件の要求を起票するだけなら使わない (代わりに /issue)。
 when_to_use: 計画を issue に分解, plan を issue 化, spec を issue 群に, vertical slice, tracer bullet, issue 分割, slice
-allowed-tools: Bash(gh:*) Bash(ugrep:*) Bash(bfs:*) Read LS Agent AskUserQuestion
+allowed-tools: Bash(gh:*) Bash(cat:*) Bash(python3:*) Bash(ugrep:*) Bash(bfs:*) Read LS Agent AskUserQuestion
 model: opus
 argument-hint: "[plan / spec / PRD / issue ref]"
 ---
 
 # /slice - 計画を垂直スライス issue に分解
 
-計画を独立して着手可能な issue へ分解する。各 issue は tracer bullet で、schema、API、UI、test の全レイヤーを端から端まで貫く 1 本の細い縦串になり、それ単体で demo または検証できる。
+計画を独立して着手可能な issue へ分解する。各 issue は tracer bullet で、そのリポジトリが持つ層を端から端まで貫く 1 本の細い縦串になり、それ単体で demo または検証できる。層はリポジトリごとに違う。Web アプリなら schema、API、UI、test で、ハーネスやライブラリなら入力の受け口、判定、出力、test になる。Phase 1 で層の名前を確定してから割る。
 
 ## 入力
 
 `$ARGUMENTS` から計画のソースを取る。番号、URL、パスのいずれかで issue を参照していれば `gh issue view <N>` で本文とコメントを取得する。空ならまず会話文脈にある計画を使い、無ければ何を分解するか AskUserQuestion で問う。
 
+ソースが `## Plan` 節を持つかを見る。持つなら単位は既に決まっているので、起草せず配分する。Phase 2 と引き渡し先がこの判定で分岐する。
+
 ## publish した issue の引き渡し先
 
-slice が生む issue には `## Plan` がまだ無く、そのまま `/build` に渡すと no-plan で止まる。各スライスは `/think` で plan を作り issue の `## Plan` 節へ書き足してから `/build` に渡す。既に構造化 plan を手元に持つなら `/code` を使う。
+ソースが `## Plan` を持っていたなら、各スライスも Plan を持って publish されるので、そのまま build workflow に issue 番号を渡す。
 
-## Phase 1: コードベース探索 (任意)
+持っていなかった場合、生む issue に `## Plan` は無く、そのまま build workflow に渡すと no-plan で止まる。スライスごとに次の順で進める。全スライスをまとめて進めず、ユーザーが選んだ 1 件から始める。
 
-未探索なら現状を把握する。issue のタイトルと説明はプロジェクトの用語集に従い、触る領域の DR を尊重する。実装を楽にする prefactor の機会を探す。横断的な探索が要るときだけ Explore エージェントを 1 体起動する。per-slice の spawn はしない。
+1. `/think` で plan を作る
+2. `/issue <番号>` を実行する。番号だけを渡す経路が、その plan を issue の `## Plan` 節へ移す
+3. 手順 2 が `## Plan` を入れた issue の番号を、build workflow に渡す
+
+既に構造化 plan を手元に持つなら、2 を飛ばして `/code` を使う。
+
+## Phase 1: 層を確定する
+
+このリポジトリが持つ層を名前で挙げる。Web アプリなら schema、API、UI、test。ハーネスやライブラリなら入力の受け口、判定、出力、test。ディレクトリ構成と、既存の 1 機能が触るファイルの並びから読む。層が読めなければ AskUserQuestion で問う。以降の Phase はこの名前で割る。
+
+コードベースが未探索なら、あわせて現状を把握する。issue のタイトルと説明はプロジェクトの用語集に従い、触る領域の DR を尊重する。実装を楽にする prefactor の機会を探す。横断的な探索が要るときだけ Explore エージェントを 1 体起動する。per-slice の spawn はしない。
 
 ## Phase 2: 垂直スライスを起草する
 
@@ -29,9 +41,13 @@ slice が生む issue には `## Plan` がまだ無く、そのまま `/build` �
 
 | ルール       | 内容                                                  |
 | ------------ | ----------------------------------------------------- |
-| 全レイヤー   | 各スライスは schema、API、UI、test の全レイヤーを貫く |
+| 全レイヤー   | 各スライスは Phase 1 で確定した層をすべて貫く         |
 | 単独検証可能 | 完了スライスはそれ単体で demo または検証できる        |
 | prefactor 先 | prefactor が要るなら最初のスライスに置く              |
+
+### plan を持つソースの配分
+
+ソースが `## Plan` を持つなら、unit の束ね方でスライスを決める。各スライスの Plan は ${CLAUDE_SKILL_DIR}/references/plan-distribution.md の表に従って組む。plan の unit がレイヤーごとに切られていて配分では垂直にならない場合、その節が定める差し戻しを行う。
 
 ### 被覆チェック
 
@@ -43,7 +59,7 @@ slice が生む issue には `## Plan` がまだ無く、そのまま `/build` �
 
 | 項目         | 内容                                     |
 | ------------ | ---------------------------------------- |
-| Title        | 短い説明的な名前                         |
+| Title        | `[Feature]` のように種別を角括弧で前置した短い名前。検証は前置を必須とする |
 | Blocked by   | 先に完了すべき他スライス (あれば)        |
 | User stories | このスライスが満たす user story (あれば) |
 
@@ -53,16 +69,19 @@ slice が生む issue には `## Plan` がまだ無く、そのまま `/build` �
 
 承認したら、blocker を先にする依存順で publish する。"Blocked by" に実 issue 番号を書けるよう、blocker を先に作ってその番号を捕捉する。
 
-1. テンプレート選択で決めた骨格に本文を流し込み、一時ファイルへ書き出す。`<path>` は変数でなくリテラルの絶対パスで書く。hook は変数を展開できず、起票が止まる
-2. `gh issue create --title "<title>" --body-file <path>` で起票する。複数行の markdown は `--body` では壊れるので `--body-file` を使う
-3. triage label は付けない。AFK consumer 連携は対象外。親 issue は close せず、内容も変更しない
-4. 作成した issue を依存順に列挙し、各行に issue 番号と blocker の番号を書く。blocker が無ければ「なし」と書く
+1. テンプレート選択で決めた骨格に本文を流し込み、heredoc を使って `cat` で一時ファイルへ書き出す。`<path>` は変数でなくリテラルの絶対パスで書く。hook は変数を展開できず、起票が止まる
+2. ${CLAUDE_SKILL_DIR}/../issue/scripts/validate-issue-body.py <骨格ファイル> <title> <body-file> を実行する。エラーは ${CLAUDE_SKILL_DIR}/../issue/references/validation-errors.md に従って直し、直したら再実行する。N 件をまとめて起票するので、1 件の欠落が N 件に広がる
+3. `gh issue create --title "<title>" --body-file <path> --label priority:<値>` で起票する。複数行の markdown は `--body` では壊れるので `--body-file` を使う。priority は critical、high、medium、low から影響度で選ぶ。骨格に priority の節があれば、その値とラベルを揃える
+4. ソースが issue なら、`gh issue edit <ソースの番号> --add-sub-issue <番号1,番号2,...>` で全スライスを sub-issue として紐付ける。ソースが plan ファイルなど issue でない場合は飛ばす
+5. triage label は付けない。AFK consumer 連携は対象外。親 issue は close せず、本文も変更しない
+6. 作成した issue を依存順に列挙し、各行に issue 番号と blocker の番号を書く。blocker が無ければ「なし」と書く
+7. Phase 3 で意図的に除外した要求単位を、理由を添えて報告の末尾に書く。親 issue の本文は変更しないので、ここに書かないと除外の理由が残らない
 
 ### テンプレート選択
 
-`gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'` で `.md` を列挙する。feature 相当のテンプレートがあればそれを、無くてテンプレートが 1 つだけならそれを骨格にし、本文を読んで先頭 frontmatter の `name`、`about`、`labels`、`title` を外す。候補が無ければ ${CLAUDE_SKILL_DIR}/../issue/templates/feature.md を使う。
+骨格の取り方は ${CLAUDE_SKILL_DIR}/../issue/references/template-source.md に従う。`/issue` と同じ順で選ぶことで、どちらの経路で起票しても本文の骨格が揃う。
 
-どちらの骨格を選んでも `## Parent` を先頭に、`## Blocked by` を末尾に足す。当てはまらない任意節は落とす。確信度マーキングは適用しない。Phase 3 で粒度と依存をユーザーが承認済みなので、publish するスライスに未決の判断は残らない。
+どちらの骨格を選んでも `## Parent` を先頭に、`## Blocked by` を末尾に足す。親子の正は手順 4 が張る sub-issue 関係で、`## Parent` はその写し。本文だけを読む経路へ届けるために置くので、片方だけを張らず同じ回に両方を揃える。当てはまらない任意節は落とす。確信度マーキングは適用しない。Phase 3 で粒度と依存をユーザーが承認済みなので、publish するスライスに未決の判断は残らない。
 
 ## 言語
 
@@ -76,3 +95,4 @@ slice が生む issue には `## Plan` がまだ無く、そのまま `/build` �
 | git リポジトリでない | git リポジトリでない旨を報告               |
 | gh の認証に失敗      | 認証エラーを報告                           |
 | publish 途中で失敗   | 作成済み番号を報告し、残りの再開可否を問う |
+| 本文の検証が通らない | 直せないエラーを報告し、その 1 件を飛ばして残りを続けるかを問う |

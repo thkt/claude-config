@@ -150,8 +150,7 @@ def main() -> None:
     if len(sys.argv) < 3:
         print("usage: review_score.py <expected.json> <results.json> [previous]", file=sys.stderr)
         sys.exit(2)
-    # json.loads が返すのは形の検査されない値。ここがその状態を抜ける境界で、以下の cast が
-    # このファイルの docstring が述べるスキーマに当たる。
+    # 以下の cast が、形の検査されない値を抜ける境界になる。
     loaded = _load(sys.argv[2])
     rows: object = loaded
     if isinstance(loaded, dict):

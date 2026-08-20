@@ -150,8 +150,7 @@ def main() -> None:
     if len(sys.argv) < 3:
         print("usage: review_score.py <expected.json> <results.json> [previous]", file=sys.stderr)
         sys.exit(2)
-    # json.loads hands back a value whose shape nothing checked. The casts below are where that
-    # stops, and they are the boundary the schema in this file's docstring describes.
+    # The casts below are the boundary where a value whose shape nothing checked stops being one.
     loaded = _load(sys.argv[2])
     rows: object = loaded
     if isinstance(loaded, dict):

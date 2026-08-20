@@ -50,15 +50,7 @@ A bug is minor when it meets all three criteria below. An intermittent bug whose
 
 ### Template source
 
-List the templates via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'`. Look for the skeleton matching the type by working down the table and take the first that answers. The repository's own comes first, so a web-UI filing and a CLI filing carry the same skeleton.
-
-The top two state the minimum the web UI asks someone to fill in. Adding sections at CLI filing time is not a deviation. A feature carries `Acceptance Criteria` and `Testing Decisions` even when the skeleton omits them. A bug carries `Steps to Reproduce` and `Expected vs Actual`.
-
-| Skeleton                          | How the section names are read                                                                                                |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| The repository's `<type>.yml`     | Take each `body` entry's `attributes.label` as a section name. Only an entry whose `validations.required` is true is required |
-| The repository's `<type>.md`      | The body with `name` / `about` / `labels` / `title` removed from the leading frontmatter                                      |
-| The skill's `templates/<type>.md` | The code fence under `## Template`                                                                                            |
+Take the skeleton per ${CLAUDE_SKILL_DIR}/references/template-source.md. `/slice` chooses in the same order, so change that file when the order changes.
 
 ### Split assessment
 
