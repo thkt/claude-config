@@ -12,7 +12,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
 # README indexes the directory and _candidates holds rows below the threshold. Neither is a rule.
 NOT_A_RULE = {"README.md", "_candidates.md"}
@@ -54,14 +54,20 @@ def normalize(path: str) -> str:
 
 
 def read_globs(page: Path) -> list[str]:
-    """The globs line of the frontmatter, or an empty list when the page carries none."""
+    """The globs line of the frontmatter, or an empty list when the page carries none.
+
+    A value that is not an array reads as empty too. Iterating `globs: "**/*"` as written turns
+    each character into a glob, which makes the page look like it matches every file.
+    """
     for line in page.read_text(encoding="utf-8").split("\n")[:4]:
         if line.startswith("globs:"):
             try:
-                value = json.loads(line[len("globs:") :].strip())
+                value = cast(object, json.loads(line[len("globs:") :].strip()))
             except json.JSONDecodeError:
                 return []
-            return [g for g in value if isinstance(g, str)]
+            if not isinstance(value, list):
+                return []
+            return [g for g in cast(list[object], value) if isinstance(g, str)]
     return []
 
 

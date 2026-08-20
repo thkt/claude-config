@@ -8,7 +8,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 HERE = Path(__file__).resolve().parent
 SCRIPT = HERE.parent / "scripts" / "triage.py"
@@ -62,7 +62,8 @@ class Triage(unittest.TestCase):
             check=False,
         )
         self.assertEqual(proc.returncode, 0)
-        self.assertEqual(sorted(json.loads(proc.stdout)), ["candidates", "deferred", "pages"])
+        report = cast(dict[str, object], json.loads(proc.stdout))
+        self.assertEqual(sorted(report), ["candidates", "deferred", "pages"])
 
 
 if __name__ == "__main__":
