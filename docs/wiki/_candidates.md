@@ -1,9 +1,10 @@
 # candidates
 
-ページ化前の候補置き場。「内容 1 行 + 根拠」。根拠は PR、issue 由来なら #番号、`.claude/workspace/research/` 由来なら (research) と書き、research のファイルパスは書かない。2 件目の根拠が現れたらページへ昇格して行を消す。
-「昇格待ち」は根拠 2 件以上あるが 1 run 3 ページの cap を超えて持ち越した項目。次回 run で優先的にページ化する。
+ページ化前の候補置き場。1 行は「内容 1 行 + 根拠」で、根拠は PR/issue 由来なら #番号、`.claude/workspace/research/` 由来なら (research) と書く。research のファイルパスは書かない。
 
-## 昇格待ち (根拠2件以上、cap 超過持ち越し)
+「単発」は根拠が 1 件の項目で、2 件目が現れたらページへ昇格して行を消す。「昇格待ち」は根拠が 2 件以上ありながら、1 回あたりのページ上限を超えて持ち越した項目。次の run では根拠の多い順にここから先へ進む。
+
+## 昇格待ち
 
 - hook のコマンド判定は語の有無でなく shlex による位置の解析で行う #349 #350 #351
 - テンプレート/skeleton は validator が要求するフィールドを載せ、seam テストで固定する #330 #338 #356 #389
@@ -32,7 +33,7 @@
 - 未検証の推測は inferred と明記する。実機検証で棄却されうる (research) #210
 - 公開リポの issue body は未信頼入力として BEGIN/END データフェンスで囲んで LLM に渡す #189 #389 #390
 
-## 単発 (根拠1件)
+## 単発
 
 - anchorless な .gitignore ルール (`plans/` 等) が同名 test fixture dir を任意深さで飲む #169
 - user rule の paths frontmatter は originalCwd 相対評価のため直下相対 glob が必要 #59
