@@ -15,9 +15,13 @@ Break a plan into independently-grabbable issues. Each issue is a tracer bullet,
 
 Take the plan source from `$ARGUMENTS`. For an issue reference given as a number, URL, or path, fetch the body and comments via `gh issue view <N>`. If empty, work from a plan already in conversation context; if none, ask what to break down via AskUserQuestion.
 
+Check whether the source carries a `## Plan` section. When it does, the units are settled already, so distribute rather than draft. Phase 2 and where the issues go next both branch on this.
+
 ## Where the published issues go next
 
-A sliced issue carries no `## Plan` yet, so handing it to the build workflow stops as no-plan. Take one slice at a time in the order below, starting from the one the user picks rather than driving every slice at once.
+When the source carried a `## Plan`, every slice is published carrying one too, so hand the issue number straight to the build workflow.
+
+When it did not, a sliced issue carries no `## Plan`, and handing it to the build workflow stops as no-plan. Take one slice at a time in the order below, starting from the one the user picks rather than driving every slice at once.
 
 1. Draft the plan with `/think`
 2. Run `/issue <number>`. The route that takes only a number is what moves that plan into the issue's `## Plan` section
@@ -38,6 +42,10 @@ Split the plan into tracer-bullet issues. Vertical slices (through all layers), 
 | All layers      | Each slice cuts through every layer (schema / API / UI / test) |
 | Self-verifiable | A completed slice is demoable or verifiable on its own         |
 | Prefactor first | If prefactoring is needed, put it in the first slice           |
+
+### Distributing a source that carries a plan
+
+When the source carries a `## Plan`, decide the slices by how the units group. Build each slice's Plan per the table in ${CLAUDE_SKILL_DIR}/references/plan-distribution.md. When the plan's units are cut per layer so that distribution cannot produce a vertical slice, hand it back the way that reference settles.
 
 ### Coverage check
 
@@ -62,15 +70,16 @@ On approval, publish in dependency order with blockers first. Create blockers fi
 1. Pour the body into the skeleton chosen by Template selection and write it to a temp file with a `cat` heredoc. Write `<path>` as a literal absolute path, not a variable. The hook cannot expand a variable, and the filing stops
 2. Run ${CLAUDE_SKILL_DIR}/../issue/scripts/validate-issue-body.py <the skeleton file> <title> <body-file>. Fix the errors per ${CLAUDE_SKILL_DIR}/../issue/references/validation-errors.md and rerun after fixing. N issues are filed in one batch, so one body's gap spreads across all N
 3. File it with `gh issue create --title "<title>" --body-file <path> --label priority:<value>`. Multi-line markdown breaks through `--body`, so use `--body-file`. Choose priority from critical, high, medium, and low by impact, and align the label with the skeleton's priority section when it has one
-4. Attach no triage label. AFK consumer wiring is out of scope. Close or modify no parent issue
-5. List the created issues in dependency order, each line carrying its issue number and its blocker's number. Write "none" when a slice has no blocker
-6. Write the requirement units Phase 3 deliberately excluded at the end of the report, each with its reason. The parent issue is left unmodified, so nothing else keeps the reason
+4. When the source was an issue, link every slice to it with `gh issue edit <the source's number> --add-sub-issue <n1,n2,...>`. Skip this when the source was not an issue, such as a plan file
+5. Attach no triage label. AFK consumer wiring is out of scope. Leave the parent issue open and its body unchanged
+6. List the created issues in dependency order, each line carrying its issue number and its blocker's number. Write "none" when a slice has no blocker
+7. Write the requirement units Phase 3 deliberately excluded at the end of the report, each with its reason. The parent issue's body is left unmodified, so nothing else keeps the reason
 
 ### Template selection
 
 Take the skeleton per ${CLAUDE_SKILL_DIR}/../issue/references/template-source.md. Choosing in the same order `/issue` does keeps the body's skeleton the same whichever route filed it.
 
-Whichever skeleton wins, add `## Parent` at the top and `## Blocked by` at the bottom. Drop the optional sections that do not apply. Confidence marking does not apply: Phase 3 already had the user approve granularity and dependencies, so a published slice carries no open decisions.
+Whichever skeleton wins, add `## Parent` at the top and `## Blocked by` at the bottom. The sub-issue link step 4 makes is where the parent-child relation lives; `## Parent` is its copy, placed so a reader holding only the body still sees it. Set both in the same pass rather than one alone. Drop the optional sections that do not apply. Confidence marking does not apply: Phase 3 already had the user approve granularity and dependencies, so a published slice carries no open decisions.
 
 ## Language
 

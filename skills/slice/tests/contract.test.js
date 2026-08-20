@@ -114,6 +114,60 @@ test("the handoff names the route that writes the plan into the issue", () => {
   }
 });
 
+// A source that already carries a plan has its units settled. Running /think once per slice
+// re-derives what the source states, and the two answers then disagree on the same work.
+test("a source carrying a plan is distributed rather than re-planned", () => {
+  for (const lang of langs) {
+    const body = skill(lang);
+    assert.match(
+      body,
+      /\$\{CLAUDE_SKILL_DIR\}\/references\/plan-distribution\.md/,
+      `${lang}: Phase 2 sends the distribution to the reference`,
+    );
+    const reference = at(lang, "skills", "slice", "references", "plan-distribution.md");
+    assert.ok(existsSync(reference), `${lang}: the reference is where the path points`);
+    // Anchored to the row, not to the word: every one of these names appears in the prose too,
+    // so a whole-file search stays green on a table that dropped the row.
+    const rows = readFileSync(reference, "utf8")
+      .split("\n")
+      .filter((line) => line.startsWith("|"));
+    for (const element of ["Outcome", "Preconditions", "U-NNN", "Backlog candidates"])
+      assert.ok(
+        rows.some((row) => row.startsWith(`| ${element}`)),
+        `${lang}: the table carries a row for ${element}`,
+      );
+  }
+});
+
+// Build's Revalidate matches every precondition against the current codebase. A precondition
+// naming what a sibling slice has yet to write fails there, and "not there yet" reads the same
+// as a wrong plan.
+test("what a sibling slice creates travels as a dependency, not a precondition", () => {
+  for (const lang of langs) {
+    // Scoped to the section that states the rule. Both words also appear elsewhere in the file,
+    // so a whole-file search would stay green on a section that lost the rule.
+    const text = readFileSync(
+      at(lang, "skills", "slice", "references", "plan-distribution.md"),
+      "utf8",
+    );
+    const heading = lang === "ja" ? "## 他スライスが作るもの" : "## What a sibling slice creates";
+    const section = text.slice(text.indexOf(heading)).split("\n## ")[0];
+    assert.ok(section.startsWith(heading), `${lang}: the section stating the rule is present`);
+    assert.match(section, /Revalidate/, `${lang}: it names the stage that catches this`);
+    assert.match(section, /Blocked by/, `${lang}: it names where the ordering goes instead`);
+  }
+});
+
+// The prose Parent heading is a copy. Without the gh call the relation exists only in the body,
+// where no tooling reads it.
+test("the parent-child relation is set through gh, with the heading as its copy", () => {
+  for (const lang of langs) {
+    const body = skill(lang);
+    assert.match(body, /--add-sub-issue/, `${lang}: a step links the slices to the source`);
+    assert.match(body, /## Parent/, `${lang}: the body still carries the heading`);
+  }
+});
+
 // The parent issue is explicitly left unmodified, so a rationale settled in Phase 3 has nowhere
 // to live unless the closing report carries it.
 test("the deliberate exclusions settled in Phase 3 reach the closing report", () => {

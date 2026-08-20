@@ -15,9 +15,13 @@ argument-hint: "[plan / spec / PRD / issue ref]"
 
 `$ARGUMENTS` から計画のソースを取る。番号、URL、パスのいずれかで issue を参照していれば `gh issue view <N>` で本文とコメントを取得する。空ならまず会話文脈にある計画を使い、無ければ何を分解するか AskUserQuestion で問う。
 
+ソースが `## Plan` 節を持つかを見る。持つなら単位は既に決まっているので、起草せず配分する。Phase 2 と引き渡し先がこの判定で分岐する。
+
 ## publish した issue の引き渡し先
 
-slice が生む issue には `## Plan` がまだ無く、そのまま build workflow に渡すと no-plan で止まる。スライスごとに次の順で進める。全スライスをまとめて進めず、ユーザーが選んだ 1 件から始める。
+ソースが `## Plan` を持っていたなら、各スライスも Plan を持って publish されるので、そのまま build workflow に issue 番号を渡す。
+
+持っていなかった場合、生む issue に `## Plan` は無く、そのまま build workflow に渡すと no-plan で止まる。スライスごとに次の順で進める。全スライスをまとめて進めず、ユーザーが選んだ 1 件から始める。
 
 1. `/think` で plan を作る
 2. `/issue <番号>` を実行する。番号だけを渡す経路が、その plan を issue の `## Plan` 節へ移す
@@ -38,6 +42,10 @@ slice が生む issue には `## Plan` がまだ無く、そのまま build work
 | 全レイヤー   | 各スライスは schema、API、UI、test の全レイヤーを貫く |
 | 単独検証可能 | 完了スライスはそれ単体で demo または検証できる        |
 | prefactor 先 | prefactor が要るなら最初のスライスに置く              |
+
+### plan を持つソースの配分
+
+ソースが `## Plan` を持つなら、unit の束ね方でスライスを決める。各スライスの Plan は ${CLAUDE_SKILL_DIR}/references/plan-distribution.md の表に従って組む。plan の unit がレイヤーごとに切られていて配分では垂直にならない場合、その節が定める差し戻しを行う。
 
 ### 被覆チェック
 
@@ -62,15 +70,16 @@ slice が生む issue には `## Plan` がまだ無く、そのまま build work
 1. テンプレート選択で決めた骨格に本文を流し込み、heredoc を使って `cat` で一時ファイルへ書き出す。`<path>` は変数でなくリテラルの絶対パスで書く。hook は変数を展開できず、起票が止まる
 2. ${CLAUDE_SKILL_DIR}/../issue/scripts/validate-issue-body.py <骨格ファイル> <title> <body-file> を実行する。エラーは ${CLAUDE_SKILL_DIR}/../issue/references/validation-errors.md に従って直し、直したら再実行する。N 件をまとめて起票するので、1 件の欠落が N 件に広がる
 3. `gh issue create --title "<title>" --body-file <path> --label priority:<値>` で起票する。複数行の markdown は `--body` では壊れるので `--body-file` を使う。priority は critical、high、medium、low から影響度で選ぶ。骨格に priority の節があれば、その値とラベルを揃える
-4. triage label は付けない。AFK consumer 連携は対象外。親 issue は close せず、内容も変更しない
-5. 作成した issue を依存順に列挙し、各行に issue 番号と blocker の番号を書く。blocker が無ければ「なし」と書く
-6. Phase 3 で意図的に除外した要求単位を、理由を添えて報告の末尾に書く。親 issue は変更しないので、ここに書かないと除外の理由が残らない
+4. ソースが issue なら、`gh issue edit <ソースの番号> --add-sub-issue <番号1,番号2,...>` で全スライスを sub-issue として紐付ける。ソースが plan ファイルなど issue でない場合は飛ばす
+5. triage label は付けない。AFK consumer 連携は対象外。親 issue は close せず、本文も変更しない
+6. 作成した issue を依存順に列挙し、各行に issue 番号と blocker の番号を書く。blocker が無ければ「なし」と書く
+7. Phase 3 で意図的に除外した要求単位を、理由を添えて報告の末尾に書く。親 issue の本文は変更しないので、ここに書かないと除外の理由が残らない
 
 ### テンプレート選択
 
 骨格の取り方は ${CLAUDE_SKILL_DIR}/../issue/references/template-source.md に従う。`/issue` と同じ順で選ぶことで、どちらの経路で起票しても本文の骨格が揃う。
 
-どちらの骨格を選んでも `## Parent` を先頭に、`## Blocked by` を末尾に足す。当てはまらない任意節は落とす。確信度マーキングは適用しない。Phase 3 で粒度と依存をユーザーが承認済みなので、publish するスライスに未決の判断は残らない。
+どちらの骨格を選んでも `## Parent` を先頭に、`## Blocked by` を末尾に足す。親子の正は手順 4 が張る sub-issue 関係で、`## Parent` はその写し。本文だけを読む経路へ届けるために置くので、片方だけを張らず同じ回に両方を揃える。当てはまらない任意節は落とす。確信度マーキングは適用しない。Phase 3 で粒度と依存をユーザーが承認済みなので、publish するスライスに未決の判断は残らない。
 
 ## 言語
 
