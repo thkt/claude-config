@@ -11,20 +11,21 @@ The patterns worth picking up are procedures that recur as a routine or a conven
 
 ## Invariants
 
-| Condition              | Content                                                                                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Via PR                 | Never commit or push directly to the default branch                                                                                              |
-| Progress record        | The cursor is the mergedAt of the last merged scribe PR. For a research file, compare that mergedAt against its mtime                            |
-| Where the threshold lives | `scripts/triage.py` decides whether a pattern becomes a page or a candidate; this skill does not judge it                                     |
-| Facts only             | Write only facts stated in PRs / issues and research files, plus facts verified in the current code. No guessing                                 |
-| No research paths      | Never write `.claude/workspace/research/` file paths under `docs/wiki/`. workspace is untracked, so a wiki reader cannot follow one              |
-| Worktree isolation     | Edit and commit inside an isolated worktree; never touch the user's working tree. The worktree is created in Phase 6, so Phase 6 is the only Phase that writes |
+| Condition                 | Content                                                                                                                                                        |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Via PR                    | Never commit or push directly to the default branch                                                                                                            |
+| Progress record           | The cursor is the mergedAt of the last merged scribe PR. For a research file, compare that mergedAt against its mtime                                          |
+| Where the threshold lives | `scripts/triage.py` decides whether a pattern becomes a page or a candidate; this skill does not judge it                                                      |
+| Facts only                | Write only facts stated in PRs / issues and research files, plus facts verified in the current code. No guessing                                               |
+| No research paths         | Never write `.claude/workspace/research/` file paths under `docs/wiki/`. workspace is untracked, so a wiki reader cannot follow one                            |
+| Worktree isolation        | Edit and commit inside an isolated worktree; never touch the user's working tree. The worktree is created in Phase 6, so Phase 6 is the only Phase that writes |
 
 ## Phase 1: Preconditions and onboarding
 
 1. Check for an unmerged scribe PR with `gh pr list --label scribe --state open --limit 1`. If one exists, do not overtake it; stop and report
-2. If `docs/wiki/README.md` does not exist, create it from the template in ${CLAUDE_SKILL_DIR}/templates/readme.md and include it in the upcoming PR
-3. If the scribe label does not exist, create it with `gh label create scribe --description "scribe による wiki 提案"`
+2. Prepare the content of ${CLAUDE_SKILL_DIR}/templates/readme.md when `docs/wiki/README.md` does not exist
+3. Prepare the content of ${CLAUDE_SKILL_DIR}/templates/candidates.md when `docs/wiki/_candidates.md` does not exist. For this and step 2 alike, the write happens inside Phase 6's worktree
+4. If the scribe label does not exist, create it with `gh label create scribe --description "scribe による wiki 提案"`
 
 ## Phase 2: Scope
 
@@ -32,21 +33,22 @@ The patterns worth picking up are procedures that recur as a routine or a conven
 2. If no mergedAt comes back, this is the first run. Take all of `gh pr list --state merged --search '-label:scribe'`, `gh issue list --state closed`, and `find .claude/workspace/research -name '*.md'` as the scope
 3. If a mergedAt comes back, take the PRs from `gh pr list --state merged --search "-label:scribe merged:><mergedAt>"`, the issues from `gh issue list --state closed --search "closed:><mergedAt>"`, and the files from `find .claude/workspace/research -name '*.md' -newermt "<mergedAt>"` as the scope
 4. Only `*.md` counts as a research target; read no other format. Use mtime as the cursor, not the `Generated:` line inside a file. `Generated:` carries the date the file was produced and stays there through later edits, so it drops updates
-5. If PRs, issues, and research are all empty, report "nothing new" and stop
+5. Even with PRs, issues, and research all empty, go on to Phase 3 when `docs/wiki/_candidates.md` holds a line with two or more pieces of evidence. Report "nothing new" and stop only when that line is absent too
 
 ## Phase 3: Extraction
 
-1. Read `docs/wiki/*.md` and `docs/wiki/_candidates.md` to grasp existing pages/candidates
-2. Read each in-scope PR/issue including comments via `gh pr view <number> --comments`/`gh issue view <number> --comments`
-3. Read each in-scope research file in full with Read. Do not narrow by section name
-4. Group what you read per pattern into an array of `{name, evidence, existing}`. Design decisions and their history belong to `docs/decisions/` and are out of scope
-5. Pass that array to `python3 ${CLAUDE_SKILL_DIR}/scripts/triage.py '<JSON array of patterns>'`. The script applies the two-evidence threshold and the per-run page cap, splitting the input into `pages` (create / promote / update), `candidates`, and `deferred` (left for a later run). Do not judge the threshold or the cap yourself
-6. For each entry in `candidates`, prepare the line to add to `docs/wiki/_candidates.md` as `- <one-line content> (<evidence>)`. When the line is already there, prepare to add only the evidence. The write happens inside Phase 6's worktree
+1. Read `docs/wiki/*.md` to grasp the existing pages
+2. Read every candidate line in `docs/wiki/_candidates.md`, both sections, and put each one into the array as `{name, evidence, existing: "candidate"}`. This is the only route by which a line the cap carried over comes back
+3. Read each in-scope PR/issue including comments via `gh pr view <number> --comments`/`gh issue view <number> --comments`
+4. Read each in-scope research file in full with Read. Do not narrow by section name
+5. Add what you read to the array, grouped per pattern. Add only the evidence when the pattern is in the array already. Design decisions and their history belong to `docs/decisions/` and are out of scope
+6. Pass that array to `python3 ${CLAUDE_SKILL_DIR}/scripts/triage.py '<JSON array of patterns>'`. The script applies the two-evidence threshold and the per-run page cap, splitting the input into `pages` (create/promote/update), `candidates`, and `deferred` (left for a later run). Do not judge the threshold or the cap yourself
+7. Prepare how `docs/wiki/_candidates.md` changes. `candidates` go under the 単発 section and `deferred` under the 昇格待ち section, and the line of a pattern that became a page is removed. A line takes the form `- <one-line content> <evidence>`, with `#number` and `(research)` listed space-separated. When the line is already there, add only the evidence. The write happens inside Phase 6's worktree
 
-| Field      | Value                                                                                    |
+| Field      | Value                                                                                      |
 | ---------- | ------------------------------------------------------------------------------------------ |
-| `name`     | The pattern's name. It becomes the kebab-case file name once the pattern reaches a page   |
-| `evidence` | The array of evidence. `#number` from a PR/issue, `(research)` from a research file       |
+| `name`     | The pattern's name. It becomes the kebab-case file name once the pattern reaches a page    |
+| `evidence` | The array of evidence. `#number` from a PR/issue, `(research)` from a research file        |
 | `existing` | `page` when it sits on an existing page, `candidate` when in `_candidates.md`, else `none` |
 
 ## Phase 4: Cross-check against the latest code
@@ -58,24 +60,24 @@ Before creating, promoting, or updating a page, cross-check each pattern against
 3. Sweep the reference code of every page under `docs/wiki/*.md`, existing pages unrelated to this run's scope included. Mechanically verify that the file exists and that the symbol name greps within it
 4. For a broken reference, reread the current code. The table below settles what to write
 
-| Check                                                         | What to settle when it fails                                                    |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Does the convention/procedure still hold in the current code? | Drop it. On an existing page, the wording that marks it as no longer holding    |
-| Is it already mechanically enforced by lint / hook / CI?      | Drop it                                                                         |
-| Do the referenced paths/commands still exist?                 | The relink target among the current paths/commands                              |
+| Check                                                         | What to settle when it fails                                                 |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Does the convention/procedure still hold in the current code? | Drop it. On an existing page, the wording that marks it as no longer holding |
+| Is it already mechanically enforced by lint / hook / CI?      | Drop it                                                                      |
+| Do the referenced paths/commands still exist?                 | The relink target among the current paths/commands                           |
 
 ## Phase 5: 由来 link judgment
 
 For a page being created, promoted, or updated, write the DR file path in its 由来 section only when the pattern derives from a specific DR decision under `docs/decisions/`. The gate is the counterfactual test "if that DR were superseded, would this page need rewriting?", and the link is added only on Yes. With three or more links on one page, reapply the counterfactual test to each link and remove those that come back No.
 
-In addition, inspect the 由来 links of every page, including existing pages. Verify the DR file exists and check its status; if superseded, read the successor DR. Settle the relink target as the successor when the pattern still holds, and settle the wording that marks it as no longer holding when it does not. Here too, the write happens inside Phase 6's worktree.
+In addition, inspect the 由来 links of every page, including existing pages. Verify the DR file exists and check its status; if superseded, read the successor DR. Settle the relink target as the successor when the pattern still holds, and settle the wording that marks it as no longer holding when it does not. Here too, the write happens inside Phase 6's worktree。
 
 ## Phase 6: PR creation
 
 Move only the pages in Phase 3's `pages`, and state `deferred` in the PR body as what was left. Reference repairs and 由来 repairs sit outside the cap, so run them even when `pages` is empty. Create a PR even for candidate-only additions, and skip the PR only when there is no change at all.
 
 1. After `git fetch origin <default branch>`, create an isolated worktree and branch `scribe/<yyyymmdd-HHMMSS>` from `origin/<default branch>`
-2. Write what Phase 3-5 settled, inside the worktree. Pages follow the skeleton in ${CLAUDE_SKILL_DIR}/templates/page.md, candidate lines go to `_candidates.md` in Phase 3 step 6's form, and the reference and 由来 repairs use the relink targets Phase 4-5 settled
+2. Write what Phase 3-5 settled, inside the worktree. Pages follow the skeleton in ${CLAUDE_SKILL_DIR}/templates/page.md, candidate lines go to `_candidates.md` in Phase 3 step 7's form, and the reference and 由来 repairs use the relink targets Phase 4-5 settled
 3. Commit with the message `docs(wiki): <pattern names, ...> を追加/更新`
 4. Push and run `gh pr create --base <default branch>`. Title `[scribe] <pattern names, ...> を追加/更新`, label scribe
 5. In the body, write the added/promoted/updated pages, candidate additions, reference-repaired/由来-repaired pages, the range of PRs/issues read and the count of research files read, the items dropped by verification, and any leftovers
