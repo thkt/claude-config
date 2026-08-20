@@ -1,80 +1,54 @@
 ---
 name: preview
-description: AI screening review for PRs - preliminary check before human review. Do NOT use for deep multi-reviewer code quality audits (use /audit instead).
-when_to_use: スクリーニング, PRレビュー, プレビュー, preview PR, pre-review
-allowed-tools: Bash(git:*) Bash(gh:*) Read AskUserQuestion Bash(ugrep:*) Bash(bfs:*)
+description: Matches a PR's diff against the issue's `## Plan` section and returns unimplemented units, missing tests, and out-of-scope changes.
+when_to_use: plan 整合性, PR確認, preview PR, plan alignment
+allowed-tools: Bash(git:*) Bash(gh:*) Read
 model: opus
 argument-hint: "[PR URL or number]"
 ---
 
-# /preview - PR Screening Review
+# /preview - Plan Alignment Check
 
 ## Input
 
-`$ARGUMENTS` is a URL, a number, or empty. If empty, detect from the current branch.
+`$ARGUMENTS` is a PR URL, a number, or empty. When empty, detect it from the current branch.
 
 ## Execution
 
-1. Identify the PR with `gh pr view $ARGUMENTS --json number,title,body,labels,files,url`. On failure, retry without `$ARGUMENTS`
-2. Abort if no PR found or working tree is dirty. Check via `git status --porcelain`
-3. Check out the PR with `gh pr checkout $PR`
-4. Gather PR context in parallel (§ PR context gathering)
-5. Read each changed file in full, including code outside the diff hunks
-6. Review per process: overview → per-file → dependency impact → findings
-7. Output structured screening report
+1. Identify the PR with `gh pr view $ARGUMENTS --json number,title,body,files,url`. On failure, retry without `$ARGUMENTS`
+2. Abort when there is no PR, or the working tree is dirty. Judge it by `git status --porcelain`
+3. Settle the source of intent (§ Source of Intent)
+4. Read `gh pr diff $PR` and judge each item in § Checks
+5. Emit the result per § Output Format
 
-### PR Context Gathering
+## Source of Intent
 
-Never include `author` in gh output fields.
+Look for these in order and take the first that exists.
 
-```bash
-# Diff
-gh pr diff $PR
+1. The `## Plan` section of the originating issue. Reach it with `gh issue view <N>` from an issue reference in the branch name or a commit message
+2. A `*.plan.md` under `.claude/workspace/planning/` matching the branch name or the PR title
+3. The PR description and the commit messages. Falling this far skips the U-NNN and T-NNN rows, leaving only Scope creep and Impl-wrong
 
-# Existing comments
-gh pr view --comments $PR
+## Checks
 
-# Inline comments
-gh api repos/{owner}/{repo}/pulls/{number}/comments \
-  --jq '.[] | {file: .path, user: .user.login, comment: .body}'
+Quote the plan line that grounds each flag. A `missing` or `wrong` with no quote is an impression, so drop it.
+
+| Check         | Source                                          | Condition   | Flag         |
+| ------------- | ----------------------------------------------- | ----------- | ------------ |
+| Unit coverage | U-NNN units in the `## Plan` section            | plan exists | missing      |
+| Test coverage | T-NNN acceptance tests in the `## Plan` section | plan exists | missing      |
+| Scope creep   | diff vs the source of intent                    | always      | out-of-scope |
+| Impl-wrong    | diff behavior vs unit goal / T-NNN              | always      | wrong        |
+
+## Output Format
+
+Emit it to the conversation. Do not save it to a file, and do not post it to the PR.
+
+```text
+Plan Alignment: [CLEAN | MISSING <N> | OUT-OF-SCOPE <N> | WRONG <N> | MIXED]
+Intent source: <issue #N Plan section | *.plan.md path | PR description | commit messages>
+Missing (U): U-NNN - <description> (plan: "<quoted line>")
+Missing (T): T-NNN - <description> (plan: "<quoted line>")
+Out-of-scope: <file or area> - not traceable to stated intent
+Wrong: <U-NNN/T-NNN> - implemented but <gap> (plan: "<quoted line>")
 ```
-
-## Comment Labels
-
-| Label    | Meaning                         | Severity |
-| -------- | ------------------------------- | -------- |
-| `[must]` | Requires fix before merge       | High     |
-| `[want]` | Should fix, not blocking        | Medium   |
-| `[imo]`  | Personal opinion, take or leave | Low      |
-| `[ask]`  | Question needing clarification  | -        |
-| `[nits]` | Minor style/formatting issue    | Low      |
-| `[info]` | Context sharing, no action      | -        |
-
-## Comment Tone
-
-| Rule            | Detail                                                                             |
-| --------------- | ---------------------------------------------------------------------------------- |
-| Format          | `[label] <observed behavior or risk>. <suggestion>. (file:line)`                   |
-| Concise         | 3 lines for `[imo]`/`[nits]`/`[info]`; up to 5 for `[must]`/`[want]` with evidence |
-| Respectful      | Acknowledge effort, avoid commands                                                 |
-| Suggestive      | "Consider..." not "This is wrong"                                                  |
-| Author-targeted | Comments may be posted verbatim - calibrate detail for the PR author               |
-
-## Output
-
-Generate the report from the ${CLAUDE_SKILL_DIR}/templates/screening-report.md skeleton and emit it to the conversation.
-
-## Rules
-
-| Rule               | Detail                                                                 |
-| ------------------ | ---------------------------------------------------------------------- |
-| No auto-post       | Never post comments to PR automatically                                |
-| Abort on dirty     | If uncommitted changes exist, warn and abort                           |
-| Speed over depth   | This is screening, not full audit                                      |
-| Verify before flag | Before [ask]/[want]+, trace the issue to a reachable runtime call site |
-
-## References
-
-| Topic            | File                                               |
-| ---------------- | -------------------------------------------------- |
-| Review Checklist | ${CLAUDE_SKILL_DIR}/references/review-checklist.md |

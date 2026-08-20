@@ -48,7 +48,7 @@ Preview URL: http://localhost:3000
 | ---------------- | ----------------------------------------------------------- | ------------------------------------------------ |
 | What & Why       | Add CSV export to unblock offline analysis                  | Add CSV export feature (no Why)                  |
 | Review focus     | Look hard at the concurrency cap math; skim the README diff | Omitted (reviewer reads everything equally)      |
-| Changes          | Add ExportButton, chosen over menu for 1-click              | Listing the files touched (the diff carries it)  |
+| Changes          | Add ExportButton, chosen over menu for 1-click              | Listing the files touched (the diff shows it)    |
 | Scope            | Auth token refresh is not included (separate PR)            | Omitted on large PRs (reviewer guesses boundary) |
 | Design Decisions | Used streaming to avoid OOM on large datasets               | Omitted (forces reviewer to guess why)           |
 | How to Test      | Click Export → verify .csv downloads with 3 rows            | Test the feature (vague)                         |
