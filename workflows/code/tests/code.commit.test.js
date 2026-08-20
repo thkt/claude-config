@@ -42,7 +42,6 @@ const noTestPlan = {
 // A happy stub where only the commit agent's return value varies.
 const stubWith = (commitResult) => (prompt, opts) => {
   const label = opts.label ?? "";
-  if (label === "reference-index") return { found: false, table: "" };
   if (label.startsWith("commit:")) return commitResult;
   if (label.startsWith("red:"))
     return { red_confirmed: true, test_files: ["t.test.js"], notes: "" };
