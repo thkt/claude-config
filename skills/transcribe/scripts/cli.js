@@ -4,7 +4,14 @@
 //   verify  <xlsx> <dir>                    check that every source cell survived into the output
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { cellText, fillRatio, profiles, sheetFileName, sheetToMarkdown } from "./convert.js";
+import {
+  cellText,
+  fillRatio,
+  isColumnRuler,
+  profiles,
+  sheetFileName,
+  sheetToMarkdown,
+} from "./convert.js";
 
 const out = (text) => process.stdout.write(`${text}\n`);
 const err = (text) => process.stderr.write(`${text}\n`);
@@ -48,8 +55,7 @@ if (command === "list") {
     `\nsheets: ${workbook.sheets.length} / cells: ${total.toLocaleString()} / ` +
       `filled: ${filled.toLocaleString()} (${(ratio * 100).toFixed(1)}%)`,
   );
-  // A file with a low fill ratio is mostly layout-only empty cells, and reading it raw
-  // spends tokens on those. The threshold differs per layout, so the call goes back to the reader.
+  // The threshold differs per layout, so the call goes back to the reader rather than branching here.
   if (ratio < 0.2) out("Fill ratio is low. Convert with extract before reading.");
   process.exit(0);
 }
@@ -66,9 +72,8 @@ if (command === "extract") {
     err(`no such profile: ${profileName} (${Object.keys(profiles).join(", ")})`);
     process.exit(2);
   }
-  // For a sheet named by name, the read result does not carry the original position the
-  // file name needs. The predicate runs against sheet metadata before the body is parsed,
-  // so capture the position there.
+  // The read result drops the original sheet position that the file name needs, and the
+  // predicate is the only place it is still visible.
   const only = options.sheet;
   let resolved = null;
   let filter;
@@ -127,7 +132,7 @@ if (command === "verify") {
       missing.push({ sheet: sheet.name, reason: "no output" });
       continue;
     }
-    // The output turned newlines into <br> and pipes into \|, so undo that before comparing.
+    // Undo what escapeCell did, or every escaped cell reads as lost.
     const flat = markdown.replace(/<br>/g, "").replace(/\\\|/g, "|").replace(/\s+/g, "");
     let lost = 0;
     let sample = "";
@@ -135,9 +140,9 @@ if (command === "verify") {
       const cells = row
         .map((cell) => cellText(cell).trim())
         .filter((t) => t !== "");
-      // A row of nothing but 1,2,3,... is a column ruler and never survives into the Markdown.
-      // Counting it would report a loss on every sheet and bury the real ones.
-      if (cells.length >= 10 && cells.every((t, i) => t === String(i + 1))) continue;
+      // A column ruler never survives into the Markdown, so counting it would report a
+      // loss on every sheet and bury the real ones.
+      if (isColumnRuler(cells)) continue;
       for (const text of cells) {
         if (flat.includes(text.replace(/\s+/g, ""))) continue;
         lost++;

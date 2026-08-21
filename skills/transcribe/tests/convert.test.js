@@ -83,7 +83,7 @@ test("a two-cell row starting with one cell matching a header word stays body ra
 
 test("a column-number guide row holding nothing but a sequence drops from the output", () => {
   const ruler = Array.from({ length: 12 }, (_, i) => String(i + 1));
-  assert.equal(isColumnRuler(ruler.map((text, col) => ({ col, text }))), true);
+  assert.equal(isColumnRuler(ruler), true);
   assert.equal(sheetToMarkdown(sheetOf(ruler)).includes("| 1 | 2 |"), false);
 });
 
