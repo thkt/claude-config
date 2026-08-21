@@ -54,12 +54,13 @@ background: true
 
 ~/.claude/agents/\_lib/finding-schema.md に従う。コードが見つからないときは "No code to review" を報告する。共通ガード (glob 空、tool エラー) は ~/.claude/agents/\_lib/finding-schema.md のデフォルトに従う。Evidence は新規コードと既存ユーティリティを `New: file:line snippet / Existing: file:line snippet` として対にする。stdlib/native カテゴリは repo 内に対がないので `Existing:` の代わりに置き換える API/機能名を書く (例: `Use: Intl.DateTimeFormat`、`Use: <input type="date">`)。
 
-| フィールド   | 値                                                                               |
-| ------------ | -------------------------------------------------------------------------------- |
-| Prefix       | REUSE                                                                            |
-| カテゴリ     | utility / pattern / inline / unused_import / stdlib / native                     |
-| Severity     | high / medium / low                                                              |
-| Verification | pattern_search。既存ユーティリティが新規コードのすべてのエッジケースを網羅するか |
+| フィールド   | 値                                                                                                                                             |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Prefix       | REUSE                                                                                                                                          |
+| カテゴリ     | utility / pattern / inline / unused_import / stdlib / native                                                                                   |
+| Severity     | high / medium / low                                                                                                                            |
+| Disposition  | reviewer によるデフォルトの上書き。上書き時は disposition_reason を伴う。詳細は `~/.claude/agents/_lib/finding-schema.md` § Disposition を参照 |
+| Verification | pattern_search。既存ユーティリティが新規コードのすべてのエッジケースを網羅するか                                                               |
 
 ```markdown
 ## Summary
