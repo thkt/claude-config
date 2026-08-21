@@ -9,7 +9,7 @@ consulted: masuP9
 
 ## Context and Problem Statement
 
-UI 品質基準 A/B/C 実験 (Nikkei/ise-pl-app #2029、PR #2305-2307) で、ドメイン品質知識をワークフローへ渡す方法を比較した。抽象基準 9 項目を prompt に直接注入した v1 は、検証経路のない受け入れ基準が plan gate に 2 回連続却下され (コスト +23%)、「キーボードで完結」と明示されながら素の overflow-x-auto を書いた。原則と参照命令だけを注入し具体を repo 側リファレンスに分離した v3 は、ブラインド judge の判定を baseline 優位から逆転させ GO となった。
+UI 品質基準 A/B/C 実験 (業務リポジトリの issue #2029、PR #2305-2307) で、ドメイン品質知識をワークフローへ渡す方法を比較した。抽象基準 9 項目を prompt に直接注入した v1 は、検証経路のない受け入れ基準が plan gate に 2 回連続却下され (コスト +23%)、「キーボードで完結」と明示されながら素の overflow-x-auto を書いた。原則と参照命令だけを注入し具体を repo 側リファレンスに分離した v3 は、ブラインド judge の判定を baseline 優位から逆転させ GO となった。
 
 一方で ambient 配置 (置くだけ) では適用されない。baseline は規約に存在する tracking-label を落とし、v3 で具体が採用されたのは prompt が読む行為を命じたときだけだった (19 agent 中 6 体がツールで読了)。masuP9 の実走でも同型の失敗が独立に再現している。ドメイン知識の置き方と読ませ方を、build/code ワークフロー横断の規約として決める必要がある。
 
@@ -47,7 +47,7 @@ code.js がインデックスの glob と `units[].files` の照合結果を実�
 
 ## More Information
 
-実験レポート 3 部 (report.md/report-v3.md/report-final.md、2026-07-28 時点で ~/Downloads)。実験 PR は Nikkei/ise-pl-app #2305 (baseline)/#2306 (v1)/#2307 (v3)。ADR-0089 (draftPlan 退役) により、レポート推奨の draftPlan 注入は plan 側 (/think 様式) と実装側 (code.js) への翻訳が必要になった。
+実験レポート 3 部 (report.md/report-v3.md/report-final.md、2026-07-28 時点で ~/Downloads)。実験 PR は業務リポジトリの #2305 (baseline)/#2306 (v1)/#2307 (v3)。ADR-0089 (draftPlan 退役) により、レポート推奨の draftPlan 注入は plan 側 (/think 様式) と実装側 (code.js) への翻訳が必要になった。
 
 ### Reassessment Triggers
 
