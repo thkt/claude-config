@@ -344,3 +344,22 @@ test("T-002 build と tests が fail で issue が 0 件の run の gate_reason 
     "with zero issues the issue condition never held, so gate_reason names build/tests only",
   );
 });
+
+// A repository with no build concept reaches the Ready branch with buildCol "skipped" (bootstrap
+// reports install ok + build skipped, so envFail stays false). A hardcoded "build pass" there
+// would contradict the `build` field of the same return object.
+test("T-003 a Ready run whose build was skipped does not report build as passing", async () => {
+  const skippedBoot = { ...bootOk, build: "skipped" };
+  const { result } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: makeGateReasonAgent({ boot: skippedBoot }) },
+  });
+  assert.equal(result.gate, "Ready", "no build concept and passing tests still reach Ready");
+  assert.equal(result.build, "skipped", "the build column reports what bootstrap returned");
+  const reasonText = JSON.stringify(result.gate_reason);
+  assert.ok(
+    !/build pass/.test(reasonText),
+    "gate_reason does not claim a build that never ran passed",
+  );
+  assert.match(reasonText, /build skipped/, "gate_reason reports the build column it read");
+});

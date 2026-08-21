@@ -598,7 +598,7 @@ try {
     if (challengeStalled) gateReason.push("challenge stalled");
   } else if (!envFail && !auditDegraded && (testsCol === "pass" || testsCol === "no-runner")) {
     gate = "Ready";
-    gateReason.push("build pass", `tests ${testsCol}`, "0 issues");
+    gateReason.push(`build ${buildCol}`, `tests ${testsCol}`, "0 issues");
   } else {
     gate = "Ready (caveat)";
     if (envFail) gateReason.push("env fail (dynamic verification skipped)");
