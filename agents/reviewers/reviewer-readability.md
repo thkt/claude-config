@@ -49,13 +49,14 @@ See `~/.claude/agents/_lib/calibration-examples.md` section CQ.
 
 Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
 
-| Field        | Value                                                                                                       |
-| ------------ | ----------------------------------------------------------------------------------------------------------- |
-| Prefix       | CQ                                                                                                          |
-| Categories   | structure / readability                                                                                     |
-| Severity     | high / medium / low                                                                                         |
-| Verification | pattern_search or hotpath_analysis. Is this pattern widespread or in a critical path?                       |
-| Extra        | subcategory (waste / naming / complexity / comments / ai_smell, optional, appended as category/subcategory) |
+| Field        | Value                                                                                                                             |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Prefix       | CQ                                                                                                                                |
+| Categories   | structure / readability                                                                                                           |
+| Severity     | high / medium / low                                                                                                               |
+| Disposition  | Reviewer-settable override of the default, with a disposition_reason. See `~/.claude/agents/_lib/finding-schema.md` § Disposition |
+| Verification | pattern_search or hotpath_analysis. Is this pattern widespread or in a critical path?                                             |
+| Extra        | subcategory (waste / naming / complexity / comments / ai_smell, optional, appended as category/subcategory)                       |
 
 ```markdown
 ## Summary

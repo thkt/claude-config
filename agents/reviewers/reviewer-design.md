@@ -61,12 +61,13 @@ See `~/.claude/agents/_lib/calibration-examples.md` section DP.
 
 Follow ~/.claude/agents/_lib/finding-schema.md. When no modules are found, report "No modules to review". Review mixed-language targets per language and do not silently skip. Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
 
-| Field        | Value                                                                         |
-| ------------ | ----------------------------------------------------------------------------- |
-| Prefix       | DP                                                                            |
-| Category     | module-depth (single category; record subtype in evidence)                    |
-| Severity     | high / medium / low                                                           |
-| Verification | deletion_trace. State what reappears at call sites when the module is deleted |
+| Field        | Value                                                                                                                             |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Prefix       | DP                                                                                                                                |
+| Category     | module-depth (single category; record subtype in evidence)                                                                        |
+| Severity     | high / medium / low                                                                                                               |
+| Disposition  | Reviewer-settable override of the default, with a disposition_reason. See `~/.claude/agents/_lib/finding-schema.md` § Disposition |
+| Verification | deletion_trace. State what reappears at call sites when the module is deleted                                                     |
 
 ```markdown
 ## Summary

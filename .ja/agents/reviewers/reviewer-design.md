@@ -61,12 +61,13 @@ Phase 1 が同じ浅いパターンを 3 箇所以上で検出したら、~/.cla
 
 ~/.claude/agents/_lib/finding-schema.md に従う。モジュールが見つからないときは "No modules to review" を報告する。混在言語の対象は言語ごとにレビューし、黙ってスキップしない。共通ガード (glob 結果なし、ツールエラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。
 
-| フィールド   | 値                                                                             |
-| ------------ | ------------------------------------------------------------------------------ |
-| Prefix       | DP                                                                             |
-| カテゴリ     | module-depth (単一カテゴリ。サブタイプは evidence に記載)                      |
-| Severity     | high / medium / low                                                            |
-| Verification | deletion_trace。モジュールを削除したら呼び出し箇所で何が再出現するかを明示する |
+| フィールド   | 値                                                                                                                                             |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Prefix       | DP                                                                                                                                             |
+| カテゴリ     | module-depth (単一カテゴリ。サブタイプは evidence に記載)                                                                                      |
+| Severity     | high / medium / low                                                                                                                            |
+| Disposition  | reviewer によるデフォルトの上書き。上書き時は disposition_reason を伴う。詳細は `~/.claude/agents/_lib/finding-schema.md` § Disposition を参照 |
+| Verification | deletion_trace。モジュールを削除したら呼び出し箇所で何が再出現するかを明示する                                                                 |
 
 ```markdown
 ## Summary

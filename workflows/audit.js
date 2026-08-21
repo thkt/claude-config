@@ -885,10 +885,23 @@ const integrated = await agent(
 // Falling back to the pre-triage findings array would land on the state before ids were
 // assigned, silently readmitting findings the challenge pass had disputed.
 const integratedFindings = (integrated && integrated.findings) || survivorsInput;
-// Integrate reads a projection carrying no disposition, so the default is applied again here.
-const finalFindings = integratedFindings.map((f) =>
-  f.disposition ? f : { ...f, disposition: DEFAULT_DISPOSITION },
+// toCriticRef strips disposition before Integrate sees a finding, so what Integrate returns is
+// not sourced from the survivors and is not trusted. The rank derives from
+// DECLARABLE_DISPOSITIONS rather than restating the order agents/_lib/finding-schema.md owns.
+const DISPOSITION_RANK = Object.fromEntries(
+  [...DECLARABLE_DISPOSITIONS].map((d, i) => [d, DECLARABLE_DISPOSITIONS.size - i]),
 );
+const dispositionById = new Map(rawFindings.map((f) => [f.id, f.disposition]));
+const consolidatedDisposition = (sourceIds) =>
+  (Array.isArray(sourceIds) ? sourceIds : []).reduce((strongest, id) => {
+    const d = dispositionById.get(id);
+    if (!d) return strongest;
+    return !strongest || DISPOSITION_RANK[d] > DISPOSITION_RANK[strongest] ? d : strongest;
+  }, null) || DEFAULT_DISPOSITION;
+const finalFindings = integratedFindings.map((f) => ({
+  ...f,
+  disposition: consolidatedDisposition(f.source_ids),
+}));
 const snapshot = await writeSnapshot({
   preFlight,
   rawFindings,
