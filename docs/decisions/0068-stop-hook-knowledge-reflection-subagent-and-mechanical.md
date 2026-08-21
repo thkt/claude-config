@@ -1,11 +1,13 @@
 ---
-status: "accepted"
+status: "deprecated"
 date: 2026-05-14
 decision-makers: thkt
 scope: [meta, harness, hooks]
 ---
 
 # Adopt Stop hook Knowledge Reflection with subagent extraction and mechanical activity log
+
+> Deprecated 2026-08-21: この決定の実装は 2026-05-31 に無効化された。後継の DR-0097 も 2026-08-21 に撤去した。`projects/*/knowledge/reflection` にデータが残るが、書き込む配線は現存しない。
 
 ## Context and Problem Statement
 
