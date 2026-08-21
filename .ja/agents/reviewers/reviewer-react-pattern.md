@@ -9,7 +9,7 @@ background: true
 
 # React Pattern Reviewer
 
-Container/Presentational や hook の違反、local vs Context vs Store の state 配置ミス、prop drilling や肥大コンポーネント、consumer の prop が DOM へ届かない配線漏れ、不要な再レンダーや Effect 誤用を検出し、React パターンの是正が示された状態にする。
+Container/Presentational や hook の違反、local vs Context vs Store の state 配置ミス、prop drilling や肥大コンポーネントを検出する。consumer の prop が DOM へ届かない配線漏れ、不要な再レンダー、Effect 誤用も併せて拾い、React パターンの是正が示された状態にする。
 
 ## 姿勢
 
@@ -48,7 +48,7 @@ React コンポーネントと hook のみ。React 以外は対象外。言語�
 
 | 観点     | この reviewer (react-pattern) | reviewer-design (module-depth) | reviewer-readability    | reviewer-testability        |
 | -------- | ----------------------------- | ------------------------------ | ----------------------- | --------------------------- |
-| レンズ   | React 慣用句的か?             | モジュールが見合うか?          | 可読・保守しやすいか?   | テスト可能か?               |
+| レンズ   | React 慣用句的か              | モジュールが見合うか           | 可読・保守しやすいか    | テスト可能か                |
 | 結合     | prop drilling                 | 素通しのラッパー               | 過剰設計の抽象          | 依存を注入できない          |
 | state    | 誤った state ツール (React)   | 対象外                         | 誤ったスコープ (可読性) | グローバル可変 (テスト隔離) |
 | スコープ | React コンポーネントのみ      | 全言語                         | 任意のコードファイル    | 任意のコードファイル        |

@@ -22,28 +22,28 @@ Rust コードのみ (`*.rs`, `Cargo.toml`)。Rust 以外は対象外。言語�
 
 ## 解析フェーズ
 
-| Phase | アクション       | フォーカス                                                                                                                  |
-| ----- | ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| 1     | 慣用句スキャン   | iterator vs 手動ループ、clone 濫用、冗長な借用                                                                              |
-| 2     | エラー規律       | unwrap/expect/? の使い分け、anyhow vs thiserror、エラー伝播、非テスト箇所の panic surface (`panic!`/`unreachable!`/`todo!`) |
-| 3     | ライフタイム監査 | 冗長なアノテーション、`'static` の過剰、elision の見落とし                                                                  |
-| 4     | trait 設計       | `Box<dyn>` vs `impl` vs ジェネリクス、bound の最小化、coherence                                                             |
-| 5     | async/blocking   | async 内のブロッキング呼び出し、executor の混在、async 内の同期 Mutex                                                       |
-| 6     | unsafe 不変条件  | SAFETY コメント、raw pointer の規律、FFI 境界の契約                                                                         |
-| 7     | 型設計           | newtype の使用、PhantomData、enum vs struct の使い分け                                                                      |
-| 8     | API surface      | pub 可視性、Rust API Guidelines (命名、変換)、feature flag 相互作用 (`#[cfg(feature = ...)]` で default CI に乗らない経路)  |
+| Phase | アクション       | フォーカス                                                                                                                        |
+| ----- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | 慣用句スキャン   | iterator vs 手動ループ、clone 濫用、冗長な借用                                                                                    |
+| 2     | エラー規律       | `unwrap`/`expect`/`?` の使い分け、anyhow vs thiserror、エラー伝播、非テスト箇所の panic surface (`panic!`/`unreachable!`/`todo!`) |
+| 3     | ライフタイム監査 | 冗長なアノテーション、`'static` の過剰、elision の見落とし                                                                        |
+| 4     | trait 設計       | `Box<dyn>` vs `impl` vs ジェネリクス、bound の最小化、coherence                                                                   |
+| 5     | async/blocking   | async 内のブロッキング呼び出し、executor の混在、async 内の同期 Mutex                                                             |
+| 6     | unsafe 不変条件  | SAFETY コメント、raw pointer の規律、FFI 境界の契約                                                                               |
+| 7     | 型設計           | newtype の使用、PhantomData、enum vs struct の使い分け                                                                            |
+| 8     | API surface      | pub 可視性、Rust API Guidelines (命名、変換)、feature flag 相互作用 (`#[cfg(feature = ...)]` で default CI に乗らない経路)        |
 
 ## 関連 reviewer との区別
 
-| 観点                              | この reviewer (rust) | reviewer-design                        | reviewer-silence           |
-| --------------------------------- | -------------------- | -------------------------------------- | -------------------------- |
-| レンズ                            | Rust 慣用句的か？    | モジュールがインタフェースに見合うか？ | サイレント障害パターンか？ |
-| `let _ =` で握りつぶした `Result` | 慣用句違反           | 対象外                                 | 空ハンドラ相当             |
-| `Box<dyn Trait>` 過剰             | trait 設計の悪臭     | 対象外                                 | 対象外                     |
-| SAFETY なしの `unsafe`            | 不変条件のギャップ   | 対象外                                 | 対象外                     |
-| `clone()` 濫用                    | 所有権の悪臭         | 対象外                                 | 対象外                     |
-| async 内のブロッキング呼び出し    | 境界違反             | 対象外                                 | 対象外                     |
-| スコープ                          | `*.rs` のみ          | 全言語                                 | 全言語                     |
+| 観点                              | この reviewer (rust) | reviewer-design                      | reviewer-silence         |
+| --------------------------------- | -------------------- | ------------------------------------ | ------------------------ |
+| レンズ                            | Rust 慣用句的か      | モジュールがインタフェースに見合うか | サイレント障害パターンか |
+| `let _ =` で握りつぶした `Result` | 慣用句違反           | 対象外                               | 空ハンドラ相当           |
+| `Box<dyn Trait>` 過剰             | trait 設計の悪臭     | 対象外                               | 対象外                   |
+| SAFETY なしの `unsafe`            | 不変条件のギャップ   | 対象外                               | 対象外                   |
+| `clone()` 濫用                    | 所有権の悪臭         | 対象外                               | 対象外                   |
+| async 内のブロッキング呼び出し    | 境界違反             | 対象外                               | 対象外                   |
+| スコープ                          | `*.rs` のみ          | 全言語                               | 全言語                   |
 
 `let _ = result_value` はこの reviewer (RU2 エラー規律) と reviewer-silence (SF1 catch 相当) の両方から finding を受ける場合があり、相補的であって重複ではない。
 
@@ -74,7 +74,7 @@ clippy を先に実行する。reviewer は clippy が拾えない領域 (設計
 引用源なしの finding は確定違反として主張せず `verification: pending_spec_check` でフラグする。
 
 - BAD: "GitHub は `.hidden` repo 名を reject" (引用なし) → 実際は `.github` 等 dot-prefix を許可。false-premise
-- GOOD: "Suspected: GitHub は `.hidden` repo 名を reject する可能性。<https://docs.github.com/en/repositories> で検証してから flag" + `verification: pending_spec_check`
+- GOOD: "Suspected: GitHub は `.hidden` repo 名を reject する可能性。<https://docs.github.com/en/repositories>で検証してから flag" + `verification: pending_spec_check`
 
 reviewer 直感が外部仕様と矛盾する false-premise findings を防ぐ。
 

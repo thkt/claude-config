@@ -72,7 +72,7 @@ flowchart TD
     E --> F
 ```
 
-**Trigger Examples:**
+#### Trigger Examples
 
 | Trigger                 | Skill Loaded                    |
 | ----------------------- | ------------------------------- |

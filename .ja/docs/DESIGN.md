@@ -55,7 +55,7 @@ graph TD
 | [OUTCOME](../rules/core/OUTCOME.md)       | 成果状態の可視化 | Outcome test、更新トリガー                    |
 | [BOUNDARIES](../rules/core/BOUNDARIES.md) | 原則の適用境界   | 一般定義からの差分 (閾値、既定の修正)         |
 
-設計理由:
+#### 設計理由
 
 - `rm` を禁止し、`mv ~/.Trash/` で macOS のごみ箱から戻せるようにする
 - Rationalization counter がモデルによる scope check の自己除外を防ぐ
@@ -69,7 +69,7 @@ graph TD
 | --------------------------------------- | -------------------------------- |
 | [PRINCIPLES.md](../rules/PRINCIPLES.md) | 原則の優先度、依存関係、衝突解決 |
 
-原則の階層:
+#### 原則の階層
 
 ```text
 Foundation (Outcome-driven / Backcasting)
@@ -81,7 +81,7 @@ Default (Readable Code / TDD / DRY / YAGNI Boundary ほか)
 Contextual (SOLID / Law of Demeter / TIDYINGS ほか)
 ```
 
-衝突解決の例:
+#### 衝突解決の例
 
 | 衝突               | 勝つ側   | 理由                                 |
 | ------------------ | -------- | ------------------------------------ |
@@ -101,7 +101,7 @@ Contextual (SOLID / Law of Demeter / TIDYINGS ほか)
 | [SOURCING](../rules/development/SOURCING.md)                    | 出典に基づく API 記述    | 固定バージョンの公式ドキュメントを優先 |
 | [PRINCIPLES.md#Progressive Enhancement](../rules/PRINCIPLES.md) | 段階的構築               | CSS-First、Outcome-First               |
 
-AI 失敗パターン (インライン):
+#### AI 失敗パターン (インライン)
 
 | パターン             | トリガー                  | アクション                   |
 | -------------------- | ------------------------- | ---------------------------- |
@@ -110,7 +110,7 @@ AI 失敗パターン (インライン):
 | Infinite Exploration | 10 ファイル以上読み未編集 | サブエージェントで縮小       |
 | Wrong Direction      | 「望んだものではない」    | チェックポイントへ `/rewind` |
 
-設計理由:
+#### 設計理由
 
 - 無限探索や繰り返し修正など AI のパターンを自己検出
 - `TIDYINGS` がクリーンアップ範囲を絞り、過剰リファクタを防ぐ
@@ -129,7 +129,7 @@ AI 失敗パターン (インライン):
 | [PLUGIN](../rules/conventions/PLUGIN.md)       | プラグイン制約             |
 | [PROSE](../rules/conventions/PROSE.md)         | 語彙の具体化と文の接続     |
 
-設計理由:
+#### 設計理由
 
 - 参照深度を制限 (Skills 1 階層、Rules 3 階層)。階層が増えるほど読むファイルが増える
 - 翻訳内容の差を許容しつつ EN/JP の構造を揃える
@@ -138,7 +138,7 @@ AI 失敗パターン (インライン):
 
 ユーザー向けコマンドとワークフロー システム。
 
-ワークフロー パターン:
+#### ワークフロー パターン
 
 ```mermaid
 flowchart LR

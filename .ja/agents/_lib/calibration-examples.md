@@ -179,7 +179,7 @@ async function createTeam(data: CreateTeamInput) {
 | ------ | ------------------------------------------------------------------------------------------------------------------- |
 | Filter | Context Test: 意味的差異                                                                                            |
 | Signal | ドメイン固有のデフォルト (`role: "member"` vs `plan: "free"`) と side effect (`sendWelcomeEmail` vs `notifyAdmins`) |
-| Count  | 2 occurrences: Rule of Three 抽出緊急性以下                                                                         |
+| Count  | 2 occurrences: Rule of Three の抽出緊急性より下                                                                     |
 
 ## SF (reviewer-silence)
 

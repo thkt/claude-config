@@ -22,7 +22,7 @@ finding ごとに、Markdown 見出しに続いて 1 つの表を出力する。
 
 ### Agent (auto-fill)
 
-integrator/leader が spawn した reviewer の `name:` frontmatter から `Agent` を埋める。reviewer は出力に自分の名前を繰り返してはならず、Agent 行は完全に省く。
+integrator/leader が spawn した reviewer の `name:` frontmatter から `Agent` を埋める。reviewer は出力に自分の名前を繰り返してはならず、Agent 行を省く。
 
 ### Trigger と Reasoning の区別
 

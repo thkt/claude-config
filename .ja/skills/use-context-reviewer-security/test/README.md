@@ -1,6 +1,6 @@
 # use-context-reviewer-security のテストハーネス
 
-reviewer-security の検出精度を客観評価するためのテストハーネス。LLM の主観 confidence ではなく、Recall / FP Rate という外部基準で精度を測る。
+reviewer-security の検出精度を客観評価するためのテストハーネス。LLM の主観 confidence ではなく、Recall/FP Rate という外部基準で精度を測る。
 
 ## ゴール
 
@@ -36,4 +36,4 @@ blind protocol の漏れはここで 2026-06-04 に見つかった。過去の�
 
 ## 出典
 
-cases の構成・難易度カテゴリの考え方は [sabakan0123/claude-security-scan](https://github.com/sabakan0123/claude-security-scan) (MIT) の `tests/security-skills/` を参考にしている。コードは reviewer-security の検出パターン (OWASP A01-A10) に合わせて自前で書いた。
+cases の構成・難易度カテゴリの考え方は[sabakan0123/claude-security-scan](https://github.com/sabakan0123/claude-security-scan) (MIT) の `tests/security-skills/` を参考にしている。コードは reviewer-security の検出パターン (OWASP A01-A10) に合わせて自前で書いた。

@@ -30,32 +30,32 @@
 
 ID、URL、screen name、検索クエリなどの単一値入力にはこのパターンを使う。
 
-正準形:
+#### 正準形
 
 ```text
 tool subcommand [ARG]
 ```
 
-挙動:
+#### 挙動
 
 - `ARG` があり `-` でなければ、そのまま使う。
 - `ARG` が `-` なら、端末接続時でも `stdin` から読む。
 - `ARG` が省略され `stdin` がパイプされていたら、`stdin` から読む。
 - `ARG` が省略され `stdin` が端末なら、具体的な修正方法を示すローカルエラーを返す。
 
-正準エラー形:
+#### 正準エラー形
 
 ```text
 Missing <label>. Pass <PLACEHOLDER>, pipe it via stdin, or use `-` to read stdin interactively
 ```
 
-正準の空 stdin 形:
+#### 正準の空 stdin 形
 
 ```text
 No <label> provided. Pass <PLACEHOLDER>, pipe it via stdin, or use `-` to read stdin interactively
 ```
 
-推奨される Rust の形:
+#### 推奨される Rust の形
 
 ```rust
 fn resolve_input(
@@ -80,7 +80,7 @@ fn resolve_input(
 
 投稿本文、ドキュメント内容、プロンプトなど、自然にファイルサイズ程度になる入力にはこのパターンを使う。
 
-正準形:
+#### 正準形
 
 ```text
 tool subcommand --body "..."
@@ -88,14 +88,14 @@ tool subcommand --body-file draft.md
 cat draft.md | tool subcommand --body-file -
 ```
 
-ルール:
+#### ルール
 
 - インラインテキストは現実的に短いときのみサポート。
 - 実コンテンツには `--body-file <path>` をサポート。
 - `stdin` 用に `--body-file -` をサポート。
 - 排他的なペイロード入力には `clap` の `conflicts_with` を使う。
 
-最良の組み合わせ:
+#### 最良の組み合わせ
 
 - 単一値入力: 任意の位置引数 + `stdin` フォールバック。
 - 長文ペイロード入力: 明示的な `--body-file -`。
@@ -104,14 +104,14 @@ cat draft.md | tool subcommand --body-file -
 
 ショートハンドは任意のシュガー。主要契約ではない。
 
-ルール:
+#### ルール
 
 - 正準構文はヘルプに必ず現れる。
 - ショートハンドは後方互換のためだけに存在しうる。
 - ショートハンドを知らなくてもツールを使えるようにする。
 - ショートハンドがパースを曖昧にしない。
 
-現状の例:
+#### 現状の例
 
 - `sae "query"` は互換シュガーとして残しうる。
 - 正準形は依然として `sae search [QUERY]`。
@@ -120,7 +120,7 @@ cat draft.md | tool subcommand --body-file -
 
 すべてのサブコマンドは `after_help` に `Examples:` を持つべき。
 
-ルール:
+### ルール
 
 - サブコマンドあたり 2〜4 例。
 - 最初に正準の直接起動を示す。
@@ -148,7 +148,7 @@ Exit codes:
 
 最も安価でローカルなものを先に検証する。
 
-推奨順序:
+### 推奨順序
 
 1. CLI 引数のパース
 2. 入力ソースの解決
@@ -156,7 +156,7 @@ Exit codes:
 4. 認証/クライアントの初期化
 5. ネットワークまたは DB 呼び出し
 
-例:
+### 例
 
 - cookie 抽出の前にツイート ID をパース。
 - クライアントを開く前に欠落した検索クエリを拒否。
@@ -166,20 +166,20 @@ Exit codes:
 
 エージェントフレンドリーなエラーは具体的で行動可能であるべき。
 
-ルール:
+### ルール
 
 - 何が欠けているか、何が無効かを述べる。
 - どう直すかを述べる。
 - 文脈なしの汎用「invalid input」は避ける。
 - 共通のオペレータエラーには安定した文言を選ぶ。
 
-良い例:
+### 良い例
 
 ```text
 Missing tweet ID or URL. Pass ID_OR_URL, pipe it via stdin, or use `-` to read stdin interactively
 ```
 
-悪い例:
+### 悪い例
 
 ```text
 invalid input
@@ -187,7 +187,7 @@ invalid input
 
 ## 出力契約
 
-ルール:
+### ルール
 
 - 成功出力はナレーションで詰めず、直接利用可能であるべき。
 - 警告は `stderr` へ。
@@ -198,7 +198,7 @@ invalid input
 
 このガイドラインを採用する CLI は、ハッピーパスだけでなく契約をテストすべき。
 
-必須テスト:
+### 必須テスト
 
 1. 定義されているなら、ルートヘルプにオペレータ情報が含まれる。
 2. すべてのサブコマンドが `after_help` に `Examples:` を含む。
@@ -211,7 +211,7 @@ invalid input
 9. 不正な識別子に対して、認証/ネットワーク前にローカル検証が失敗する。
 10. 排他的ペイロードフラグはパース時に失敗する。
 
-あれば良いテスト:
+### あれば良いテスト
 
 - 後方互換のショートハンドがまだパースされる。
 - JSON/グローバルフラグがショートハンド展開を壊さない。

@@ -55,7 +55,7 @@ Top-priority rules. Prevent AI runaway and keep users informed.
 | [OUTCOME](../rules/core/OUTCOME.md)       | Outcome state visibility | Outcome test, update triggers                                        |
 | [BOUNDARIES](../rules/core/BOUNDARIES.md) | Principle boundaries     | Deltas from the general definition (thresholds, default corrections) |
 
-**Why this design:**
+#### Why this design
 
 - `rm` prohibited; `mv ~/.Trash/` lets macOS Trash restore the file
 - Rationalization counters prevent model self-exemption from scope checks
@@ -69,7 +69,7 @@ Priority order and conflict resolution for design decisions.
 | --------------------------------------- | ----------------------------------------------------- |
 | [PRINCIPLES.md](../rules/PRINCIPLES.md) | Principle priority, dependencies, conflict resolution |
 
-**Principle Hierarchy:**
+#### Principle Hierarchy
 
 ```text
 Foundation (Outcome-driven / Backcasting)
@@ -81,7 +81,7 @@ Default (Readable Code / TDD / DRY / YAGNI Boundary and others)
 Contextual (SOLID / Law of Demeter / TIDYINGS and others)
 ```
 
-**Conflict Resolution Examples:**
+#### Conflict Resolution Examples
 
 | Conflict           | Winner   | Reason                                       |
 | ------------------ | -------- | -------------------------------------------- |
@@ -101,7 +101,7 @@ Concrete standards for daily development.
 | [SOURCING](../rules/development/SOURCING.md)                    | Source-backed API code            | Official docs for the pinned version   |
 | [PRINCIPLES.md#Progressive Enhancement](../rules/PRINCIPLES.md) | Incremental building              | CSS-First, Outcome-First               |
 
-**AI Failure Patterns (inline):**
+#### AI Failure Patterns (inline)
 
 | Pattern              | Trigger                  | Action                   |
 | -------------------- | ------------------------ | ------------------------ |
@@ -110,7 +110,7 @@ Concrete standards for daily development.
 | Infinite Exploration | >10 files read, no edits | Scope down with subagent |
 | Wrong Direction      | "not what I wanted"      | `/rewind` to checkpoint  |
 
-**Why this design:**
+#### Why this design
 
 - Self-detect AI patterns: infinite exploration, repeated fixes
 - `TIDYINGS` scopes cleanup to prevent over-refactoring
@@ -129,7 +129,7 @@ Consistency across documentation, plugins, and translations.
 | [PLUGIN](../rules/conventions/PLUGIN.md)       | Plugin constraints                    |
 | [PROSE](../rules/conventions/PROSE.md)         | Term concretization and sentence flow |
 
-**Why this design:**
+#### Why this design
 
 - Limit reference depth (Skills: 1 level, Rules: 3 levels); each extra level
   adds files to read
@@ -139,7 +139,7 @@ Consistency across documentation, plugins, and translations.
 
 User-facing commands and workflow system.
 
-**Workflow Patterns:**
+#### Workflow Patterns
 
 ```mermaid
 flowchart LR
