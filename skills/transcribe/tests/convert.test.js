@@ -119,6 +119,16 @@ test("a newline inside a cell becomes <br> and a pipe is escaped so the table st
   assert.match(markdown, /a\\\|b/);
 });
 
+test("a no-break space inside a cell becomes a plain space so the output stays greppable", () => {
+  const markdown = sheetToMarkdown(
+    sheetOf(row([2, "\u9805\u756a"], [4, "\u8aac\u660e"]), row([2, "1"], [4, "account\u00a0name"])),
+    profiles["ja-api-spec"],
+  );
+
+  assert.match(markdown, /account name/);
+  assert.doesNotMatch(markdown, /\u00a0/);
+});
+
 test("the fill rate returns the share of cells carrying a value and is 0 on an empty sheet", () => {
   assert.deepEqual(fillRatio([{ rows: [["a", null, null, null]] }]), {
     total: 4,

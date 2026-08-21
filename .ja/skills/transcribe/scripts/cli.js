@@ -20,7 +20,10 @@ let readXlsx;
 try {
   ({ readXlsx } = await import("hucre/xlsx"));
 } catch {
-  err("hucre が入っていない。リポジトリのルートで `bun add hucre` を実行する。");
+  err(
+    "hucre が入っていない。このスクリプトより上のディレクトリで `bun add hucre` を実行する。" +
+      "開発ツリーならリポジトリのルート、プラグイン導入先なら ~/.claude。",
+  );
   process.exit(2);
 }
 

@@ -21,9 +21,9 @@ The sheet list and the fill ratio come out. The fill ratio is the share of cells
 
 2. Decide how to read from the fill ratio.
 
-| Fill ratio  | State                                                 | How to read                                               |
-| ----------- | ----------------------------------------------------- | --------------------------------------------------------- |
-| Under 20%   | Merges and layout-only empty cells take up most of it | Convert with extract, then read                           |
+| Fill ratio  | State                                                 | How to read                                                    |
+| ----------- | ----------------------------------------------------- | -------------------------------------------------------------- |
+| Under 20%   | Merges and layout-only empty cells take up most of it | Convert with extract, then read                                |
 | 20% or more | Close to one record per row                           | Narrow to the sheet with `--sheet` and extract it on `generic` |
 
 3. Convert. Write the output outside the repository, or wherever the user asked for.
@@ -67,6 +67,14 @@ The fill ratio decides what conversion buys. The lower it runs, the more the emp
 
 ## Dependency
 
-`hucre` is installed at the repository root (`bun add hucre`). Where it is absent, the script prints the install step and exits.
+`hucre` is installed at the repository root (`bun add hucre`). Where it is absent, the script prints the install step and exits. node walks up from the script to find `node_modules`, so installing it in `~/.claude` resolves a plugin install.
 
-Do not use the CLI (`hucre convert`). It writes only the first sheet and drops the rest without a warning.
+It stays on JavaScript because `hucre` carries xlsx, ods and csv in one package. openpyxl does not read ods and would need odfpy alongside it, and every Python script in this repository is standard-library only with no dependency manifest. A standard-library rewrite takes on the part where a date cell is a bare number and only `numFmtId` in `styles.xml` tells you it is a date.
+
+Do not use the CLI (`hucre convert`). Three reasons.
+
+| Reason                       | Evidence                                                                           |
+| ---------------------------- | ---------------------------------------------------------------------------------- |
+| It drops merged cells        | The CLI's own description says `cell values only — styles, merges, formulas`       |
+| It drops every sheet but one | On a 3-sheet file it prints `Read 3 sheet(s)` and writes one sheet                 |
+| It cannot emit Markdown      | `convert <INPUT> <OUTPUT>` converts formats only, with no option to select a sheet |

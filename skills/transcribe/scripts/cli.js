@@ -20,7 +20,10 @@ let readXlsx;
 try {
   ({ readXlsx } = await import("hucre/xlsx"));
 } catch {
-  err("hucre is not installed. Run `bun add hucre` at the repository root.");
+  err(
+    "hucre is not installed. Run `bun add hucre` in a directory above this script: " +
+      "the repository root in a dev tree, or ~/.claude for a plugin install.",
+  );
   process.exit(2);
 }
 
