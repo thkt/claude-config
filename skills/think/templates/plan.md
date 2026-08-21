@@ -12,7 +12,6 @@
 Outcome: {one line describing the done state; implementation-independent, observable}
 root_cause: {write it only when the issue title carries a [Bug] prefix; the underlying cause, not just the symptom}
 test_command: {one-line test command, e.g. cargo test / node --test tests/}
-base: {branch the plan is implemented against (PR base); current checkout's branch when nothing names one}
 reference_module: {kind + reason as an object (kind: module/no-module/new-shape); module also carries path below}
 
 ### Reference module

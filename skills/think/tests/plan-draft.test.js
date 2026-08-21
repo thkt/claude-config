@@ -224,6 +224,32 @@ test("the skeleton carries an unconditional place for a rule bearing across unit
 });
 
 // Reading the rules after the units are cut means cutting them again when a rule lands.
+// A field in the skeleton that no stage reads costs the writer a line and the reader a question.
+// Every key the skeleton names has to appear in build's EXTRACT_SCHEMA, which is the only list of
+// what gets consumed.
+test("every top-level field the skeleton names is one build's schema carries", () => {
+  const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
+  const required = /^\s*\["outcome",(.*?)\],$/m.exec(buildJs);
+  assert.ok(required, "the required list is readable from build.js");
+  const consumed = new Set(
+    [...`["outcome",${required[1]}]`.matchAll(/"([\w_]+)"/g)].map((m) => m[1]),
+  );
+  // Read from build.js's own branch on it, so a rename there is caught rather than hard-coded.
+  for (const optional of ["root_cause", "reference_module"]) {
+    assert.match(buildJs, new RegExp(`plan\\.${optional}\\b`), `build.js reads ${optional}`);
+    consumed.add(optional);
+  }
+  for (const [lang, path] of Object.entries(templates)) {
+    const skeleton = /^```markdown\n([\s\S]*?)^```$/m.exec(read(path));
+    assert.ok(skeleton, `${lang}: the skeleton fence is readable`);
+    const fields = [...skeleton[1].matchAll(/^([a-z_]+):/gm)].map((m) => m[1]);
+    assert.ok(fields.length >= 3, `${lang}: the skeleton names its top-level fields`);
+    for (const field of fields) {
+      assert.ok(consumed.has(field), `${lang}: build consumes the skeleton's ${field}`);
+    }
+  }
+});
+
 // The seam unit rests on the wiring gap an incident showed (build.js's validate comment), not on
 // think telling every unit to stub its neighbours. Stating the stub as the default would put the
 // skill ahead of TESTING.md, whose Test double preference makes Real the first choice.

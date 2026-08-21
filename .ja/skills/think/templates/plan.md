@@ -12,7 +12,6 @@
 Outcome: {done 状態の 1 行。実装非依存、観測可能}
 root_cause: {issue タイトルが [Bug] 接頭辞を持つときだけ書く。症状でなく根本原因を記す}
 test_command: {テスト実行コマンド 1 行。例 cargo test / node --test tests/}
-base: {plan を実装するブランチ (PR のベース)。指定が無ければ現在の checkout のブランチ}
 reference_module: {kind + reason を object で (kind: module/no-module/new-shape)。module なら path も下欄に書く}
 
 ### 参照モジュール

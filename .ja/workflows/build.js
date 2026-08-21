@@ -216,7 +216,7 @@ const fencedBody =
 // extract agent に作らせる形。閉じた object なので、欠落キーも捏造キーも validate へ届く前に
 // schema 層で弾かれる。
 const PLAN_SCHEMA = obj(
-  ["outcome", "decisions", "units", "test_command", "preconditions", "backlog_candidates", "rules"],
+  ["outcome", "units", "test_command", "preconditions", "backlog_candidates", "rules"],
   {
     // plan が実装の守る決まりごとを運ぶので、実装の時点で何も引きに行かない。
     // agent へ何が届いたかは issue 本文だけで読める。
@@ -231,7 +231,6 @@ const PLAN_SCHEMA = obj(
       type: "string",
       description: "done 状態の 1 行 (実装非依存、観測可能)",
     },
-    decisions: { type: "array", items: { type: "string" } },
     units: {
       type: "array",
       items: obj(["id", "goal", "files", "contract", "tests", "seam"], {
@@ -1118,7 +1117,7 @@ const ship = await agent(
       `- タイトル、骨格の選び方、言語、節の並び、各節の中身は \`${bundled("skills/pr/references/pr-writing.md")}\` に従う。\n` +
       `- 冒頭には解決する問題と到達する成果 (${JSON.stringify(plan.outcome)}) を置く。\n` +
       `- Related / Closes は書かない (tail が \`Closes #\` を出す)。Scope / Backlog も書かない。スコープ外候補は PR に載せない。\n` +
-      `- Design Decisions は plan の decisions (${JSON.stringify(plan.decisions || [])}) と実 diff から埋め、空なら節ごと省略する。\n` +
+      `- Design Decisions は実 diff から埋め、読み取れなければ節ごと省略する。plan に出どころは無い。\n` +
       `(2) この JSON をそのまま一時ファイルに書く。\n${JSON.stringify(shipPayload)}\n` +
       `(3) fact tail の追記と PR 作成を 1 つの \`&&\` チェーンで行い、レンダラー失敗時は PR 作成前に中断させる。リポジトリルートから ` +
       `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{title}" --body-file {bodyfile}\` を実行する。{title} は手順 (1) で決めたタイトル。\n` +

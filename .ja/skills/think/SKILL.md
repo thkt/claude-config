@@ -52,10 +52,6 @@ argument-hint: "[task description]"
 
 test_command の失敗は計画スコープだけに帰着できなければならない。リポジトリ全体の型エラーやフォーマット差分といった既存負債を抱えたリポジトリでは、触るディレクトリだけを lint し、型チェック出力を path パターンでフィルタしてゲートを絞る。内容 grep では絞らない。build の Revalidate も code の verify もリポジトリルートから走るので、ルートから実行して成立するコマンドとして書く。
 
-### base
-
-`base:` には plan を実装するブランチ (PR のベースブランチ) を書く。タスク説明か会話から読み取り、指定が無ければ現在の checkout のブランチを書く。build はこの行を読まないので、build へ渡すときは args の `base` にも同じ値を入れる。
-
 ### reference_module
 
 contract が引用できるのは 1 箇所の振る舞いだけで、周辺構造の手組みは止まらない。候補は Phase 2 で探索済みなので、ここでは結果を `reference_module: { path, files, instances }` に記録するだけにし、やり直さない。構造は `reference_module` セクションに書き、各 unit はそこを参照する。
@@ -85,6 +81,7 @@ contract が引用できるのは 1 箇所の振る舞いだけで、周辺構�
 | ready              | plan が自己点検を通過し、未決着の論点が無いとき true    |
 | plan               | 自己点検済みの構造化 plan                               |
 | plan file          | 書き出した `.plan.md` のパス                            |
+| base               | 実装先のブランチ (PR のベース)。タスク説明か会話から読み取り、指定が無ければ現在の checkout のブランチ。build の `base` 引数に入れる値 |
 | blockers           | ready = false の原因のうちユーザー判断が要る論点        |
 | backlog candidates | スコープ外へ切り出した候補。無ければ「なし」            |
 | 設計要約           | 採用した案、比較した案、`critic-design` の判定、DR 要否 |

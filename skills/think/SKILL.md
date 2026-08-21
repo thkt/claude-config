@@ -52,10 +52,6 @@ Decompose the approved design into units, independently implementable bundles of
 
 A test_command failure must be attributable to the planned scope alone. On a repository carrying pre-existing debt such as repo-wide type errors or format drift, scope the gate by paths: lint the touched directories and filter type-check output by path patterns, never by content grep. Both build's Revalidate and code's verify run from the repository root, so write a command that works from there.
 
-### base
-
-`base:` names the branch the plan will be implemented against (the PR base). Read it from the task description or the conversation; when nothing names one, write the current checkout's branch. build does not read this line, so pass the same value in build's `base` arg when handing the plan over.
-
 ### reference_module
 
 A contract can cite a behavior at one call site only, which does not stop the surrounding structure from being hand-rolled. The candidate is already searched in Phase 2, so record its result here as `reference_module: { path, files, instances }` without searching again. Write the structure in the `reference_module` section, and every unit refers to it.
@@ -80,11 +76,12 @@ When a mock or design document carries UI wording verbatim (labels, placeholders
 
 Return the following to the caller in conversation.
 
-| Item               | Content                                                                              |
-| ------------------ | ------------------------------------------------------------------------------------ |
-| ready              | true when the plan passed the self-check and no undecided points remain              |
-| plan               | The self-checked structured plan                                                     |
-| plan file          | Path of the written `.plan.md`                                                       |
-| blockers           | Causes of ready = false that need a user decision                                    |
-| backlog candidates | Candidates carved out of scope. "none" if none                                       |
-| design summary     | Adopted approach, compared approaches, the `critic-design` verdict, DR needed or not |
+| Item               | Content                                                                                                                                                                           |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ready              | true when the plan passed the self-check and no undecided points remain                                                                                                           |
+| plan               | The self-checked structured plan                                                                                                                                                  |
+| plan file          | Path of the written `.plan.md`                                                                                                                                                    |
+| base               | The branch it is implemented against (the PR base). Read from the task description or the conversation, defaulting to the current checkout's branch. Goes into build's `base` arg |
+| blockers           | Causes of ready = false that need a user decision                                                                                                                                 |
+| backlog candidates | Candidates carved out of scope. "none" if none                                                                                                                                    |
+| design summary     | Adopted approach, compared approaches, the `critic-design` verdict, DR needed or not                                                                                              |
