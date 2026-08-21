@@ -21,23 +21,7 @@ argument-hint: "[context or ticket number]"
 
 ## Branch Naming
 
-Determine the type from the changes and assemble the name as `<type>/<scope>-<description>`.
-
-- Compose it from lowercase and hyphen separators; do not use spaces, underscores, or CamelCase
-- Keep scope and description to 2-4 words, naming the target and the result rather than a vague word such as update
-- If `$ARGUMENTS` has a ticket ID, put it in the scope position. Names this skill creates carry no date
-
-The table below decides the trigger for each type.
-
-| Prefix    | Purpose              | Trigger               |
-| --------- | -------------------- | --------------------- |
-| feat/     | New functionality    | New files, components |
-| fix/      | Bug fixes            | Error corrections     |
-| refactor/ | Code improvements    | Restructuring         |
-| docs/     | Documentation        | .md files, README     |
-| test/     | Test additions/fixes | Test files            |
-| chore/    | Maintenance          | Dependencies, config  |
-| perf/     | Performance          | Optimization, caching |
+Assemble the name and read the type per ${CLAUDE_SKILL_DIR}/references/branch-naming.md. build's Branch phase reads the same rules.
 
 ## Error Handling
 

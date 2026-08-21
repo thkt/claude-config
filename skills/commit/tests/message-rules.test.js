@@ -19,6 +19,37 @@ const eachLanguage = async (check) => {
 
 const commitBlock = (doc) => doc.split("```bash\n")[1]?.split("```")[0] ?? "";
 
+// code.js writes the subject of every unit commit build makes, so the two produce the history of
+// one repository. The rules are one row, too small to earn a file read per unit, so the copy in
+// the prompt stands and this holds it to the row it copied.
+test("the subject rules code.js hands its commit agent match this skill's Subject row", async () => {
+  const row = (await readFile(skills.en, "utf8"))
+    .split("\n")
+    .find((line) => line.startsWith("| Subject"));
+  assert.ok(row, "the skill carries a Subject row");
+  const cells = row.split("|").map((c) => c.trim());
+  for (const re of [/72/, /imperative/i, /lowercase/i, /no trailing period/i]) {
+    assert.match(cells[2], re, `the Subject row states ${re}`);
+  }
+  // The prompt is written in each tree's own language, so the same four constraints are matched
+  // by that language's words.
+  const inPrompt = {
+    en: [/72/, /imperative/i, /lowercase/i, /no trailing period/i],
+    ja: [/72/, /命令形/, /小文字/, /末尾ピリオド無し/],
+  };
+  for (const [lang, prefix] of [
+    ["en", ""],
+    ["ja", ".ja"],
+  ]) {
+    const codeJs = await readFile(join(root, prefix, "workflows", "code.js"), "utf8");
+    const prompt = codeJs.slice(codeJs.indexOf("Conventional Commits"));
+    assert.ok(prompt, `${lang}: the commit prompt names Conventional Commits`);
+    for (const re of inPrompt[lang]) {
+      assert.match(prompt, re, `${lang}: the prompt carries ${re}`);
+    }
+  }
+});
+
 // Dropping a type leaves the nearest row getting picked, and when that sweeps up feat or fix the
 // release decision goes wrong.
 test("the type list matches across both languages", () =>

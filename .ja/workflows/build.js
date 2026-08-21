@@ -513,7 +513,8 @@ const [reval, branchRes, baseline] = await parallel([
   () =>
     agent(
       anchor(
-        `issue #${issueNumber} ${JSON.stringify(plan.outcome)} の作業ブランチを新規に checkout する。慣例に沿ったブランチ名 (type + 短い slug) を選び、` +
+        `issue #${issueNumber} ${JSON.stringify(plan.outcome)} の作業ブランチを新規に checkout する。` +
+        `まず ${bundled("skills/checkout/references/branch-naming.md")} を読み、その規則でブランチ名を組み立てる。` +
           // base 起点を指定した呼び出しでは「現在のブランチを維持する」を書かない。
           // 同じプロンプトに両方を置くと後者が前者を打ち消す。
           (baseBranch

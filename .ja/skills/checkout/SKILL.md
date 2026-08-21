@@ -21,23 +21,7 @@ argument-hint: "[context or ticket number]"
 
 ## ブランチ命名
 
-変更内容から type を判定し、`<type>/<scope>-<description>` の形に組み立てる。
-
-- 小文字とハイフン区切りで構成し、空白/アンダースコア/CamelCase は使わない
-- scope と description は 2〜4 単語で簡潔にし、update のような曖昧な語でなく変更の対象と結果を表す語を使う
-- `$ARGUMENTS` にチケット ID があれば scope の位置に入れる。このスキルが作る名前に日付は入れない
-
-type ごとのトリガーは下表が定める。
-
-| Prefix    | 用途              | トリガー                     |
-| --------- | ----------------- | ---------------------------- |
-| feat/     | 新機能            | 新規ファイル、コンポーネント |
-| fix/      | バグ修正          | エラー修正                   |
-| refactor/ | コード改善        | 再構造化                     |
-| docs/     | ドキュメント      | .md ファイル、README         |
-| test/     | テスト追加 / 修正 | テストファイル               |
-| chore/    | メンテナンス      | 依存、設定                   |
-| perf/     | パフォーマンス    | 最適化、キャッシュ           |
+名前の組み立てと type の判定は ${CLAUDE_SKILL_DIR}/references/branch-naming.md に従う。build も Branch phase で同じ規則を引く。
 
 ## エラー処理
 
