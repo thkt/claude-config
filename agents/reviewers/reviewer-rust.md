@@ -25,7 +25,7 @@ Rust code only (`*.rs`, `Cargo.toml`). Non-Rust code out of scope. For language-
 | Phase | Action            | Focus                                                                                                                                      |
 | ----- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | 1     | Idiom Scan        | Iterator vs manual loop, clone abuse, redundant borrow                                                                                     |
-| 2     | Error Discipline  | unwrap/expect/? usage, anyhow vs thiserror, error propagation, panic surface (`panic!`/`unreachable!`/`todo!` in non-test code)            |
+| 2     | Error Discipline  | `unwrap`/`expect`/`?` usage, anyhow vs thiserror, error propagation, panic surface (`panic!`/`unreachable!`/`todo!` in non-test code)      |
 | 3     | Lifetime Audit    | Redundant annotations, `'static` overuse, missing elision                                                                                  |
 | 4     | Trait Design      | `Box<dyn>` vs `impl` vs generic, bound minimality, coherence                                                                               |
 | 5     | Async/Blocking    | Blocking call in async, executor mixing, sync Mutex in async                                                                               |
