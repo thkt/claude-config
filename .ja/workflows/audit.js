@@ -139,8 +139,7 @@ const writeSnapshot = async ({
     verify_ran: verifyRan,
     tally,
     // 同じ finding は raw_findings 側に verdict つきで載る。ここは raw_findings から
-    // 導けない why だけの側表にする。ask は既にこの {id, why} の形なので、needsContext から
-    // 作り直さずそのまま使う。
+    // 導けない why だけの側表にする。
     needs_context: ask,
     zero_reviewer_files: zeroReviewerFiles,
   });
@@ -802,9 +801,8 @@ const [challenged, verified] = await parallel([
 const verdictById = new Map(((challenged && challenged.verdicts) || []).map((v) => [v.id, v]));
 const survivors = [];
 const needsContext = [];
-// info は id だけを持つ。report を読む人間に渡すのは件数とどの finding かまでで、
-// finding の全文ではない。downgraded の finding は survivors に残ったままなので
-// (severity を下げるのは除外ではない)、こちらにも同じ理由で id だけを記録する。
+// id だけを持つ。判定済みの finding の全文は、生きている指摘と同じ紙幅を report で占める。
+// downgraded は survivors に残るが、id はここにも記録する。
 const disputedIds = [];
 const downgradedIds = [];
 let noVerdict = 0;
@@ -837,9 +835,7 @@ for (const f of rawFindings) {
 log(
   `triage: ${survivors.length} survived / ${needsContext.length} needs_context / no_verdict: ${noVerdict} (of ${rawFindings.length} total)`,
 );
-// needsContext は既に why を持つ (上の分岐で書く)。ask はそれをそのまま使い、raw finding から
-// why を再導出しない。ask セクションと返り値の needs_context が、同じ id に対して
-// 別々の why を語ることがなくなる。
+// needsContext が既に持つ why をそのまま使うので、ask と needs_context が食い違わない。
 const ask = needsContext.map(({ id, why }) => ({ id, why }));
 const info = {
   disputed: { count: disputedIds.length, ids: disputedIds },

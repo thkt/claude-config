@@ -160,9 +160,8 @@ test("T-004 leaves the reviewer name out of the input handed to the critic", asy
   assert.doesNotMatch(call.prompt, /"reviewer"/, "the critic input carries no reviewer name");
 });
 
-// needsContext already carries why (line 831's `{ ...f, why: v.why || "" }`); the ask section
-// reuses that value as is rather than re-deriving why from the raw finding.
-test("T-009 needs_context の finding が ask セクションに why 付きで返る", async () => {
+// ask reuses the why needsContext already carries, so the two can never disagree for one id.
+test("T-009 a needs_context finding returns in the ask section carrying its why", async () => {
   const { result } = await runChallenge({
     verdicts: [
       { id: "R-1", verdict: "confirmed" },
@@ -180,10 +179,9 @@ test("T-009 needs_context の finding が ask セクションに why 付きで�
   );
 });
 
-// The triage loop already drops a disputed id from survivors (T-001); info records that same
-// id and a count without the finding's summary/file/line, so a disputed finding's full text
-// never reaches the report.
-test("T-010 disputed の finding は全文を返さず件数と id だけが返る", async () => {
+// A disputed finding is a judged false positive, so its full text would take report space
+// alongside live findings. info records the id and the count instead.
+test("T-010 a disputed finding returns as a count and an id, never its full text", async () => {
   const { result } = await runChallenge({
     verdicts: [
       { id: "R-1", verdict: "disputed" },
@@ -198,5 +196,25 @@ test("T-010 disputed の finding は全文を返さず件数と id だけが返�
   assert.ok(
     !JSON.stringify(result.info).includes("security finding"),
     "the disputed finding's summary text does not leak into info",
+  );
+});
+
+// A downgraded finding stays in survivors at the lowered severity, so info naming it is not a
+// removal. Recording the id is what lets a reader see which finding the challenge re-scored.
+test("T-011 a downgraded finding is named in info while staying a survivor", async () => {
+  const { result } = await runChallenge({
+    verdicts: [
+      { id: "R-1", verdict: "downgraded", severity: "low" },
+      { id: "R-2", verdict: "confirmed" },
+    ],
+  });
+  assert.deepEqual(
+    result.info.downgraded,
+    { count: 1, ids: ["R-1"] },
+    "info.downgraded carries only the count and id of the re-scored finding",
+  );
+  assert.ok(
+    result.survivors.some((s) => s.id === "R-1"),
+    "the re-scored finding is still a survivor: a lowered severity is not a removal",
   );
 });

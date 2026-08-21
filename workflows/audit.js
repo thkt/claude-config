@@ -145,8 +145,7 @@ const writeSnapshot = async ({
     verify_ran: verifyRan,
     tally,
     // The same findings already appear in raw_findings carrying their verdict. This side
-    // table holds only why, which raw_findings cannot supply. ask is already this {id, why}
-    // shape, so the payload takes it as is instead of re-deriving it from needsContext.
+    // table holds only why, which raw_findings cannot supply.
     needs_context: ask,
     zero_reviewer_files: zeroReviewerFiles,
   });
@@ -816,9 +815,8 @@ const [challenged, verified] = await parallel([
 const verdictById = new Map(((challenged && challenged.verdicts) || []).map((v) => [v.id, v]));
 const survivors = [];
 const needsContext = [];
-// info stays id-only: a report reader gets the count and which finding, not the finding's
-// full text. downgraded's id is recorded here for the same reason, even though the finding
-// itself stays in survivors (a lowered severity is not a removal).
+// id-only: a judged finding's full text would take report space alongside live ones. A
+// downgraded id is recorded here even though the finding stays in survivors.
 const disputedIds = [];
 const downgradedIds = [];
 let noVerdict = 0;
@@ -852,9 +850,7 @@ for (const f of rawFindings) {
 log(
   `triage: ${survivors.length} survived / ${needsContext.length} needs_context / no_verdict: ${noVerdict} (of ${rawFindings.length} total)`,
 );
-// needsContext already carries why (the ternary above); ask reuses it rather than
-// re-deriving why from the raw finding, so the report's ask section and the return value's
-// needs_context can never state a different why for the same id.
+// Reusing the why needsContext already holds, so ask and needs_context cannot disagree.
 const ask = needsContext.map(({ id, why }) => ({ id, why }));
 const info = {
   disputed: { count: disputedIds.length, ids: disputedIds },
