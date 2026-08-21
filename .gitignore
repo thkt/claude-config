@@ -34,6 +34,7 @@ history/
 # herdr が自分で書き、再インストールで上書きする。配線先の settings.json も追跡外。
 /hooks/herdr-agent-state.sh
 /ide/
+# このリポジトリは public。memory/ に業務文脈が、jsonl に全会話が入るため打ち消さない。
 /projects/
 /settings.json
 /shell-snapshots/
