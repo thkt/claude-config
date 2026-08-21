@@ -23,6 +23,9 @@ function read(path) {
   return readFileSync(path, "utf8");
 }
 
+const steps = (doc) => doc.split("\n").filter((line) => /^\d+\. /.test(line));
+const phase = (doc, n) => doc.slice(doc.indexOf(`## Phase ${n}`), doc.indexOf(`## Phase ${n + 1}`));
+
 test("the plan template defines the skeleton (id notation, implementation order, the preconditions subsection, one-line statement tests, test_command, Backlog candidates) and the line-count rule", () => {
   for (const [lang, path] of Object.entries(templates)) {
     const doc = read(path);
@@ -224,13 +227,212 @@ test("the skeleton carries an unconditional place for a rule bearing across unit
 });
 
 // Reading the rules after the units are cut means cutting them again when a rule lands.
+// Naming a base is not free: build branches from it and passes --base, overriding the branch the
+// run is on. What it means belongs to build, which owns the arg, and think restating it would put
+// a second copy where a plan writer reads it as something to fill in.
+test("base stays build's arg, documented there and absent from think", () => {
+  const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
+  assert.match(
+    buildJs,
+    /base \(optional\)[\s\S]{0,200}epic-branch aggregation flow/,
+    "build's own arg description says when a base is passed",
+  );
+  assert.match(
+    buildJs,
+    /always branch off \$\{baseBranch\} again/,
+    "a named base overrides the branch the run is on",
+  );
+  assert.match(
+    buildJs,
+    /If already on a non-default branch, keep the current branch/,
+    "an empty base keeps the current branch",
+  );
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    assert.ok(
+      !doc.split("\n").some((line) => line.startsWith("| base")),
+      `${lang}: think's output table carries no base row`,
+    );
+    assert.ok(!doc.includes("### base"), `${lang}: think carries no base section`);
+  }
+});
+
+// Which module to replicate is settled while searching. Leaving that call in the subsection puts
+// a Phase 2 decision below Phase 3, where a reader reaches it after the search is over.
+test("the reference_module search settles its own outcome in Phase 2", () => {
+  const settled = {
+    ja: [/もっとも近い 1 つを選び/, /一致が無ければ新規である理由/],
+    en: [/Pick the closest one/, /when none matches, note why this shape is new/],
+  };
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const phase2 = phase(doc, 2);
+    for (const re of settled[lang]) {
+      assert.match(phase2, re, `${lang}: Phase 2 settles ${re}`);
+    }
+    const section = doc.slice(doc.indexOf("### reference_module"));
+    assert.doesNotMatch(
+      section.split("\n### ")[0],
+      lang === "ja" ? /候補が複数なら/ : /When several candidates match/,
+      `${lang}: the subsection no longer repeats the picking rule`,
+    );
+  }
+});
+
+// Each of the four states how one plan field is written, so the step settling that field is
+// where it has to be cited. A subsection no step reaches is read after the steps are done.
+test("every subsection stating how a field is written is cited from a step", () => {
+  const cited = {
+    ja: ["§ reference_module", "§ test_command", "§ contract", "§ preconditions"],
+    en: ["§ reference_module", "§ test_command", "§ contract", "§ preconditions"],
+  };
+  // The four headings carry the field name as build's schema spells it, in both trees.
+  const headings = [
+    "### reference_module",
+    "### test_command",
+    "### contract",
+    "### preconditions",
+  ];
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    for (const [i, marker] of cited[lang].entries()) {
+      assert.ok(
+        steps(doc).some((line) => line.includes(marker)),
+        `${lang}: a step cites ${marker}`,
+      );
+      assert.ok(doc.includes(headings[i]), `${lang}: ${headings[i]} exists`);
+    }
+    // The numbering rules left the body for a file, so the step is the only route to them.
+    assert.match(
+      doc,
+      /\$\{CLAUDE_SKILL_DIR\}\/references\/id-numbering\.md/,
+      `${lang}: a step routes to the numbering reference`,
+    );
+    assert.ok(
+      existsSync(
+        join(root, ...(lang === "ja" ? [".ja"] : []), "skills/think/references/id-numbering.md"),
+      ),
+      `${lang}: the numbering reference is where the path points`,
+    );
+  }
+});
+
+// The steps run in order, so a field written after the step that consumes it is written too late.
+test("the steps settle each plan field before the step that writes the plan out", () => {
+  const settles = {
+    ja: [/reference_module を記録/, /test_command を決める/, /contract を書く/, /前提を書く/],
+    en: [/Record reference_module/, /Settle test_command/, /write its contract/, /preconditions/i],
+  };
+  for (const [lang, path] of Object.entries(skills)) {
+    const list = steps(read(path));
+    const writeAt = list.findIndex((line) => line.includes(".claude/workspace/planning/"));
+    assert.ok(writeAt >= 0, `${lang}: a step writes the plan out`);
+    for (const re of settles[lang]) {
+      const at = list.findIndex((line) => re.test(line));
+      assert.ok(at >= 0, `${lang}: a step settles ${re}`);
+      assert.ok(at < writeAt, `${lang}: ${re} is settled before the write`);
+    }
+  }
+});
+
+// A field in the skeleton that no stage reads costs the writer a line and the reader a question.
+// Every key the skeleton names has to appear in build's EXTRACT_SCHEMA, which is the only list of
+// what gets consumed.
+test("every top-level field the skeleton names is one build's schema carries", () => {
+  const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
+  const required = /^\s*\["outcome",(.*?)\],$/m.exec(buildJs);
+  assert.ok(required, "the required list is readable from build.js");
+  const consumed = new Set(
+    [...`["outcome",${required[1]}]`.matchAll(/"([\w_]+)"/g)].map((m) => m[1]),
+  );
+  // Read from build.js's own branch on it, so a rename there is caught rather than hard-coded.
+  for (const optional of ["root_cause", "reference_module"]) {
+    assert.match(buildJs, new RegExp(`plan\\.${optional}\\b`), `build.js reads ${optional}`);
+    consumed.add(optional);
+  }
+  for (const [lang, path] of Object.entries(templates)) {
+    const skeleton = /^```markdown\n([\s\S]*?)^```$/m.exec(read(path));
+    assert.ok(skeleton, `${lang}: the skeleton fence is readable`);
+    const fields = [...skeleton[1].matchAll(/^([a-z_]+):/gm)].map((m) => m[1]);
+    assert.ok(fields.length >= 3, `${lang}: the skeleton names its top-level fields`);
+    for (const field of fields) {
+      assert.ok(consumed.has(field), `${lang}: build consumes the skeleton's ${field}`);
+    }
+  }
+});
+
+// The seam unit rests on the wiring gap an incident showed (build.js's validate comment), not on
+// think telling every unit to stub its neighbours. Stating the stub as the default would put the
+// skill ahead of TESTING.md, whose Test double preference makes Real the first choice.
+test("the seam step states the wiring gap and imposes no stubbing default", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const step = steps(doc).find((line) => line.includes("seam: true"));
+    assert.ok(step, `${lang}: a step places the seam unit`);
+    assert.match(
+      step,
+      lang === "ja" ? /配線/ : /wiring/,
+      `${lang}: the step names the gap the seam unit covers`,
+    );
+    assert.doesNotMatch(
+      step,
+      lang === "ja" ? /各 unit のテストは自分の境界を/ : /Each unit's tests stub/,
+      `${lang}: the step states no repo-wide stubbing default`,
+    );
+  }
+});
+
+// The table deciding what a research report contributes lives in the reference. Drop the line
+// that routes there and the rules stay on disk with nothing sending a reader to them.
+test("Phase 2 routes the research report's parts to the intake reference", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const phase2 = phase(doc, 2);
+    assert.match(
+      phase2,
+      /\$\{CLAUDE_SKILL_DIR\}\/references\/research-report-intake\.md/,
+      `${lang}: Phase 2 names the intake reference`,
+    );
+    const reference = join(
+      root,
+      ...(lang === "ja" ? [".ja"] : []),
+      "skills",
+      "think",
+      "references",
+      "research-report-intake.md",
+    );
+    assert.ok(existsSync(reference), `${lang}: the reference is where the path points`);
+  }
+});
+
+// A rule shaping T-NNN that sits after the write step is applied to a file already on disk. The
+// step order is what a reader follows, so a rule below the write reaches nothing.
+test("every rule shaping what gets written comes before the step that writes it", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const phase3 = doc.slice(doc.indexOf("## Phase 3"), doc.indexOf("### test_command"));
+    const list = steps(phase3);
+    assert.ok(list.length >= 8, `${lang}: Phase 3 carries its numbered steps`);
+    const writeAt = list.findIndex((line) => line.includes(".claude/workspace/planning/"));
+    assert.ok(writeAt >= 0, `${lang}: a step writes the plan out`);
+    for (const [i, step] of list.entries()) {
+      if (i === writeAt || !step.includes("T-NNN")) continue;
+      assert.ok(i < writeAt, `${lang}: step ${i + 1} shapes T-NNN, so it precedes the write`);
+    }
+  }
+});
+
 test("think reads the wiki rules before the approaches are generated", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
-    const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
+    const phase2 = phase(doc, 2);
     assert.match(phase2, /find_wiki_rule\.py/, `${lang}: Phase 2 runs the finder`);
     const phase3 = doc.slice(doc.indexOf("## Phase 3"));
-    assert.match(phase3, /find_wiki_rule\.py/, `${lang}: Phase 3 runs it again on the settled files`);
+    assert.match(
+      phase3,
+      /find_wiki_rule\.py/,
+      `${lang}: Phase 3 runs it again on the settled files`,
+    );
   }
 });
 

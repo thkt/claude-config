@@ -225,7 +225,7 @@ const fencedBody =
 // The shape the extract agent must produce. Closed objects, so an omitted or invented key is
 // rejected at the schema layer rather than reaching validate.
 const PLAN_SCHEMA = obj(
-  ["outcome", "decisions", "units", "test_command", "preconditions", "backlog_candidates", "rules"],
+  ["outcome", "units", "test_command", "preconditions", "backlog_candidates", "rules"],
   {
     // The plan carries the rules the implementation has to keep, so nothing at implementation
     // time looks them up. What reached the agent is readable from the issue body alone.
@@ -241,7 +241,6 @@ const PLAN_SCHEMA = obj(
       description:
         "One-line description of the done state (implementation-independent, observable)",
     },
-    decisions: { type: "array", items: { type: "string" } },
     units: {
       type: "array",
       items: obj(["id", "goal", "files", "contract", "tests", "seam"], {
@@ -1154,7 +1153,7 @@ const ship = await agent(
       `- Follow \`${bundled("skills/pr/references/pr-writing.md")}\` for the title, the skeleton, the language, the section order, and what each section carries.\n` +
       `- Lead with the problem this solves and the outcome it reaches (${JSON.stringify(plan.outcome)}).\n` +
       `- Skip Related / Closes; the tail emits \`Closes #\`. Skip Scope / Backlog too; out-of-scope candidates do not go in the PR.\n` +
-      `- Fill Design Decisions from the plan decisions (${JSON.stringify(plan.decisions || [])}) and the actual diff; omit the section if empty rather than inventing.\n` +
+      `- Fill Design Decisions from the actual diff; omit the section when the diff does not carry one rather than inventing. The plan holds no source for it.\n` +
       `(2) write this exact JSON to a temp file.\n${JSON.stringify(shipPayload)}\n` +
       `(3) append the fact tail and open the PR as one \`&&\` chain, so a renderer failure aborts before the PR is created; from the repository root run ` +
       `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{title}" --body-file {bodyfile}\`, where {title} is the title you settled in step (1).\n` +
