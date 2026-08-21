@@ -65,6 +65,32 @@ Evidence, Trigger, and Reasoning fields MUST use concrete language.
 | theoretically          | (remove. describe the actual path) |
 | in some cases          | when [specific condition]          |
 
+## Disposition
+
+Severity states how large the impact is. Disposition states what the reader does next. Whether a finding blocks a merge or is left to the author is an axis severity does not answer, so the two ride on one finding together.
+
+This is the first axis added to the common core DR-0078 settled (Severity / Evidence / one-line claim / ID). The vocabulary stays on the audit side and does not return to `/preview`, which `skills/preview/tests/plan-alignment.test.js` forbids.
+
+| Value | Meaning                                  | Severity it rides with | Supplied by                        |
+| ----- | ---------------------------------------- | ---------------------- | ---------------------------------- |
+| must  | Fix before merge                         | critical / high        | the script default, or the 3       |
+| want  | Fix unless there is a reason not to      | medium                 | the 3 reviewers below              |
+| imo   | The author decides                       | low                    | the 3 reviewers below              |
+| nits  | Cosmetic. Fixing it is optional          | low                    | the 3 reviewers below              |
+| ask   | Undecidable from code alone. Ask a human | none                   | the critic's needs_context verdict |
+| info  | Already handled. Kept for the record     | none                   | triage's disputed / downgraded     |
+
+"Severity it rides with" is a guide, not a derivation rule. The default is pinned to must rather than derived from severity. `workflows/assert.js`'s gate ignores severity and returns NotReady on `issues.length > 0` alone, so a severity-derived default would put nits on a finding that blocks the merge.
+
+| Rule           | Content                                                                                                        |
+| -------------- | -------------------------------------------------------------------------------------------------------------- |
+| Default        | must. The script sets it on a finding the reviewer did not declare                                             |
+| Declarable     | must / want / imo / nits. ask and info are not kinds a reviewer produces                                       |
+| Who overrides  | reviewer-design / reviewer-readability / reviewer-reuse only, the lenses whose findings can turn on preference |
+| Override needs | A disposition_reason. An override without one falls back to the default must                                   |
+| Consolidation  | must > want > imo > nits. A consolidated finding takes the strongest value among its sources                   |
+| Gates          | Disposition feeds no gate. It is the order to fix in, not the call on whether to merge                         |
+
 ## Calibration Filters
 
 Apply in order. If any filter excludes, do not report.

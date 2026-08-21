@@ -338,6 +338,23 @@ const findingsSchema = ({ withSourceIds = false } = {}) => ({
             enum: ["critical", "high", "medium", "low"],
           },
           summary: { type: "string" },
+          // 必須にしない。trigger を返さない reviewer は findings 配列ごと検証に落ち、
+          // その中の finding をすべて失う。
+          category: { type: "string", description: "reviewer 自身の finding 分類" },
+          trigger: {
+            type: "string",
+            description: "その問題が顕在化する具体的な条件",
+          },
+          disposition: {
+            type: "string",
+            enum: ["must", "want", "imo", "nits"],
+            description:
+              "読んだ人間が次に何をするか。agents/_lib/finding-schema.md § Disposition に従う。省略すると既定値を採る",
+          },
+          disposition_reason: {
+            type: "string",
+            description: "既定値から外す理由。上書きには必須",
+          },
           ...(withSourceIds
             ? {
                 source_ids: {
@@ -623,6 +640,23 @@ const raw = await parallel(
   ),
 );
 const findings = raw.filter(Boolean).flatMap((r) => r.findings || []);
+// 既定値は script が持つ。reviewer が何も申告しなくても数えられる値が残る
+// (agents/_lib/finding-schema.md § Disposition)。severity から導かず固定するのは、assert の
+// gate が severity を見ないため。導出すると、マージを止める finding に nits が付く。
+const DEFAULT_DISPOSITION = "must";
+const DECLARABLE_DISPOSITIONS = new Set(["must", "want", "imo", "nits"]);
+let restoredDispositions = 0;
+const dispositionOf = (f) => {
+  const declared = String(f.disposition || "");
+  const reason = String(f.disposition_reason || "").trim();
+  if (!declared) return { disposition: DEFAULT_DISPOSITION };
+  // 理由の無い上書きは judgment でなく好みなので、申告された値として運ばず既定値へ戻す。
+  if (!DECLARABLE_DISPOSITIONS.has(declared) || !reason) {
+    restoredDispositions += 1;
+    return { disposition: DEFAULT_DISPOSITION };
+  }
+  return { disposition: declared, disposition_reason: reason };
+};
 // flatten すると unit との対応が消えるため、その前に snapshot 用へ reviewer ごとの帰属を
 // 記録しておく。
 const rawFindings = [];
@@ -637,10 +671,19 @@ units.forEach((u, i) => {
         line: f.line,
         severity: f.severity,
         message: f.summary,
+        // 無いフィールドは空文字にせず無いまま残す。何も返さなかった reviewer と、空を
+        // 返した reviewer を読み手が区別できる。
+        ...(f.category ? { category: f.category } : {}),
+        ...(f.trigger ? { trigger: f.trigger } : {}),
+        ...dispositionOf(f),
       });
     }
   }
 });
+if (restoredDispositions)
+  log(
+    `disposition: ${restoredDispositions} override(s) restored to ${DEFAULT_DISPOSITION} (no disposition_reason).`,
+  );
 // skip は unit 単位で集計する。reviewer を key にすると、同じ reviewer の生き残った unit が
 // 出力ありと見なされ、stall した unit の未 review ファイルが隠れてしまう。
 const skipped = units
@@ -828,7 +871,12 @@ const integrated = await agent(
 
 // フォールバック先を triage 前の findings にすると、id が付く前の配列に落ちるので、
 // challenge が disputed と判定した finding を黙って呼び戻すことになる。
-const finalFindings = (integrated && integrated.findings) || survivorsInput;
+const integratedFindings = (integrated && integrated.findings) || survivorsInput;
+// Integrate が読む projection は disposition を含まないので、出力にも戻ってこない。ここで
+// 既定値を当て直すことで、返り値の finding が survivors と同じ軸で読める。
+const finalFindings = integratedFindings.map((f) =>
+  f.disposition ? f : { ...f, disposition: DEFAULT_DISPOSITION },
+);
 const snapshot = await writeSnapshot({
   preFlight,
   rawFindings,

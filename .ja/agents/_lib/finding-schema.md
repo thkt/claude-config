@@ -65,6 +65,32 @@ Evidence, Trigger, Reasoning は具体的な言語を使う。
 | theoretically          | (削除する。実際のパスを記述)    |
 | in some cases          | when [specific condition]       |
 
+## Disposition
+
+Severity は影響の大きさを表す。Disposition は読んだ人間が次に何をするかを表す。マージを止めるべきか作者の判断に委ねてよいかは severity が答えない軸なので、2 つを 1 つの finding に並べて載せる。
+
+DR-0078 が定めた共通コア (Severity/Evidence/一行 claim/ID) に足す 1 本目の軸。この語彙は audit 側に閉じ、`/preview` へは戻さない (`skills/preview/tests/plan-alignment.test.js` が禁止している)。
+
+| 値   | 意味                                 | 併走する severity | 供給元                          |
+| ---- | ------------------------------------ | ----------------- | ------------------------------- |
+| must | マージ前に直す                       | critical / high   | script の既定値、または 3 本    |
+| want | 直さない理由が無ければ直す           | medium            | 下記 3 本の reviewer            |
+| imo  | 作者が決める                         | low               | 下記 3 本の reviewer            |
+| nits | 見た目の指摘。直すかは任意           | low               | 下記 3 本の reviewer            |
+| ask  | コードだけでは決まらない。人間に聞く | 対応なし          | critic の needs_context verdict |
+| info | 処理済み。記録として残す             | 対応なし          | triage の disputed / downgraded |
+
+「併走する severity」は目安であって導出規則ではない。既定値は severity から導かず must に固定する。`workflows/assert.js` の gate は severity を見ず `issues.length > 0` だけで NotReady を出すので、severity 由来の既定値だと blocking な finding へ nits が付く。
+
+| 規則          | 内容                                                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------------- |
+| 既定値        | must。reviewer が申告しない finding には script が付ける                                                    |
+| 申告できる値  | must / want / imo / nits の 4 つ。ask と info は reviewer が出す種類ではない                                |
+| 上書きの主体  | reviewer-design / reviewer-readability / reviewer-reuse の 3 本のみ。指摘が作者の好みに寄りうる lens に限る |
+| 上書きの条件  | disposition_reason を添える。理由の無い上書きは既定値 must に戻す                                           |
+| 統合順序      | must > want > imo > nits。統合した finding は統合元のうち最も強い値を採る                                   |
+| gate との関係 | disposition はいかなる gate の入力にもしない。修正の順序を表す軸であって、マージ可否を表す軸ではない        |
+
 ## キャリブレーションフィルタ
 
 順に適用する。いずれかが除外したら報告しない。

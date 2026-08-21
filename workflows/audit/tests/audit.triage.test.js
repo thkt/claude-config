@@ -14,10 +14,12 @@ const auditJs = join(here, "..", "..", "audit.js");
 
 // The shortest stub carrying Route -> Review (the security and silence reviewers) -> Challenge.
 // defaultAgentStub in _fixtures.js decides the default responses and the id numbering.
-const runChallenge = (challenge) =>
+// extra overrides a reviewer's own response, which the disposition cases need to make a reviewer
+// declare a value at all.
+const runChallenge = (challenge, extra = {}) =>
   runWorkflow(auditJs, {
     args: { focus: "security", skipPreflight: true },
-    stubs: { agent: defaultAgentStub({ challenge }) },
+    stubs: { agent: defaultAgentStub({ challenge, ...extra }) },
   });
 
 test("T-001 drops a finding from survivors when challenge returns disputed", async () => {
@@ -61,6 +63,93 @@ test("T-003 treats a finding with no verdict as confirmed and counts it under no
     logs.some((l) => /no_verdict/.test(l) && /1/.test(l)),
     "log() carries the count of findings that drew no verdict as no_verdict",
   );
+});
+
+// A reviewer that declares nothing must still produce a countable disposition. Left absent, a
+// reader has to fall back to severity, which is the axis this one exists to stop answering with.
+test("T-005 a finding declaring no disposition carries must after triage", async () => {
+  const { result } = await runChallenge({
+    verdicts: [
+      { id: "R-1", verdict: "confirmed" },
+      { id: "R-2", verdict: "confirmed" },
+    ],
+  });
+  assert.deepEqual(
+    result.survivors.map((s) => s.disposition),
+    ["must", "must"],
+    "the script fills the default rather than leaving the field absent",
+  );
+});
+
+// An override with no reason is a preference stated as a verdict. Falling back silently would
+// leave the reader unable to tell a declared must from one the script restored.
+test("T-006 an override without a disposition_reason falls back to must and the count reaches log()", async () => {
+  const { result, logs } = await runChallenge(
+    {
+      verdicts: [
+        { id: "R-1", verdict: "confirmed" },
+        { id: "R-2", verdict: "confirmed" },
+      ],
+    },
+    {
+      security: {
+        findings: [
+          { file: "sample.js", line: "1", severity: "high", summary: "s", disposition: "nits" },
+        ],
+      },
+    },
+  );
+  const byId = new Map(result.survivors.map((s) => [s.id, s]));
+  assert.equal(byId.get("R-1").disposition, "must", "a reasonless override is restored to must");
+  assert.equal(byId.get("R-1").disposition_reason, undefined, "no reason is invented for it");
+  assert.ok(
+    logs.some((l) => /disposition/.test(l) && /1/.test(l)),
+    "log() carries how many overrides were restored",
+  );
+});
+
+// findingsSchema drops every key it does not list, so a reviewer can fill category and trigger
+// and the report still shows neither. These two are what the prune quality reads.
+test("T-007 the category and trigger a reviewer returned stay on the survivor", async () => {
+  const { result } = await runChallenge(
+    {
+      verdicts: [
+        { id: "R-1", verdict: "confirmed" },
+        { id: "R-2", verdict: "confirmed" },
+      ],
+    },
+    {
+      security: {
+        findings: [
+          {
+            file: "sample.js",
+            line: "1",
+            severity: "high",
+            summary: "s",
+            category: "injection",
+            trigger: "every Bash tool call",
+          },
+        ],
+      },
+    },
+  );
+  const byId = new Map(result.survivors.map((s) => [s.id, s]));
+  assert.equal(byId.get("R-1").category, "injection");
+  assert.equal(byId.get("R-1").trigger, "every Bash tool call");
+});
+
+// Required fields would fail the whole findings array of a reviewer that returns no trigger, so
+// the two stay optional and an absent one stays absent rather than becoming an empty string.
+test("T-008 a finding with no trigger stays a survivor and its trigger stays absent", async () => {
+  const { result } = await runChallenge({
+    verdicts: [
+      { id: "R-1", verdict: "confirmed" },
+      { id: "R-2", verdict: "confirmed" },
+    ],
+  });
+  const byId = new Map(result.survivors.map((s) => [s.id, s]));
+  assert.ok(byId.get("R-1"), "the finding survives without a trigger");
+  assert.equal(byId.get("R-1").trigger, undefined, "the absent trigger is not filled in");
 });
 
 test("T-004 leaves the reviewer name out of the input handed to the critic", async () => {
