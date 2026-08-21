@@ -224,6 +224,40 @@ test("the skeleton carries an unconditional place for a rule bearing across unit
 });
 
 // Reading the rules after the units are cut means cutting them again when a rule lands.
+// Naming a base is not free. build branches from it and passes --base, overriding the branch the
+// run is on, so a base written out of habit sends the PR at whatever branch planning happened on.
+// Empty is the correct default: build keeps the current branch and /pr measures the base from the
+// reflog once the branch exists.
+test("base is opt-in, and build treats an empty one as keep-the-current-branch", () => {
+  const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
+  assert.match(
+    buildJs,
+    /always branch off \$\{baseBranch\} again/,
+    "a named base overrides the branch the run is on",
+  );
+  assert.match(
+    buildJs,
+    /If already on a non-default branch, keep the current branch/,
+    "an empty base keeps the current branch",
+  );
+  assert.match(
+    readFileSync(join(root, "skills", "pr", "SKILL.md"), "utf8"),
+    /reflog/,
+    "/pr measures the base once the branch exists",
+  );
+  for (const [lang, path] of Object.entries(skills)) {
+    const row = read(path)
+      .split("\n")
+      .find((line) => line.startsWith("| base"));
+    assert.ok(row, `${lang}: the output table carries base`);
+    assert.match(
+      row,
+      lang === "ja" ? /だけ書く/ : /only when/,
+      `${lang}: the row makes base opt-in rather than always written`,
+    );
+  }
+});
+
 // A field in the skeleton that no stage reads costs the writer a line and the reader a question.
 // Every key the skeleton names has to appear in build's EXTRACT_SCHEMA, which is the only list of
 // what gets consumed.
