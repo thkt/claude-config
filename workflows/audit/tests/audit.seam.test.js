@@ -164,6 +164,67 @@ test("T-022 a run where no reviewer declares a disposition returns every finding
   );
 });
 
+// Companion to T-022: there the source stays at the default and the default must ride
+// through. Here one source declares a valid override (want, with disposition_reason), and
+// Integrate returns it unmerged (its own source_ids holds only that one id), so nothing
+// forces a stronger sibling to win. This is the plan's seam claim: a reviewer's disposition
+// survives triage and the real Integrate call all the way to the returned finding.
+test("T-023 reviewer が上書きした disposition が Integrate 後の返り値にも残る", async () => {
+  const { result, record } = await run([{ path: "sample.js", churn: 0 }], {
+    security: {
+      findings: [{ file: "sample.js", line: "1", severity: "high", summary: "security finding" }],
+    },
+    silence: {
+      findings: [
+        {
+          file: "sample.js",
+          line: "2",
+          severity: "high",
+          summary: "silence finding",
+          disposition: "want",
+          disposition_reason: "author preference",
+        },
+      ],
+    },
+    challenge: {
+      verdicts: [
+        { id: "R-1", verdict: "confirmed" },
+        { id: "R-2", verdict: "confirmed" },
+      ],
+    },
+    integrate: {
+      findings: [
+        {
+          file: "sample.js",
+          line: "1",
+          severity: "high",
+          summary: "security finding",
+          source_ids: ["R-1"],
+        },
+        {
+          file: "sample.js",
+          line: "2",
+          severity: "high",
+          summary: "silence finding",
+          source_ids: ["R-2"],
+        },
+      ],
+    },
+  });
+  const overridden = result.findings.find((f) => (f.source_ids || []).includes("R-2"));
+  assert.ok(overridden, "the R-2 finding (silence, disposition want) rides the returned findings");
+  assert.equal(
+    overridden.disposition,
+    "want",
+    "reviewer が申告した want が、triage と実物の Integrate 呼び出しを経た返り値でも既定の must に落ちずに残る",
+  );
+  assert.equal(
+    record.raw_findings.find((f) => f.id === "R-2").disposition,
+    "want",
+    "同じ上書きが、実物の snapshot.py が書き出した record の raw_findings にも残る",
+  );
+});
+
 // T-001 in the degradation file stops at reading the prompt. This carries the same finding to
 // the real snapshot.py and checks the count in the record on disk does not shrink. An attacker
 // does not know the nonce, so the only forgeable thing is a fixed string carrying none.
