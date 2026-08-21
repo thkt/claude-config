@@ -285,7 +285,7 @@ const makeGateReasonAgent =
     return undefined;
   };
 
-test("T-001 issue が 1 件以上あるだけで NotReady になった run の gate_reason に issue の件数が入る", async () => {
+test("T-001 a run gated NotReady by issues alone carries the issue count in gate_reason", async () => {
   const issues = [
     { file: "a.js", line: 10, severity: "high", summary: "x", source: ["audit"] },
     { file: "b.js", line: 20, severity: "medium", summary: "y", source: ["audit"] },
@@ -316,7 +316,7 @@ test("T-001 issue が 1 件以上あるだけで NotReady になった run の g
   );
 });
 
-test("T-002 build と tests が fail で issue が 0 件の run の gate_reason に issue の件数が入らない", async () => {
+test("T-002 a run gated with zero issues names no issue count in gate_reason", async () => {
   const failBoot = { ...bootOk, build: "fail" };
   const { result } = await runWorkflow(assertJs, {
     args: {},
