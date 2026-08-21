@@ -52,7 +52,7 @@ def _terms() -> list[str]:
     return out
 
 
-def _repo_root(cwd: str) -> Path | None:
+def _repo_root(cwd: str | Path) -> Path | None:
     """The git top level of cwd, or None when cwd is not inside a work tree."""
     try:
         proc = subprocess.run(
@@ -69,7 +69,7 @@ def _repo_root(cwd: str) -> Path | None:
     return Path(proc.stdout.strip()).resolve()
 
 
-def _added_lines(cwd: str) -> list[str] | None:
+def _added_lines(cwd: str | Path) -> list[str] | None:
     """Added lines of the staged diff, with their file headers. None when git cannot answer.
 
     A staged diff that cannot be read is not evidence of a clean commit, so the caller denies
@@ -122,7 +122,7 @@ def main() -> None:
         return
 
     cwd = field(payload, "cwd")
-    cwd = cwd if isinstance(cwd, str) and cwd else os.getcwd()
+    cwd = cwd if isinstance(cwd, str) and cwd else Path.cwd()
     if _repo_root(cwd) != GUARDED_REPO:
         return
 
