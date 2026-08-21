@@ -22,7 +22,9 @@ HOOK = Path(__file__).resolve().parents[1] / "body_proofread.py"
 LINTED_BODY = "この機能はユーザーが設定を変更することができます。この説明は日本語判定の五十文字閾値を超えるための追加の文章です。"
 
 # The second line carries enough commas to trip max-ten, so a heredoc commit draws a finding.
-COMMIT_BODY = "fix(hooks): 処理を行うことが出来ます\n\nこれは、テスト、です、が、読点、が、多すぎ、ます。"
+COMMIT_BODY = (
+    "fix(hooks): 処理を行うことが出来ます\n\nこれは、テスト、です、が、読点、が、多すぎ、ます。"
+)
 
 FINDINGS = "textlint 校正結果"
 CHECKLIST = "構造レビュー"

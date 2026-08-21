@@ -17,8 +17,10 @@ const validates = pair("scripts", "validate-dr.py");
 const indexes = pair("scripts", "update-index.py");
 
 const outputKeys = (src) => {
-  const block = src.slice(src.indexOf("print(json.dumps({"));
-  return [...block.matchAll(/^\s{8}"(\w+)":/gm)].map((m) => m[1]);
+  // Bounded to the dumps call rather than to an indent width, so reformatting the call does not
+  // change what the contract reads as.
+  const block = src.slice(src.indexOf("json.dumps("), src.indexOf("indent=2"));
+  return [...block.matchAll(/"(\w+)":/g)].map((m) => m[1]);
 };
 const statusValues = (src) =>
   (src.match(/^STATUS_VALUES = re\.compile\(r"([^"]+)"\)/m)?.[1] ?? "").split("|");

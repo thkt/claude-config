@@ -62,7 +62,9 @@ class TestTextlintFix(unittest.TestCase):
         path = self.write(f"test-{label}.md", REDUNDANT_MD)
         _ = self.run_hook(tool, path)
         self.assertNotIn(
-            "することができます", path.read_text(encoding="utf-8"), f"the redundant expression survives ({label})"
+            "することができます",
+            path.read_text(encoding="utf-8"),
+            f"the redundant expression survives ({label})",
         )
 
     def test_md_write_fixes_file(self) -> None:

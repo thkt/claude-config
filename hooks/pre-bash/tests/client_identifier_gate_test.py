@@ -68,9 +68,7 @@ class ClientIdentifierGateTest(unittest.TestCase):
         (repo / name).write_text(text, encoding="utf-8")
         subprocess.run(["git", "add", name], cwd=repo, check=True, capture_output=True)
 
-    def run_hook(
-        self, command: str, cwd: Path, list_path: Path | None = None
-    ) -> object:
+    def run_hook(self, command: str, cwd: Path, list_path: Path | None = None) -> object:
         # separators without spaces: a hook that greps the raw payload sees the compact form,
         # so the fixture has to produce it too.
         payload = json.dumps(
@@ -78,9 +76,7 @@ class ClientIdentifierGateTest(unittest.TestCase):
             separators=(",", ":"),
         )
         env = dict(os.environ)
-        env["CLAUDE_CLIENT_NAMES_FILE"] = str(
-            self.list_path if list_path is None else list_path
-        )
+        env["CLAUDE_CLIENT_NAMES_FILE"] = str(self.list_path if list_path is None else list_path)
         proc = subprocess.run(
             [sys.executable, str(HOOK)],
             input=payload,

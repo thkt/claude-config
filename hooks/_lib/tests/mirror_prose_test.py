@@ -152,7 +152,9 @@ class EnglishVerdict(unittest.TestCase):
         self.assertIsNone(mirror_prose.check_english(path))
 
     def test_a_comment_quoting_a_japanese_literal_is_data(self) -> None:
-        path = self._write_pair("skills/x/scripts/m.py", '# The formatter turns "0件" into "0 件".\n')
+        path = self._write_pair(
+            "skills/x/scripts/m.py", '# The formatter turns "0件" into "0 件".\n'
+        )
         self.assertIsNone(mirror_prose.check_english(path))
 
     def test_a_japanese_string_literal_is_not_prose(self) -> None:
