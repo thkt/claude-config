@@ -1,11 +1,11 @@
 ---
-name: xlsx
-description: Read ツールで開けない xlsx / ods / csv を読み、セル結合された業務文書を Markdown へ変換し、セルの取りこぼしが無いことを検証する。
+name: transcribe
+description: Read ツールで開けない表計算ファイル (xlsx, ods, csv) を読み、セル結合された業務文書を Markdown へ変換し、セルの取りこぼしが無いことを検証する。
 when_to_use: .xlsx / .xls / .ods ファイルのパスが渡された, Excel の中身を読む, スプレッドシートの内容を調べる, 設計書を読む, read an Excel file, spreadsheet contents, xlsx
 allowed-tools: Bash(node:*) Read
 ---
 
-# xlsx
+# transcribe
 
 Read ツールは xlsx を開けない。このリポジトリに入れた hucre をライブラリとして使い、シートを読む。
 
