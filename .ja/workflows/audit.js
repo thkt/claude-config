@@ -801,6 +801,11 @@ const [challenged, verified] = await parallel([
 const verdictById = new Map(((challenged && challenged.verdicts) || []).map((v) => [v.id, v]));
 const survivors = [];
 const needsContext = [];
+// info は id だけを持つ。report を読む人間に渡すのは件数とどの finding かまでで、
+// finding の全文ではない。downgraded の finding は survivors に残ったままなので
+// (severity を下げるのは除外ではない)、こちらにも同じ理由で id だけを記録する。
+const disputedIds = [];
+const downgradedIds = [];
 let noVerdict = 0;
 for (const f of rawFindings) {
   const v = verdictById.get(f.id);
@@ -812,7 +817,10 @@ for (const f of rawFindings) {
     survivors.push({ ...f });
     continue;
   }
-  if (v.verdict === "disputed") continue;
+  if (v.verdict === "disputed") {
+    disputedIds.push(f.id);
+    continue;
+  }
   if (v.verdict === "needs_context") {
     needsContext.push({ ...f, why: v.why || "" });
     continue;
@@ -822,11 +830,20 @@ for (const f of rawFindings) {
   // 「reviewer が severity を過大に付けるか」を測れなくなる。survivors は下げ後だけを持ち、
   // Integrate が merge した後は finding 単位で追えない。
   if (severity !== f.severity) f.downgraded_to = severity;
+  if (v.verdict === "downgraded") downgradedIds.push(f.id);
   survivors.push({ ...f, severity });
 }
 log(
   `triage: ${survivors.length} survived / ${needsContext.length} needs_context / no_verdict: ${noVerdict} (of ${rawFindings.length} total)`,
 );
+// needsContext は既に why を持つ (上の分岐で書く)。ask はそれをそのまま使い、raw finding から
+// why を再導出しない。ask セクションと返り値の needs_context が、同じ id に対して
+// 別々の why を語ることがなくなる。
+const ask = needsContext.map(({ id, why }) => ({ id, why }));
+const info = {
+  disputed: { count: disputedIds.length, ids: disputedIds },
+  downgraded: { count: downgradedIds.length, ids: downgradedIds },
+};
 // challenge_ran は「verdicts を返した run」と fail-open した run (verdictById が空になり、
 // 全 finding が no_verdict 経由で confirmed に落ちる) を区別する。verify は自由記述の
 // テキストを返すため、schema の形ではなく中身の有無で判定する。
@@ -904,6 +921,8 @@ return {
   findings: finalFindings,
   survivors,
   needs_context: needsContext,
+  ask,
+  info,
   challenge_ran: challengeRan,
   verify_ran: verifyRan,
   tally,

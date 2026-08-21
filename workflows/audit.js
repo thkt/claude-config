@@ -815,6 +815,11 @@ const [challenged, verified] = await parallel([
 const verdictById = new Map(((challenged && challenged.verdicts) || []).map((v) => [v.id, v]));
 const survivors = [];
 const needsContext = [];
+// info stays id-only: a report reader gets the count and which finding, not the finding's
+// full text. downgraded's id is recorded here for the same reason, even though the finding
+// itself stays in survivors (a lowered severity is not a removal).
+const disputedIds = [];
+const downgradedIds = [];
 let noVerdict = 0;
 for (const f of rawFindings) {
   const v = verdictById.get(f.id);
@@ -826,7 +831,10 @@ for (const f of rawFindings) {
     survivors.push({ ...f });
     continue;
   }
-  if (v.verdict === "disputed") continue;
+  if (v.verdict === "disputed") {
+    disputedIds.push(f.id);
+    continue;
+  }
   if (v.verdict === "needs_context") {
     needsContext.push({ ...f, why: v.why || "" });
     continue;
@@ -837,11 +845,20 @@ for (const f of rawFindings) {
   // survivors carry only the lowered value, and after Integrate merges there is no
   // per-finding severity left to read.
   if (severity !== f.severity) f.downgraded_to = severity;
+  if (v.verdict === "downgraded") downgradedIds.push(f.id);
   survivors.push({ ...f, severity });
 }
 log(
   `triage: ${survivors.length} survived / ${needsContext.length} needs_context / no_verdict: ${noVerdict} (of ${rawFindings.length} total)`,
 );
+// needsContext already carries why (the ternary above); ask reuses it rather than
+// re-deriving why from the raw finding, so the report's ask section and the return value's
+// needs_context can never state a different why for the same id.
+const ask = needsContext.map(({ id, why }) => ({ id, why }));
+const info = {
+  disputed: { count: disputedIds.length, ids: disputedIds },
+  downgraded: { count: downgradedIds.length, ids: downgradedIds },
+};
 // challenge_ran separates a run that returned verdicts from the fail-open path (an empty
 // verdictById drops every finding to confirmed via no_verdict). verify returns free-form
 // text, so it is judged by whether content came back rather than by a schema shape.
@@ -920,6 +937,8 @@ return {
   findings: finalFindings,
   survivors,
   needs_context: needsContext,
+  ask,
+  info,
   challenge_ran: challengeRan,
   verify_ran: verifyRan,
   tally,

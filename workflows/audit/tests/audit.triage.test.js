@@ -159,3 +159,44 @@ test("T-004 leaves the reviewer name out of the input handed to the critic", asy
   assert.match(call.prompt, /"id":"R-1"/, "the critic input carries the rawFindings id (R-N)");
   assert.doesNotMatch(call.prompt, /"reviewer"/, "the critic input carries no reviewer name");
 });
+
+// needsContext already carries why (line 831's `{ ...f, why: v.why || "" }`); the ask section
+// reuses that value as is rather than re-deriving why from the raw finding.
+test("T-009 needs_context の finding が ask セクションに why 付きで返る", async () => {
+  const { result } = await runChallenge({
+    verdicts: [
+      { id: "R-1", verdict: "confirmed" },
+      {
+        id: "R-2",
+        verdict: "needs_context",
+        why: "severity depends on whether this endpoint is internal-only",
+      },
+    ],
+  });
+  assert.deepEqual(
+    result.ask.map((a) => ({ id: a.id, why: a.why })),
+    [{ id: "R-2", why: "severity depends on whether this endpoint is internal-only" }],
+    "the ask section carries the needs_context finding's id and why",
+  );
+});
+
+// The triage loop already drops a disputed id from survivors (T-001); info records that same
+// id and a count without the finding's summary/file/line, so a disputed finding's full text
+// never reaches the report.
+test("T-010 disputed の finding は全文を返さず件数と id だけが返る", async () => {
+  const { result } = await runChallenge({
+    verdicts: [
+      { id: "R-1", verdict: "disputed" },
+      { id: "R-2", verdict: "confirmed" },
+    ],
+  });
+  assert.deepEqual(
+    result.info.disputed,
+    { count: 1, ids: ["R-1"] },
+    "info.disputed carries only the count and id of the disputed finding",
+  );
+  assert.ok(
+    !JSON.stringify(result.info).includes("security finding"),
+    "the disputed finding's summary text does not leak into info",
+  );
+});
