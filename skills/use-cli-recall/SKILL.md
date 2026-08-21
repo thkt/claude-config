@@ -8,45 +8,41 @@ user-invocable: false
 
 # use-cli-recall
 
-## Triggers
+## When to use
 
-When one applies, call without deliberation.
+When one applies, call without deliberation. recall answers past decisions and `ugrep` / `bfs` answer the current code state, so on a trigger carrying a code-search column, run both in parallel.
 
-| Trigger              | Signal                                     |
-| -------------------- | ------------------------------------------ |
-| Temporal reference   | 「前に」「あの時」 past events / decisions |
-| Structural echo      | Current problem mirrors a past situation   |
-| Repetition           | 「また同じ」 recurring mistake             |
-| Vague back-reference | 「あの件」 past work without specifics     |
-| Module first contact | First edit to a file/module this session   |
+| Trigger              | Signal                                     | Code search to run alongside |
+| -------------------- | ------------------------------------------ | ---------------------------- |
+| Temporal reference   | 「前に」「あの時」 past events / decisions | -                            |
+| Structural echo      | Current problem mirrors a past situation   | The current similar code     |
+| Repetition           | 「また同じ」 recurring mistake             | -                            |
+| Vague back-reference | 「あの件」 past work without specifics     | -                            |
+| Module first contact | First edit to a file/module this session   | Module name, key identifiers |
 
 ## Commands
+
+On module first contact, reach for `--file`. It narrows to the sessions that touched that file, which lands closer than a full-text search on the module name.
 
 | Purpose           | Command                                                     |
 | ----------------- | ----------------------------------------------------------- |
 | Search            | `recall search "query"`. Shorthand: `recall "query"`        |
 | Last N days       | `recall search "query" --days N`                            |
 | Project filter    | `recall search "query" --project <path>`                    |
+| File filter       | `recall search "query" --file <path>`                       |
 | Source filter     | `recall search "query" --source claude` or `--source codex` |
 | Limit results     | `recall search "query" --limit N`. Default 10, max 100      |
 | Show session      | `recall show <session-id>`                                  |
 | Status            | `recall status`                                             |
 | Incremental index | `recall index`                                              |
-| Full rebuild      | `recall index --force`                                      |
+| Full rebuild      | `recall rebuild`                                            |
 
-## Query composition
+## Pitfalls
 
 Write bilingual queries upfront (e.g. `recall "認証 auth"`). FTS5 trigram tokenization cannot match JA terms of 2 chars or fewer; 認証 and 依存 hit 0. Embeddings do not bridge EN⇄JA (thkt/recall#51). Including both languages covers each search path.
 
-## Weak-result retry
-
 recall does not expand queries (caller-is-LLM, thkt/recall#25). Hybrid search returns nearest neighbors, so a poor query yields low-relevance results rather than 0 hits. When results are empty or low-relevance, rewrite the query yourself and retry once: synonyms, EN⇄JA variants, related concept terms.
 
-## Pairing with code search
+## The help output is authoritative
 
-use-cli-recall answers past decisions; `ugrep` / `bfs` answer the current code state. Run both on these triggers.
-
-| Trigger              | recall query                  | code search                  |
-| -------------------- | ----------------------------- | ---------------------------- |
-| Module first contact | module name, design rationale | module name, key identifiers |
-| Structural echo      | past similar problem          | current similar code         |
+Options, filters and exit codes live in `recall --help` and `recall <subcommand> --help`. Where help and memory differ, help is right.
