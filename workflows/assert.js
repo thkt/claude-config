@@ -294,6 +294,9 @@ log(
 );
 
 let gate = "NotReady";
+// Conditions that held at the gate branch below, so a NotReady reader can tell the stop was
+// the issue count rather than severity or disposition (neither of which ever gates).
+let gateReason = [];
 let issues = [];
 let testsCol = "skipped";
 let adversarialSummary = {
@@ -584,12 +587,24 @@ try {
   // issues means NotReady. Severity remains a fix-priority hint and never affects the
   // gate. caveat presumes zero issues and applies when dynamic evidence is missing for env
   // reasons, or when the nested audit failed open and left its findings unverified.
+  // gateReason lists, at this same branch, exactly which conditions held (never severity or
+  // disposition, since neither ever gates), so a NotReady reader can tell the stop was e.g.
+  // the issue count rather than guessing from the issues themselves.
   if (buildCol === "fail" || testsCol === "fail" || issues.length > 0 || challengeStalled) {
     gate = "NotReady";
+    if (buildCol === "fail") gateReason.push("build fail");
+    if (testsCol === "fail") gateReason.push("tests fail");
+    if (issues.length > 0) gateReason.push(`${issues.length} issue(s)`);
+    if (challengeStalled) gateReason.push("challenge stalled");
   } else if (!envFail && !auditDegraded && (testsCol === "pass" || testsCol === "no-runner")) {
     gate = "Ready";
+    gateReason.push("build pass", `tests ${testsCol}`, "0 issues");
   } else {
     gate = "Ready (caveat)";
+    if (envFail) gateReason.push("env fail (dynamic verification skipped)");
+    if (auditDegraded) gateReason.push("audit challenge failed open");
+    if (testsCol !== "pass" && testsCol !== "no-runner" && !envFail)
+      gateReason.push(`tests ${testsCol}`);
   }
 } finally {
   // ---- Cleanup: tear down the worktree (always runs regardless of outcome) ----
@@ -611,6 +626,7 @@ log(`Gate: ${gate} (build=${buildCol}, tests=${testsCol}, issues=${issues.length
 
 return {
   gate,
+  gate_reason: gateReason,
   mode: boot.mode,
   build: buildCol,
   tests: testsCol,

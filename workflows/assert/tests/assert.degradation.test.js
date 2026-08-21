@@ -265,3 +265,85 @@ test("T-008 assert running a nested audit with no challenge stub receives challe
     "a run that really nested audit and saw its challenge fail open (challenge_ran=false) lands on gate Ready (caveat)",
   );
 });
+
+// U-001: a human reading a NotReady result can tell the stop was the issue count, not severity
+// or disposition. gate_reason is assembled at the same site as the gate branch (the script,
+// not an agent), listing the conditions that held. The gate branch itself is unchanged; only
+// gate_reason is new on the return value.
+//
+// T-002 wants a run where both build and tests are non-passing. The gate script's own dynamicOk
+// gate (buildCol === "fail" => dynamicOk false => the test-exec agent is never invoked, so
+// testsCol can only land on "skipped") makes a literal simultaneous build:"fail" /
+// tests:"fail" unreachable through a real run: a failed build always skips the test stage
+// rather than failing it. boot.build: "fail" is the closest reachable state (buildCol "fail",
+// testsCol forced to "skipped"), and it already NotReady's the gate on build alone, which is
+// what this scenario needs: a non-issue cause with zero issues.
+const makeSynthAgent = (issues) => (prompt, opts) => {
+  const label = opts && opts.label;
+  if (label === "bootstrap") return bootOk;
+  if (label === "test-exec") return { outcome: "pass", passed: 1, failed: 0 };
+  if (label === "adversarial") return { ran: true, tests: [] };
+  if (label === "codex-review") return { ran: true, findings: [] };
+  if (label === "synthesize") return { issues, root_causes: [], report: "ok" };
+  if (label === "cleanup") return {};
+  return undefined;
+};
+
+test("T-001 issue が 1 件以上あるだけで NotReady になった run の gate_reason に issue の件数が入る", async () => {
+  const issues = [
+    { file: "a.js", line: 10, severity: "high", summary: "x", source: ["audit"] },
+    { file: "b.js", line: 20, severity: "medium", summary: "y", source: ["audit"] },
+  ];
+  const { result } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: makeSynthAgent(issues) },
+  });
+  assert.equal(
+    result.gate,
+    "NotReady",
+    "build passes and tests pass, so issues alone gate NotReady",
+  );
+  assert.ok(
+    result.gate_reason !== undefined,
+    "gate_reason is present on the return value alongside gate",
+  );
+  const reasonText = JSON.stringify(result.gate_reason);
+  assert.match(
+    reasonText,
+    /issue/i,
+    "gate_reason names the issue condition as one of the conditions that held",
+  );
+  assert.match(
+    reasonText,
+    new RegExp(`\\b${issues.length}\\b`),
+    "gate_reason carries the issue count (2), not just the word issue",
+  );
+});
+
+test("T-002 build と tests が fail で issue が 0 件の run の gate_reason に issue の件数が入らない", async () => {
+  const failBoot = { ...bootOk, build: "fail" };
+  const agentStub = (prompt, opts) => {
+    const label = opts && opts.label;
+    if (label === "bootstrap") return failBoot;
+    if (label === "codex-review") return { ran: true, findings: [] };
+    if (label === "synthesize") return { issues: [], root_causes: [], report: "ok" };
+    if (label === "cleanup") return {};
+    // test-exec / adversarial are never invoked once build fails (dynamicOk gates them off);
+    // no stub branch needed for those labels.
+    return undefined;
+  };
+  const { result } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: agentStub },
+  });
+  assert.equal(result.gate, "NotReady", "a failed build gates NotReady with zero issues");
+  assert.ok(
+    result.gate_reason !== undefined,
+    "gate_reason is present on the return value alongside gate",
+  );
+  const reasonText = JSON.stringify(result.gate_reason);
+  assert.ok(
+    !/issue/i.test(reasonText),
+    "with zero issues the issue condition never held, so gate_reason names build/tests only",
+  );
+});

@@ -292,6 +292,9 @@ log(
 );
 
 let gate = "NotReady";
+// 下の gate 分岐で成立した条件。NotReady を読んだ人間が issue の件数で止まったのか
+// severity や disposition なのかを判別できるようにする (後者は gate に一切影響しない)。
+let gateReason = [];
 let issues = [];
 let testsCol = "skipped";
 let adversarialSummary = {
@@ -572,12 +575,24 @@ try {
   // NotReady。severity は修正優先度のヒントに留まり、gate には影響しない。caveat は issues 0 を
   // 前提に、動的 evidence が env 起因などで欠けたとき、または入れ子の audit が fail-open して
   // findings が未検証のときに付く。
+  // gateReason はこの同じ分岐で成立した条件を並べる (severity や disposition は gate に
+  // 影響しないため含めない)。NotReady を読んだ人間が、例えば issue の件数で止まったことを
+  // 判別できるようにする。
   if (buildCol === "fail" || testsCol === "fail" || issues.length > 0 || challengeStalled) {
     gate = "NotReady";
+    if (buildCol === "fail") gateReason.push("build fail");
+    if (testsCol === "fail") gateReason.push("tests fail");
+    if (issues.length > 0) gateReason.push(`${issues.length} issue(s)`);
+    if (challengeStalled) gateReason.push("challenge stalled");
   } else if (!envFail && !auditDegraded && (testsCol === "pass" || testsCol === "no-runner")) {
     gate = "Ready";
+    gateReason.push("build pass", `tests ${testsCol}`, "0 issues");
   } else {
     gate = "Ready (caveat)";
+    if (envFail) gateReason.push("env fail (dynamic verification skipped)");
+    if (auditDegraded) gateReason.push("audit challenge failed open");
+    if (testsCol !== "pass" && testsCol !== "no-runner" && !envFail)
+      gateReason.push(`tests ${testsCol}`);
   }
 } finally {
   // ---- Cleanup: worktree 撤去 (結果に関わらず必ず走る) ----
@@ -599,6 +614,7 @@ log(`Gate: ${gate} (build=${buildCol}, tests=${testsCol}, issues=${issues.length
 
 return {
   gate,
+  gate_reason: gateReason,
   mode: boot.mode,
   build: buildCol,
   tests: testsCol,
