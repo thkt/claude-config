@@ -25,9 +25,9 @@ commit なし、Git リポジトリでない、gh 認証失敗のいずれかを
 
 ## Phase 2: 生成
 
-1. ${CLAUDE_SKILL_DIR}/references/pr-writing.md に従って骨格を選び、本文を書く。Design Decisions は § Design Decisions の検出 に従う
-2. UI 変更があってリポジトリ側の骨格を採ったときは、§ Pageshot 統合 が要求する 2 項目を補う。同梱の骨格は最初から両方を持つので何もしない
-3. ${CLAUDE_SKILL_DIR}/references/pr-writing.md の § タイトル に従ってタイトルを付ける
+1. ${CLAUDE_SKILL_DIR}/references/pr-writing.md に従って骨格を選び、本文を書く。Design Decisions は § Design Decisions の検出に従う
+2. UI 変更があってリポジトリ側の骨格を採ったときは、§ Pageshot 統合が要求する 2 項目を補う。同梱の骨格は最初から両方を持つので何もしない
+3. ${CLAUDE_SKILL_DIR}/references/pr-writing.md の § タイトルに従ってタイトルを付ける
 4. ${CLAUDE_SKILL_DIR}/references/prose-review.md の基準で本文をインライン精査する
 
 ## Phase 3: 作成
@@ -39,7 +39,7 @@ commit なし、Git リポジトリでない、gh 認証失敗のいずれかを
 
 ## 分析ソース
 
-`<base>` は § Base ブランチ検出 が決めた値。
+`<base>` は § Base ブランチ検出が決めた値。
 
 | カテゴリ | ソース                                                                   |
 | -------- | ------------------------------------------------------------------------ |
