@@ -78,7 +78,7 @@ memory は次の 3 つをすべて満たすとき付与し、project スコー�
 
 ## 指摘の重要度
 
-reviewer- 系は `~/.claude/agents/_lib/finding-schema.md` の Severity (critical/high/medium/low) に従う。独自のゲート判定を返すエージェント (critic- 系の confirmed/disputed など) は自分の方式に従う。
+reviewer- 系は `~/.claude/agents/_lib/finding-schema.md` の Severity (critical/high/medium/low) に従う。何を先に直すかは同ファイルの Disposition が持ち、値の一覧はそこにある。独自のゲート判定を返すエージェント (critic- 系の confirmed/disputed など) は自分の方式に従う。
 
 ## 参照記法
 

@@ -78,7 +78,7 @@ Grant memory when all three below hold, and remove it when the project scope sta
 
 ## Finding severity
 
-reviewer- agents follow the Severity (critical / high / medium / low) in `~/.claude/agents/_lib/finding-schema.md`. An agent returning its own gate verdict (critic- agents with confirmed / disputed) follows its own scheme.
+reviewer- agents follow the Severity (critical / high / medium / low) in `~/.claude/agents/_lib/finding-schema.md`. What to fix first is the Disposition in the same file, which is where the values are listed. An agent returning its own gate verdict (critic- agents with confirmed / disputed) follows its own scheme.
 
 ## Reference notation
 

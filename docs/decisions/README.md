@@ -73,7 +73,7 @@ This directory contains important decisions about the project.
 | [0065](0065-scout-json-output-schema-and-sysexits-exit-code-policy.md) | scout JSON output schema and sysexits exit code policy | accepted | 2026-05-07 |
 | [0066](0066-cli-exit-code-policy-grouped-by-error-topology.md) | CLI exit code policy grouped by error topology | accepted | 2026-05-13 |
 | [0067](0067-define-boundary-between-rules-adr-and-claudemd.md) | Define boundary between RULES, ADR, and CLAUDE.md | accepted | 2026-05-13 |
-| [0068](0068-stop-hook-knowledge-reflection-subagent-and-mechanical.md) | Adopt Stop hook Knowledge Reflection with subagent extraction and mechanical activity log | accepted | 2026-05-14 |
+| [0068](0068-stop-hook-knowledge-reflection-subagent-and-mechanical.md) | Adopt Stop hook Knowledge Reflection with subagent extraction and mechanical activity log | deprecated | 2026-05-14 |
 | [0069](0069-adopt-yomu-indirect-prompt-injection-defense.md) | Adopt Indirect Prompt Injection Defense Design for yomu | accepted | 2026-05-19 |
 | [0070](0070-rename-audit-undocumented-skill-to-audit-adr-gaps.md) | ADR-0070: Rename audit-undocumented skill to audit-adr-gaps | superseded by DR-0075 | 2026-06-13 |
 | [0071](0071-think-assert-no-source-enforcement.md) | ADR-0071: think と assert の no-source 状態の統一原則と enforcement 非対称 | accepted | 2026-06-01 |
@@ -102,13 +102,14 @@ This directory contains important decisions about the project.
 | [0094](0094-require-root-cause-for-bug-plans.md) | DR-0094: Bug の plan に root_cause を要求する判定を title のプレフィックスで行う | accepted | 2026-07-31 |
 | [0095](0095-move-audit-membership-rule-from-agent-to-script.md) | DR-0095: audit の membership 判定を enhancer-integration の Phase 2 から script の triage に移す | accepted | 2026-08-02 |
 | [0096](0096-fence-untrusted-findings-in-four-audit-stages.md) | DR-0096: audit の prompt data 境界を Challenge/Verify/Integrate/Snapshot の 4 段に絞る | accepted | 2026-08-03 |
-| [0097](0097-ask-instead-of-extract-when-returning-corrections-to-rules.md) | Ask instead of extract when returning corrections to rules | accepted | 2026-08-09 |
+| [0097](0097-ask-instead-of-extract-when-returning-corrections-to-rules.md) | Ask instead of extract when returning corrections to rules | deprecated | 2026-08-09 |
 | [0098](0098-adopt-usage-census-over-time-based-prediction-ledger.md) | ADR-0098: 機構の退役判断に時間ベースの予測台帳ではなく使用センサスを採る | accepted | 2026-08-13 |
 | [0099](0099-retire-fix-finding-id-route-for-direct-finding-input.md) | Retire fix's Finding ID route in favor of Direct Finding Input | accepted | 2026-08-18 |
 | [0100](0100-replace-5-whys-with-hypothesis-elimination-in-rca.md) | Replace 5 Whys with hypothesis elimination in root cause analysis | accepted | 2026-08-18 |
 | [0101](0101-extract-shared-embedding-crate-ruri-core.md) | embedding + storage ユーティリティの共有クレート化 (rurico) | proposed | 2026-03-24 |
 | [0102](0102-resolve-uncertainty-at-issue-creation-instead-of-marking-it.md) | Resolve uncertainty at issue creation instead of marking it | accepted | 2026-08-19 |
 | [0103](0103-carry-reference-rules-in-the-plan-instead-of-a-flat-index.md) | Carry reference rules in the plan instead of a flat index | accepted | 2026-08-20 |
+| [0104](0104-keep-disposition-out-of-audit-gates.md) | Keep disposition out of audit gates | accepted | 2026-08-21 |
 
 ## By Status
 
@@ -175,7 +176,6 @@ This directory contains important decisions about the project.
 - **0065**: scout JSON output schema and sysexits exit code policy
 - **0066**: CLI exit code policy grouped by error topology
 - **0067**: Define boundary between RULES, ADR, and CLAUDE.md
-- **0068**: Adopt Stop hook Knowledge Reflection with subagent extraction and mechanical activity log
 - **0069**: Adopt Indirect Prompt Injection Defense Design for yomu
 - **0071**: ADR-0071: think と assert の no-source 状態の統一原則と enforcement 非対称
 - **0072**: ADR-0072: yomu 利用停止とコード検索の ugrep/bfs 統一
@@ -200,18 +200,20 @@ This directory contains important decisions about the project.
 - **0094**: DR-0094: Bug の plan に root_cause を要求する判定を title のプレフィックスで行う
 - **0095**: DR-0095: audit の membership 判定を enhancer-integration の Phase 2 から script の triage に移す
 - **0096**: DR-0096: audit の prompt data 境界を Challenge/Verify/Integrate/Snapshot の 4 段に絞る
-- **0097**: Ask instead of extract when returning corrections to rules
 - **0098**: ADR-0098: 機構の退役判断に時間ベースの予測台帳ではなく使用センサスを採る
 - **0099**: Retire fix's Finding ID route in favor of Direct Finding Input
 - **0100**: Replace 5 Whys with hypothesis elimination in root cause analysis
 - **0102**: Resolve uncertainty at issue creation instead of marking it
 - **0103**: Carry reference rules in the plan instead of a flat index
+- **0104**: Keep disposition out of audit gates
 
 ### Deprecated
 
 - **0034**: ADR-0034: LaunchAgent によるバックログライフサイクル自動化
 - **0036**: LLMによるクロスセッション知識合成wikiプラグインの構築
 - **0057**: Make evaluator-test a Pure Measurement Agent
+- **0068**: Adopt Stop hook Knowledge Reflection with subagent extraction and mechanical activity log
+- **0097**: Ask instead of extract when returning corrections to rules
 
 ### Superseded
 
@@ -250,5 +252,5 @@ This project uses [MADR (Markdown Any Decision Records)](https://adr.github.io/m
 
 ---
 
-*Last updated: 2026-08-20*
+*Last updated: 2026-08-21*
 *Auto-generated by: update-index.py*

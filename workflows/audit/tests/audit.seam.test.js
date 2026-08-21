@@ -128,6 +128,42 @@ test("T-019 carrying a test-file-only diff under focus=security leaves the zero-
   );
 });
 
+// The default is applied twice: on rawFindings, and again on what Integrate returns. The triage
+// cases stop before Integrate, so only a full run shows whether the second one fired.
+test("T-022 a run where no reviewer declares a disposition returns every finding as must", async () => {
+  const { result, record } = await run([{ path: "sample.js", churn: 0 }], {
+    security: {
+      findings: [{ file: "sample.js", line: "1", severity: "high", summary: "security finding" }],
+    },
+    silence: {
+      findings: [{ file: "sample.js", line: "1", severity: "high", summary: "silence finding" }],
+    },
+    challenge: {
+      verdicts: [
+        { id: "R-1", verdict: "confirmed" },
+        { id: "R-2", verdict: "confirmed" },
+      ],
+    },
+    integrate: INTEGRATED,
+  });
+  assert.ok(result.findings.length > 0, "the run returns findings to apply the default to");
+  assert.deepEqual(
+    [...new Set(result.findings.map((f) => f.disposition))],
+    ["must"],
+    "every returned finding carries must, including the ones Integrate rebuilt",
+  );
+  assert.deepEqual(
+    [...new Set(result.survivors.map((s) => s.disposition))],
+    ["must"],
+    "the survivors carry it on the same axis as the returned findings",
+  );
+  assert.deepEqual(
+    [...new Set(record.raw_findings.map((f) => f.disposition))],
+    ["must"],
+    "the record the real snapshot.py wrote carries it too",
+  );
+});
+
 // T-001 in the degradation file stops at reading the prompt. This carries the same finding to
 // the real snapshot.py and checks the count in the record on disk does not shrink. An attacker
 // does not know the nonce, so the only forgeable thing is a fixed string carrying none.
