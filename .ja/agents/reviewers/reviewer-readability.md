@@ -49,13 +49,14 @@ background: true
 
 ~/.claude/agents/_lib/finding-schema.md に従う。コードが見つからないときは "No code to review" を報告する。共通ガード (glob 空、tool エラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。
 
-| フィールド   | 値                                                                                                     |
-| ------------ | ------------------------------------------------------------------------------------------------------ |
-| Prefix       | CQ                                                                                                     |
-| カテゴリ     | structure / readability                                                                                |
-| Severity     | high / medium / low                                                                                    |
-| Verification | pattern_search または hotpath_analysis。このパターンは広範に存在するかクリティカルパスにあるか         |
-| Extra        | subcategory (waste / naming / complexity / comments / ai_smell、任意、category/subcategory として付加) |
+| フィールド   | 値                                                                                                                                             |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Prefix       | CQ                                                                                                                                             |
+| カテゴリ     | structure / readability                                                                                                                        |
+| Severity     | high / medium / low                                                                                                                            |
+| Disposition  | reviewer によるデフォルトの上書き。上書き時は disposition_reason を伴う。詳細は `~/.claude/agents/_lib/finding-schema.md` § Disposition を参照 |
+| Verification | pattern_search または hotpath_analysis。このパターンは広範に存在するかクリティカルパスにあるか                                                 |
+| Extra        | subcategory (waste / naming / complexity / comments / ai_smell、任意、category/subcategory として付加)                                         |
 
 ```markdown
 ## Summary
