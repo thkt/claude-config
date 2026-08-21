@@ -10,5 +10,5 @@ Verify from the same repository root as the build workflow's Revalidate; fix or 
 4. A `reference_module: null` with no stated reason in the prose fails
 5. No overflow against the line-count rules in templates/plan.md
 6. Count each non-seam unit's `files` entries and T-NNN entries; every count stays within the unit caps. If one exceeds them, split it and re-verify
-7. Run test_command once from the repository root. On a failure whose cause predates the plan (missing script, repo-wide debt), rescope the command per `### test_command` and state the scoping reason in the plan prose
+7. Run test_command once from the repository root. On a failure whose cause predates the plan, rescope the command per `### test_command`. State the scoping reason in the plan prose. A missing script or repo-wide debt is such a cause
 8. No T-NNN entry covers a criterion test_command cannot execute. Move any such entry to `### Manual verification`

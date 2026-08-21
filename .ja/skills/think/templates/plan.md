@@ -4,7 +4,7 @@
 
 ## Template
 
-`{...}` は生成時に内容へ置き換える。下書きは次の 2 節だけで構成し、見出しと箇条書きの形を崩さない。build workflow は Plan 節を LLM 抽出で build.js の EXTRACT_SCHEMA へ写し、U-NNN/T-NNN id の決定論クロスチェックで欠落と捏造を止める。骨格を崩すと、この抽出も崩れる。機械用の隠し block は置かない。
+`{...}` は生成時に内容へ置き換える。下書きは次の 2 節だけで構成し、見出しと箇条書きの形を崩さない。build workflow は Plan 節を LLM 抽出で build.js の EXTRACT_SCHEMA へ写す。欠落と捏造は U-NNN/T-NNN id の決定論クロスチェックが止める。骨格を崩すと、この抽出も崩れる。機械用の隠し block は置かない。
 
 ```markdown
 ## Plan
@@ -21,11 +21,11 @@ reference_module: {kind + reason を object で (kind: module/no-module/new-shap
 - path: {複製元を一意に指す path 1 つ (`src/foo/`)。下の files はその配下に並ぶ}
 - instances: {この形を既に共有する既存機能の数。2 以上なら「N 例目」と書く}
 - files: {複製する各ファイルのパスのみ (`src/foo/list.tsx`, `src/foo/detail.tsx`)。役割は conventions へ書く}
-- conventions: {後続 unit が維持する共有慣例 (合成する共有コンポーネント、フォーマット処理の置き場所、状態の渡し方)}
+- conventions: {後続 unit が維持する共有慣例 (合成する共有コンポーネント、整形を書く場所、状態の渡し方)}
 
 ### 決まりごと
 
-{unit を跨いで効く決まりごとを、出典と逐語の引用で並べる。無ければ小節ごと省略する}
+{複数の unit に掛かる決まりごとを、出典と逐語の引用で並べる。無ければ小節ごと省略する}
 
 - `docs/wiki/<ページ>.md`: {定型手順または内容の行を逐語で}
 
@@ -58,9 +58,9 @@ reference_module: {kind + reason を object で (kind: module/no-module/new-shap
 
 ## ガイドライン
 
-unit は実装順に並べる。依存が実装順を決めない unit 同士は、データモデル、型 interface、UX flow など変わりやすい判断を含むものを先に、機械的な変更だけのものを後に置く。レビューの注意が変わりやすい判断へ先に向き、判断が覆ったときの手戻りが小さくなる。各フィールドの上限は骨格に示した行数で、超過は文章の追加でなく分割で解消する。unit を割るか、backlog へ切り出す。検証可能な振る舞いが無い unit (docs/設定) は「受け入れテスト。」の段落を丸ごと省略する。id の採番、seam unit、テストを省いた unit を build がどう扱うかは、SKILL.md Phase 3 が定める。受け入れテストの bullet は T-NNN のみを使い、実機確認の bullet と混ざらないようにする。build.js はそれぞれを別の見出しから抽出する。
+unit は実装順に並べる。依存が実装順を決めない unit 同士は、変わりやすい判断を含むものを先に置く。データモデル、型 interface、UX flow がそれに当たる。機械的な変更だけのものは後に置く。レビューの注意が変わりやすい判断へ先に向き、判断が覆ったときの手戻りが小さくなる。各フィールドの上限は骨格に示した行数で、超過は文章の追加でなく分割で解消する。unit を割るか、backlog へ切り出す。検証可能な振る舞いが無い unit (docs/設定) は「受け入れテスト。」の段落を丸ごと省略する。id の採番、seam unit、テストを省いた unit を build がどう扱うかは、SKILL.md Phase 3 が定める。受け入れテストの bullet は T-NNN のみを使い、実機確認の bullet と混ざらないようにする。build.js はそれぞれを別の見出しから抽出する。
 
-行数の上限は物理行の数を指し、1 文に収める指定ではない。抽出は見出しと id の照合だけで文境界を見ないので、Outcome と goal は節が 3 つ以上になったら行を増やさず 2 文に割る。1 文へ詰めると連体修飾が主語の前に積み上がり、述語に着くまで何の話か読めない。たとえば「fix stage が自己申告した fixed が post-fix diff 再判定で resolved/reopened に分類され、reopened が workflow 結果に現れる」は 3 節を 1 文に詰めている。これを「fix stage が fixed と自己申告した項目は、post-fix diff 再判定で resolved か reopened に分類される。reopened は workflow 結果に現れる」と割る。T-NNN はテスト名として逐語使用されるので 1 文のままにする。
+行数の上限は物理行の数を指し、1 文に収める指定ではない。抽出は見出しと id の照合だけで、文境界を見ない。Outcome と goal は節が 3 つ以上になったら、行を増やさず 2 文に割る。1 文へ詰めると連体修飾が主語の前に積み上がり、述語に着くまで何の話か読めない。たとえば「fix stage が自己申告した fixed が post-fix diff 再判定で resolved/reopened に分類され、reopened が workflow 結果に現れる」は 3 節を 1 文に詰めている。これを「fix stage が fixed と自己申告した項目は、post-fix diff 再判定で resolved か reopened に分類される。reopened は workflow 結果に現れる」と割る。T-NNN はテスト名として逐語使用されるので 1 文のままにする。
 
 | フィールド | OK                                                     | NG                                   |
 | ---------- | ------------------------------------------------------ | ------------------------------------ |
