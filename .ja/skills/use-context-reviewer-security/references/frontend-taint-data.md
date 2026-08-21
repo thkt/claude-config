@@ -25,7 +25,7 @@ window.addEventListener("message", (e) => {
 
 ### 2. URL パラメータからリダイレクトへのフロー
 
-`URLSearchParams`, `location.search`, `location.hash`, ルートパラメータから `location.href`, `location.replace()`, `location.assign()`, `window.open()` へ流れる。
+`URLSearchParams`/`location.search`/`location.hash`/ルートパラメータから、`location.href`/`location.replace()`/`location.assign()`/`window.open()` へ流れる。
 
 | チェック       | 問い                                                             |
 | -------------- | ---------------------------------------------------------------- |

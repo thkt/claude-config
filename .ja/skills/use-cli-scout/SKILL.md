@@ -12,7 +12,7 @@ Web 上の情報が要るときは scout を使う。ページの本文がその
 
 ## URL を渡されたら
 
-入力に `http://` または `https://` の URL があれば、下表のコマンドで取得してから答える。迷ったら取得する。`repo-overview` と `repo-read` は完全な URL も `owner/repo` も受け付ける。Slack permalink は `fetch` が判別して Slack Web API へ回す (`SLACK_TOKEN` が必要)。
+入力に `http://` または `https://` の URL があれば、下表のコマンドで取得してから答える。迷ったら取得する。`repo-overview` と `repo-read` は完全な URL と `owner/repo` のどちらでも受け付ける。Slack permalink は `fetch` が判別して Slack Web API へ回す (`SLACK_TOKEN` が必要)。
 
 | URL の形                                      | コマンド                              |
 | --------------------------------------------- | ------------------------------------- |

@@ -4,7 +4,8 @@
 
 2026-08-17 時点の実測。過去 30 日に更新されたセッションログ 6018 件から、`<command-name>` の出現を集計した。
 
-Top Skills & Commands:
+```text
+Top Skills & Commands
 /clear ████████████████████ 111
 /build █████░░░░░░░░░░░░░░░ 28
 /qualify ████░░░░░░░░░░░░░░░░ 23
@@ -18,6 +19,7 @@ Top Skills & Commands:
 /audit █░░░░░░░░░░░░░░░░░░░ 6
 /assert █░░░░░░░░░░░░░░░░░░░ 6
 /adrift █░░░░░░░░░░░░░░░░░░░ 6
+```
 
 MCP Servers: 同じ期間の呼び出しは 0 件。
 

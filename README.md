@@ -130,10 +130,10 @@ srt --version
 
 #### What it does
 
-- ✅ Restricts file system access to allowed directories
-- ✅ Controls network access via proxy
-- ✅ Auto-executes safe commands in sandbox
-- ✅ Requests approval only when sandbox restrictions are hit
+- Restricts file system access to allowed directories
+- Controls network access via proxy
+- Auto-executes safe commands in sandbox
+- Requests approval only when sandbox restrictions are hit
 
 #### Configuration (optional)
 

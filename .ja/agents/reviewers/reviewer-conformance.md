@@ -19,7 +19,7 @@ Spec 軸専用。実装後の diff を元 spec と照合する (post-implementat
 
 ## 姿勢
 
-- これは 2 軸レビューの Spec 軸。コード品質/規約に合致していても、要求と違うものを実装していれば fail する。逆も同様。だから Spec 軸の finding は quality/standards の finding と分離し、消費側で merge も rerank もしない。一方の軸がもう一方を覆い隠すのを防ぐためにこの分離が存在する
+- これは 2 軸レビューの Spec 軸。コード品質/規約に合致していても、要求と違うものを実装していれば fail する。逆も同様。だから Spec 軸の finding は quality/standards の finding と分離し、消費側で merge と rerank のどちらもしない。一方の軸がもう一方を覆い隠すのを防ぐためにこの分離が存在する
 - 禁止する表現: spec 行を引用せずに「spec と一致しない」と書く、超過した要求を名指しせずに「scope creep」と書く
 
 ## spec の探索
@@ -61,12 +61,12 @@ diff の固定点は呼び出し元の指定 (commit SHA、branch、tag、merge-
 
 ## 関連レビュアーとの区別
 
-| Concern | このレビュアー (conformance) | reviewer-causation  |
-| ------- | ---------------------------- | ------------------- |
-| Lens    | 実装は spec どおりか         | 修正は根本原因か    |
-| Timing  | 実装後 (diff vs spec)        | 修正レビュー時      |
+| Concern | このレビュアー (conformance) | reviewer-causation    |
+| ------- | ---------------------------- | --------------------- |
+| Lens    | 実装は spec どおりか         | 修正は根本原因か      |
+| Timing  | 実装後 (diff vs spec)        | 修正レビュー時        |
 | Output  | 3 カテゴリ + spec 引用       | 根本原因 + patch 検出 |
-| /audit  | pool 外                      | Wave 1 後に 1 回    |
+| /audit  | pool 外                      | Wave 1 後に 1 回      |
 
 ## アウトプット
 

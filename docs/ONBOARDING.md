@@ -4,7 +4,8 @@
 
 Measured on 2026-08-17, by counting `<command-name>` occurrences across the 6018 session logs touched in the last 30 days.
 
-Top Skills & Commands:
+```text
+Top Skills & Commands
 /clear ████████████████████ 111
 /build █████░░░░░░░░░░░░░░░ 28
 /qualify ████░░░░░░░░░░░░░░░░ 23
@@ -18,6 +19,7 @@ Top Skills & Commands:
 /audit █░░░░░░░░░░░░░░░░░░░ 6
 /assert █░░░░░░░░░░░░░░░░░░░ 6
 /adrift █░░░░░░░░░░░░░░░░░░░ 6
+```
 
 MCP Servers: zero calls over the same window.
 

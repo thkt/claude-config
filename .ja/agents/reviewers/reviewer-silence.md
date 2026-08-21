@@ -15,7 +15,7 @@ background: true
 ## 姿勢
 
 - エラーは可視化されるか、ドキュメント化された理由で意図的に抑制されなければならない。サイレントなデフォルトは、本番ログでしか姿を見せないバグを隠す
-- 機械検出可能なパターンの列挙 (空 catch は no-empty、.catch のない promise と fire-and-forget は no-floating-promises) は gates のリンタが担う。本 reviewer はリンタが判断できない領域 (抑制根拠の妥当性、log のみの catch の十分性、エラーの可視化経路) に集中する
+- 機械検出可能なパターンの列挙は gates のリンタが担う (空 catch なら no-empty、.catch のない promise と fire-and-forget なら no-floating-promises)。本 reviewer はリンタが判断できない領域 (抑制根拠の妥当性、log のみの catch の十分性、エラーの可視化経路) に集中する
 - reasoning 内で禁止する表現: フォールバックがカバーする内容を名指しせずに "fallback handles it"、可観測性を確認せずに "user won't notice"
 
 ## 解析フェーズ

@@ -29,21 +29,21 @@ Python 側では、1 つのメソッドが最初の失敗で止まると残り�
 | Python テスト   | `<hook 名>_test.py` | `git_sandbox_guard_test.py` |
 | shell テスト    | `<hook 名>.test.sh` | `failure-alert.test.sh`     |
 
-Python はアンダースコアで区切り、shell はハイフンで区切る。`_lib/` のモジュールは import されるので語の区切りにアンダースコアが要り、hook 本体は互いに import しないため技術的な縛りは無い。それでも揃えるのは、テスト名が `<hook 名>_test.py` で一致し、hook からテストを変換なしで引けるため。
+Python はアンダースコアで区切る。shell はハイフンで区切る。`_lib/` のモジュールは import されるので、語の区切りにアンダースコアが要る。hook 本体どうしは import しないため、技術的な縛りが無い。それでも揃えるのは、テスト名が `<hook 名>_test.py` で一致し、hook からテストを変換なしで引けるため。
 
-操作を表す語は、名詞としても読める語 (guard, gate, fix, index, alert, rewrite) を選ぶ。`notify` のような動詞専用の語は名前として据わりが悪い。既に英語として読める動詞句 (`rm_to_trash`, `body_proofread`) はそのまま置く。
+操作を表す語は、名詞としても読める語 (guard/gate/fix/index/alert/rewrite) を選ぶ。`notify` のような動詞専用の語は名前として据わりが悪い。既に英語として読める動詞句 (`rm_to_trash`, `body_proofread`) はそのまま置く。
 
 例外は 2 つ。外部アプリを丸ごと扱うものは `<アプリ名>_<管理対象>` とし、`amphetamine_agent_session` は「エージェントのターン中だけ」という限定を名前に残す。1 語で足りるものは 1 語で置く (`statusline`)。複数の hook をまとめて見るテストは、その群を表す名前を持つ (`rust-edit.test.sh` は pre/post の 2 本と `_lib/rust_target.py` を見る)。
 
 ## 実行の絞り込み
 
-Bash ゲートの hook はすべての Bash 呼び出しで発火し、実際の仕事には Python が要る。そのため fast-exit を何よりも先に走らせる。Python 本体の前にシェルラッパーを置けば、そこで抜ける呼び出しはインタープリタ起動を払わずに済み、本体が読み込むモジュール次第で 7ms から 17ms 浮く。それでも該当する hook はすべて 1 ファイルを選んでいる。`amphetamine_agent_session`、`package_manager_rewrite`、`body_proofread`、`security/` の 3 本は、いずれも生の payload への部分文字列検査で始まり、何も parse しないまま返る。
+Bash ゲートの hook はすべての Bash 呼び出しで発火し、実際の仕事には Python が要る。そのため fast-exit を何よりも先に走らせる。Python 本体の前にシェルラッパーを置けば、そこで抜ける呼び出しはインタープリタ起動を払わずに済み、本体が読み込むモジュール次第で 7ms から 17ms 浮く。それでも該当する hook はすべて 1 ファイルを選んでいる。`amphetamine_agent_session`、`package_manager_rewrite`、`body_proofread`、`security/` の 3 本は、いずれも生の payload への部分文字列の検査で始まり、何も parse しないまま返る。
 
 `settings.json` の `if` 条件はこの絞り込みを代われない。`cd /tmp && git commit` を取りこぼすからである。fast-exit にできるのは、追い返す呼び出しから import を外すこと。この頻度で発火する Python hook は重いモジュールを遅らせ、`re` と `subprocess` は必要とする関数の中で読む。`json` や `shutil` のような軽いモジュールと、hook が hot path で必ず通るモジュールは、遅らせても差が出ない。
 
 ## イベントマップ
 
-シェル hook は、それを発火させるイベントの名前が付いたディレクトリに置く。新しい hook の置き場は `settings.json` が決める。`security/` だけは役割で分けた例外で、破壊的なコマンドを止める仕事は Bash ゲートの他と分けて名指しする価値がある。
+シェル hook は、それを発火させるイベントの名前が付いたディレクトリに置く。新しい hook の置き場は `settings.json` が決める。`security/` だけは役割で分けた例外。破壊的なコマンドを止める仕事は、Bash ゲートの他と分けて名指しする価値がある。
 
 | イベント         | Matcher            | フック                                                                                                                                                            |
 | ---------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -9,7 +9,7 @@ background: true
 
 # React Pattern Reviewer
 
-Container/Presentational や hook の違反、local vs Context vs Store の state 配置ミス、prop drilling や肥大コンポーネント、consumer の prop が DOM へ届かない配線漏れ、不要な再レンダーや Effect 誤用を検出し、React パターンの是正が示された状態にする。
+Container/Presentational や hook の違反、local vs Context vs Store の state 配置ミス、prop drilling や肥大コンポーネントを検出する。consumer の prop が DOM へ届かない配線漏れ、不要な再レンダー、Effect 誤用も併せて拾い、React パターンの是正が示された状態にする。
 
 ## 姿勢
 
