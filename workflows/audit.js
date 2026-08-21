@@ -129,7 +129,7 @@ const writeSnapshot = async ({
   challengeRan,
   verifyRan,
   tally,
-  needsContext,
+  ask,
   zeroReviewerFiles,
 }) => {
   phase("Snapshot");
@@ -145,8 +145,9 @@ const writeSnapshot = async ({
     verify_ran: verifyRan,
     tally,
     // The same findings already appear in raw_findings carrying their verdict. This side
-    // table holds only why, which raw_findings cannot supply.
-    needs_context: needsContext && needsContext.map(({ id, why }) => ({ id, why })),
+    // table holds only why, which raw_findings cannot supply. ask is already this {id, why}
+    // shape, so the payload takes it as is instead of re-deriving it from needsContext.
+    needs_context: ask,
     zero_reviewer_files: zeroReviewerFiles,
   });
   const written = await agent(
@@ -178,7 +179,7 @@ const writeSnapshot = async ({
     raw_findings: rawFindings.length,
     findings: findings.length,
     skipped: skipped.length,
-    needs_context: needsContext ? needsContext.length : 0,
+    needs_context: ask ? ask.length : 0,
     zero_reviewer_files: zeroReviewerFiles ? zeroReviewerFiles.length : 0,
   };
   if (!written) {
@@ -929,7 +930,7 @@ const snapshot = await writeSnapshot({
   // The plan's contract: a fail-open run keeps the degraded mark and writes no counts.
   // Passing undefined makes JSON.stringify drop the key.
   tally: challengeRan ? tally : undefined,
-  needsContext,
+  ask,
   zeroReviewerFiles,
 });
 return {

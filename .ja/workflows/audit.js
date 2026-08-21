@@ -123,7 +123,7 @@ const writeSnapshot = async ({
   challengeRan,
   verifyRan,
   tally,
-  needsContext,
+  ask,
   zeroReviewerFiles,
 }) => {
   phase("Snapshot");
@@ -139,8 +139,9 @@ const writeSnapshot = async ({
     verify_ran: verifyRan,
     tally,
     // 同じ finding は raw_findings 側に verdict つきで載る。ここは raw_findings から
-    // 導けない why だけの側表にする。
-    needs_context: needsContext && needsContext.map(({ id, why }) => ({ id, why })),
+    // 導けない why だけの側表にする。ask は既にこの {id, why} の形なので、needsContext から
+    // 作り直さずそのまま使う。
+    needs_context: ask,
     zero_reviewer_files: zeroReviewerFiles,
   });
   const written = await agent(
@@ -170,7 +171,7 @@ const writeSnapshot = async ({
     raw_findings: rawFindings.length,
     findings: findings.length,
     skipped: skipped.length,
-    needs_context: needsContext ? needsContext.length : 0,
+    needs_context: ask ? ask.length : 0,
     zero_reviewer_files: zeroReviewerFiles ? zeroReviewerFiles.length : 0,
   };
   if (!written) {
@@ -913,7 +914,7 @@ const snapshot = await writeSnapshot({
   // fail-open した run は degraded 印だけを残し件数を書かない、が plan の contract。
   // undefined を渡すと JSON.stringify がキーごと落とす。
   tally: challengeRan ? tally : undefined,
-  needsContext,
+  ask,
   zeroReviewerFiles,
 });
 return {
