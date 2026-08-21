@@ -1,11 +1,11 @@
 ---
-name: xlsx
-description: Reads xlsx / ods / csv spreadsheets that the Read tool cannot open, converts merged-cell business documents into Markdown, and verifies that no cell was lost.
+name: transcribe
+description: Reads a spreadsheet (xlsx, ods, csv) that the Read tool cannot open, converts merged-cell business documents into Markdown, and verifies that no cell was lost.
 when_to_use: a path to a .xlsx / .xls / .ods file was given, read an Excel file, inspect spreadsheet contents, read a design document, spreadsheet contents, xlsx
 allowed-tools: Bash(node:*) Read
 ---
 
-# xlsx
+# transcribe
 
 The Read tool cannot open an xlsx. Use hucre, installed in this repository, as a library to read the sheets.
 
