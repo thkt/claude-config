@@ -292,9 +292,9 @@ log(
 );
 
 let gate = "NotReady";
-// 下の gate 分岐で成立した条件。NotReady を読んだ人間が issue の件数で止まったのか
-// severity や disposition なのかを判別できるようにする (後者は gate に一切影響しない)。
-let gateReason = [];
+// severity も disposition も gate に影響しないので、NotReady を読んだ人間は findings から
+// 原因を導けない。実際に成立した条件を並べる。
+const gateReason = [];
 let issues = [];
 let testsCol = "skipped";
 let adversarialSummary = {
@@ -575,9 +575,6 @@ try {
   // NotReady。severity は修正優先度のヒントに留まり、gate には影響しない。caveat は issues 0 を
   // 前提に、動的 evidence が env 起因などで欠けたとき、または入れ子の audit が fail-open して
   // findings が未検証のときに付く。
-  // gateReason はこの同じ分岐で成立した条件を並べる (severity や disposition は gate に
-  // 影響しないため含めない)。NotReady を読んだ人間が、例えば issue の件数で止まったことを
-  // 判別できるようにする。
   if (buildCol === "fail" || testsCol === "fail" || issues.length > 0 || challengeStalled) {
     gate = "NotReady";
     if (buildCol === "fail") gateReason.push("build fail");

@@ -294,9 +294,9 @@ log(
 );
 
 let gate = "NotReady";
-// Conditions that held at the gate branch below, so a NotReady reader can tell the stop was
-// the issue count rather than severity or disposition (neither of which ever gates).
-let gateReason = [];
+// Neither severity nor disposition gates, so a NotReady reader cannot infer the cause from the
+// findings alone. These are the conditions that actually held.
+const gateReason = [];
 let issues = [];
 let testsCol = "skipped";
 let adversarialSummary = {
@@ -587,9 +587,6 @@ try {
   // issues means NotReady. Severity remains a fix-priority hint and never affects the
   // gate. caveat presumes zero issues and applies when dynamic evidence is missing for env
   // reasons, or when the nested audit failed open and left its findings unverified.
-  // gateReason lists, at this same branch, exactly which conditions held (never severity or
-  // disposition, since neither ever gates), so a NotReady reader can tell the stop was e.g.
-  // the issue count rather than guessing from the issues themselves.
   if (buildCol === "fail" || testsCol === "fail" || issues.length > 0 || challengeStalled) {
     gate = "NotReady";
     if (buildCol === "fail") gateReason.push("build fail");

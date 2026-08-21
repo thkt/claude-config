@@ -266,21 +266,12 @@ test("T-008 assert running a nested audit with no challenge stub receives challe
   );
 });
 
-// U-001: a human reading a NotReady result can tell the stop was the issue count, not severity
-// or disposition. gate_reason is assembled at the same site as the gate branch (the script,
-// not an agent), listing the conditions that held. The gate branch itself is unchanged; only
-// gate_reason is new on the return value.
+// The gate branch itself is unchanged; only gate_reason is new on the return value.
 //
-// T-002 wants a run where both build and tests are non-passing. The gate script's own dynamicOk
-// gate (buildCol === "fail" => dynamicOk false => the test-exec agent is never invoked, so
-// testsCol can only land on "skipped") makes a literal simultaneous build:"fail" /
-// tests:"fail" unreachable through a real run: a failed build always skips the test stage
-// rather than failing it. boot.build: "fail" is the closest reachable state (buildCol "fail",
-// testsCol forced to "skipped"), and it already NotReady's the gate on build alone, which is
-// what this scenario needs: a non-issue cause with zero issues.
-// T-001 and T-002 differ only in which stage return values they need to override (boot for
-// T-002's failed build, issues for T-001's issue count); the rest of the label dispatch is
-// shared, so one factory takes both as overrides instead of duplicating it per test.
+// T-002's literal state, build and tests both failing, is unreachable: buildCol === "fail"
+// forces dynamicOk false, so the test-exec agent never runs and testsCol can only be "skipped".
+// boot.build: "fail" is the closest reachable state, and it already gates NotReady on build
+// alone, which is what the case needs: a non-issue cause with zero issues.
 const makeGateReasonAgent =
   ({ boot = bootOk, issues = [] } = {}) =>
   (prompt, opts) => {
@@ -327,8 +318,6 @@ test("T-001 issue が 1 件以上あるだけで NotReady になった run の g
 
 test("T-002 build と tests が fail で issue が 0 件の run の gate_reason に issue の件数が入らない", async () => {
   const failBoot = { ...bootOk, build: "fail" };
-  // test-exec / adversarial are never invoked once build fails (dynamicOk gates them off);
-  // makeGateReasonAgent still stubs them, but the workflow never reaches those branches.
   const { result } = await runWorkflow(assertJs, {
     args: {},
     stubs: { agent: makeGateReasonAgent({ boot: failBoot }) },
@@ -345,9 +334,8 @@ test("T-002 build と tests が fail で issue が 0 件の run の gate_reason 
   );
 });
 
-// A repository with no build concept reaches the Ready branch with buildCol "skipped" (bootstrap
-// reports install ok + build skipped, so envFail stays false). A hardcoded "build pass" there
-// would contradict the `build` field of the same return object.
+// A repository with no build concept reaches Ready with buildCol "skipped" (install ok + build
+// skipped keeps envFail false). A hardcoded "build pass" would contradict the sibling `build`.
 test("T-003 a Ready run whose build was skipped does not report build as passing", async () => {
   const skippedBoot = { ...bootOk, build: "skipped" };
   const { result } = await runWorkflow(assertJs, {
