@@ -51,11 +51,16 @@ const makePlan = (overrides = {}) => ({
   ...overrides,
 });
 
+// The run_id record.py mints. The stub returns it from the start row, and a later row carrying
+// it back is what shows the two rows belong to one build.
+const RECORDED_RUN_ID = "a1b2c3d4e5f6";
+
 // Classifies an agent call by the shape of its schema rather than by its label string, which
 // would couple these tests to wording build.js is free to reword.
 const kindOf = (opts) => {
   const p = (opts && opts.schema && opts.schema.properties) || null;
   if (!p) return "plain";
+  if ("run_id" in p) return "record";
   if ("found" in p && "body" in p) return "fetch";
   if ("units" in p) return "extract";
   if ("results" in p) {
@@ -85,11 +90,18 @@ const makeStubs = ({
   branch,
   untracked,
   code,
+  record,
   ship,
 } = {}) => ({
   agent: (prompt, opts) => {
     const kind = kindOf(opts);
     switch (kind) {
+      case "record":
+        // The default stands in for record.py's stdout. A run_id override of null takes the
+        // fail-open route, where the row is lost and the build carries on.
+        return record !== undefined
+          ? record
+          : { path: "/home/sample/.claude/history/build-runs.jsonl", run_id: RECORDED_RUN_ID };
       case "translate":
         // The default fails open (no translations) and keeps the English originals. Only the
         // test verifying that translations land passes a translate stub.
@@ -1328,6 +1340,73 @@ const planQualityTable = (source) => {
 };
 const stopReasons = (source) =>
   new Set([...source.matchAll(/\bstop\(\s*"([^"]+)"/g)].map((m) => m[1]));
+
+// T-006: a run killed between Load and Ship writes no stop row, so without a row at the start
+// it would leave the history holding finished and stopped runs alone. The count would then read
+// the stop rate off a denominator the killed runs already left.
+test("T-006 the start row is written before Load fetches the issue", async () => {
+  const { calls } = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const records = agentCallsOf(calls, "record");
+  assert.equal(records.length, 1, "a run that finishes writes the start row and nothing after");
+  assert.match(records[0].prompt, /"reason":"started"/, "the first row's reason is started");
+  assert.match(
+    records[0].prompt,
+    /"plan_quality":false/,
+    "the start row is not counted as a plan-quality stop",
+  );
+  const firstRecord = calls.agent.findIndex((c) => kindOf(c.opts) === "record");
+  const firstFetch = calls.agent.findIndex((c) => kindOf(c.opts) === "fetch");
+  assert.ok(firstFetch >= 0, "the run reaches Load's fetch");
+  assert.ok(firstRecord < firstFetch, "the start row is written before the fetch");
+});
+
+// T-007: code returns its own stopped value, and build folds every one of them into code-failed.
+// Counting on the outer reason alone would put a plan-caused stop inside code into the same
+// bucket as a failed test run.
+test("T-007 a stop inside code carries the nested reason and the start row's run_id", async () => {
+  const { result, calls } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ code: { stopped: "invalid-plan" } }),
+  });
+  assert.equal(result.stopped, "code-failed");
+  const stopRow = agentCallsOf(calls, "record").at(-1).prompt;
+  assert.match(stopRow, /"reason":"code-failed"/);
+  assert.match(stopRow, /"nested_reason":"invalid-plan"/, "the inner reason reaches the row");
+  assert.match(
+    stopRow,
+    new RegExp(`"run_id":"${RECORDED_RUN_ID}"`),
+    "the stop row carries the run_id the start row minted",
+  );
+});
+
+// The gates above anchor have no repository to run the recorder in, and neither is a
+// plan-quality signal. They return without a row rather than writing one with an empty repo.
+test("the gates ahead of the repo check write no row", async () => {
+  for (const [label, runArgs] of [
+    ["no-issue", {}],
+    ["no-repo", { issue: "123" }],
+    ["invalid-base", { issue: "123", repo, base: "not a branch" }],
+  ]) {
+    const { result, calls } = await runWorkflow(buildJs, { args: runArgs, stubs: makeStubs() });
+    assert.equal(result.stopped, label);
+    assert.equal(agentCallsOf(calls, "record").length, 0, `${label} writes no row`);
+  }
+});
+
+// Recording is not a gate. A recorder that returns nothing must not turn a runnable build into
+// a stopped one, and the loss has to reach the run log, which is where a reader learns the run
+// is missing from the count.
+test("a recorder returning no run_id leaves the build running and logs the lost row", async () => {
+  const { result, logs } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ record: { run_id: "" } }),
+  });
+  assert.equal(result.stopped, undefined, "the build is not stopped by a failed record");
+  assert.ok(
+    logs.some((m) => /build-runs\.jsonl/.test(m)),
+    "the lost row reaches log() with the file it is missing from",
+  );
+});
 
 // T-004: one literal `stopped:` remains, and it sits in the helper. A return that assembles its
 // own stopped object skips the recording, and the run then never reaches the jsonl.
