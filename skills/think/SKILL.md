@@ -38,19 +38,21 @@ Decompose the approved design into units in implementation order. A unit is one 
 
 `{ test_command, reference_module, units: [{ id, goal, contract, files: string[], tests: [{ id, name }], seam }] }`
 
-Decompose tests-first. Enumerate acceptance-test candidates from the whole design, group them per outcome, and assign each group the files it touches to form a unit. A unit's size follows from that test count, and a group over the caps splits further. An outcome with no verifiable behavior (docs / config) yields no acceptance-test candidates, so it becomes a unit on its own.
+Decompose tests-first. Enumerate acceptance-test candidates from the whole design and group them per outcome. Each group becomes a unit, and its size follows from that test count.
 
-1. Assign sequential ids in U-001 / T-001 format, with T-NNN unique across the whole plan
-2. Where the target repo's tests carry prefixed ids, follow that convention and number as T-SK077, continuing from that prefix's repo-wide max. A plan that stays bare while the repo is prefixed leaves the rename to implementation time
-3. On a bare repo, plan-wide uniqueness does not reach inside a single file. Skip the numbers already used in the file the tests land in
-4. tests[].name is a one-line condition + expected-result statement. That sentence becomes the test name as written, so never reword it later
-5. A unit with no verifiable behavior (docs / config) gets an empty tests array
-6. Route acceptance-test candidates that test_command cannot execute (a visual check, manual coordination with an external service) out of T-NNN and into `### Manual verification`. Each routed criterion names the mechanism that takes it on (test-storybook, code review, and so on)
-7. A unit that renders domain fields lists each rendered field as its own T-NNN entry, one field per line; bundling them into one entry hides a single field's omission
-8. Once 2 or more units carry tests, place exactly one seam unit last and mark it `seam: true`. Every unit can be green while nothing has run the wiring that connects them. The seam unit's tests run the real modules across the unit boundary and assert that connection. Only I/O with external systems may be faked there
-9. A non-seam unit's caps are 3 files and 4 tests. A seam unit's tests cross the unit boundary, so its file count legitimately grows and the caps do not apply to it. Split any unit over the caps along outcomes, and confirm the resulting new unit composition with the user. Candidates carved out of scope stay out of the plan and go to backlog candidates. `UNIT_CAPS` in `workflows/build.js` owns these numbers. Change this description and `UNIT_CAPS` in the same commit
-10. Once the units are settled, run `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <the units[].files>` and diff it against what Phase 2 read. Every page under `matched` is either cited or written off in the prose with the reason it does not bear on this plan. A page under `related` only shares a word, so state why it bears when citing one
-11. Pass the self-check (missing required fields, duplicate ids, empty units / files / goal / contract) and the pre-writeout verification in ${CLAUDE_SKILL_DIR}/references/pre-write-check.md, then write the plan following the ${CLAUDE_SKILL_DIR}/templates/plan.md skeleton to `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md`. The slug is the lowercase hyphenated title. Include both the `## Plan` and `## Backlog candidates` sections
+1. Record reference_module by copying over what Phase 2's step 3 noted (§ reference_module)
+2. Settle test_command (§ test_command)
+3. Settle each unit's goal and files, and write its contract (§ contract)
+4. Write each unit's preconditions (§ Preconditions)
+5. Assign the ids. The shape and the target repo's convention live in ${CLAUDE_SKILL_DIR}/references/id-numbering.md
+6. tests[].name is a one-line condition + expected-result statement. That sentence becomes the test name as written, so never reword it later
+7. A unit with no verifiable behavior (docs / config) gets an empty tests array
+8. Route acceptance-test candidates that test_command cannot execute (a visual check, manual coordination with an external service) out of T-NNN and into `### Manual verification`. Each routed criterion names the mechanism that takes it on (test-storybook, code review, and so on)
+9. A unit that renders domain fields lists each rendered field as its own T-NNN entry, one field per line; bundling them into one entry hides a single field's omission
+10. A non-seam unit's caps are 3 files and 4 tests. A seam unit's tests cross the unit boundary, so its file count legitimately grows and the caps do not apply to it. Split any unit over the caps along outcomes, and confirm the resulting new unit composition with the user. Candidates carved out of scope stay out of the plan and go to backlog candidates. `UNIT_CAPS` in `workflows/build.js` owns these numbers. Change this description and `UNIT_CAPS` in the same commit
+11. Once 2 or more units carry tests, place exactly one seam unit last and mark it `seam: true`. Every unit can be green while nothing has run the wiring that connects them. The seam unit's tests run the real modules across the unit boundary and assert that connection. Only I/O with external systems may be faked there
+12. Once the units are settled, run `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <the units[].files>` and diff it against what Phase 2 read. Every page under `matched` is either cited or written off in the prose with the reason it does not bear on this plan. A page under `related` only shares a word, so state why it bears when citing one
+13. Pass the self-check (missing required fields, duplicate ids, empty units / files / goal / contract) and the pre-writeout verification in ${CLAUDE_SKILL_DIR}/references/pre-write-check.md, then write the plan following the ${CLAUDE_SKILL_DIR}/templates/plan.md skeleton to `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md`. The slug is the lowercase hyphenated title. Include both the `## Plan` and `## Backlog candidates` sections
 
 ### test_command
 

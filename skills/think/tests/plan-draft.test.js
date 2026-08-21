@@ -254,6 +254,62 @@ test("base stays build's arg, documented there and absent from think", () => {
   }
 });
 
+// A subsection no step reaches is read after the steps are already done. Each of the four states
+// how one plan field is written, so the step settling that field is where it has to be cited.
+test("every subsection stating how a field is written is cited from a step", () => {
+  const cited = {
+    ja: ["§ reference_module", "§ test_command", "§ contract", "§ 前提"],
+    en: ["§ reference_module", "§ test_command", "§ contract", "§ Preconditions"],
+  };
+  const headings = {
+    ja: ["### reference_module", "### test_command", "### contract", "### 前提"],
+    en: ["### reference_module", "### test_command", "### contract", "### Preconditions"],
+  };
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const steps = doc.split("\n").filter((line) => /^\d+\. /.test(line));
+    for (const [i, marker] of cited[lang].entries()) {
+      assert.ok(
+        steps.some((s) => s.includes(marker)),
+        `${lang}: a step cites ${marker}`,
+      );
+      assert.ok(doc.includes(headings[lang][i]), `${lang}: ${headings[lang][i]} exists`);
+    }
+    // The numbering rules left the body for a file, so the step is the only route to them.
+    assert.match(
+      doc,
+      /\$\{CLAUDE_SKILL_DIR\}\/references\/id-numbering\.md/,
+      `${lang}: a step routes to the numbering reference`,
+    );
+    assert.ok(
+      existsSync(
+        join(root, ...(lang === "ja" ? [".ja"] : []), "skills/think/references/id-numbering.md"),
+      ),
+      `${lang}: the numbering reference is where the path points`,
+    );
+  }
+});
+
+// The steps run in order, so a field written after the step that consumes it is written too late.
+test("the steps settle each plan field before the step that writes the plan out", () => {
+  const settles = {
+    ja: [/reference_module を記録/, /test_command を決める/, /contract を書く/, /前提を書く/],
+    en: [/Record reference_module/, /Settle test_command/, /write its contract/, /preconditions/i],
+  };
+  for (const [lang, path] of Object.entries(skills)) {
+    const steps = read(path)
+      .split("\n")
+      .filter((line) => /^\d+\. /.test(line));
+    const writeAt = steps.findIndex((s) => s.includes(".claude/workspace/planning/"));
+    assert.ok(writeAt >= 0, `${lang}: a step writes the plan out`);
+    for (const re of settles[lang]) {
+      const at = steps.findIndex((s) => re.test(s));
+      assert.ok(at >= 0, `${lang}: a step settles ${re}`);
+      assert.ok(at < writeAt, `${lang}: ${re} is settled before the write`);
+    }
+  }
+});
+
 // A field in the skeleton that no stage reads costs the writer a line and the reader a question.
 // Every key the skeleton names has to appear in build's EXTRACT_SCHEMA, which is the only list of
 // what gets consumed.
