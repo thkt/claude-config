@@ -869,10 +869,22 @@ const integrated = await agent(
 // フォールバック先を triage 前の findings にすると、id が付く前の配列に落ちるので、
 // challenge が disputed と判定した finding を黙って呼び戻すことになる。
 const integratedFindings = (integrated && integrated.findings) || survivorsInput;
-// Integrate が読む projection は disposition を含まないので、ここで既定値を当て直す。
-const finalFindings = integratedFindings.map((f) =>
-  f.disposition ? f : { ...f, disposition: DEFAULT_DISPOSITION },
-);
+// toCriticRef は Integrate に渡す前に disposition を落とすので、Integrate が返す disposition
+// は survivors 由来ではなく、ここでは信用しない。script が source_ids から再算出する。全順序
+// (must > want > imo > nits) は agents/_lib/finding-schema.md § Disposition に定義済みなので
+// 再掲しない。
+const DISPOSITION_RANK = { must: 4, want: 3, imo: 2, nits: 1 };
+const dispositionById = new Map(rawFindings.map((f) => [f.id, f.disposition]));
+const consolidatedDisposition = (sourceIds) =>
+  (Array.isArray(sourceIds) ? sourceIds : []).reduce((strongest, id) => {
+    const d = dispositionById.get(id);
+    if (!d) return strongest;
+    return !strongest || DISPOSITION_RANK[d] > DISPOSITION_RANK[strongest] ? d : strongest;
+  }, null) || DEFAULT_DISPOSITION;
+const finalFindings = integratedFindings.map((f) => ({
+  ...f,
+  disposition: consolidatedDisposition(f.source_ids),
+}));
 const snapshot = await writeSnapshot({
   preFlight,
   rawFindings,

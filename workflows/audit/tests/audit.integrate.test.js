@@ -141,3 +141,77 @@ test("T-011 ends with as many findings as survivors when Integrate returns every
     );
   }
 });
+
+// toCriticRef strips disposition before Integrate ever sees a finding (agents/_lib/finding-schema.md
+// § Disposition Consolidation: the script, not the agent, owns the merged value). Each case below
+// has Integrate return a disposition the script must not trust, so a pass that merely keeps
+// whatever Integrate said would fail here even though it happens to output "must" by default.
+test("T-024 imo と must を統合した finding の disposition が must になる", async () => {
+  const { result } = await run({
+    security: {
+      findings: [{ file: "sample.js", line: "1", severity: "high", summary: "security finding" }],
+    },
+    silence: {
+      findings: [
+        {
+          file: "sample.js",
+          line: "1",
+          severity: "high",
+          summary: "silence finding",
+          disposition: "imo",
+          disposition_reason: "author preference",
+        },
+      ],
+    },
+    challenge: BOTH_CONFIRMED,
+    integrate: {
+      findings: [
+        {
+          file: "sample.js",
+          line: "1",
+          severity: "high",
+          summary: "root cause absorbing both findings",
+          source_ids: ["R-1", "R-2"],
+          // Deliberately not the expected value: Integrate's own projection carries no
+          // disposition, so nothing it returns here should survive into the result.
+          disposition: "nits",
+        },
+      ],
+    },
+  });
+  assert.equal(
+    result.findings[0].disposition,
+    "must",
+    "R-1 stayed at the default must and R-2 declared imo, so the consolidated value is the stronger of the two (must > imo), not the nits Integrate returned",
+  );
+});
+
+test("T-025 統合元が全て既定値のままなら統合後の disposition も must になる", async () => {
+  const { result } = await run({
+    security: {
+      findings: [{ file: "sample.js", line: "1", severity: "high", summary: "security finding" }],
+    },
+    silence: {
+      findings: [{ file: "sample.js", line: "1", severity: "high", summary: "silence finding" }],
+    },
+    challenge: BOTH_CONFIRMED,
+    integrate: {
+      findings: [
+        {
+          file: "sample.js",
+          line: "1",
+          severity: "high",
+          summary: "root cause absorbing both findings",
+          source_ids: ["R-1", "R-2"],
+          // Same deliberate mismatch as T-024, here against sources that both stayed default.
+          disposition: "want",
+        },
+      ],
+    },
+  });
+  assert.equal(
+    result.findings[0].disposition,
+    "must",
+    "neither R-1 nor R-2 declared an override, so both stayed at the default must and the consolidated value is must, not the want Integrate returned",
+  );
+});
