@@ -43,7 +43,7 @@ Decompose tests-first. Enumerate acceptance-test candidates from the whole desig
 1. Record reference_module by copying over what Phase 2's step 3 noted (§ reference_module)
 2. Settle test_command (§ test_command)
 3. Settle each unit's goal and files, and write its contract (§ contract)
-4. Write each unit's preconditions (§ Preconditions)
+4. Write each unit's preconditions (§ preconditions)
 5. Assign the ids. The shape and the target repo's convention live in ${CLAUDE_SKILL_DIR}/references/id-numbering.md
 6. tests[].name is a one-line condition + expected-result statement. That sentence becomes the test name as written, so never reword it later
 7. A unit with no verifiable behavior (docs / config) gets an empty tests array
@@ -67,7 +67,7 @@ A contract can cite a behavior at one call site only, so the implementer hand-ro
 3. Name the candidates not picked in the prose, along with why kind is not module. A null with no reason is a planning defect
 4. When instances is 2 or more, say "Nth instance" in the prose, telling the implementer to replicate rather than design
 
-### Preconditions
+### preconditions
 
 List existing dependencies only, each line repo-root-relative in one of two forms: path only, or path + stable anchor. An anchor is limited to a single exported / public symbol name that `ugrep -F` matches as a literal fixed string; never private implementation details, comment strings, or line numbers. When no stable symbol exists, write the line as path only. Files newly created by a unit are never listed.
 
@@ -91,9 +91,9 @@ Return the following to the caller in conversation.
 
 | Item               | Content                                                                              |
 | ------------------ | ------------------------------------------------------------------------------------ |
-| ready              | true when the plan passed the self-check and no undecided points remain              |
+| ready              | true when the self-check passed and blockers is empty                                |
 | plan               | The self-checked structured plan                                                     |
 | plan file          | Path of the written `.plan.md`                                                       |
-| blockers           | Causes of ready = false that need a user decision                                    |
+| blockers           | The points left that the user has to decide before this can proceed                  |
 | backlog candidates | Candidates carved out of scope. "none" if none                                       |
 | design summary     | Adopted approach, compared approaches, the `critic-design` verdict, DR needed or not |

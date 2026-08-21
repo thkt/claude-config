@@ -43,7 +43,7 @@ argument-hint: "[task description]"
 1. reference_module を記録する。Phase 2 手順 3 の控えをそのまま写す (§ reference_module)
 2. test_command を決める (§ test_command)
 3. 各 unit の goal と files を決め、contract を書く (§ contract)
-4. 各 unit の前提を書く (§ 前提)
+4. 各 unit の前提を書く (§ preconditions)
 5. id を振る。形と対象 repo ごとの規約は ${CLAUDE_SKILL_DIR}/references/id-numbering.md が定める
 6. tests[].name は条件 + 期待結果の 1 行言明。この文がそのままテスト名になるので、後から言い換えない
 7. 検証可能な振る舞いが無い unit (docs/設定) は tests を空配列にする
@@ -67,7 +67,7 @@ contract が引用できるのは 1 箇所の振る舞いだけなので、周�
 3. 選ばなかった候補の名前と、kind が module でない理由を散文に書く。理由の無い null は計画の欠陥として扱う
 4. instances が 2 以上なら「N 例目」と散文に書き、実装者へ設計でなく複製を指示する
 
-### 前提 (preconditions)
+### preconditions
 
 書くのは既存の依存先のみ。形式はリポジトリルート起点の path 単独か、path + stable anchor の 2 つ。anchor は `ugrep -F` が固定文字列として一致する公開シンボル名 1 つに限る。private な実装詳細、コメント文字列、行番号は使わない。安定したシンボルが無ければ path のみの行にする。unit が新しく作るファイルは載せない。
 
@@ -91,9 +91,9 @@ contract が引用できるのは 1 箇所の振る舞いだけなので、周�
 
 | 項目               | 内容                                                    |
 | ------------------ | ------------------------------------------------------- |
-| ready              | plan が自己点検を通過し、未決着の論点が無いとき true    |
+| ready              | 自己点検を通過し、blockers が 0 件のとき true           |
 | plan               | 自己点検済みの構造化 plan                               |
 | plan file          | 書き出した `.plan.md` のパス                            |
-| blockers           | ready = false の原因のうちユーザー判断が要る論点        |
+| blockers           | 残った論点のうち、ユーザーが決めないと進めないもの      |
 | backlog candidates | スコープ外へ切り出した候補。無ければ「なし」            |
 | 設計要約           | 採用した案、比較した案、`critic-design` の判定、DR 要否 |

@@ -281,13 +281,16 @@ test("the reference_module search settles its own outcome in Phase 2", () => {
 // how one plan field is written, so the step settling that field is where it has to be cited.
 test("every subsection stating how a field is written is cited from a step", () => {
   const cited = {
-    ja: ["§ reference_module", "§ test_command", "§ contract", "§ 前提"],
-    en: ["§ reference_module", "§ test_command", "§ contract", "§ Preconditions"],
+    ja: ["§ reference_module", "§ test_command", "§ contract", "§ preconditions"],
+    en: ["§ reference_module", "§ test_command", "§ contract", "§ preconditions"],
   };
-  const headings = {
-    ja: ["### reference_module", "### test_command", "### contract", "### 前提"],
-    en: ["### reference_module", "### test_command", "### contract", "### Preconditions"],
-  };
+  // The four headings carry the field name as build's schema spells it, in both trees.
+  const headings = [
+    "### reference_module",
+    "### test_command",
+    "### contract",
+    "### preconditions",
+  ];
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
     const steps = doc.split("\n").filter((line) => /^\d+\. /.test(line));
@@ -296,7 +299,7 @@ test("every subsection stating how a field is written is cited from a step", () 
         steps.some((s) => s.includes(marker)),
         `${lang}: a step cites ${marker}`,
       );
-      assert.ok(doc.includes(headings[lang][i]), `${lang}: ${headings[lang][i]} exists`);
+      assert.ok(doc.includes(headings[i]), `${lang}: ${headings[i]} exists`);
     }
     // The numbering rules left the body for a file, so the step is the only route to them.
     assert.match(
