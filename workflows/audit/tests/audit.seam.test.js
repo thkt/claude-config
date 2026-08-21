@@ -166,7 +166,7 @@ test("T-022 a run where no reviewer declares a disposition returns every finding
 
 // Companion to T-022, which rides the default through. Here the source declares an override.
 // Its source_ids holds one id, so no sibling competes; T-026 covers the merge itself.
-test("T-023 reviewer が上書きした disposition が Integrate 後の返り値にも残る", async () => {
+test("T-023 a reviewer's overridden disposition survives Integrate into the returned finding", async () => {
   const { result, record } = await run([{ path: "sample.js", churn: 0 }], {
     security: {
       findings: [{ file: "sample.js", line: "1", severity: "high", summary: "security finding" }],

@@ -144,7 +144,7 @@ test("T-011 ends with as many findings as survivors when Integrate returns every
 
 // Each case has Integrate return a disposition the script must not trust, so an implementation
 // that kept whatever Integrate said would fail here rather than pass by coincidence.
-test("T-024 imo と must を統合した finding の disposition が must になる", async () => {
+test("T-024 consolidating imo with must gives the finding a disposition of must", async () => {
   const { result } = await run({
     security: {
       findings: [{ file: "sample.js", line: "1", severity: "high", summary: "security finding" }],
@@ -183,7 +183,7 @@ test("T-024 imo と must を統合した finding の disposition が must にな
   );
 });
 
-test("T-025 統合元が全て既定値のままなら統合後の disposition も must になる", async () => {
+test("T-025 sources that all stayed at the default consolidate to must", async () => {
   const { result } = await run({
     security: {
       findings: [{ file: "sample.js", line: "1", severity: "high", summary: "security finding" }],
@@ -216,7 +216,7 @@ test("T-025 統合元が全て既定値のままなら統合後の disposition �
 // T-024 and T-025 both expect the default, so a consolidation hardcoded to must would pass
 // both. This is the case the Outcome names: two declared values merging, where the winner is
 // the stronger declared one rather than the default.
-test("T-026 want と imo を統合した finding の disposition が want になる", async () => {
+test("T-026 consolidating want with imo gives the finding a disposition of want", async () => {
   const declared = (summary, disposition) => ({
     file: "sample.js",
     line: "1",
