@@ -247,6 +247,14 @@ A fail-closed hook can still ignore one specific failure, which is not a downgra
 
 Combine small hooks to achieve complex behavior.
 
+### 5. Settings.json Boundaries
+
+An external app that writes its own hook wiring into `settings.json` leaves it behind after uninstall. The leftover wiring keeps failing non-blockingly on every event. It shows up neither in the conversation nor in `git diff`, so the only way to notice it is the transcript's `hook_non_blocking_error` and `stop_hook_summary`'s `hookErrors`.
+
+There is no `settings.json` setting that suppresses a hook's routine per-call output line. `suppressOutput` is a key in the hook's own JSON response, and it applies to stdout only. The formatter and gates print their routine lines to stderr, and Claude Code renders stderr for any hook that produced output, recording it as `hook_success`.
+
+`autoMemoryEnabled: false` stops auto-memory reads and writes. The binary still ships `/pause-memory`, but it stays hardcoded to `isEnabled: () => false`, so enabling it has no effect.
+
 ## Related
 
 - [Claude Code Hooks Docs](https://docs.anthropic.com/en/docs/claude-code/hooks)
