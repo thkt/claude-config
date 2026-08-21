@@ -470,3 +470,34 @@ test("T-021 an audit test file never claims the same id twice", () => {
     assert.deepEqual(duplicated, [], `${file} uses the same T-NNN twice`);
   }
 });
+
+// Asserting on the payload would not show whether snapshot.py wrote the four out.
+test("T-024 the four canonical fields reach the record the real snapshot.py wrote", async () => {
+  const detailed = {
+    file: "sample.js",
+    line: "1",
+    severity: "high",
+    summary: "security finding",
+    evidence: "await inside a for-of over 200 ids",
+    reasoning: "each iteration waits a full round trip",
+    fix: "collect the promises and await once",
+    verification: "pattern_search. does any caller pass fewer than 10 ids?",
+  };
+  const { record } = await run([{ path: "sample.js", churn: 0 }], {
+    security: { findings: [detailed] },
+    silence: {
+      findings: [{ file: "sample.js", line: "1", severity: "high", summary: "silence finding" }],
+    },
+    challenge: {
+      verdicts: [
+        { id: "R-1", verdict: "confirmed" },
+        { id: "R-2", verdict: "confirmed" },
+      ],
+    },
+    integrate: INTEGRATED,
+  });
+  const written = record.raw_findings.find((f) => f.id === "R-1");
+  for (const key of ["evidence", "reasoning", "fix", "verification"]) {
+    assert.equal(written[key], detailed[key], `${key} is in the record on disk`);
+  }
+});

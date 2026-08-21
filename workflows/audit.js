@@ -363,6 +363,13 @@ const findingsSchema = ({ withSourceIds = false } = {}) => ({
             type: "string",
             description: "why this finding departs from the default. Required to override",
           },
+          evidence: { type: "string", description: "the code or observation the finding rests on" },
+          reasoning: { type: "string", description: "why the condition is a problem" },
+          fix: { type: "string", description: "the change the reviewer suggests" },
+          verification: {
+            type: "string",
+            description: "the check type and the question it answers",
+          },
           ...(withSourceIds
             ? {
                 source_ids: {
@@ -653,6 +660,22 @@ const raw = await parallel(
 const findings = raw.filter(Boolean).flatMap((r) => r.findings || []);
 // Pinned rather than derived from severity (agents/_lib/finding-schema.md § Disposition):
 // assert's gate ignores severity, so a derived default would put nits on a blocking finding.
+// Derived from the schema, not hand-listed: a field the schema admits but this copy forgets is
+// silently dropped, which is the gap #425 closed. file / line / severity / summary are renamed on
+// the way in and disposition goes through dispositionOf, so those six are excluded.
+const MAPPED_FIELDS = new Set([
+  "file",
+  "line",
+  "severity",
+  "summary",
+  "disposition",
+  "disposition_reason",
+]);
+const CARRIED_FIELDS = Object.keys(FINDINGS_SCHEMA.properties.findings.items.properties).filter(
+  (k) => !MAPPED_FIELDS.has(k),
+);
+// Absent stays absent: an empty string would read as a reviewer that answered blank.
+const carried = (f) => Object.fromEntries(CARRIED_FIELDS.filter((k) => f[k]).map((k) => [k, f[k]]));
 const DEFAULT_DISPOSITION = "must";
 const DECLARABLE_DISPOSITIONS = new Set(["must", "want", "imo", "nits"]);
 let restoredDispositions = 0;
@@ -681,9 +704,7 @@ units.forEach((u, i) => {
         line: f.line,
         severity: f.severity,
         message: f.summary,
-        // Absent stays absent: an empty string would read as a reviewer that answered blank.
-        ...(f.category ? { category: f.category } : {}),
-        ...(f.trigger ? { trigger: f.trigger } : {}),
+        ...carried(f),
         ...dispositionOf(f),
       });
     }

@@ -354,6 +354,13 @@ const findingsSchema = ({ withSourceIds = false } = {}) => ({
             type: "string",
             description: "既定値から外す理由。上書きには必須",
           },
+          evidence: { type: "string", description: "その finding の根拠になるコードや観察" },
+          reasoning: { type: "string", description: "その条件がなぜ問題なのか" },
+          fix: { type: "string", description: "reviewer が提案する変更" },
+          verification: {
+            type: "string",
+            description: "検査の種類と、それが答える問い",
+          },
           ...(withSourceIds
             ? {
                 source_ids: {
@@ -641,6 +648,22 @@ const raw = await parallel(
 const findings = raw.filter(Boolean).flatMap((r) => r.findings || []);
 // severity から導かず固定する (agents/_lib/finding-schema.md § Disposition)。assert の gate は
 // severity を見ないので、導出するとマージを止める finding に nits が付く。
+// 手で並べず schema から導く。schema にあるのにこの写しに無いフィールドは黙って落ちる。
+// #425 が塞いだのがその穴。file / line / severity / summary は名前を変えて写し、disposition は
+// dispositionOf を通すので、この 6 つは除く。
+const MAPPED_FIELDS = new Set([
+  "file",
+  "line",
+  "severity",
+  "summary",
+  "disposition",
+  "disposition_reason",
+]);
+const CARRIED_FIELDS = Object.keys(FINDINGS_SCHEMA.properties.findings.items.properties).filter(
+  (k) => !MAPPED_FIELDS.has(k),
+);
+// 無いものは無いまま残す。空文字だと、空を返した reviewer と区別が付かない。
+const carried = (f) => Object.fromEntries(CARRIED_FIELDS.filter((k) => f[k]).map((k) => [k, f[k]]));
 const DEFAULT_DISPOSITION = "must";
 const DECLARABLE_DISPOSITIONS = new Set(["must", "want", "imo", "nits"]);
 let restoredDispositions = 0;
@@ -669,9 +692,7 @@ units.forEach((u, i) => {
         line: f.line,
         severity: f.severity,
         message: f.summary,
-        // 無いものは無いまま残す。空文字だと、空を返した reviewer と区別が付かない。
-        ...(f.category ? { category: f.category } : {}),
-        ...(f.trigger ? { trigger: f.trigger } : {}),
+        ...carried(f),
         ...dispositionOf(f),
       });
     }

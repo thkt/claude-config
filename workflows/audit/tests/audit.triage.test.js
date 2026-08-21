@@ -214,3 +214,45 @@ test("T-011 a downgraded finding is named in info while staying a survivor", asy
     "the re-scored finding is still a survivor: a lowered severity is not a removal",
   );
 });
+
+const FULL_FINDING = {
+  file: "sample.js",
+  line: "1",
+  severity: "high",
+  summary: "s",
+  evidence: "await inside a for-of over 200 ids",
+  reasoning: "each iteration waits a full round trip",
+  fix: "collect the promises and await once",
+  verification: "pattern_search. does any caller pass fewer than 10 ids?",
+};
+
+test("T-012 the evidence, reasoning, fix and verification a reviewer returned stay on the survivor", async () => {
+  const { result } = await runChallenge(
+    {
+      verdicts: [
+        { id: "R-1", verdict: "confirmed" },
+        { id: "R-2", verdict: "confirmed" },
+      ],
+    },
+    { security: { findings: [FULL_FINDING] } },
+  );
+  const survivor = result.survivors.find((s) => s.id === "R-1");
+  for (const key of ["evidence", "reasoning", "fix", "verification"]) {
+    assert.equal(survivor[key], FULL_FINDING[key], `${key} survives triage`);
+  }
+});
+
+// Required, these four would fail the whole findings array of most of the eighteen reviewers.
+test("T-013 a finding carrying none of the four stays a survivor with all four absent", async () => {
+  const { result } = await runChallenge({
+    verdicts: [
+      { id: "R-1", verdict: "confirmed" },
+      { id: "R-2", verdict: "confirmed" },
+    ],
+  });
+  const survivor = result.survivors.find((s) => s.id === "R-1");
+  assert.ok(survivor, "the finding survives without them");
+  for (const key of ["evidence", "reasoning", "fix", "verification"]) {
+    assert.equal(survivor[key], undefined, `${key} stays absent rather than becoming empty`);
+  }
+});
