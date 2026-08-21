@@ -1,6 +1,6 @@
 ---
 name: use-cli-gcloud
-description: gcloud CLI 経由で Google Sheets と Docs へアクセスする。
+description: gsheet と gdoc から Google Sheets と Docs の中身を読む。認証は gcloud のアクセストークンを使う。
 when_to_use: Google Sheets/Docs URL, スプレッドシート, Sheets, Docs, Google ドキュメント
 allowed-tools: Bash(gsheet:*) Bash(gdoc:*) Read
 user-invocable: false
@@ -17,4 +17,8 @@ user-invocable: false
 
 ## 前提
 
-`gsheet` と `gdoc` は `gcloud auth print-access-token` でトークンを取る。認証が切れていると本文でなく Google のエラーページが返り、崩れた CSV や HTML として見える。取得結果が表の形をしていないときは `gcloud auth login` を促して止まる。
+`gsheet` と `gdoc` は shell 関数で、`gcloud auth print-access-token` からトークンを取る。`--help` は持たないので、使い方はこのページが正。
+
+## 落とし穴
+
+認証が切れていると本文でなく Google のエラーページが返り、崩れた CSV や HTML として見える。取得結果が表の形をしていないときは `gcloud auth login` を促して止まる。

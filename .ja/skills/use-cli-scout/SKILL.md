@@ -8,11 +8,15 @@ user-invocable: false
 
 # use-cli-scout
 
-Web 上の情報が要るときは scout を使う。ページの本文がそのまま返るので、一次ソースを直接読んで答えられる。
+## 使いどころ
 
-## URL を渡されたら
+Web 上の情報が要るときは scout を使う。ページの本文がそのまま返るので、一次ソースを直接読んで答えられる。入力に `http://` または `https://` の URL があれば、答える前に取得する。迷ったら取得する。
 
-入力に `http://` または `https://` の URL があれば、下表のコマンドで取得してから答える。迷ったら取得する。`repo-overview` と `repo-read` は完全な URL と `owner/repo` のどちらでも受け付ける。Slack permalink は `fetch` が判別して Slack Web API へ回す (`SLACK_TOKEN` が必要)。
+## コマンド
+
+### URL を渡されたら
+
+`repo-overview` と `repo-read` は完全な URL と `owner/repo` のどちらでも受け付ける。Slack permalink は `fetch` が判別して Slack Web API へ回す。
 
 | URL の形                                      | コマンド                              |
 | --------------------------------------------- | ------------------------------------- |
@@ -20,7 +24,7 @@ Web 上の情報が要るときは scout を使う。ページの本文がその
 | `github.com/<owner>/<repo>/blob/<ref>/<path>` | `scout repo-read <owner/repo> <path>` |
 | それ以外 (Slack permalink を含む)             | `scout fetch <url>`                   |
 
-## 調べる
+### 調べる
 
 `-l ja` と `-l en` で検索言語を固定する (既定は auto)。JS 描画が要るページには `--js`、抽出前のページ全体には `--raw` を付ける。
 
@@ -30,9 +34,9 @@ Web 上の情報が要るときは scout を使う。ページの本文がその
 | トピックの本文一式 | `scout research "topic" -d <1-10>` | 上位 N 件を取得した Markdown レポート |
 | 1 ページの本文     | `scout fetch <url>`                | 本文抽出済みの Markdown               |
 
-## GitHub を辿る
+### GitHub を辿る
 
-`--ref` で branch、tag、commit SHA を指定する。`GITHUB_TOKEN` があればレート上限が上がる。
+`--ref` で branch、tag、commit SHA を指定する。
 
 | 段階                                             | コマンド                                                     |
 | ------------------------------------------------ | ------------------------------------------------------------ |
@@ -40,16 +44,17 @@ Web 上の情報が要るときは scout を使う。ページの本文がその
 | ファイル構成                                     | `scout repo-tree <owner/repo> [-p <dir>] [--pattern '*.rs']` |
 | ファイルの中身                                   | `scout repo-read <owner/repo> <path> [-l 1-80]`              |
 
-## 取れないとき
+## 前提
+
+| 環境変数       | 無いとどうなるか                            |
+| -------------- | ------------------------------------------- |
+| `SLACK_TOKEN`  | Slack permalink の取得が失敗する            |
+| `GITHUB_TOKEN` | GitHub のレート上限が下がる。取得自体は通る |
+
+## 落とし穴
 
 `fetch` は本文が取れなくても exit 0 で返る。返った Markdown に次のいずれかが出たら ${CLAUDE_SKILL_DIR}/references/fetch-failures.md を読む。本文が短い。表の区切り行が無い。見出しが本文と混ざる。行番号が合わない。crates.io と builder.aws.com と zenn.dev、GitHub の wiki、GitLab、docs.rs のソースビューア、x.com の迂回路もそこにある。
 
 ## 正典は help 出力
 
-必須の環境変数、オプション、`--json` envelope、exit code、stdin 入力、実行例は `scout --help` と `scout <subcommand> --help` にある。scout 自体について答えるときは、インストール済みバージョンの help 出力を根拠にする。help と記憶が食い違えば help が正しい。
-
-| 知りたいこと                              | 実行するコマンド                         |
-| ----------------------------------------- | ---------------------------------------- |
-| 環境変数、exit code、グローバルオプション | `scout --help`                           |
-| サブコマンドの引数とフラグ                | `scout <subcommand> --help`              |
-| exit 64 の原因 (API key 未設定を含む)     | `scout --help` の Environment セクション |
+環境変数、オプション、`--json` envelope、exit code、stdin 入力は `scout --help` と `scout <subcommand> --help` にある。help と記憶が食い違えば help が正しい。exit 64 の原因は `scout --help` の Environment セクションが答える。
