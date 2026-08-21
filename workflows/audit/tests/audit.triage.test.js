@@ -160,7 +160,6 @@ test("T-004 leaves the reviewer name out of the input handed to the critic", asy
   assert.doesNotMatch(call.prompt, /"reviewer"/, "the critic input carries no reviewer name");
 });
 
-// ask reuses the why needsContext already carries, so the two can never disagree for one id.
 test("T-009 a needs_context finding returns in the ask section carrying its why", async () => {
   const { result } = await runChallenge({
     verdicts: [
@@ -179,8 +178,6 @@ test("T-009 a needs_context finding returns in the ask section carrying its why"
   );
 });
 
-// A disputed finding is a judged false positive, so its full text would take report space
-// alongside live findings. info records the id and the count instead.
 test("T-010 a disputed finding returns as a count and an id, never its full text", async () => {
   const { result } = await runChallenge({
     verdicts: [
@@ -199,8 +196,7 @@ test("T-010 a disputed finding returns as a count and an id, never its full text
   );
 });
 
-// A downgraded finding stays in survivors at the lowered severity, so info naming it is not a
-// removal. Recording the id is what lets a reader see which finding the challenge re-scored.
+// info naming a finding is not a removal, which is why this asserts both sides.
 test("T-011 a downgraded finding is named in info while staying a survivor", async () => {
   const { result } = await runChallenge({
     verdicts: [
