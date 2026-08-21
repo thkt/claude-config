@@ -9,6 +9,8 @@ argument-hint: "[context or issue reference]"
 
 # /commit - Git コミット実行
 
+build の Code 段が unit ごとに取るコミットを、手で 1 回行う版。subject の規則は同じ。
+
 ## 入力
 
 `$ARGUMENTS` はコンテキストまたは Issue 参照を含み得る。空白を除去し、空文字列ならステージ済み変更のみで解析する。非空ならメッセージの scope やフッターのヒントとして扱う。

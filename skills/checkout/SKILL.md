@@ -9,6 +9,8 @@ argument-hint: "[context or ticket number]"
 
 # /checkout - Git Branch Creation
 
+The manual counterpart of build's Branch stage. Both assemble the name by the same rules.
+
 ## Input
 
 `$ARGUMENTS` may contain context or a ticket number. Trim whitespace; if empty, analyze the Git changes alone. If non-empty, treat it as a hint for the branch name scope or ticket ID.

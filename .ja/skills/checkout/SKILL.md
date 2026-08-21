@@ -9,6 +9,8 @@ argument-hint: "[context or ticket number]"
 
 # /checkout - Git ブランチ作成
 
+build の Branch 段を手で行う版。ブランチ名は同じ規則で組み立てる。
+
 ## 入力
 
 `$ARGUMENTS` はコンテキストまたはチケット番号を含み得る。空白を除去し、空文字列なら git の変更内容のみで解析する。非空ならブランチ名のスコープやチケット ID のヒントとして扱う。

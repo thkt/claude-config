@@ -9,6 +9,8 @@ argument-hint: "[issue reference or context]"
 
 # /pr - Pull Request 作成
 
+build の Ship 段を手で行う版。本文の書き方は同じものを読む。
+
 ## 入力
 
 `$ARGUMENTS` は Issue 参照またはコンテキスト。空なら現在ブランチからのみ生成する。

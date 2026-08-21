@@ -9,6 +9,8 @@ argument-hint: "[context or issue reference]"
 
 # /commit - Git Commit Execution
 
+The manual counterpart of the commit build's Code stage takes per unit. The subject rules are the same.
+
 ## Input
 
 `$ARGUMENTS` may contain context or an issue reference. Trim whitespace; if empty, analyze staged changes only. If non-empty, treat it as a hint for the message scope or footer.
