@@ -56,3 +56,17 @@ jobs:
       # Python tests と同じ形で、階層が増えても suite を落とさない。-t が実行行を stderr へ出す。
       - name: Shell tests
         run: find hooks -name '*.test.sh' -print0 | xargs -0 -r -n1 -t bash
+
+      # 3 つとも hook か手元でしか走っておらず、指摘が溜まっても誰も気付かなかった。
+      # oxlint と textlint は devDependency なので、上の Install がそのまま入れる。
+      - name: oxlint
+        run: npx oxlint
+
+      # クォートしたまま渡し、glob の展開は textlint 側にさせる。シェルに展開させると
+      # globstar の有無で対象ファイル数が変わる。
+      - name: textlint
+        run: npx textlint '.ja/**/*.md'
+
+      # ruff は JS 依存に無いので版を直に固定する。手元は uvx ruff (2026-08-21 時点 0.16.4)。
+      - name: ruff
+        run: pipx run --spec ruff==0.16.4 ruff check .
