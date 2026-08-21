@@ -213,6 +213,14 @@ fail-closed の hook が特定の失敗を 1 つだけ無視するのは格下�
 
 小さなフックを組み合わせて複雑な振る舞いを実現する。
 
+### 5. settings.json の管轄外
+
+外部アプリが `settings.json` へ書き込んだ hook 配線は、そのアプリをアンインストールしても残る。残った配線は非ブロッキングのまま毎イベント失敗し続ける。会話と `git diff` のどちらにも出ないので、気付く経路は transcript の `hook_non_blocking_error` と `stop_hook_summary` の `hookErrors` に限られる。
+
+hook が毎回出す 1 行を `settings.json` 側の設定で消す口はない。`suppressOutput` は hook が返す JSON のキーで、stdout 専用。stderr へ出す formatter や gates の定型行は、出力さえあれば `hook_success` として記録され描画される。
+
+`autoMemoryEnabled: false` で auto-memory の読み書きを止められる。バイナリ内の `/pause-memory` は `isEnabled: () => false` のまま埋め込まれており、有効化しても動作しない。
+
 ## 関連
 
 - [Claude Code Hooks Docs](https://docs.anthropic.com/en/docs/claude-code/hooks)
