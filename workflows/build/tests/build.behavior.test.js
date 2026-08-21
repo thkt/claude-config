@@ -3,12 +3,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflow } from "../../_lib/run-workflow.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const buildJs = join(here, "..", "..", "build.js");
+const recordPy = join(here, "..", "record.py");
 
 // The shared args clearing build.js's no-repo gate. repo is used only to assemble the anchor
 // and guard strings, so one fixed absolute path covers every test.
@@ -97,11 +101,10 @@ const makeStubs = ({
     const kind = kindOf(opts);
     switch (kind) {
       case "record":
-        // The default stands in for record.py's stdout. A run_id override of null takes the
-        // fail-open route, where the row is lost and the build carries on.
-        return record !== undefined
-          ? record
-          : { path: "/home/sample/.claude/history/build-runs.jsonl", run_id: RECORDED_RUN_ID };
+        // The default stands in for record.py's stdout. An override returning an empty run_id
+        // takes the fail-open route; a function override runs the real script on the prompt.
+        if (record !== undefined) return typeof record === "function" ? record(prompt) : record;
+        return { path: "/home/sample/.claude/history/build-runs.jsonl", run_id: RECORDED_RUN_ID };
       case "translate":
         // The default fails open (no translations) and keeps the English originals. Only the
         // test verifying that translations land passes a translate stub.
@@ -1406,6 +1409,52 @@ test("a recorder returning no run_id leaves the build running and logs the lost 
     logs.some((m) => /build-runs\.jsonl/.test(m)),
     "the lost row reaches log() with the file it is missing from",
   );
+});
+
+// T-008: the seam. Every case above stubs the recorder, so build.js and record.py can each be
+// right while the payload never reaches the file. This one carries the real prompt into the real
+// script and reads the rows back off disk.
+// HOME points at a temporary directory, matching record.py's HISTORY_DIR, so the developer's own
+// build-runs.jsonl is never written.
+test("T-008 a no-plan stop reaches the real record.py as a plan-quality row joined to the start row", async () => {
+  const home = mkdtempSync(join(tmpdir(), "build-record-seam-"));
+  try {
+    const { result } = await runWorkflow(buildJs, {
+      args,
+      stubs: makeStubs({
+        body: "An issue body with no Plan heading.\n\n## Context\n\nExplanation only.",
+        record: (prompt) => {
+          // The payload is the prompt's last line, where recordRun puts the stringified JSON.
+          const payload = prompt.trim().split("\n").pop();
+          const res = spawnSync("python3", [recordPy], {
+            input: payload,
+            encoding: "utf8",
+            env: { ...process.env, HOME: home },
+          });
+          assert.equal(res.status, 0, `record.py exits 0 (stderr: ${res.stderr})`);
+          return JSON.parse(res.stdout);
+        },
+      }),
+    });
+    assert.equal(result.stopped, "no-plan");
+
+    const rows = readFileSync(join(home, ".claude", "history", "build-runs.jsonl"), "utf8")
+      .split("\n")
+      .filter((line) => line.trim())
+      .map((line) => JSON.parse(line));
+    assert.equal(rows.length, 2, "the run leaves a start row and a stop row");
+    assert.deepEqual(
+      rows.map((r) => r.reason),
+      ["started", "no-plan"],
+      "the rows read as the run went: started, then the stop that ended it",
+    );
+    assert.equal(rows[0].plan_quality, false, "the start row is not a plan-quality stop");
+    assert.equal(rows[1].plan_quality, true, "no-plan counts toward the plan-quality total");
+    assert.equal(rows[1].run_id, rows[0].run_id, "the stop row joins the start row of this run");
+    assert.equal(rows[1].issue, "123", "the row carries the issue the stop belongs to");
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 });
 
 // T-004: one literal `stopped:` remains, and it sits in the helper. A return that assembles its
