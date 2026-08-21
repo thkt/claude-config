@@ -1,7 +1,6 @@
-// xlsx のシートを Markdown へ変換する。
-// 汎用の抽出処理と、書式ごとの判定を分けて持つ。書式判定はプロファイルが担う。
+// 抽出は書式に依存させず、書式ごとの判定はすべてプロファイルが持つ。
 
-/** セルの値を文字列にする。日付、数式、リッチテキストはそれぞれ別の形で入る。 */
+/** 日付、数式、エラー、リッチテキストはそれぞれ別の形で入る。 */
 export function cellText(cell) {
   if (cell == null) return "";
   if (cell instanceof Date) return cell.toISOString().slice(0, 10);
@@ -15,26 +14,27 @@ export function cellText(cell) {
 }
 
 /**
- * 空セルを落とし、残ったセルを列位置つきで返す。
  * 業務 Excel は 1 項目をセル結合で複数セルに広げるため、列位置が表の列と項目の
- * 入れ子を復元する手がかりになる。
+ * 入れ子を後から復元する手がかりになる。
  */
 export function cellsOf(row) {
   const out = [];
   for (let i = 0; i < row.length; i++) {
-    const text = cellText(row[i]).replace(/ /g, " ").trim();
+    const text = cellText(row[i]).trim();
     if (text !== "") out.push({ col: i, text });
   }
   return out;
 }
 
-/** 1,2,3,... と連番だけが並ぶ行は Excel 上の列番号ガイドなので落とす。 */
-export function isColumnRuler(cells) {
-  if (cells.length < 10) return false;
-  return cells.every((cell, i) => cell.text === String(i + 1));
+const textsOf = (cells) => cells.map((cell) => cell.text);
+
+/** 1,2,3,... と連番だけが並ぶ行は Excel 上の列番号ガイドで、内容ではない。 */
+export function isColumnRuler(texts) {
+  if (texts.length < 10) return false;
+  return texts.every((text, i) => text === String(i + 1));
 }
 
-/** 全シートの充填率。低いほどレイアウト目的の空セルが多く、整形の効果が大きい。 */
+/** 充填率が低いほどレイアウト目的の空セルが多く、整形の効果が大きい。 */
 export function fillRatio(sheets) {
   let total = 0;
   let filled = 0;
@@ -52,7 +52,6 @@ export function escapeCell(text) {
 }
 
 /**
- * ヘッダ行とサブヘッダ行の列位置から列の境界を作る。
  * データ行のセルは列位置が入る区間へ割り当てるので、途中の列が空でも右の列がずれない。
  */
 export function buildColumns(head, sub) {
@@ -71,7 +70,7 @@ export function rowToCells(cells, columns, nestColumnLabel) {
   for (const cell of cells) {
     let index = columns.findIndex((column) => cell.col >= column.start && cell.col < column.end);
     if (index < 0) index = 0;
-    // 入れ子を表す列では、列内のセル位置が階層の深さを表す。全角空白で復元する。
+    // 入れ子を表す列では、列内のセル位置が階層の深さを表す。
     const nested = nestColumnLabel && columns[index].label.includes(nestColumnLabel);
     const depth = nested ? cell.col - columns[index].start : 0;
     slots[index].push("　".repeat(Math.max(0, depth)) + cell.text);
@@ -80,8 +79,8 @@ export function rowToCells(cells, columns, nestColumnLabel) {
 }
 
 /**
- * 書式プロファイル。値が null の判定は行わない。
- * generic は表として解釈しないため、書式が未知のファイルでもセルを落とさない。
+ * 値が null の判定は行わないため、generic は表として解釈せず、書式が未知の
+ * ファイルでもセルを落とさない。
  */
 export const profiles = {
   generic: {
@@ -111,11 +110,10 @@ export function sheetToMarkdown(sheet, profile = profiles.generic) {
   const lines = [`# ${sheet.name}`, ""];
   let i = 0;
 
-  // 文書情報ヘッダを持つ書式では、先頭の数行を引用として畳む。
   if (profile.docHeaderFirstCell && rows[0]?.[0]?.text === profile.docHeaderFirstCell) {
     const meta = [];
     for (const row of rows.slice(0, 3)) {
-      if (!row.length || isColumnRuler(row)) continue;
+      if (!row.length || isColumnRuler(textsOf(row))) continue;
       meta.push(row.map((cell) => cell.text).join(" / "));
     }
     if (meta.length) lines.push(`> ${meta.join("  \n> ")}`, "");
@@ -131,7 +129,7 @@ export function sheetToMarkdown(sheet, profile = profiles.generic) {
 
   while (i < rows.length) {
     const cells = rows[i];
-    if (!cells.length || isColumnRuler(cells)) {
+    if (!cells.length || isColumnRuler(textsOf(cells))) {
       flushCode();
       i++;
       continue;

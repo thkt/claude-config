@@ -4,7 +4,14 @@
 //   verify  <xlsx> <dir>                    元の全セルが出力に残っているか照合する
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { cellText, fillRatio, profiles, sheetFileName, sheetToMarkdown } from "./convert.js";
+import {
+  cellText,
+  fillRatio,
+  isColumnRuler,
+  profiles,
+  sheetFileName,
+  sheetToMarkdown,
+} from "./convert.js";
 
 const out = (text) => process.stdout.write(`${text}\n`);
 const err = (text) => process.stderr.write(`${text}\n`);
@@ -48,8 +55,7 @@ if (command === "list") {
     `\nsheets: ${workbook.sheets.length} / cells: ${total.toLocaleString()} / ` +
       `filled: ${filled.toLocaleString()} (${(ratio * 100).toFixed(1)}%)`,
   );
-  // 充填率が低いファイルはレイアウト目的の空セルが大半を占め、素のまま読むと
-  // 空セルがトークンを食う。閾値は書式ごとに違うので、判断は読み手に返す。
+  // 閾値は書式ごとに違うので、ここで分岐せず判断を読み手に返す。
   if (ratio < 0.2) out("充填率が低い。extract で整形してから読む。");
   process.exit(0);
 }
@@ -66,8 +72,8 @@ if (command === "extract") {
     err(`profile が無い: ${profileName} (${Object.keys(profiles).join(", ")})`);
     process.exit(2);
   }
-  // 名前で指定したシートは、ファイル名に使う元の位置が読み込み結果からは分からない。
-  // 判定関数はシート本体を読む前のメタデータに対して走るので、そこで位置を控える。
+  // 読み込み結果はファイル名に要る元のシート位置を落としており、判定関数だけが
+  // その位置を見られる。
   const only = options.sheet;
   let resolved = null;
   let filter;
@@ -126,7 +132,7 @@ if (command === "verify") {
       missing.push({ sheet: sheet.name, reason: "出力が無い" });
       continue;
     }
-    // 出力側は改行を <br>、パイプを \| へ変換しているので、比較前に戻す。
+    // escapeCell の変換を戻さないと、エスケープしたセルがすべて欠落として出る。
     const flat = markdown.replace(/<br>/g, "").replace(/\\\|/g, "|").replace(/\s+/g, "");
     let lost = 0;
     let sample = "";
@@ -134,9 +140,9 @@ if (command === "verify") {
       const cells = row
         .map((cell) => cellText(cell).trim())
         .filter((t) => t !== "");
-      // 1,2,3,... だけが並ぶ行は列番号のものさしで、変換後の Markdown には残らない。
-      // 落とすと欠落として毎シート報告され、本物の欠落が埋もれる。
-      if (cells.length >= 10 && cells.every((t, i) => t === String(i + 1))) continue;
+      // 列番号のものさしは変換後の Markdown に残らないため、数えると毎シート欠落として
+      // 報告され、本物の欠落が埋もれる。
+      if (isColumnRuler(cells)) continue;
       for (const text of cells) {
         if (flat.includes(text.replace(/\s+/g, ""))) continue;
         lost++;

@@ -1,7 +1,6 @@
-// Convert xlsx sheets into Markdown.
-// Generic extraction and per-layout judgment are kept apart. A profile carries the layout judgment.
+// Extraction stays layout-agnostic; a profile carries every layout-specific judgment.
 
-/** Turn a cell value into text. Dates, formulas and rich text each arrive in their own shape. */
+/** Dates, formulas, errors and rich text each arrive in their own shape. */
 export function cellText(cell) {
   if (cell == null) return "";
   if (cell instanceof Date) return cell.toISOString().slice(0, 10);
@@ -15,26 +14,27 @@ export function cellText(cell) {
 }
 
 /**
- * Drop empty cells and return the rest with their column position.
- * Business spreadsheets spread one item across several cells via merges, so the column
- * position is what lets the table columns and the item nesting be restored.
+ * A business spreadsheet spreads one item across several cells via merges, so the column
+ * position is what lets the table columns and the item nesting be restored later.
  */
 export function cellsOf(row) {
   const out = [];
   for (let i = 0; i < row.length; i++) {
-    const text = cellText(row[i]).replace(/ /g, " ").trim();
+    const text = cellText(row[i]).trim();
     if (text !== "") out.push({ col: i, text });
   }
   return out;
 }
 
-/** A row holding only 1,2,3,... is Excel's column-number guide, so drop it. */
-export function isColumnRuler(cells) {
-  if (cells.length < 10) return false;
-  return cells.every((cell, i) => cell.text === String(i + 1));
+const textsOf = (cells) => cells.map((cell) => cell.text);
+
+/** A row of nothing but 1,2,3,... is Excel's column-number guide, not content. */
+export function isColumnRuler(texts) {
+  if (texts.length < 10) return false;
+  return texts.every((text, i) => text === String(i + 1));
 }
 
-/** Fill ratio across all sheets. The lower it is, the more layout-only empty cells, and the more conversion pays off. */
+/** The lower the ratio, the more layout-only empty cells, and the more conversion pays off. */
 export function fillRatio(sheets) {
   let total = 0;
   let filled = 0;
@@ -52,9 +52,8 @@ export function escapeCell(text) {
 }
 
 /**
- * Build column boundaries from the column positions of the header and sub-header rows.
- * A data cell is assigned to the interval its column position falls in, so an empty
- * middle column does not shift the columns to its right.
+ * A data cell lands in the interval its column position falls in, so an empty middle
+ * column does not shift the columns to its right.
  */
 export function buildColumns(head, sub) {
   const starts = [...new Set([...head, ...sub].map((cell) => cell.col))].sort((a, b) => a - b);
@@ -72,7 +71,7 @@ export function rowToCells(cells, columns, nestColumnLabel) {
   for (const cell of cells) {
     let index = columns.findIndex((column) => cell.col >= column.start && cell.col < column.end);
     if (index < 0) index = 0;
-    // In a nesting column, the cell position within the column carries the depth. Restore it with full-width spaces.
+    // In a nesting column, the cell position within the column carries the depth.
     const nested = nestColumnLabel && columns[index].label.includes(nestColumnLabel);
     const depth = nested ? cell.col - columns[index].start : 0;
     slots[index].push("　".repeat(Math.max(0, depth)) + cell.text);
@@ -81,8 +80,8 @@ export function rowToCells(cells, columns, nestColumnLabel) {
 }
 
 /**
- * Layout profiles. A judgment whose value is null is not performed.
- * generic does not read anything as a table, so an unknown layout loses no cells.
+ * A judgment set to null is not performed, so generic reads nothing as a table and an
+ * unknown layout loses no cells.
  */
 export const profiles = {
   generic: {
@@ -112,11 +111,10 @@ export function sheetToMarkdown(sheet, profile = profiles.generic) {
   const lines = [`# ${sheet.name}`, ""];
   let i = 0;
 
-  // In layouts carrying a document header, fold the leading rows into a quote.
   if (profile.docHeaderFirstCell && rows[0]?.[0]?.text === profile.docHeaderFirstCell) {
     const meta = [];
     for (const row of rows.slice(0, 3)) {
-      if (!row.length || isColumnRuler(row)) continue;
+      if (!row.length || isColumnRuler(textsOf(row))) continue;
       meta.push(row.map((cell) => cell.text).join(" / "));
     }
     if (meta.length) lines.push(`> ${meta.join("  \n> ")}`, "");
@@ -132,7 +130,7 @@ export function sheetToMarkdown(sheet, profile = profiles.generic) {
 
   while (i < rows.length) {
     const cells = rows[i];
-    if (!cells.length || isColumnRuler(cells)) {
+    if (!cells.length || isColumnRuler(textsOf(cells))) {
       flushCode();
       i++;
       continue;
