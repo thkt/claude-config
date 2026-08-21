@@ -55,8 +55,7 @@ const makePlan = (overrides = {}) => ({
   ...overrides,
 });
 
-// The run_id record.py mints. The stub returns it from the start row, and a later row carrying
-// it back is what shows the two rows belong to one build.
+// The run_id record.py mints. A later row carrying it back is what ties two rows to one build.
 const RECORDED_RUN_ID = "a1b2c3d4e5f6";
 
 // Classifies an agent call by the shape of its schema rather than by its label string, which
@@ -101,8 +100,7 @@ const makeStubs = ({
     const kind = kindOf(opts);
     switch (kind) {
       case "record":
-        // The default stands in for record.py's stdout. An override returning an empty run_id
-        // takes the fail-open route; a function override runs the real script on the prompt.
+        // The default stands in for record.py's stdout; a function override runs the real script.
         if (record !== undefined) return typeof record === "function" ? record(prompt) : record;
         return { path: "/home/sample/.claude/history/build-runs.jsonl", run_id: RECORDED_RUN_ID };
       case "translate":
@@ -1327,13 +1325,11 @@ test("with the per-unit commits on, the Ship prompt instructs a remainder commit
   );
 });
 
-// The mirror runs nowhere, so a helper added on one side alone stays invisible until a reader
-// opens the other file. The stop-route checks read both paths.
+// The mirror runs nowhere, so drift on that side stays invisible until a reader opens the file.
 const jaBuildJs = join(here, "..", "..", "..", ".ja", "workflows", "build.js");
 
-// The stopped values are no longer literals at the return sites: every stop routes through the
-// stop helper, which looks its classification up in PLAN_QUALITY. The value set now lives in
-// that table and in the arguments the call sites pass, so both are read as text.
+// The stopped values are no longer literals at the return sites, so the set is read off the
+// table and the call sites' arguments as text. A workflow script cannot be imported.
 const planQualityTable = (source) => {
   const block = source.match(/const PLAN_QUALITY = \{([\s\S]*?)\n\};/);
   assert.ok(block, "the source declares a PLAN_QUALITY table");
@@ -1344,9 +1340,8 @@ const planQualityTable = (source) => {
 const stopReasons = (source) =>
   new Set([...source.matchAll(/\bstop\(\s*"([^"]+)"/g)].map((m) => m[1]));
 
-// T-006: a run killed between Load and Ship writes no stop row, so without a row at the start
-// it would leave the history holding finished and stopped runs alone. The count would then read
-// the stop rate off a denominator the killed runs already left.
+// T-006: a run killed between Load and Ship writes no stop row, so without a start row it would
+// leave the stop rate reading off a denominator the killed runs already left.
 test("T-006 the start row is written before Load fetches the issue", async () => {
   const { calls } = await runWorkflow(buildJs, { args, stubs: makeStubs() });
   const records = agentCallsOf(calls, "record");
@@ -1363,9 +1358,8 @@ test("T-006 the start row is written before Load fetches the issue", async () =>
   assert.ok(firstRecord < firstFetch, "the start row is written before the fetch");
 });
 
-// T-007: code returns its own stopped value, and build folds every one of them into code-failed.
-// Counting on the outer reason alone would put a plan-caused stop inside code into the same
-// bucket as a failed test run.
+// T-007: build folds every stopped value code returns into code-failed, so the outer reason
+// alone would bucket a plan-caused stop with a failed test run.
 test("T-007 a stop inside code carries the nested reason and the start row's run_id", async () => {
   const { result, calls } = await runWorkflow(buildJs, {
     args,
@@ -1383,7 +1377,7 @@ test("T-007 a stop inside code carries the nested reason and the start row's run
 });
 
 // The gates above anchor have no repository to run the recorder in, and neither is a
-// plan-quality signal. They return without a row rather than writing one with an empty repo.
+// plan-quality signal.
 test("the gates ahead of the repo check write no row", async () => {
   for (const [label, runArgs] of [
     ["no-issue", {}],
@@ -1396,9 +1390,8 @@ test("the gates ahead of the repo check write no row", async () => {
   }
 });
 
-// Recording is not a gate. A recorder that returns nothing must not turn a runnable build into
-// a stopped one, and the loss has to reach the run log, which is where a reader learns the run
-// is missing from the count.
+// A recorder that returns nothing must not turn a runnable build into a stopped one. Nothing
+// but the run log tells a reader that this run is missing from the count.
 test("a recorder returning no run_id leaves the build running and logs the lost row", async () => {
   const { result, logs } = await runWorkflow(buildJs, {
     args,
@@ -1412,8 +1405,7 @@ test("a recorder returning no run_id leaves the build running and logs the lost 
 });
 
 // T-008: the seam. Every case above stubs the recorder, so build.js and record.py can each be
-// right while the payload never reaches the file. This one carries the real prompt into the real
-// script and reads the rows back off disk.
+// right while the payload never reaches the file.
 // HOME points at a temporary directory, matching record.py's HISTORY_DIR, so the developer's own
 // build-runs.jsonl is never written.
 test("T-008 a no-plan stop reaches the real record.py as a plan-quality row joined to the start row", async () => {
@@ -1469,8 +1461,7 @@ test("T-004 build.js and its .ja mirror return stopped only from the stop helper
     );
     assert.match(source, /stopped:\s*reason/, `${path}'s single stopped return is the helper's`);
     assert.ok(stopReasons(source).size > 0, `${path} routes its stops through stop("...")`);
-    // The three lines that turn recording on. The behavior cases exercise build.js alone, so a
-    // mirror that dropped one of them would keep the suite green while recording nothing.
+    // The behavior cases run build.js alone, so a mirror dropping one of these stays green.
     for (const line of [
       /recordable = true;/,
       /await recordRun\("started"\);/,
@@ -1493,8 +1484,8 @@ test("T-005 the plan-quality table's key set matches the stopped value set", asy
   }
 });
 
-// The six plan-caused values are what the count exists for. Reclassifying one changes what the
-// /qualify decision reads, so the split is pinned rather than left to the table's current shape.
+// Reclassifying one of the six changes what the /qualify decision reads, so the split is pinned
+// rather than left to whatever the table currently holds.
 test("the plan-quality table marks exactly the six stops a plan can cause", async () => {
   const table = planQualityTable(await readFile(buildJs, "utf8"));
   assert.deepEqual(

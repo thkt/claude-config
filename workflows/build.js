@@ -39,13 +39,9 @@ const issueRef = String(typeof argsValue === "string" ? argsValue : input.issue 
 const issueNumber =
   (issueRef.match(/^#?(\d+)$/) || issueRef.match(/\/issues\/(\d+)(?:[/?#]|$)/) || [])[1] || "";
 // ---- Run recording: one jsonl row per build run ----
-// A stop reaches the caller as a return value and lands nowhere else, so how often plan quality
-// stopped a build could not be counted. Every stop routes through the stop helper below, which
-// appends a row through workflows/build/record.py.
-// PLAN_QUALITY says whether the issue's ## Plan section could have prevented that stop. The six
-// true values are the Load / Revalidate stops the plan's own content causes; the false ones come
-// from the environment, a dropped relay, or the nested code run. Counting the true ones is what
-// decides whether /qualify becomes mandatory ahead of build (DR-0084's reassessment trigger).
+// PLAN_QUALITY says whether the issue's ## Plan section could have prevented the stop. Counting
+// the true ones decides whether /qualify becomes mandatory ahead of build (DR-0084's
+// reassessment trigger), which a stopped return value reaching no file could never answer.
 const PLAN_QUALITY = {
   "no-issue": false,
   "no-repo": false,
@@ -72,15 +68,12 @@ const RECORD_SCHEMA = {
     run_id: { type: "string", description: "run_id from record.py's stdout JSON, verbatim" },
   },
 };
-// runId comes back from record.py's stdout, because a workflow script has neither a clock nor a
-// random source (rules/conventions/WORKFLOWS.md § Script evaluation form). The stop row carries
-// it back, which is how it joins the start row of the same build.
+// record.py mints runId, because a workflow script has neither a clock nor a random source
+// (rules/conventions/WORKFLOWS.md § Script evaluation form).
 let runId = "";
-// Recording starts once anchor exists, which is after the repo is known. The gates above that
-// point return without a row: neither is a plan-quality signal, and the recorder's agent would
-// have no repository to be anchored to.
+// The gates ahead of anchor return without a row: neither is a plan-quality signal, and the
+// recorder's agent would have no repository to be anchored to.
 let recordable = false;
-// The branch is unknown until Branch resolves it, so the rows written before then carry "".
 let recordedBranch = "";
 const recordRun = async (reason, fields = {}) => {
   const payload = {
@@ -89,7 +82,7 @@ const recordRun = async (reason, fields = {}) => {
     repo,
     branch: recordedBranch,
     reason,
-    // A reason outside the table is the start row, which is not a plan-quality stop.
+    // A reason outside the table is the start row, not a stop.
     plan_quality: PLAN_QUALITY[reason] === true,
     ...fields,
   };
@@ -109,8 +102,7 @@ const recordRun = async (reason, fields = {}) => {
     },
   );
   const id = String((written && written.run_id) || "").trim();
-  // Recording never gates a build, so a failed relay falls open. The run is then absent from
-  // the count, and this line is the only place a reader learns that.
+  // Recording never gates a build, so a failed relay falls open instead of stopping the run.
   if (!id) {
     log(
       `The "${reason}" row was not written (the recorder returned no run_id), so this run is missing from build-runs.jsonl.`,
@@ -119,8 +111,7 @@ const recordRun = async (reason, fields = {}) => {
   }
   runId = id;
 };
-// The single assembly point for a stopped return. fields lands on the caller's return value,
-// recordFields on the jsonl row.
+// Every stopped return is assembled here, so no stop can leave without its row.
 const stop = async (reason, fields = {}, recordFields = {}) => {
   if (recordable) await recordRun(reason, recordFields);
   return { stopped: reason, ...fields };
@@ -194,8 +185,8 @@ const FETCH_SCHEMA = obj(["found", "body"], {
   },
 });
 
-// The start row is written before Load reads the issue, so a run killed mid-flight still stands
-// in the denominator instead of leaving the count with completed and stopped runs alone.
+// The start row goes ahead of Load, so a run killed mid-flight still stands in the denominator
+// rather than leaving the count to the runs that reached an end.
 recordable = true;
 await recordRun("started");
 
@@ -657,8 +648,6 @@ const [reval, branchRes, baseline] = await parallel([
     ),
 ]);
 const branch = (branchRes && branchRes.branch) || "";
-// From here on the rows carry the branch, so a stop can be traced back to the checkout it
-// happened on rather than to the issue number alone.
 recordedBranch = branch;
 // Subtracts pre-existing clutter from Verify's scope deviations, and doubles as the
 // commit agents' never-stage set.
@@ -787,10 +776,8 @@ const code =
     untracked_baseline: baselineUntracked,
   })) || null;
 if (!code || code.stopped) {
-  // A plan-caused stop inside code arrives here as code-failed, which is classified as not
-  // plan-quality. nested_reason carries the inner reason onto the row, so the count can reach
-  // it instead of losing it under one bucket.
-  const nested = String((code && code.stopped) || "").trim();
+  // Without nested_reason a plan-caused stop inside code would be counted as code-failed alone.
+  const nested = String((code && code.stopped) || "");
   return await stop("code-failed", { detail: code }, nested ? { nested_reason: nested } : {});
 }
 if (!code.tests_pass || !code.gates_pass)

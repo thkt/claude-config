@@ -38,13 +38,9 @@ const issueRef = String(typeof argsValue === "string" ? argsValue : input.issue 
 const issueNumber =
   (issueRef.match(/^#?(\d+)$/) || issueRef.match(/\/issues\/(\d+)(?:[/?#]|$)/) || [])[1] || "";
 // ---- run の記録: build の 1 実行につき jsonl 1 行 ----
-// 停止は返り値として呼び出し元に届くだけでどこにも残らないため、plan 品質が build を
-// 止めた回数を数えられなかった。停止はすべて下の stop ヘルパーを通り、そこから
-// workflows/build/record.py へ 1 行追記する。
-// PLAN_QUALITY は、その停止を issue の ## Plan 節の側で防げたかどうかを持つ。true の 6 つは
-// plan の内容そのものが起こす Load / Revalidate の停止で、false は環境・relay の取りこぼし・
-// 入れ子の code に由来する。true の件数を数えることが、/qualify を build の前段で必須にするか
-// (DR-0084 の再評価条件) を決める。
+// PLAN_QUALITY は、その停止を issue の ## Plan 節の側で防げたかどうかを持つ。true の件数が
+// /qualify を build の前段で必須にするか (DR-0084 の再評価条件) を決める。どのファイルにも
+// 届かない返り値のままでは、その問いに答えられない。
 const PLAN_QUALITY = {
   "no-issue": false,
   "no-repo": false,
@@ -71,14 +67,12 @@ const RECORD_SCHEMA = {
     run_id: { type: "string", description: "record.py の stdout JSON の run_id をそのまま" },
   },
 };
-// workflow script は時計も乱数も持たない (rules/conventions/WORKFLOWS.md § Script evaluation
-// form) ので、runId は record.py の stdout から受け取る。停止の行はそれを渡し直し、同じ build
-// の開始の行と結び付く。
+// workflow script は時計を持たず、乱数も引けない (rules/conventions/WORKFLOWS.md § Script
+// evaluation form) ので、runId は record.py が発行する。
 let runId = "";
-// 記録が始まるのは anchor が存在してから、つまり repo が判明した後。それより上の gate は行を
-// 残さずに返る。どれも plan 品質の信号ではなく、記録の agent を固定するリポジトリも無い。
+// anchor より上の gate は行を残さずに返る。plan 品質の信号ではなく、記録の agent を固定する
+// リポジトリも無い。
 let recordable = false;
-// branch は Branch が解決するまで分からないので、それより前に書く行は "" を持つ。
 let recordedBranch = "";
 const recordRun = async (reason, fields = {}) => {
   const payload = {
@@ -87,7 +81,7 @@ const recordRun = async (reason, fields = {}) => {
     repo,
     branch: recordedBranch,
     reason,
-    // 表に無い reason は開始の行であり、plan 品質による停止ではない。
+    // 表に無い reason は停止でなく開始の行。
     plan_quality: PLAN_QUALITY[reason] === true,
     ...fields,
   };
@@ -107,8 +101,7 @@ const recordRun = async (reason, fields = {}) => {
     },
   );
   const id = String((written && written.run_id) || "").trim();
-  // 記録が build を止めることはないので、relay の失敗は fail-open で進む。その run は件数から
-  // 落ちるが、読み手がそれを知れるのはこの行だけ。
+  // 記録が build を止めることはないので、relay の失敗は run を止めず fail-open で進む。
   if (!id) {
     log(
       `"${reason}" の行を書けなかった (記録側が run_id を返さなかった)。この run は build-runs.jsonl に現れない。`,
@@ -117,8 +110,7 @@ const recordRun = async (reason, fields = {}) => {
   }
   runId = id;
 };
-// stopped の返り値を組み立てる唯一の場所。fields は呼び出し元への返り値に、recordFields は
-// jsonl の行に載る。
+// stopped の返り値はここでしか組み立てない。行を残さずに抜ける停止を作れない。
 const stop = async (reason, fields = {}, recordFields = {}) => {
   if (recordable) await recordRun(reason, recordFields);
   return { stopped: reason, ...fields };
@@ -189,8 +181,8 @@ const FETCH_SCHEMA = obj(["found", "body"], {
   },
 });
 
-// 開始の行は Load が issue を読む前に書く。途中で殺された run も分母に残り、完走した run と
-// 停止した run だけが件数に残る状態にならない。
+// 開始の行は Load より前に書く。途中で殺された run も分母に残り、終端まで行った run だけで
+// 件数を数える状態にならない。
 recordable = true;
 await recordRun("started");
 
@@ -635,8 +627,6 @@ const [reval, branchRes, baseline] = await parallel([
     ),
 ]);
 const branch = (branchRes && branchRes.branch) || "";
-// ここから先の行は branch を持つ。停止を issue 番号だけでなく、それが起きた checkout まで
-// 辿れる。
 recordedBranch = branch;
 // build 以前から作業ツリーにある私物を Verify の scope 逸脱から差し引き、同じ一覧を
 // build 以前から作業ツリーにある私物を Verify の scope 逸脱から差し引き、commit agent の
@@ -762,9 +752,8 @@ const code =
     untracked_baseline: baselineUntracked,
   })) || null;
 if (!code || code.stopped) {
-  // code の内側で起きた plan 起因の停止はここへ code-failed として届き、plan 品質ではないと
-  // 分類される。nested_reason が内側の理由を行に載せるので、1 つの箱に埋もれず数えられる。
-  const nested = String((code && code.stopped) || "").trim();
+  // nested_reason が無いと、code の内側で起きた plan 起因の停止は code-failed としか数えられない。
+  const nested = String((code && code.stopped) || "");
   return await stop("code-failed", { detail: code }, nested ? { nested_reason: nested } : {});
 }
 if (!code.tests_pass || !code.gates_pass)
