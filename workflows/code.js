@@ -170,7 +170,7 @@ const commitUnit = async (unit, tests, testFiles) => {
           ? `Never stage these paths: ${JSON.stringify(untrackedBaseline)} - they were in the working tree before this run, and staging one leaks local notes and config into the PR. `
           : "") +
         `List anything you left unstaged in left_unstaged.\n` +
-        `Commit with \`git commit -F {tempfile}\`. The message has three parts: a Conventional Commits subject you write yourself from the staged diff (<= 72 chars, imperative, lowercase, no trailing period), a blank line, and the following block copied verbatim. Add nothing, drop nothing, reword nothing:\n` +
+        `Commit with \`git commit -F {tempfile}\`. The message has three parts: a Conventional Commits subject you write yourself from the staged diff (72 chars or fewer, imperative, lowercase, no trailing period), a blank line, and the following block copied verbatim. Add nothing, drop nothing, reword nothing:\n` +
         `${commitBody(unit, tests)}\n` +
         `If applying the staging rules leaves nothing staged, do not commit: return committed: false with the reason in left_unstaged.` +
         (repo

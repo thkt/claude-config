@@ -9,6 +9,8 @@ argument-hint: "[context or issue reference]"
 
 # /commit - Git Commit Execution
 
+The manual counterpart of the commit build's Code stage takes per unit. The subject rules are the same.
+
 ## Input
 
 `$ARGUMENTS` may contain context or an issue reference. Trim whitespace; if empty, analyze staged changes only. If non-empty, treat it as a hint for the message scope or footer.
@@ -41,7 +43,7 @@ Assemble the message as `<type>(<scope>): <subject>`. A breaking change takes a 
 
 | Part    | Rule                                                                             |
 | ------- | -------------------------------------------------------------------------------- |
-| Subject | 72 chars or fewer. Imperative, lowercase, no trailing period                     |
+| Subject | 72 chars or fewer, imperative, lowercase, no trailing period     |
 | Body    | The why the diff cannot show, such as motivation or rationale. Omit when obvious |
 | Footer  | `BREAKING CHANGE:`, `Closes #123`, `Co-authored-by:`                             |
 

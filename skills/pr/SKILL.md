@@ -9,6 +9,8 @@ argument-hint: "[issue reference or context]"
 
 # /pr - Pull Request Creator
 
+The manual counterpart of build's Ship stage. Both write the body from the same rules.
+
 ## Input
 
 `$ARGUMENTS` is an Issue reference or context. If empty, generate from the current branch only.

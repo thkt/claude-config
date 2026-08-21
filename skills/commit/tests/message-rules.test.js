@@ -19,6 +19,33 @@ const eachLanguage = async (check) => {
 
 const commitBlock = (doc) => doc.split("```bash\n")[1]?.split("```")[0] ?? "";
 
+// code.js writes the subject of every unit commit build makes, so the two write one history.
+// The rules are one row, too small to earn a file read per unit, so the copy in the prompt stands
+// and this holds it to the row it copied.
+test("the subject rules code.js hands its commit agent match this skill's Subject row", async () => {
+  for (const [lang, prefix] of [
+    ["en", ""],
+    ["ja", ".ja"],
+  ]) {
+    const row = (await readFile(skills[lang], "utf8"))
+      .split("\n")
+      .find((line) => line.startsWith("| Subject"));
+    assert.ok(row, `${lang}: the skill carries a Subject row`);
+    const constraints = row.split("|")[2].trim();
+    // A substring check alone is one-directional: the row could lose a constraint and code.js
+    // would still contain what is left, so the count is asserted too.
+    const items = constraints.split(lang === "ja" ? "、" : ", ");
+    assert.equal(items.length, 4, `${lang}: the row states four constraints (${constraints})`);
+    // Substring, not a keyword sweep: "小文字" and "小文字始まり" both answer a keyword and say
+    // different things, which is how the two sides drifted while the check stayed green.
+    const codeJs = await readFile(join(root, prefix, "workflows", "code.js"), "utf8");
+    assert.ok(
+      codeJs.includes(constraints),
+      `${lang}: code.js hands the agent the row verbatim (${constraints})`,
+    );
+  }
+});
+
 // Dropping a type leaves the nearest row getting picked, and when that sweeps up feat or fix the
 // release decision goes wrong.
 test("the type list matches across both languages", () =>

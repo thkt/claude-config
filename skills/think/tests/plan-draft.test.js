@@ -23,6 +23,9 @@ function read(path) {
   return readFileSync(path, "utf8");
 }
 
+// Several checks start from build.js rather than from the skeleton, so a rename on build's side is
+// caught instead of being copied into the expectation.
+const buildJs = () => read(join(root, "workflows", "build.js"));
 const steps = (doc) => doc.split("\n").filter((line) => /^\d+\. /.test(line));
 const phase = (doc, n) => doc.slice(doc.indexOf(`## Phase ${n}`), doc.indexOf(`## Phase ${n + 1}`));
 
@@ -70,11 +73,10 @@ test("the plan template defines the skeleton (id notation, implementation order,
 });
 
 test("the template's root_cause heading word matches the field name build.js checks", () => {
-  const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
   // This starts from the key validate() actually reads on a Bug plan. Matching against the
   // schema's description would lose the field on an English rewording alone and break this seam
   // test for a reason unrelated to the token drift it is meant to catch.
-  const fieldMatch = buildJs.match(/isBug\s*&&\s*!String\(plan\.(\w+)\s*\|\|/);
+  const fieldMatch = buildJs().match(/isBug\s*&&\s*!String\(plan\.(\w+)\s*\|\|/);
   assert.ok(
     fieldMatch,
     "the name of the Bug-only required field is readable from build.js's validate",
@@ -140,8 +142,7 @@ test("each language's template presents reference_module in the kind-plus-reason
 // invalid-plan. Copying the field name from the skeleton side would leave this match unable to
 // follow when validate changes what it demands, so it starts from build.js's validate.
 test("the field build.js requires when kind is module exists in the skeleton's reference module subsection", () => {
-  const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
-  const fieldMatch = buildJs.match(
+  const fieldMatch = buildJs().match(
     /refModule\.kind === "module"[\s\S]{0,200}?String\(refModule\.(\w+)\s*\|\|/,
   );
   assert.ok(
@@ -227,23 +228,22 @@ test("the skeleton carries an unconditional place for a rule bearing across unit
 });
 
 // Reading the rules after the units are cut means cutting them again when a rule lands.
-// Naming a base is not free: build branches from it and passes --base, overriding the branch the
-// run is on. What it means belongs to build, which owns the arg, and think restating it would put
-// a second copy where a plan writer reads it as something to fill in.
+// build branches from a named base and passes --base, overriding the branch the run is on. What
+// the arg means belongs to build, and think restating it reads as a field to fill in.
 test("base stays build's arg, documented there and absent from think", () => {
-  const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
+  const build = buildJs();
   assert.match(
-    buildJs,
+    build,
     /base \(optional\)[\s\S]{0,200}epic-branch aggregation flow/,
     "build's own arg description says when a base is passed",
   );
   assert.match(
-    buildJs,
+    build,
     /always branch off \$\{baseBranch\} again/,
     "a named base overrides the branch the run is on",
   );
   assert.match(
-    buildJs,
+    build,
     /If already on a non-default branch, keep the current branch/,
     "an empty base keeps the current branch",
   );
@@ -336,24 +336,25 @@ test("the steps settle each plan field before the step that writes the plan out"
 });
 
 // A field in the skeleton that no stage reads costs the writer a line and the reader a question.
-// Every key the skeleton names has to appear in build's EXTRACT_SCHEMA, which is the only list of
-// what gets consumed.
-test("every top-level field the skeleton names is one build's schema carries", () => {
-  const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
-  const required = /^\s*\["outcome",(.*?)\],$/m.exec(buildJs);
+// build's EXTRACT_SCHEMA is the only list of what gets consumed. Scoped to the `key:` lines, which
+// is where decisions and base drifted; the subsection headings map to keys under other spellings.
+test("every `key:` line the skeleton names is one build's schema carries", () => {
+  const build = buildJs();
+  const required = /^\s*\["outcome",(.*?)\],$/m.exec(build);
   assert.ok(required, "the required list is readable from build.js");
   const consumed = new Set(
     [...`["outcome",${required[1]}]`.matchAll(/"([\w_]+)"/g)].map((m) => m[1]),
   );
   // Read from build.js's own branch on it, so a rename there is caught rather than hard-coded.
   for (const optional of ["root_cause", "reference_module"]) {
-    assert.match(buildJs, new RegExp(`plan\\.${optional}\\b`), `build.js reads ${optional}`);
+    assert.match(build, new RegExp(`plan\\.${optional}\\b`), `build.js reads ${optional}`);
     consumed.add(optional);
   }
   for (const [lang, path] of Object.entries(templates)) {
     const skeleton = /^```markdown\n([\s\S]*?)^```$/m.exec(read(path));
     assert.ok(skeleton, `${lang}: the skeleton fence is readable`);
-    const fields = [...skeleton[1].matchAll(/^([a-z_]+):/gm)].map((m) => m[1]);
+    // Outcome is written with a capital in the skeleton and lowercase in the schema.
+    const fields = [...skeleton[1].matchAll(/^([A-Za-z_]+):/gm)].map((m) => m[1].toLowerCase());
     assert.ok(fields.length >= 3, `${lang}: the skeleton names its top-level fields`);
     for (const field of fields) {
       assert.ok(consumed.has(field), `${lang}: build consumes the skeleton's ${field}`);
@@ -362,8 +363,8 @@ test("every top-level field the skeleton names is one build's schema carries", (
 });
 
 // The seam unit rests on the wiring gap an incident showed (build.js's validate comment), not on
-// think telling every unit to stub its neighbours. Stating the stub as the default would put the
-// skill ahead of TESTING.md, whose Test double preference makes Real the first choice.
+// think telling every unit to stub its neighbours, which would put the skill ahead of
+// TESTING.md's Test double preference.
 test("the seam step states the wiring gap and imposes no stubbing default", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
@@ -382,8 +383,8 @@ test("the seam step states the wiring gap and imposes no stubbing default", () =
   }
 });
 
-// The table deciding what a research report contributes lives in the reference. Drop the line
-// that routes there and the rules stay on disk with nothing sending a reader to them.
+// Drop the line routing to the reference and its table stays on disk with nothing sending a
+// reader to it.
 test("Phase 2 routes the research report's parts to the intake reference", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
@@ -405,8 +406,7 @@ test("Phase 2 routes the research report's parts to the intake reference", () =>
   }
 });
 
-// A rule shaping T-NNN that sits after the write step is applied to a file already on disk. The
-// step order is what a reader follows, so a rule below the write reaches nothing.
+// A rule shaping T-NNN that sits below the write step is applied to a file already on disk.
 test("every rule shaping what gets written comes before the step that writes it", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
@@ -687,12 +687,11 @@ test("each language's SKILL.md carries the rule of enumerating the fields in T-N
 });
 
 test("the template's manual verification heading matches build.js's extraction regex", () => {
-  const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
   // This runs the very regex build.js uses at run time rather than reconstructing one.
   // Reproducing the tokens by hand would miss a run-time difference (\b's non-ASCII behavior, for
   // one), so this seam test turns the production regex literal into a RegExp as it stands and
   // applies it to the template.
-  const regexLineMatch = buildJs.match(/manualHeading\s*=\s*body\.match\((\/.+\/m)\)/);
+  const regexLineMatch = buildJs().match(/manualHeading\s*=\s*body\.match\((\/.+\/m)\)/);
   assert.ok(
     regexLineMatch,
     "the manual verification heading extraction regex line is readable from build.js",

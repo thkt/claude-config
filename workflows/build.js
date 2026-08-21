@@ -535,7 +535,8 @@ const [reval, branchRes, baseline] = await parallel([
   () =>
     agent(
       anchor(
-        `Check out a new git working branch for issue #${issueNumber} ${JSON.stringify(plan.outcome)}. Pick a conventional branch name (type + short slug) and ` +
+        `Check out a new git working branch for issue #${issueNumber} ${JSON.stringify(plan.outcome)}. ` +
+          `First read ${bundled("skills/checkout/references/branch-naming.md")} and assemble the name by its rules, then ` +
           // For a base-anchored call, never emit the keep-current-branch clause: in one
           // prompt the latter voids the former.
           (baseBranch

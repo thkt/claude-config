@@ -168,7 +168,7 @@ const commitUnit = async (unit, tests, testFiles) => {
           ? `次の path は決して stage しない: ${JSON.stringify(untrackedBaseline)} — この run より前から作業ツリーにあり、stage するとローカルのメモや設定が PR に漏れる。`
           : "") +
         `stage しなかったものは left_unstaged に列挙する。\n` +
-        `コミットは \`git commit -F {tempfile}\` で行う。メッセージは 3 部構成。staged diff から自分で書く Conventional Commits の subject (72 文字以内、命令形、小文字始まり、末尾ピリオド無し)、空行、そして次のブロックを逐語でコピーしたもの。加えない、落とさない、言い換えない:\n` +
+        `コミットは \`git commit -F {tempfile}\` で行う。メッセージは 3 部構成。staged diff から自分で書く Conventional Commits の subject (72 文字以内、命令形、小文字、末尾のピリオドなし)、空行、そして次のブロックを逐語でコピーしたもの。加えない、落とさない、言い換えない:\n` +
         `${commitBody(unit, tests)}\n` +
         `staging 規則を適用して stage されるものが残らなければコミットしない。committed: false を返し、理由を left_unstaged に書く。` +
         (repo
