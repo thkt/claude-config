@@ -34,4 +34,4 @@ ${CLAUDE_SKILL_DIR}/scripts/validate-outcome.py .claude/OUTCOME.md を実行し�
 2. 変更するセクションとその内容を AskUserQuestion で確認する。冒頭文と Indicators を足せるのはこの経路だけ
 3. 変更後の Behavior をアウトカムテストに通してから Edit する
 4. validate-outcome.py を再実行し、`errors` が空であることを確認する
-5. `warnings` に `missing_indicator` があれば、その指標を足すかをユーザーに確認する。Indicators セクションを持ちながら Time / Error rate / Value のどれかを欠く状態を指す
+5. `warnings` に `missing_indicator` があれば、その指標を足すかをユーザーに確認する。Indicators セクションを持ちながら Time/Error rate/Value のどれかを欠く状態を指す

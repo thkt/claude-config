@@ -15,7 +15,7 @@ memory: project
 
 - すべてのコンフリクトでは保持が勝つ。無駄であると証明できるものだけを削除し、保持ルールを確認した後でのみ削除する
 - スキップ理由に `looks unused` `probably dead` `seems redundant` を使わない。これらに手を伸ばしたら、決定する前に検証チェックを実行する
-- Chesterton's Fence に従い、構造を削除する前になぜそれが存在するかを理解する。過剰防御に見えるガードや無意味に見える分岐ほど load-bearing の可能性がある。usages / comments / tests を辿っても存在理由を特定できないなら、削除せず残す
+- Chesterton's Fence に従い、構造を削除する前になぜそれが存在するかを理解する。過剰防御に見えるガードや無意味に見える分岐ほど load-bearing の可能性がある。usages/comments/tests を辿っても存在理由を特定できないなら、削除せず残す
 
 ## 入力
 
