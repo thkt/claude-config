@@ -1,10 +1,12 @@
 ---
-status: "accepted"
+status: "deprecated"
 date: "2026-08-09"
 decision-makers: "thkt"
 ---
 
 # Ask instead of extract when returning corrections to rules
+
+> Deprecated 2026-08-21: 蒸留の発火条件が届かなくなった。`reflection_ask.py:43` の `BACKLOG_THRESHOLD = 3` は対象セルの文字列をそのまま数える。行の対象が散れば、何行溜まってもクラスタは育たない。2026-08-21 時点の 15 行は対象が全て異なり、最大クラスタは 1 件だった。発火したのは settings.json の 3 行が揃った 1 回だけで、`docs/HOOKS.md` § 5 へ蒸留した (PR #405)。同じ回に `CORRECTIONS.md`、`hooks/lifecycle/reflection_ask.py`、その prompt とテスト、settings.json の Stop 配線を削除した。残っていた 15 行は移さずに捨てた。後継 DR は無い。訂正を規則へ戻す経路は `/dr` と `/scribe` の手動運用に戻る。
 
 ## Context and Problem Statement
 
