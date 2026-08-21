@@ -43,7 +43,7 @@ Assemble the message as `<type>(<scope>): <subject>`. A breaking change takes a 
 
 | Part    | Rule                                                                             |
 | ------- | -------------------------------------------------------------------------------- |
-| Subject | 72 chars or fewer. Imperative, lowercase, no trailing period                     |
+| Subject | 72 chars or fewer, imperative, lowercase, no trailing period     |
 | Body    | The why the diff cannot show, such as motivation or rationale. Omit when obvious |
 | Footer  | `BREAKING CHANGE:`, `Closes #123`, `Co-authored-by:`                             |
 
