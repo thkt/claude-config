@@ -41,8 +41,7 @@ def main() -> None:
         fail('Error: forbidden characters in title (/:*?"<>|)')
     guard_skill_dir(
         dr_dir,
-        "Set DR_DIR env var or run from a project root where"
-        + " docs/decisions/ is the archive.",
+        "Set DR_DIR env var or run from a project root where" + " docs/decisions/ is the archive.",
     )
 
     dr_dir.mkdir(parents=True, exist_ok=True)
@@ -50,9 +49,7 @@ def main() -> None:
         fail(f"Error: no write permission: {dr_dir}")
 
     numbers = [
-        int(m.group(1))
-        for entry in dr_dir.iterdir()
-        if (m := re.match(r"(\d{4})-", entry.name))
+        int(m.group(1)) for entry in dr_dir.iterdir() if (m := re.match(r"(\d{4})-", entry.name))
     ]
     next_num = f"{max(numbers, default=0) + 1:04d}"
 
@@ -70,15 +67,20 @@ def main() -> None:
                 {"file": dr_file.name, "similarity": f"{score:.2f}", "title": existing}
             )
 
-    print(json.dumps({
-        "status": "ok",
-        "number": next_num,
-        "filename": f"{next_num}-{slug}.md",
-        "slug": slug,
-        "date": datetime.now().astimezone().date().isoformat(),
-        "dr_dir": str(dr_dir),
-        "similar_drs": similar_drs,
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "status": "ok",
+                "number": next_num,
+                "filename": f"{next_num}-{slug}.md",
+                "slug": slug,
+                "date": datetime.now().astimezone().date().isoformat(),
+                "dr_dir": str(dr_dir),
+                "similar_drs": similar_drs,
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

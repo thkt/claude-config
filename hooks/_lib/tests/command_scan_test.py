@@ -39,7 +39,9 @@ class TestCommands(unittest.TestCase):
         """T-016 A << with no closing line is a word inside quotes and drops no later line"""
         # Dropping them keeps the deletion that follows out of the scan, and the security hook
         # lets it through.
-        self.assertEqual(self.names("git commit -m 'see << EOF\nfor details'\nrm -rf x"), ["git", "rm"])
+        self.assertEqual(
+            self.names("git commit -m 'see << EOF\nfor details'\nrm -rf x"), ["git", "rm"]
+        )
         self.assertEqual(self.names("echo '<< END'\nrm -rf x"), ["echo", "rm"])
 
     def test_quotes_spanning_lines_hold_together(self) -> None:
@@ -87,7 +89,6 @@ class TestCommands(unittest.TestCase):
         """T-010 An unterminated quote raises, letting the caller choose fail-closed"""
         with self.assertRaises(ValueError):
             _ = list(command_scan.commands("echo 'unterminated"))
-
 
     def test_env_assignment_is_not_the_command(self) -> None:
         """T-020 A leading environment assignment is not read as the command name"""

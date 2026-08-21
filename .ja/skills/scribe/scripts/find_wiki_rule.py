@@ -83,9 +83,7 @@ def find(wiki_dir: str, slug: str, files: list[str]) -> Report:
     related: list[Related] = []
     for page in pages:
         globs = read_globs(page)
-        hits = [
-            f for f in normalized if any(glob_to_regexp(normalize(g)).match(f) for g in globs)
-        ]
+        hits = [f for f in normalized if any(glob_to_regexp(normalize(g)).match(f) for g in globs)]
         if hits:
             matched.append({"page": page.name, "globs": globs, "files": hits})
             continue

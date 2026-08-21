@@ -140,9 +140,7 @@ class TestIssueBodyGate(unittest.TestCase):
     # separators without spaces: the hook's fast-exit greps the raw payload for the literal
     # `"tool_name":"Bash"`, which the default json.dumps spacing misses. Claude Code sends the
     # compact form, so this is what the hook actually receives.
-    def run_hook(
-        self, command: str, hook: Path | None = None
-    ) -> tuple[object, str, int]:
+    def run_hook(self, command: str, hook: Path | None = None) -> tuple[object, str, int]:
         payload = json.dumps(
             {"tool_name": "Bash", "tool_input": {"command": command}}, separators=(",", ":")
         )

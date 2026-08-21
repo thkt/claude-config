@@ -170,7 +170,13 @@ class TestPackageManagerRewrite(unittest.TestCase):
     def test_manager_flags_are_left_alone(self) -> None:
         """T-014 A flag of the manager itself is not read as a subcommand"""
         # Handed to na it reports on ni itself, never on the manager that was asked about.
-        for command in ("npm --version", "npm -v", "pnpm --version", "yarn --version", "bun --help"):
+        for command in (
+            "npm --version",
+            "npm -v",
+            "pnpm --version",
+            "yarn --version",
+            "bun --help",
+        ):
             self.assert_left_alone(command)
 
     def test_bun_test_runner_is_left_alone(self) -> None:
