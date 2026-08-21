@@ -1469,6 +1469,14 @@ test("T-004 build.js and its .ja mirror return stopped only from the stop helper
     );
     assert.match(source, /stopped:\s*reason/, `${path}'s single stopped return is the helper's`);
     assert.ok(stopReasons(source).size > 0, `${path} routes its stops through stop("...")`);
+    // The three lines that turn recording on. The behavior cases exercise build.js alone, so a
+    // mirror that dropped one of them would keep the suite green while recording nothing.
+    for (const line of [
+      /recordable = true;/,
+      /await recordRun\("started"\);/,
+      /recordedBranch = branch;/,
+    ])
+      assert.match(source, line, `${path} carries ${line.source}`);
   }
 });
 
