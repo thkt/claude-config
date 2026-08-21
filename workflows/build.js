@@ -38,11 +38,98 @@ const issueRef = String(typeof argsValue === "string" ? argsValue : input.issue 
 // merely contains digits (e.g. "a11y") must not be read as an issue reference.
 const issueNumber =
   (issueRef.match(/^#?(\d+)$/) || issueRef.match(/\/issues\/(\d+)(?:[/?#]|$)/) || [])[1] || "";
-if (!issueRef || !issueNumber) {
-  return {
-    stopped: "no-issue",
-    why: 'Pass the issue as args ("123" / "#123" / URL / {issue, repo}). On resume the runtime does not carry args, so re-pass it: Workflow({scriptPath, resumeFromRunId, args}).',
+// ---- Run recording: one jsonl row per build run ----
+// A stop reaches the caller as a return value and lands nowhere else, so how often plan quality
+// stopped a build could not be counted. Every stop routes through the stop helper below, which
+// appends a row through workflows/build/record.py.
+// PLAN_QUALITY says whether the issue's ## Plan section could have prevented that stop. The six
+// true values are the Load / Revalidate stops the plan's own content causes; the false ones come
+// from the environment, a dropped relay, or the nested code run. Counting the true ones is what
+// decides whether /qualify becomes mandatory ahead of build (DR-0084's reassessment trigger).
+const PLAN_QUALITY = {
+  "no-issue": false,
+  "no-repo": false,
+  "invalid-base": false,
+  "no-issue-body": false,
+  "no-plan": true,
+  "extraction-failed": true,
+  "invalid-plan": true,
+  "extraction-mismatch": true,
+  "oversized-unit": true,
+  "dirty-branch-point": false,
+  "revalidate-failed": false,
+  "revalidate-incomplete": false,
+  "plan-drift": true,
+  "code-failed": false,
+};
+// The schema is written out rather than assembled by obj(), which this block precedes.
+const RECORD_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["run_id"],
+  properties: {
+    path: { type: "string", description: "path from record.py's stdout JSON, verbatim" },
+    run_id: { type: "string", description: "run_id from record.py's stdout JSON, verbatim" },
+  },
+};
+// runId comes back from record.py's stdout, because a workflow script has neither a clock nor a
+// random source (rules/conventions/WORKFLOWS.md § Script evaluation form). The stop row carries
+// it back, which is how it joins the start row of the same build.
+let runId = "";
+// Recording starts once anchor exists, which is after the repo is known. The gates above that
+// point return without a row: neither is a plan-quality signal, and the recorder's agent would
+// have no repository to be anchored to.
+let recordable = false;
+// The branch is unknown until Branch resolves it, so the rows written before then carry "".
+let recordedBranch = "";
+const recordRun = async (reason, fields = {}) => {
+  const payload = {
+    run_id: runId,
+    issue: issueNumber,
+    repo,
+    branch: recordedBranch,
+    reason,
+    // A reason outside the table is the start row, which is not a plan-quality stop.
+    plan_quality: PLAN_QUALITY[reason] === true,
+    ...fields,
   };
+  const written = await agent(
+    anchor(
+      `Record one build run; do not judge, summarize, or edit any value. The steps are, (1) write this exact JSON to a temp file; ` +
+        `(2) run \`python3 ${bundled("workflows/build/record.py")} < <tempfile>\`; ` +
+        `(3) return the script's stdout run_id and path verbatim. ` +
+        `The script prints {"path":...,"run_id":...}.\n` +
+        `The input JSON is as follows.\n${JSON.stringify(payload)}`,
+    ),
+    {
+      label: `record:${reason}`,
+      agentType: "general-purpose",
+      schema: RECORD_SCHEMA,
+      model: "haiku",
+    },
+  );
+  const id = String((written && written.run_id) || "").trim();
+  // Recording never gates a build, so a failed relay falls open. The run is then absent from
+  // the count, and this line is the only place a reader learns that.
+  if (!id) {
+    log(
+      `The "${reason}" row was not written (the recorder returned no run_id), so this run is missing from build-runs.jsonl.`,
+    );
+    return;
+  }
+  runId = id;
+};
+// The single assembly point for a stopped return. fields lands on the caller's return value,
+// recordFields on the jsonl row.
+const stop = async (reason, fields = {}, recordFields = {}) => {
+  if (recordable) await recordRun(reason, recordFields);
+  return { stopped: reason, ...fields };
+};
+
+if (!issueRef || !issueNumber) {
+  return await stop("no-issue", {
+    why: 'Pass the issue as args ("123" / "#123" / URL / {issue, repo}). On resume the runtime does not carry args, so re-pass it: Workflow({scriptPath, resumeFromRunId, args}).',
+  });
 }
 
 // Without repo, agents resolve "the repository" from their own cwd and can run
@@ -57,16 +144,14 @@ const baseBranch = typeof input.base === "string" ? input.base.trim() : "";
 // name's shape stops the run instead of being spliced into them.
 const BRANCH_NAME_SHAPE = /^[\w][\w./-]*$/;
 if (!repo) {
-  return {
-    stopped: "no-repo",
+  return await stop("no-repo", {
     why: `Pass the target repository as args.repo (absolute path): Workflow({name: "build", args: {issue: "${issueNumber}", repo: "/abs/path"}}).`,
-  };
+  });
 }
 if (baseBranch && !BRANCH_NAME_SHAPE.test(baseBranch)) {
-  return {
-    stopped: "invalid-base",
+  return await stop("invalid-base", {
     why: `args.base is not a branch name. Pass a plain branch name such as main.`,
-  };
+  });
 }
 const anchor = (p) =>
   `Run every git, file, and build command from the repository at ${repo} (begin each shell command with \`cd ${repo} && \`).\n\n${p}`;
@@ -109,6 +194,11 @@ const FETCH_SCHEMA = obj(["found", "body"], {
   },
 });
 
+// The start row is written before Load reads the issue, so a run killed mid-flight still stands
+// in the denominator instead of leaving the count with completed and stopped runs alone.
+recordable = true;
+await recordRun("started");
+
 // ---- Load: verbatim fetch -> Plan heading check -> deterministic id collection -> extract -> validate + cross-check ----
 // The extracted number, never the reference as given: a URL matches as long as /issues/N
 // appears anywhere in it, so passing it through would carry whatever follows into the shell.
@@ -128,10 +218,9 @@ const fetched = await agent(
   },
 );
 if (!fetched || !fetched.found || !String(fetched.body || "").trim()) {
-  return {
-    stopped: "no-issue-body",
+  return await stop("no-issue-body", {
     why: `Could not fetch the body of issue ${issueRef}. Check the issue number and repo.`,
-  };
+  });
 }
 const body = fetched.body;
 
@@ -358,12 +447,11 @@ const oversizedUnits = (p) =>
 // place.
 const planHeading = body.match(/^##\s+Plan\b.*$/m);
 if (!planHeading) {
-  return {
-    stopped: "no-plan",
+  return await stop("no-plan", {
     why:
       `Issue ${issueRef} has no ## Plan section, so there is no verified selection to implement against. ` +
       `Refine the issue first: run /think to design and draft the plan, then /issue to transfer it into the issue's ## Plan section, and relaunch build.`,
-  };
+  });
 }
 
 const afterHeading = body.slice(planHeading.index + planHeading[0].length);
@@ -396,7 +484,7 @@ const plan = await agent(
   },
 );
 if (!plan) {
-  return { stopped: "extraction-failed", why: "The extract agent returned no plan." };
+  return await stop("extraction-failed", { why: "The extract agent returned no plan." });
 }
 
 // A Bug issue carries a `[Bug]` prefix in its title. fetch omits title when it could not read
@@ -404,11 +492,10 @@ if (!plan) {
 // not-a-Bug rather than guessing either way.
 const blockers = validate(plan, String(fetched.title || "").startsWith("[Bug]"));
 if (blockers.length) {
-  return {
-    stopped: "invalid-plan",
+  return await stop("invalid-plan", {
     blockers,
     why: "The extracted plan fails structural validation.",
-  };
+  });
 }
 
 // Reject silent drops / fabrications in extraction via exact id-set comparison.
@@ -422,22 +509,20 @@ const mismatch = {
   tests_extra: setDiff(planTestIds, bodyTestIds),
 };
 if (Object.values(mismatch).some((l) => l.length)) {
-  return {
-    stopped: "extraction-mismatch",
+  return await stop("extraction-mismatch", {
     detail: mismatch,
     why: "The U/T id sets in the issue body and the extraction do not match.",
-  };
+  });
 }
 
 const oversized = oversizedUnits(plan);
 if (oversized.length) {
-  return {
-    stopped: "oversized-unit",
+  return await stop("oversized-unit", {
     units: oversized.map((u) => u.id),
     why:
       `A non-seam unit exceeds UNIT_CAPS (files <= ${UNIT_CAPS.files} / tests <= ${UNIT_CAPS.tests}). Split it further ` +
       "per /think Phase 3's unit-size guidance, then refine the issue's Plan via /issue and relaunch.",
-  };
+  });
 }
 log(
   `Plan extracted: ${plan.units.length} unit(s), ${planTestIds.size} test scenario(s), id cross-check pass.`,
@@ -572,6 +657,9 @@ const [reval, branchRes, baseline] = await parallel([
     ),
 ]);
 const branch = (branchRes && branchRes.branch) || "";
+// From here on the rows carry the branch, so a stop can be traced back to the checkout it
+// happened on rather than to the issue number alone.
+recordedBranch = branch;
 // Subtracts pre-existing clutter from Verify's scope deviations, and doubles as the
 // commit agents' never-stage set.
 const baselineUntracked = baseline && Array.isArray(baseline.untracked) ? baseline.untracked : [];
@@ -587,8 +675,7 @@ if (!perUnitCommits)
 // PR treat it as this run's output. It shows up in neither scope deviations nor
 // conformance, so stop here.
 if (baseBranch && Number(branchRes && branchRes.ahead_of_base) > 0) {
-  return {
-    stopped: "dirty-branch-point",
+  return await stop("dirty-branch-point", {
     branch,
     base: baseBranch,
     ahead_of_base: Number(branchRes.ahead_of_base),
@@ -596,16 +683,15 @@ if (baseBranch && Number(branchRes && branchRes.ahead_of_base) > 0) {
       `The branch point is ${Number(branchRes.ahead_of_base)} commit(s) ahead of ${baseBranch}. Implementing on top of those commits ` +
       `puts them on the PR as this build's work. Branch off ${baseBranch} again and relaunch, or - if that delta ` +
       `is the intended starting point - set base to the actual starting branch and relaunch.`,
-  };
+  });
 }
 if (revalidationTargets.length) {
   if (!reval || !Array.isArray(reval.results)) {
-    return {
-      stopped: "revalidate-failed",
+    return await stop("revalidate-failed", {
       detail: reval,
       branch,
       why: "The revalidate agent returned no results array.",
-    };
+    });
   }
   // Bind by (path, pattern), not by count: reordered or substituted entries keep the
   // length identical.
@@ -638,12 +724,11 @@ if (revalidationTargets.length) {
       for (const r of retry.results) resultByKey.set(keyOf(r), r);
     unreported = preconditions.filter((pc) => !resultByKey.has(keyOf(pc)));
     if (unreported.length) {
-      return {
-        stopped: "revalidate-incomplete",
+      return await stop("revalidate-incomplete", {
         unreported,
         branch,
         why: "The verifier returned no result for some preconditions (distinct from plan-drift, where the file is absent). Relaunch.",
-      };
+      });
     }
   }
   // `r &&` does nothing for a precondition, which always has a result by here; it exists for a
@@ -660,12 +745,11 @@ if (revalidationTargets.length) {
     if (r && (!r.exists || !r.matches)) drift.push(r);
   }
   if (drift.length) {
-    return {
-      stopped: "plan-drift",
+    return await stop("plan-drift", {
       drift,
       branch,
       why: "Code the issue's plan presupposes is absent from the current codebase. Update the issue and relaunch.",
-    };
+    });
   }
   // A reference_module entry advances fail-open when its result is missing, so counting
   // them all as passed preconditions claims a verification that never ran.
@@ -703,7 +787,11 @@ const code =
     untracked_baseline: baselineUntracked,
   })) || null;
 if (!code || code.stopped) {
-  return { stopped: "code-failed", detail: code };
+  // A plan-caused stop inside code arrives here as code-failed, which is classified as not
+  // plan-quality. nested_reason carries the inner reason onto the row, so the count can reach
+  // it instead of losing it under one bucket.
+  const nested = String((code && code.stopped) || "").trim();
+  return await stop("code-failed", { detail: code }, nested ? { nested_reason: nested } : {});
 }
 if (!code.tests_pass || !code.gates_pass)
   log(

@@ -1312,10 +1312,74 @@ test("with the per-unit commits on, the Ship prompt instructs a remainder commit
   );
 });
 
+// The mirror runs nowhere, so a helper added on one side alone stays invisible until a reader
+// opens the other file. The stop-route checks read both paths.
+const jaBuildJs = join(here, "..", "..", "..", ".ja", "workflows", "build.js");
+
+// The stopped values are no longer literals at the return sites: every stop routes through the
+// stop helper, which looks its classification up in PLAN_QUALITY. The value set now lives in
+// that table and in the arguments the call sites pass, so both are read as text.
+const planQualityTable = (source) => {
+  const block = source.match(/const PLAN_QUALITY = \{([\s\S]*?)\n\};/);
+  assert.ok(block, "the source declares a PLAN_QUALITY table");
+  const table = {};
+  for (const m of block[1].matchAll(/"([^"]+)":\s*(true|false)/g)) table[m[1]] = m[2] === "true";
+  return table;
+};
+const stopReasons = (source) =>
+  new Set([...source.matchAll(/\bstop\(\s*"([^"]+)"/g)].map((m) => m[1]));
+
+// T-004: one literal `stopped:` remains, and it sits in the helper. A return that assembles its
+// own stopped object skips the recording, and the run then never reaches the jsonl.
+test("T-004 build.js and its .ja mirror return stopped only from the stop helper", async () => {
+  for (const path of [buildJs, jaBuildJs]) {
+    const source = await readFile(path, "utf8");
+    assert.equal(
+      (source.match(/\bstopped:/g) || []).length,
+      1,
+      `${path} assembles a stopped object in exactly one place`,
+    );
+    assert.match(source, /stopped:\s*reason/, `${path}'s single stopped return is the helper's`);
+    assert.ok(stopReasons(source).size > 0, `${path} routes its stops through stop("...")`);
+  }
+});
+
+// T-005: a stop value with no table entry would be counted as not plan-caused by default, and a
+// table entry no call site uses would claim a stop route that does not exist.
+test("T-005 the plan-quality table's key set matches the stopped value set", async () => {
+  for (const path of [buildJs, jaBuildJs]) {
+    const source = await readFile(path, "utf8");
+    assert.deepEqual(
+      Object.keys(planQualityTable(source)).sort(),
+      [...stopReasons(source)].sort(),
+      `${path}'s PLAN_QUALITY keys and its stop() arguments are the same set`,
+    );
+  }
+});
+
+// The six plan-caused values are what the count exists for. Reclassifying one changes what the
+// /qualify decision reads, so the split is pinned rather than left to the table's current shape.
+test("the plan-quality table marks exactly the six stops a plan can cause", async () => {
+  const table = planQualityTable(await readFile(buildJs, "utf8"));
+  assert.deepEqual(
+    Object.keys(table)
+      .filter((k) => table[k])
+      .sort(),
+    [
+      "extraction-failed",
+      "extraction-mismatch",
+      "invalid-plan",
+      "no-plan",
+      "oversized-unit",
+      "plan-drift",
+    ],
+    "the plan-quality stops are the six the issue's ## Plan section can be written to avoid",
+  );
+});
+
 test("the snapshot of the stopped value set matches 14 values exactly and holds no remnant of the audit route", async () => {
   const source = await readFile(buildJs, "utf8");
-  const stopped = new Set();
-  for (const m of source.matchAll(/stopped:\s*"([^"]+)"/g)) stopped.add(m[1]);
+  const stopped = new Set(Object.keys(planQualityTable(source)));
   assert.deepEqual(
     [...stopped].sort(),
     [

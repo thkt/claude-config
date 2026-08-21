@@ -37,11 +37,97 @@ const issueRef = String(typeof argsValue === "string" ? argsValue : input.issue 
 // ("a11y" など) を issue 参照と読まない。
 const issueNumber =
   (issueRef.match(/^#?(\d+)$/) || issueRef.match(/\/issues\/(\d+)(?:[/?#]|$)/) || [])[1] || "";
-if (!issueRef || !issueNumber) {
-  return {
-    stopped: "no-issue",
-    why: 'issue を args で渡す ("123" / "#123" / URL / {issue, repo})。resume 時に runtime は args を運ばないので、Workflow({scriptPath, resumeFromRunId, args}) で渡し直す。',
+// ---- run の記録: build の 1 実行につき jsonl 1 行 ----
+// 停止は返り値として呼び出し元に届くだけでどこにも残らないため、plan 品質が build を
+// 止めた回数を数えられなかった。停止はすべて下の stop ヘルパーを通り、そこから
+// workflows/build/record.py へ 1 行追記する。
+// PLAN_QUALITY は、その停止を issue の ## Plan 節の側で防げたかどうかを持つ。true の 6 つは
+// plan の内容そのものが起こす Load / Revalidate の停止で、false は環境・relay の取りこぼし・
+// 入れ子の code に由来する。true の件数を数えることが、/qualify を build の前段で必須にするか
+// (DR-0084 の再評価条件) を決める。
+const PLAN_QUALITY = {
+  "no-issue": false,
+  "no-repo": false,
+  "invalid-base": false,
+  "no-issue-body": false,
+  "no-plan": true,
+  "extraction-failed": true,
+  "invalid-plan": true,
+  "extraction-mismatch": true,
+  "oversized-unit": true,
+  "dirty-branch-point": false,
+  "revalidate-failed": false,
+  "revalidate-incomplete": false,
+  "plan-drift": true,
+  "code-failed": false,
+};
+// このブロックは obj() より前に置くので、schema は組み立てずに直に書く。
+const RECORD_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["run_id"],
+  properties: {
+    path: { type: "string", description: "record.py の stdout JSON の path をそのまま" },
+    run_id: { type: "string", description: "record.py の stdout JSON の run_id をそのまま" },
+  },
+};
+// workflow script は時計も乱数も持たない (rules/conventions/WORKFLOWS.md § Script evaluation
+// form) ので、runId は record.py の stdout から受け取る。停止の行はそれを渡し直し、同じ build
+// の開始の行と結び付く。
+let runId = "";
+// 記録が始まるのは anchor が存在してから、つまり repo が判明した後。それより上の gate は行を
+// 残さずに返る。どれも plan 品質の信号ではなく、記録の agent を固定するリポジトリも無い。
+let recordable = false;
+// branch は Branch が解決するまで分からないので、それより前に書く行は "" を持つ。
+let recordedBranch = "";
+const recordRun = async (reason, fields = {}) => {
+  const payload = {
+    run_id: runId,
+    issue: issueNumber,
+    repo,
+    branch: recordedBranch,
+    reason,
+    // 表に無い reason は開始の行であり、plan 品質による停止ではない。
+    plan_quality: PLAN_QUALITY[reason] === true,
+    ...fields,
   };
+  const written = await agent(
+    anchor(
+      `build の 1 実行を記録する。値を判断・要約・編集しない。手順は、(1) この JSON をそのまま一時ファイルへ書く。` +
+        `(2) \`python3 ${bundled("workflows/build/record.py")} < <tempfile>\` を実行する。` +
+        `(3) script の stdout の run_id と path をそのまま返す。` +
+        `script は {"path":...,"run_id":...} を出力する。\n` +
+        `入力 JSON は次のとおり。\n${JSON.stringify(payload)}`,
+    ),
+    {
+      label: `record:${reason}`,
+      agentType: "general-purpose",
+      schema: RECORD_SCHEMA,
+      model: "haiku",
+    },
+  );
+  const id = String((written && written.run_id) || "").trim();
+  // 記録が build を止めることはないので、relay の失敗は fail-open で進む。その run は件数から
+  // 落ちるが、読み手がそれを知れるのはこの行だけ。
+  if (!id) {
+    log(
+      `"${reason}" の行を書けなかった (記録側が run_id を返さなかった)。この run は build-runs.jsonl に現れない。`,
+    );
+    return;
+  }
+  runId = id;
+};
+// stopped の返り値を組み立てる唯一の場所。fields は呼び出し元への返り値に、recordFields は
+// jsonl の行に載る。
+const stop = async (reason, fields = {}, recordFields = {}) => {
+  if (recordable) await recordRun(reason, recordFields);
+  return { stopped: reason, ...fields };
+};
+
+if (!issueRef || !issueNumber) {
+  return await stop("no-issue", {
+    why: 'issue を args で渡す ("123" / "#123" / URL / {issue, repo})。resume 時に runtime は args を運ばないので、Workflow({scriptPath, resumeFromRunId, args}) で渡し直す。',
+  });
 }
 
 // repo が無いと agent は自身の cwd から「リポジトリ」を解決し、別の checkout で
@@ -55,16 +141,14 @@ const baseBranch = typeof input.base === "string" ? input.base.trim() : "";
 // そこへ差し込むのでなく run を止める。
 const BRANCH_NAME_SHAPE = /^[\w][\w./-]*$/;
 if (!repo) {
-  return {
-    stopped: "no-repo",
+  return await stop("no-repo", {
     why: `対象リポジトリを args.repo (絶対パス) で渡す: Workflow({name: "build", args: {issue: "${issueNumber}", repo: "/abs/path"}})。`,
-  };
+  });
 }
 if (baseBranch && !BRANCH_NAME_SHAPE.test(baseBranch)) {
-  return {
-    stopped: "invalid-base",
+  return await stop("invalid-base", {
     why: `args.base がブランチ名の形ではない。main のような素のブランチ名を渡す。`,
-  };
+  });
 }
 const anchor = (p) =>
   `すべての git / ファイル / ビルドコマンドを ${repo} のリポジトリから実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`;
@@ -105,6 +189,11 @@ const FETCH_SCHEMA = obj(["found", "body"], {
   },
 });
 
+// 開始の行は Load が issue を読む前に書く。途中で殺された run も分母に残り、完走した run と
+// 停止した run だけが件数に残る状態にならない。
+recordable = true;
+await recordRun("started");
+
 // ---- Load: 逐語 fetch → Plan 見出し確認 → 決定論 id 収集 → 抽出 → validate + クロスチェック ----
 // 渡すのは抽出した番号で、受け取った参照そのものではない。URL は /issues/N がどこかに
 // あれば一致するので、そのまま渡すと後続の文字列ごとシェルへ入る。番号なら anchor が
@@ -124,10 +213,9 @@ const fetched = await agent(
   },
 );
 if (!fetched || !fetched.found || !String(fetched.body || "").trim()) {
-  return {
-    stopped: "no-issue-body",
+  return await stop("no-issue-body", {
     why: `issue ${issueRef} の本文を取得できない。issue 番号と repo を確認する。`,
-  };
+  });
 }
 const body = fetched.body;
 
@@ -342,12 +430,11 @@ const oversizedUnits = (p) =>
 // 代わりに生成せず issue の精緻化に差し戻す。
 const planHeading = body.match(/^##\s+Plan\b.*$/m);
 if (!planHeading) {
-  return {
-    stopped: "no-plan",
+  return await stop("no-plan", {
     why:
       `issue ${issueRef} に ## Plan 節が無く、実装対象になる検証済みの選択が存在しない。` +
       `まず issue を精緻化する。/think で設計して plan を下書きし、/issue で issue の ## Plan 節へ転記してから build を再実行する。`,
-  };
+  });
 }
 
 const afterHeading = body.slice(planHeading.index + planHeading[0].length);
@@ -380,7 +467,7 @@ const plan = await agent(
   },
 );
 if (!plan) {
-  return { stopped: "extraction-failed", why: "extract agent が plan を返さなかった。" };
+  return await stop("extraction-failed", { why: "extract agent が plan を返さなかった。" });
 }
 
 // Bug issue はタイトルに `[Bug]` prefix を持つ。fetch が title を取得できなかったときは
@@ -388,7 +475,7 @@ if (!plan) {
 // 当て推量はしない)。
 const blockers = validate(plan, String(fetched.title || "").startsWith("[Bug]"));
 if (blockers.length) {
-  return { stopped: "invalid-plan", blockers, why: "抽出した plan が構造 validation に失敗。" };
+  return await stop("invalid-plan", { blockers, why: "抽出した plan が構造 validation に失敗。" });
 }
 
 // id 集合の厳密比較で、抽出時の silent drop と捏造を reject する。
@@ -402,22 +489,20 @@ const mismatch = {
   tests_extra: setDiff(planTestIds, bodyTestIds),
 };
 if (Object.values(mismatch).some((l) => l.length)) {
-  return {
-    stopped: "extraction-mismatch",
+  return await stop("extraction-mismatch", {
     detail: mismatch,
     why: "issue 本文と抽出結果の U/T id 集合が一致しない。",
-  };
+  });
 }
 
 const oversized = oversizedUnits(plan);
 if (oversized.length) {
-  return {
-    stopped: "oversized-unit",
+  return await stop("oversized-unit", {
     units: oversized.map((u) => u.id),
     why:
       `非 seam unit が UNIT_CAPS (files <= ${UNIT_CAPS.files} / tests <= ${UNIT_CAPS.tests}) を超えている。` +
       "/think Phase 3 の unit サイズ上限に沿って unit をさらに分割し、issue を /issue で精緻化して再実行する。",
-  };
+  });
 }
 log(
   `Plan 抽出: ${plan.units.length} unit / ${planTestIds.size} test scenario、id クロスチェック pass。`,
@@ -514,7 +599,7 @@ const [reval, branchRes, baseline] = await parallel([
     agent(
       anchor(
         `issue #${issueNumber} ${JSON.stringify(plan.outcome)} の作業ブランチを新規に checkout する。` +
-        `まず ${bundled("skills/checkout/references/branch-naming.md")} を読み、その規則でブランチ名を組み立てる。` +
+          `まず ${bundled("skills/checkout/references/branch-naming.md")} を読み、その規則でブランチ名を組み立てる。` +
           // base 起点を指定した呼び出しでは「現在のブランチを維持する」を書かない。
           // 同じプロンプトに両方を置くと後者が前者を打ち消す。
           (baseBranch
@@ -550,6 +635,9 @@ const [reval, branchRes, baseline] = await parallel([
     ),
 ]);
 const branch = (branchRes && branchRes.branch) || "";
+// ここから先の行は branch を持つ。停止を issue 番号だけでなく、それが起きた checkout まで
+// 辿れる。
+recordedBranch = branch;
 // build 以前から作業ツリーにある私物を Verify の scope 逸脱から差し引き、同じ一覧を
 // build 以前から作業ツリーにある私物を Verify の scope 逸脱から差し引き、commit agent の
 // never-stage 集合にも渡す。
@@ -564,8 +652,7 @@ if (!perUnitCommits) log("分岐点 sha を取得できず、Ship で 1 回 comm
 // 破棄したブランチや前タスクのブランチの上に積むと、Verify も PR もそれを今回の成果として
 // 扱う。scope 逸脱にも conformance にも現れないので、ここで止める。
 if (baseBranch && Number(branchRes && branchRes.ahead_of_base) > 0) {
-  return {
-    stopped: "dirty-branch-point",
+  return await stop("dirty-branch-point", {
     branch,
     base: baseBranch,
     ahead_of_base: Number(branchRes.ahead_of_base),
@@ -573,16 +660,15 @@ if (baseBranch && Number(branchRes && branchRes.ahead_of_base) > 0) {
       `分岐点が ${baseBranch} より ${Number(branchRes.ahead_of_base)} コミット進んでいる。既存のコミットの上に実装を積むと、` +
       `それが今回の成果として PR に載る。${baseBranch} から新しいブランチを切り直して再実行するか、` +
       `その差分を今回の起点として意図しているなら base を実際の起点ブランチに変えて再実行する。`,
-  };
+  });
 }
 if (revalidationTargets.length) {
   if (!reval || !Array.isArray(reval.results)) {
-    return {
-      stopped: "revalidate-failed",
+    return await stop("revalidate-failed", {
       detail: reval,
       branch,
       why: "revalidate agent が results 配列を返さなかった。",
-    };
+    });
   }
   // 件数でなく (path, pattern) で突き合わせる。並べ替えやすり替えは件数が変わらない。
   const keyOf = (o) => JSON.stringify([o.path, o.pattern || ""]);
@@ -614,12 +700,11 @@ if (revalidationTargets.length) {
       for (const r of retry.results) resultByKey.set(keyOf(r), r);
     unreported = preconditions.filter((pc) => !resultByKey.has(keyOf(pc)));
     if (unreported.length) {
-      return {
-        stopped: "revalidate-incomplete",
+      return await stop("revalidate-incomplete", {
         unreported,
         branch,
         why: "verifier が一部の前提に結果を返さなかった (ファイル不在の plan-drift とは別)。再実行する。",
-      };
+      });
     }
   }
   // `r &&` は precondition には効かない (ここに来た時点で必ず結果を持つ)。効くのは
@@ -636,12 +721,11 @@ if (revalidationTargets.length) {
     if (r && (!r.exists || !r.matches)) drift.push(r);
   }
   if (drift.length) {
-    return {
-      stopped: "plan-drift",
+    return await stop("plan-drift", {
       drift,
       branch,
       why: "issue の plan が前提にするコードが現在のコードベースに無い。issue を更新して再実行する。",
-    };
+    });
   }
   // reference_module のエントリは結果が欠けても fail-open で進むので、全件を
   // precondition として数えると走っていない検査まで pass したと読める。
@@ -678,7 +762,10 @@ const code =
     untracked_baseline: baselineUntracked,
   })) || null;
 if (!code || code.stopped) {
-  return { stopped: "code-failed", detail: code };
+  // code の内側で起きた plan 起因の停止はここへ code-failed として届き、plan 品質ではないと
+  // 分類される。nested_reason が内側の理由を行に載せるので、1 つの箱に埋もれず数えられる。
+  const nested = String((code && code.stopped) || "").trim();
+  return await stop("code-failed", { detail: code }, nested ? { nested_reason: nested } : {});
 }
 if (!code.tests_pass || !code.gates_pass)
   log(
