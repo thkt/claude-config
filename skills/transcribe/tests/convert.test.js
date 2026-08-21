@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-const scriptPath = join(root, "skills", "xlsx", "scripts", "convert.js");
+const scriptPath = join(root, "skills", "transcribe", "scripts", "convert.js");
 const { cellText, fillRatio, isColumnRuler, profiles, sheetToMarkdown } = await import(scriptPath);
 
 // A business Excel spreads one item across several cells by merging them. In a merged run every
