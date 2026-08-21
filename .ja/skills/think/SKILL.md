@@ -25,7 +25,7 @@ argument-hint: "[task description]"
 
 1. 関連コードを読む。タスク、issue、調査レポートのいずれかがモック画像を参照しているなら、その画像も Read で開く。テキスト側に記載が無いことを、その要素が存在しない根拠にしない
 2. タスクの語から小文字ハイフン区切りの slug を作る。${CLAUDE_SKILL_DIR}/../research/scripts/find-prior-research.py <slug> .claude/workspace/research を実行する。標準出力の候補から該当するレポートを読み、各箇所を ${CLAUDE_SKILL_DIR}/references/research-report-intake.md の表のとおり扱う。候補が 0 件なら調査レポートは無いものとして進む
-3. 画面の組か layer の組が一致する既存モジュールを探す。ドメインは問わない。結果を reference_module 候補として控える。控えるのは kind (module/no-module/new-shape) と理由
+3. reference_module の候補を探す。対象は画面の組か layer の組が一致する既存モジュールで、ドメインは問わない。もっとも近い 1 つを選び、他は名前を控える。結果は kind (module/no-module/new-shape) と理由で控える。一致が無ければ新規である理由を控える
 4. `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <触りそうなパス>` を実行し、`matched` のページを読む。決まりごとは unit の切り方と files の選び方を決めるので、分割の後に読むと割り直しになる
 5. 異なる視点 (動く最小解/構造と拡張性/開発体験) から 2 つ以上の案を生成する。独立した技術判断は 1 つの質問に束ねず、推奨とトレードオフを添えて別々に問う
 6. 案に `critic-design` を起動する。プロンプトにタスクのタイトルを一字一句そのまま含め、結果は `{ verdict: "GO" | "NO-GO", weaknesses: string[], actionable: string[] }` の JSON オブジェクト 1 つで返させる
@@ -60,13 +60,12 @@ test_command の失敗は計画スコープだけに帰着できなければな�
 
 ### reference_module
 
-contract が引用できるのは 1 箇所の振る舞いだけなので、周辺構造は実装者が手で組むことになる。候補は Phase 2 で探索済みなので、ここでは結果を `reference_module: { path, files, instances }` に記録するだけにし、やり直さない。構造は `reference_module` セクションに書き、各 unit はそこを参照する。
+contract が引用できるのは 1 箇所の振る舞いだけなので、周辺構造は実装者が手で組むことになる。Phase 2 手順 3 の控えを `reference_module: { path, files, instances }` へ記録し、探索はやり直さない。構造は plan の参照モジュール節に書き、各 unit はそこを参照する。
 
 1. 骨格が 4 ファイル未満に収まるときだけ、U-001 をその構造複製にする。複製するのは同じディレクトリ配置、コンポーネント名、export 名で、tests は空配列。収まらないときは layer ごとに unit を割り、各 unit が担当分を複製する
 2. 維持する共有慣例 (合成する共有コンポーネント/整形を書く場所/状態の渡し方) を明記する。逸脱は plan に理由を書いたときのみ許す
-3. 候補が複数なら画面の組がもっとも近いものを選び、他は散文に名前を挙げる
-4. 一致が無ければ null とし、この形が新規である理由を散文に書く。理由の無い null は計画の欠陥として扱う
-5. instances が 2 以上なら「N 例目」と散文に書き、実装者へ設計でなく複製を指示する
+3. 選ばなかった候補の名前と、kind が module でない理由を散文に書く。理由の無い null は計画の欠陥として扱う
+4. instances が 2 以上なら「N 例目」と散文に書き、実装者へ設計でなく複製を指示する
 
 ### 前提 (preconditions)
 

@@ -25,7 +25,7 @@ Ground the approaches in the real code and existing research before making them.
 
 1. Read the relevant code. When the task, the issue, or a research report cites a mock image or screenshot, open that image file with Read as well. Absence from the text is not evidence the element does not exist
 2. Derive a lowercase hyphenated slug from the task's words and run ${CLAUDE_SKILL_DIR}/../research/scripts/find-prior-research.py <slug> .claude/workspace/research. Read the matching report from the candidates on stdout, and take each of its parts per the table in ${CLAUDE_SKILL_DIR}/references/research-report-intake.md. With no candidate, proceed as though no research report exists
-3. Search for an existing module whose set of screens or layers matches the one being planned, in any domain, as a reference_module candidate, and record the result as kind (module/no-module/new-shape) with a reason
+3. Search for the reference_module candidate: an existing module whose set of screens or layers matches the one being planned, in any domain. Pick the closest one and note the names of the others. Record the result as kind (module/no-module/new-shape) with a reason, and when none matches, note why this shape is new
 4. Run `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <the paths likely touched>` and read the `matched` pages. A rule bears on how units are cut and which files they take, so reading it after the decomposition means cutting them again
 5. Generate 2+ approaches from distinct perspectives (simplest thing that works / structure and extensibility / developer experience). Do not bundle independent technical decisions into one question; ask each separately with a recommendation and trade-offs
 6. Launch `critic-design` on the approaches. Include the task title verbatim in the prompt, and have it return a single JSON object `{ verdict: "GO" | "NO-GO", weaknesses: string[], actionable: string[] }`
@@ -60,13 +60,12 @@ A test_command failure must be attributable to the planned scope alone. On a rep
 
 ### reference_module
 
-A contract can cite a behavior at one call site only, so the implementer hand-rolls the surrounding structure. The candidate is already searched in Phase 2, so record its result here as `reference_module: { path, files, instances }` without searching again. Write the structure in the `reference_module` section, and every unit refers to it.
+A contract can cite a behavior at one call site only, so the implementer hand-rolls the surrounding structure. Record what Phase 2's step 3 noted as `reference_module: { path, files, instances }` without searching again. The structure goes in the plan's reference module section, and every unit refers to it.
 
 1. Make U-001 its structure replication (same directory layout, component names, export names; tests is an empty array) only when the skeleton fits under 4 files. Otherwise split units by layer and let each unit replicate its own slice
-2. State the shared conventions to keep (which shared components it composes, where formatting lives, how state is passed). Deviating is allowed only with a stated reason in the plan
-3. When several candidates match, pick the one whose screen set is closest and name the others in the prose
-4. When none matches, write null and say in the prose why this shape is new. A null with no reason is a planning defect
-5. When instances is 2 or more, say "Nth instance" in the prose, telling the implementer to replicate rather than design
+2. State the shared conventions to keep (which shared components it composes, where formatting is written, how state is passed). Deviating is allowed only with a stated reason in the plan
+3. Name the candidates not picked in the prose, along with why kind is not module. A null with no reason is a planning defect
+4. When instances is 2 or more, say "Nth instance" in the prose, telling the implementer to replicate rather than design
 
 ### Preconditions
 

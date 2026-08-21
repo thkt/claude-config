@@ -254,6 +254,29 @@ test("base stays build's arg, documented there and absent from think", () => {
   }
 });
 
+// Which module to replicate is settled while searching, in Phase 2. Leaving that call in the
+// subsection puts a Phase 2 decision below Phase 3, where a reader reaches it after the search is
+// already over.
+test("the reference_module search settles its own outcome in Phase 2", () => {
+  const settled = {
+    ja: [/もっとも近い 1 つを選び/, /一致が無ければ新規である理由/],
+    en: [/Pick the closest one/, /when none matches, note why this shape is new/],
+  };
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
+    for (const re of settled[lang]) {
+      assert.match(phase2, re, `${lang}: Phase 2 settles ${re}`);
+    }
+    const section = doc.slice(doc.indexOf("### reference_module"));
+    assert.doesNotMatch(
+      section.split("\n### ")[0],
+      lang === "ja" ? /候補が複数なら/ : /When several candidates match/,
+      `${lang}: the subsection no longer repeats the picking rule`,
+    );
+  }
+});
+
 // A subsection no step reaches is read after the steps are already done. Each of the four states
 // how one plan field is written, so the step settling that field is where it has to be cited.
 test("every subsection stating how a field is written is cited from a step", () => {
