@@ -63,7 +63,7 @@ Claude AI のためのカスタムコマンド、開発原則、ワークフロ�
    /plugin install build
    ```
 
-利用可能なプラグイン:
+#### 利用可能なプラグイン
 
 - build: 自己完結の開発ワークフロー一式。install 時にリポジトリ全体を一度 clone し、全 skill/agent/workflow を build: namespace でロードする。`/issue` で起票した issue の番号を build workflow に渡す。build は Load/Revalidate/Branch/Code/Cleanup/Verify/Ship を実行して draft PR を作る。`/audit` と `/polish` は draft PR に対して人間が個別に起動する。同梱対象は planning 系 (`/think`, `/research`, `/slice`, `/outcome`)、reviewer/critic エージェント、code/audit/polish/shake/assert/adrift workflow。git 系 (`/commit`, `/checkout`, `/pr`) と `/dr`, `/census` も含む。
 
@@ -92,14 +92,14 @@ Claude AI のためのカスタムコマンド、開発原則、ワークフロ�
 
 Claude Code の sandbox 機能は、自動的なパーミッション処理を伴う安全なコマンド実行を提供し、安全性を保ちつつ承認の手間を減らす。
 
-システム要件:
+#### システム要件
 
 - macOS または Linux (Windows は未対応)
 - npm/npx 付きの Node.js
 - ripgrep (通常はプリインストール済み)
 - jq (現行フックで必須): `brew install jq`
 
-セットアップ:
+#### セットアップ
 
 ```bash
 # 1. sandbox runtime のインストール
@@ -114,14 +114,14 @@ srt --version
 # Option 1: "Sandbox BashTool, with auto-allow in accept edits mode" を選択
 ```
 
-機能:
+#### 機能
 
 - ✅ ファイルシステムアクセスを許可ディレクトリに制限
 - ✅ プロキシ経由のネットワークアクセス制御
 - ✅ 安全なコマンドを sandbox 内で自動実行
 - ✅ sandbox 制限に抵触したときのみ承認を要求
 
-設定 (任意):
+#### 設定 (任意)
 
 カスタム設定のために `~/.srt-settings.json` を作成する。
 

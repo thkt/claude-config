@@ -36,13 +36,13 @@ Use these as the default unless there is a strong, explicit reason not to.
 Use this pattern for IDs, URLs, screen names, search queries, and similar
 single-value inputs.
 
-Canonical form:
+#### Canonical form
 
 ```text
 tool subcommand [ARG]
 ```
 
-Behavior:
+#### Behavior
 
 - If `ARG` is present and not `-`, use it as-is.
 - If `ARG` is `-`, read from `stdin` even when attached to a terminal.
@@ -50,19 +50,19 @@ Behavior:
 - If `ARG` is omitted and `stdin` is a terminal, return a local error with a
   concrete fix.
 
-Canonical error shape:
+#### Canonical error shape
 
 ```text
 Missing <label>. Pass <PLACEHOLDER>, pipe it via stdin, or use `-` to read stdin interactively
 ```
 
-Canonical empty-stdin shape:
+#### Canonical empty-stdin shape
 
 ```text
 No <label> provided. Pass <PLACEHOLDER>, pipe it via stdin, or use `-` to read stdin interactively
 ```
 
-Recommended Rust shape:
+#### Recommended Rust shape
 
 ```rust
 fn resolve_input(
@@ -88,7 +88,7 @@ fn resolve_input(
 Use this pattern for post bodies, document content, prompts, or any input that
 is naturally file-sized.
 
-Canonical form:
+#### Canonical form
 
 ```text
 tool subcommand --body "..."
@@ -96,14 +96,14 @@ tool subcommand --body-file draft.md
 cat draft.md | tool subcommand --body-file -
 ```
 
-Rules:
+#### Rules
 
 - Support inline text only when it is realistically short.
 - Support `--body-file <path>` for real content.
 - Support `--body-file -` for `stdin`.
 - Use `clap` `conflicts_with` for mutually exclusive payload inputs.
 
-Best-of-best split:
+#### Best-of-best split
 
 - Single value input: optional positional + `stdin` fallback.
 - Long payload input: explicit `--body-file -`.
@@ -112,14 +112,14 @@ Best-of-best split:
 
 Shorthand is optional sugar, never the primary contract.
 
-Rules:
+#### Rules
 
 - The canonical syntax must appear in help.
 - Shorthand may exist for backward compatibility.
 - Do not require shorthand knowledge to use the tool.
 - Do not let shorthand make parsing ambiguous.
 
-Current example:
+#### Current example
 
 - `sae "query"` may remain as compatibility sugar.
 - The canonical form is still `sae search [QUERY]`.
@@ -128,7 +128,7 @@ Current example:
 
 Every subcommand should have `Examples:` in `after_help`.
 
-Rules:
+### Rules
 
 - Use 2-4 examples per subcommand.
 - Show the canonical direct invocation first.
@@ -137,7 +137,7 @@ Rules:
 - Include one realistic flag combination when flags materially change behavior.
 
 Root help should include operator-level information that affects automation, for
-example:
+### example
 
 - exit codes
 - auth prerequisites
@@ -159,7 +159,7 @@ Exit codes:
 
 Validate the cheapest, most local things first.
 
-Preferred order:
+### Preferred order
 
 1. Parse CLI args
 2. Resolve input source
@@ -167,7 +167,7 @@ Preferred order:
 4. Initialize auth/client
 5. Make network or DB calls
 
-Examples:
+### Examples
 
 - Parse tweet ID before cookie extraction.
 - Reject missing search query before opening a client.
@@ -177,20 +177,20 @@ Examples:
 
 Agent-friendly errors should be concrete and actionable.
 
-Rules:
+### Rules
 
 - Say what is missing or invalid.
 - Say how to fix it.
 - Avoid generic "invalid input" without context.
 - Prefer stable wording for common operator errors.
 
-Good:
+### Good
 
 ```text
 Missing tweet ID or URL. Pass ID_OR_URL, pipe it via stdin, or use `-` to read stdin interactively
 ```
 
-Bad:
+### Bad
 
 ```text
 invalid input
@@ -198,7 +198,7 @@ invalid input
 
 ## Output Contract
 
-Rules:
+### Rules
 
 - Success output should be directly usable, not padded with narration.
 - Warnings should go to `stderr`.
@@ -210,7 +210,7 @@ Rules:
 Every CLI that adopts this guideline should test the contract, not only the
 happy path.
 
-Required tests:
+### Required tests
 
 1. Root help includes operator information, if defined.
 2. Every subcommand includes `Examples:` in `after_help`.
@@ -223,7 +223,7 @@ Required tests:
 9. Local validation fails before auth/network for malformed identifiers.
 10. Mutually exclusive payload flags fail at parse time.
 
-Nice-to-have tests:
+### Nice-to-have tests
 
 - Backward-compatible shorthand still parses.
 - JSON/global flags do not break shorthand expansion.

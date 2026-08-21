@@ -66,7 +66,7 @@ install specific workflow sets:
    /plugin install build
    ```
 
-**Available Plugins**:
+#### Available Plugins
 
 - **build**: Self-contained development workflow toolkit. Installing it clones
   the whole repository once, so every skill, agent, and workflow loads under the
@@ -106,14 +106,14 @@ configurations. Plugin installation only includes shared commands and agents
 Claude Code's sandbox feature provides secure command execution with automatic
 permission handling, reducing approval fatigue while maintaining safety.
 
-**System Requirements**:
+#### System Requirements
 
 - macOS or Linux (Windows not yet supported)
 - Node.js with npm/npx
 - ripgrep (typically pre-installed)
 - jq (required by the current hooks): `brew install jq`
 
-**Setup**:
+#### Setup
 
 ```bash
 # 1. Install sandbox runtime
@@ -128,14 +128,14 @@ srt --version
 # Select option 1: "Sandbox BashTool, with auto-allow in accept edits mode"
 ```
 
-**What it does**:
+#### What it does
 
 - ✅ Restricts file system access to allowed directories
 - ✅ Controls network access via proxy
 - ✅ Auto-executes safe commands in sandbox
 - ✅ Requests approval only when sandbox restrictions are hit
 
-**Configuration** (optional):
+#### Configuration (optional)
 
 Create `~/.srt-settings.json` for custom settings:
 

@@ -21,7 +21,7 @@ MADR format with prose-style explanation optimized for human readers who need to
 understand context months or years later. Not every decision is architectural,
 so the record is scoped as a Decision Record rather than an Architecture-only one.
 
-Key properties:
+#### Key properties
 
 - **Audience: future developers** - someone joining the project should
   understand past decisions by reading DRs
@@ -42,7 +42,7 @@ following the `templates/plan.md` skeleton, then `/issue` transfers both section
 into the issue's Plan section verbatim. The build workflow extracts it
 (U-NNN / T-NNN id sets) and implements unit by unit.
 
-Key properties:
+#### Key properties
 
 - **Audience: AI and human** - build extracts the structure mechanically; a human
   reviews it in the issue before build runs
