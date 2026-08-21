@@ -159,3 +159,58 @@ test("T-004 leaves the reviewer name out of the input handed to the critic", asy
   assert.match(call.prompt, /"id":"R-1"/, "the critic input carries the rawFindings id (R-N)");
   assert.doesNotMatch(call.prompt, /"reviewer"/, "the critic input carries no reviewer name");
 });
+
+test("T-009 a needs_context finding returns in the ask section carrying its why", async () => {
+  const { result } = await runChallenge({
+    verdicts: [
+      { id: "R-1", verdict: "confirmed" },
+      {
+        id: "R-2",
+        verdict: "needs_context",
+        why: "severity depends on whether this endpoint is internal-only",
+      },
+    ],
+  });
+  assert.deepEqual(
+    result.ask.map((a) => ({ id: a.id, why: a.why })),
+    [{ id: "R-2", why: "severity depends on whether this endpoint is internal-only" }],
+    "the ask section carries the needs_context finding's id and why",
+  );
+});
+
+test("T-010 a disputed finding returns as a count and an id, never its full text", async () => {
+  const { result } = await runChallenge({
+    verdicts: [
+      { id: "R-1", verdict: "disputed" },
+      { id: "R-2", verdict: "confirmed" },
+    ],
+  });
+  assert.deepEqual(
+    result.info.disputed,
+    { count: 1, ids: ["R-1"] },
+    "info.disputed carries only the count and id of the disputed finding",
+  );
+  assert.ok(
+    !JSON.stringify(result.info).includes("security finding"),
+    "the disputed finding's summary text does not leak into info",
+  );
+});
+
+// info naming a finding is not a removal, which is why this asserts both sides.
+test("T-011 a downgraded finding is named in info while staying a survivor", async () => {
+  const { result } = await runChallenge({
+    verdicts: [
+      { id: "R-1", verdict: "downgraded", severity: "low" },
+      { id: "R-2", verdict: "confirmed" },
+    ],
+  });
+  assert.deepEqual(
+    result.info.downgraded,
+    { count: 1, ids: ["R-1"] },
+    "info.downgraded carries only the count and id of the re-scored finding",
+  );
+  assert.ok(
+    result.survivors.some((s) => s.id === "R-1"),
+    "the re-scored finding is still a survivor: a lowered severity is not a removal",
+  );
+});

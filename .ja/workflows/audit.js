@@ -123,7 +123,7 @@ const writeSnapshot = async ({
   challengeRan,
   verifyRan,
   tally,
-  needsContext,
+  ask,
   zeroReviewerFiles,
 }) => {
   phase("Snapshot");
@@ -140,7 +140,7 @@ const writeSnapshot = async ({
     tally,
     // 同じ finding は raw_findings 側に verdict つきで載る。ここは raw_findings から
     // 導けない why だけの側表にする。
-    needs_context: needsContext && needsContext.map(({ id, why }) => ({ id, why })),
+    needs_context: ask,
     zero_reviewer_files: zeroReviewerFiles,
   });
   const written = await agent(
@@ -170,7 +170,7 @@ const writeSnapshot = async ({
     raw_findings: rawFindings.length,
     findings: findings.length,
     skipped: skipped.length,
-    needs_context: needsContext ? needsContext.length : 0,
+    needs_context: ask ? ask.length : 0,
     zero_reviewer_files: zeroReviewerFiles ? zeroReviewerFiles.length : 0,
   };
   if (!written) {
@@ -801,6 +801,10 @@ const [challenged, verified] = await parallel([
 const verdictById = new Map(((challenged && challenged.verdicts) || []).map((v) => [v.id, v]));
 const survivors = [];
 const needsContext = [];
+// id だけを持つ。判定済みの finding の全文は、生きている指摘と同じ紙幅を report で占める。
+// downgraded は survivors に残るが、id はここにも記録する。
+const disputedIds = [];
+const downgradedIds = [];
 let noVerdict = 0;
 for (const f of rawFindings) {
   const v = verdictById.get(f.id);
@@ -812,7 +816,10 @@ for (const f of rawFindings) {
     survivors.push({ ...f });
     continue;
   }
-  if (v.verdict === "disputed") continue;
+  if (v.verdict === "disputed") {
+    disputedIds.push(f.id);
+    continue;
+  }
   if (v.verdict === "needs_context") {
     needsContext.push({ ...f, why: v.why || "" });
     continue;
@@ -822,11 +829,18 @@ for (const f of rawFindings) {
   // 「reviewer が severity を過大に付けるか」を測れなくなる。survivors は下げ後だけを持ち、
   // Integrate が merge した後は finding 単位で追えない。
   if (severity !== f.severity) f.downgraded_to = severity;
+  if (v.verdict === "downgraded") downgradedIds.push(f.id);
   survivors.push({ ...f, severity });
 }
 log(
   `triage: ${survivors.length} survived / ${needsContext.length} needs_context / no_verdict: ${noVerdict} (of ${rawFindings.length} total)`,
 );
+// needsContext が既に持つ why をそのまま使うので、ask と needs_context が食い違わない。
+const ask = needsContext.map(({ id, why }) => ({ id, why }));
+const info = {
+  disputed: { count: disputedIds.length, ids: disputedIds },
+  downgraded: { count: downgradedIds.length, ids: downgradedIds },
+};
 // challenge_ran は「verdicts を返した run」と fail-open した run (verdictById が空になり、
 // 全 finding が no_verdict 経由で confirmed に落ちる) を区別する。verify は自由記述の
 // テキストを返すため、schema の形ではなく中身の有無で判定する。
@@ -896,7 +910,7 @@ const snapshot = await writeSnapshot({
   // fail-open した run は degraded 印だけを残し件数を書かない、が plan の contract。
   // undefined を渡すと JSON.stringify がキーごと落とす。
   tally: challengeRan ? tally : undefined,
-  needsContext,
+  ask,
   zeroReviewerFiles,
 });
 return {
@@ -904,6 +918,8 @@ return {
   findings: finalFindings,
   survivors,
   needs_context: needsContext,
+  ask,
+  info,
   challenge_ran: challengeRan,
   verify_ran: verifyRan,
   tally,

@@ -129,7 +129,7 @@ const writeSnapshot = async ({
   challengeRan,
   verifyRan,
   tally,
-  needsContext,
+  ask,
   zeroReviewerFiles,
 }) => {
   phase("Snapshot");
@@ -146,7 +146,7 @@ const writeSnapshot = async ({
     tally,
     // The same findings already appear in raw_findings carrying their verdict. This side
     // table holds only why, which raw_findings cannot supply.
-    needs_context: needsContext && needsContext.map(({ id, why }) => ({ id, why })),
+    needs_context: ask,
     zero_reviewer_files: zeroReviewerFiles,
   });
   const written = await agent(
@@ -178,7 +178,7 @@ const writeSnapshot = async ({
     raw_findings: rawFindings.length,
     findings: findings.length,
     skipped: skipped.length,
-    needs_context: needsContext ? needsContext.length : 0,
+    needs_context: ask ? ask.length : 0,
     zero_reviewer_files: zeroReviewerFiles ? zeroReviewerFiles.length : 0,
   };
   if (!written) {
@@ -815,6 +815,10 @@ const [challenged, verified] = await parallel([
 const verdictById = new Map(((challenged && challenged.verdicts) || []).map((v) => [v.id, v]));
 const survivors = [];
 const needsContext = [];
+// id-only: a judged finding's full text would take report space alongside live ones. A
+// downgraded id is recorded here even though the finding stays in survivors.
+const disputedIds = [];
+const downgradedIds = [];
 let noVerdict = 0;
 for (const f of rawFindings) {
   const v = verdictById.get(f.id);
@@ -826,7 +830,10 @@ for (const f of rawFindings) {
     survivors.push({ ...f });
     continue;
   }
-  if (v.verdict === "disputed") continue;
+  if (v.verdict === "disputed") {
+    disputedIds.push(f.id);
+    continue;
+  }
   if (v.verdict === "needs_context") {
     needsContext.push({ ...f, why: v.why || "" });
     continue;
@@ -837,11 +844,18 @@ for (const f of rawFindings) {
   // survivors carry only the lowered value, and after Integrate merges there is no
   // per-finding severity left to read.
   if (severity !== f.severity) f.downgraded_to = severity;
+  if (v.verdict === "downgraded") downgradedIds.push(f.id);
   survivors.push({ ...f, severity });
 }
 log(
   `triage: ${survivors.length} survived / ${needsContext.length} needs_context / no_verdict: ${noVerdict} (of ${rawFindings.length} total)`,
 );
+// Reusing the why needsContext already holds, so ask and needs_context cannot disagree.
+const ask = needsContext.map(({ id, why }) => ({ id, why }));
+const info = {
+  disputed: { count: disputedIds.length, ids: disputedIds },
+  downgraded: { count: downgradedIds.length, ids: downgradedIds },
+};
 // challenge_ran separates a run that returned verdicts from the fail-open path (an empty
 // verdictById drops every finding to confirmed via no_verdict). verify returns free-form
 // text, so it is judged by whether content came back rather than by a schema shape.
@@ -912,7 +926,7 @@ const snapshot = await writeSnapshot({
   // The plan's contract: a fail-open run keeps the degraded mark and writes no counts.
   // Passing undefined makes JSON.stringify drop the key.
   tally: challengeRan ? tally : undefined,
-  needsContext,
+  ask,
   zeroReviewerFiles,
 });
 return {
@@ -920,6 +934,8 @@ return {
   findings: finalFindings,
   survivors,
   needs_context: needsContext,
+  ask,
+  info,
   challenge_ran: challengeRan,
   verify_ran: verifyRan,
   tally,
