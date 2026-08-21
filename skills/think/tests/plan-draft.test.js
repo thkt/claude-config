@@ -23,6 +23,9 @@ function read(path) {
   return readFileSync(path, "utf8");
 }
 
+const steps = (doc) => doc.split("\n").filter((line) => /^\d+\. /.test(line));
+const phase = (doc, n) => doc.slice(doc.indexOf(`## Phase ${n}`), doc.indexOf(`## Phase ${n + 1}`));
+
 test("the plan template defines the skeleton (id notation, implementation order, the preconditions subsection, one-line statement tests, test_command, Backlog candidates) and the line-count rule", () => {
   for (const [lang, path] of Object.entries(templates)) {
     const doc = read(path);
@@ -254,9 +257,8 @@ test("base stays build's arg, documented there and absent from think", () => {
   }
 });
 
-// Which module to replicate is settled while searching, in Phase 2. Leaving that call in the
-// subsection puts a Phase 2 decision below Phase 3, where a reader reaches it after the search is
-// already over.
+// Which module to replicate is settled while searching. Leaving that call in the subsection puts
+// a Phase 2 decision below Phase 3, where a reader reaches it after the search is over.
 test("the reference_module search settles its own outcome in Phase 2", () => {
   const settled = {
     ja: [/もっとも近い 1 つを選び/, /一致が無ければ新規である理由/],
@@ -264,7 +266,7 @@ test("the reference_module search settles its own outcome in Phase 2", () => {
   };
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
-    const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
+    const phase2 = phase(doc, 2);
     for (const re of settled[lang]) {
       assert.match(phase2, re, `${lang}: Phase 2 settles ${re}`);
     }
@@ -277,8 +279,8 @@ test("the reference_module search settles its own outcome in Phase 2", () => {
   }
 });
 
-// A subsection no step reaches is read after the steps are already done. Each of the four states
-// how one plan field is written, so the step settling that field is where it has to be cited.
+// Each of the four states how one plan field is written, so the step settling that field is
+// where it has to be cited. A subsection no step reaches is read after the steps are done.
 test("every subsection stating how a field is written is cited from a step", () => {
   const cited = {
     ja: ["§ reference_module", "§ test_command", "§ contract", "§ preconditions"],
@@ -293,10 +295,9 @@ test("every subsection stating how a field is written is cited from a step", () 
   ];
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
-    const steps = doc.split("\n").filter((line) => /^\d+\. /.test(line));
     for (const [i, marker] of cited[lang].entries()) {
       assert.ok(
-        steps.some((s) => s.includes(marker)),
+        steps(doc).some((line) => line.includes(marker)),
         `${lang}: a step cites ${marker}`,
       );
       assert.ok(doc.includes(headings[i]), `${lang}: ${headings[i]} exists`);
@@ -323,13 +324,11 @@ test("the steps settle each plan field before the step that writes the plan out"
     en: [/Record reference_module/, /Settle test_command/, /write its contract/, /preconditions/i],
   };
   for (const [lang, path] of Object.entries(skills)) {
-    const steps = read(path)
-      .split("\n")
-      .filter((line) => /^\d+\. /.test(line));
-    const writeAt = steps.findIndex((s) => s.includes(".claude/workspace/planning/"));
+    const list = steps(read(path));
+    const writeAt = list.findIndex((line) => line.includes(".claude/workspace/planning/"));
     assert.ok(writeAt >= 0, `${lang}: a step writes the plan out`);
     for (const re of settles[lang]) {
-      const at = steps.findIndex((s) => re.test(s));
+      const at = list.findIndex((line) => re.test(line));
       assert.ok(at >= 0, `${lang}: a step settles ${re}`);
       assert.ok(at < writeAt, `${lang}: ${re} is settled before the write`);
     }
@@ -368,9 +367,7 @@ test("every top-level field the skeleton names is one build's schema carries", (
 test("the seam step states the wiring gap and imposes no stubbing default", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
-    const step = doc
-      .split("\n")
-      .find((line) => /^\d+\. /.test(line) && line.includes("seam: true"));
+    const step = steps(doc).find((line) => line.includes("seam: true"));
     assert.ok(step, `${lang}: a step places the seam unit`);
     assert.match(
       step,
@@ -390,7 +387,7 @@ test("the seam step states the wiring gap and imposes no stubbing default", () =
 test("Phase 2 routes the research report's parts to the intake reference", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
-    const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
+    const phase2 = phase(doc, 2);
     assert.match(
       phase2,
       /\$\{CLAUDE_SKILL_DIR\}\/references\/research-report-intake\.md/,
@@ -414,11 +411,11 @@ test("every rule shaping what gets written comes before the step that writes it"
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
     const phase3 = doc.slice(doc.indexOf("## Phase 3"), doc.indexOf("### test_command"));
-    const steps = phase3.split("\n").filter((line) => /^\d+\. /.test(line));
-    assert.ok(steps.length >= 8, `${lang}: Phase 3 carries its numbered steps`);
-    const writeAt = steps.findIndex((s) => s.includes(".claude/workspace/planning/"));
+    const list = steps(phase3);
+    assert.ok(list.length >= 8, `${lang}: Phase 3 carries its numbered steps`);
+    const writeAt = list.findIndex((line) => line.includes(".claude/workspace/planning/"));
     assert.ok(writeAt >= 0, `${lang}: a step writes the plan out`);
-    for (const [i, step] of steps.entries()) {
+    for (const [i, step] of list.entries()) {
       if (i === writeAt || !step.includes("T-NNN")) continue;
       assert.ok(i < writeAt, `${lang}: step ${i + 1} shapes T-NNN, so it precedes the write`);
     }
@@ -428,7 +425,7 @@ test("every rule shaping what gets written comes before the step that writes it"
 test("think reads the wiki rules before the approaches are generated", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
-    const phase2 = doc.slice(doc.indexOf("## Phase 2"), doc.indexOf("## Phase 3"));
+    const phase2 = phase(doc, 2);
     assert.match(phase2, /find_wiki_rule\.py/, `${lang}: Phase 2 runs the finder`);
     const phase3 = doc.slice(doc.indexOf("## Phase 3"));
     assert.match(
