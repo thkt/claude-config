@@ -338,8 +338,7 @@ const findingsSchema = ({ withSourceIds = false } = {}) => ({
             enum: ["critical", "high", "medium", "low"],
           },
           summary: { type: "string" },
-          // 必須にしない。trigger を返さない reviewer は findings 配列ごと検証に落ち、
-          // その中の finding をすべて失う。
+          // optional にする。必須だと trigger を返さない reviewer が findings 配列ごと落ちる。
           category: { type: "string", description: "reviewer 自身の finding 分類" },
           trigger: {
             type: "string",
@@ -640,17 +639,16 @@ const raw = await parallel(
   ),
 );
 const findings = raw.filter(Boolean).flatMap((r) => r.findings || []);
-// 既定値は script が持つ。reviewer が何も申告しなくても数えられる値が残る
-// (agents/_lib/finding-schema.md § Disposition)。severity から導かず固定するのは、assert の
-// gate が severity を見ないため。導出すると、マージを止める finding に nits が付く。
+// severity から導かず固定する (agents/_lib/finding-schema.md § Disposition)。assert の gate は
+// severity を見ないので、導出するとマージを止める finding に nits が付く。
 const DEFAULT_DISPOSITION = "must";
 const DECLARABLE_DISPOSITIONS = new Set(["must", "want", "imo", "nits"]);
 let restoredDispositions = 0;
 const dispositionOf = (f) => {
-  const declared = String(f.disposition || "");
-  const reason = String(f.disposition_reason || "").trim();
+  const declared = f.disposition || "";
+  const reason = (f.disposition_reason || "").trim();
   if (!declared) return { disposition: DEFAULT_DISPOSITION };
-  // 理由の無い上書きは judgment でなく好みなので、申告された値として運ばず既定値へ戻す。
+  // 理由の無い上書きは判断でなく好みなので、申告された値としては運ばない。
   if (!DECLARABLE_DISPOSITIONS.has(declared) || !reason) {
     restoredDispositions += 1;
     return { disposition: DEFAULT_DISPOSITION };
@@ -671,8 +669,7 @@ units.forEach((u, i) => {
         line: f.line,
         severity: f.severity,
         message: f.summary,
-        // 無いフィールドは空文字にせず無いまま残す。何も返さなかった reviewer と、空を
-        // 返した reviewer を読み手が区別できる。
+        // 無いものは無いまま残す。空文字だと、空を返した reviewer と区別が付かない。
         ...(f.category ? { category: f.category } : {}),
         ...(f.trigger ? { trigger: f.trigger } : {}),
         ...dispositionOf(f),
@@ -872,8 +869,7 @@ const integrated = await agent(
 // フォールバック先を triage 前の findings にすると、id が付く前の配列に落ちるので、
 // challenge が disputed と判定した finding を黙って呼び戻すことになる。
 const integratedFindings = (integrated && integrated.findings) || survivorsInput;
-// Integrate が読む projection は disposition を含まないので、出力にも戻ってこない。ここで
-// 既定値を当て直すことで、返り値の finding が survivors と同じ軸で読める。
+// Integrate が読む projection は disposition を含まないので、ここで既定値を当て直す。
 const finalFindings = integratedFindings.map((f) =>
   f.disposition ? f : { ...f, disposition: DEFAULT_DISPOSITION },
 );

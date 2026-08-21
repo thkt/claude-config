@@ -14,8 +14,7 @@ const auditJs = join(here, "..", "..", "audit.js");
 
 // The shortest stub carrying Route -> Review (the security and silence reviewers) -> Challenge.
 // defaultAgentStub in _fixtures.js decides the default responses and the id numbering.
-// extra overrides a reviewer's own response, which the disposition cases need to make a reviewer
-// declare a value at all.
+// extra overrides a reviewer's own response, which the disposition cases need to declare one.
 const runChallenge = (challenge, extra = {}) =>
   runWorkflow(auditJs, {
     args: { focus: "security", skipPreflight: true },
@@ -65,8 +64,7 @@ test("T-003 treats a finding with no verdict as confirmed and counts it under no
   );
 });
 
-// A reviewer that declares nothing must still produce a countable disposition. Left absent, a
-// reader has to fall back to severity, which is the axis this one exists to stop answering with.
+// Left absent, the reader falls back to severity, the axis this one exists to stop answering with.
 test("T-005 a finding declaring no disposition carries must after triage", async () => {
   const { result } = await runChallenge({
     verdicts: [
@@ -81,8 +79,7 @@ test("T-005 a finding declaring no disposition carries must after triage", async
   );
 });
 
-// An override with no reason is a preference stated as a verdict. Falling back silently would
-// leave the reader unable to tell a declared must from one the script restored.
+// Falling back silently leaves a declared must and a restored one reading the same.
 test("T-006 an override without a disposition_reason falls back to must and the count reaches log()", async () => {
   const { result, logs } = await runChallenge(
     {
@@ -108,8 +105,7 @@ test("T-006 an override without a disposition_reason falls back to must and the 
   );
 });
 
-// findingsSchema drops every key it does not list, so a reviewer can fill category and trigger
-// and the report still shows neither. These two are what the prune quality reads.
+// findingsSchema drops every key it does not list, so both reach the report only once listed.
 test("T-007 the category and trigger a reviewer returned stay on the survivor", async () => {
   const { result } = await runChallenge(
     {
@@ -138,8 +134,7 @@ test("T-007 the category and trigger a reviewer returned stay on the survivor", 
   assert.equal(byId.get("R-1").trigger, "every Bash tool call");
 });
 
-// Required fields would fail the whole findings array of a reviewer that returns no trigger, so
-// the two stay optional and an absent one stays absent rather than becoming an empty string.
+// Required, these would fail the whole findings array of a reviewer that returns no trigger.
 test("T-008 a finding with no trigger stays a survivor and its trigger stays absent", async () => {
   const { result } = await runChallenge({
     verdicts: [

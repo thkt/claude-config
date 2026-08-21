@@ -128,10 +128,8 @@ test("T-019 carrying a test-file-only diff under focus=security leaves the zero-
   );
 });
 
-// The default is applied at two points: on rawFindings as the reviewer output is captured, and
-// again on what Integrate returns, whose input projection carries no disposition. A run where
-// nobody declares one is the case that shows whether both fired, which the triage cases cannot
-// see because they stop before Integrate.
+// The default is applied twice: on rawFindings, and again on what Integrate returns. The triage
+// cases stop before Integrate, so only a full run shows whether the second one fired.
 test("T-022 a run where no reviewer declares a disposition returns every finding as must", async () => {
   const { result, record } = await run([{ path: "sample.js", churn: 0 }], {
     security: {

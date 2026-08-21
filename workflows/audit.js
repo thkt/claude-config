@@ -347,8 +347,7 @@ const findingsSchema = ({ withSourceIds = false } = {}) => ({
             enum: ["critical", "high", "medium", "low"],
           },
           summary: { type: "string" },
-          // Optional, not required: a reviewer that returns no trigger would otherwise fail
-          // validation on its whole findings array and lose every finding in it.
+          // Optional: required, a reviewer returning no trigger loses its whole findings array.
           category: { type: "string", description: "the reviewer's own finding category" },
           trigger: {
             type: "string",
@@ -652,19 +651,16 @@ const raw = await parallel(
   ),
 );
 const findings = raw.filter(Boolean).flatMap((r) => r.findings || []);
-// The script owns the default, so a reviewer that declares nothing still leaves a countable
-// value (agents/_lib/finding-schema.md § Disposition). The default is pinned rather than
-// derived from severity: assert's gate ignores severity, so a derived default would put nits
-// on a finding that blocks the merge.
+// Pinned rather than derived from severity (agents/_lib/finding-schema.md § Disposition):
+// assert's gate ignores severity, so a derived default would put nits on a blocking finding.
 const DEFAULT_DISPOSITION = "must";
 const DECLARABLE_DISPOSITIONS = new Set(["must", "want", "imo", "nits"]);
 let restoredDispositions = 0;
 const dispositionOf = (f) => {
-  const declared = String(f.disposition || "");
-  const reason = String(f.disposition_reason || "").trim();
+  const declared = f.disposition || "";
+  const reason = (f.disposition_reason || "").trim();
   if (!declared) return { disposition: DEFAULT_DISPOSITION };
-  // An override with no reason is a preference stated as a verdict, so it falls back instead
-  // of travelling as a declared value.
+  // An override with no reason is a preference stated as a verdict, so it does not travel.
   if (!DECLARABLE_DISPOSITIONS.has(declared) || !reason) {
     restoredDispositions += 1;
     return { disposition: DEFAULT_DISPOSITION };
@@ -685,8 +681,7 @@ units.forEach((u, i) => {
         line: f.line,
         severity: f.severity,
         message: f.summary,
-        // An absent field stays absent rather than becoming an empty string, so a reader can
-        // tell a reviewer that returned nothing from one that returned blank.
+        // Absent stays absent: an empty string would read as a reviewer that answered blank.
         ...(f.category ? { category: f.category } : {}),
         ...(f.trigger ? { trigger: f.trigger } : {}),
         ...dispositionOf(f),
@@ -890,9 +885,7 @@ const integrated = await agent(
 // Falling back to the pre-triage findings array would land on the state before ids were
 // assigned, silently readmitting findings the challenge pass had disputed.
 const integratedFindings = (integrated && integrated.findings) || survivorsInput;
-// Integrate reads a projection that carries no disposition, so its output comes back without
-// one. Applying the default again here keeps the returned findings readable on the same axis
-// as the survivors.
+// Integrate reads a projection carrying no disposition, so the default is applied again here.
 const finalFindings = integratedFindings.map((f) =>
   f.disposition ? f : { ...f, disposition: DEFAULT_DISPOSITION },
 );
