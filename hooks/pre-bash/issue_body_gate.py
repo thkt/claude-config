@@ -81,7 +81,9 @@ def main() -> None:
     try:
         filing = gh_filing.find(command, kind="issue")
     except ValueError:
-        deny("issue-body-template: 引用符が閉じておらずコマンドを分割できず、どの断片が起票かを決められない。引用符を閉じて再試行する")
+        deny(
+            "issue-body-template: 引用符が閉じておらずコマンドを分割できず、どの断片が起票かを決められない。引用符を閉じて再試行する"
+        )
         return
     if filing is None:
         return
@@ -89,30 +91,40 @@ def main() -> None:
     title = gh_filing.flag(filing, gh_filing.TITLE_FLAGS)
     issue_type = _issue_type(title) if title else None
     if title is None or issue_type is None:
-        deny("issue-body-template: タイトルに型プレフィックス ([Bug] 等) が無く、どの骨格と照合するかを決められない。タイトルを型で始める")
+        deny(
+            "issue-body-template: タイトルに型プレフィックス ([Bug] 等) が無く、どの骨格と照合するかを決められない。タイトルを型で始める"
+        )
         return
 
     path = gh_filing.body_file(filing)
     if path is None:
-        deny("issue-body-template: 本文が --body のインライン指定で骨格と照合できない。本文を一時ファイルへ書き --body-file にリテラルの絶対パスで渡す")
+        deny(
+            "issue-body-template: 本文が --body のインライン指定で骨格と照合できない。本文を一時ファイルへ書き --body-file にリテラルの絶対パスで渡す"
+        )
         return
 
     # A hook carries none of the shell state the command will run under, so a path written as
     # `"$B"` or `$TMPDIR/body.md` arrives unexpanded and names nothing on disk.
     if not path.is_file():
-        deny(f"issue-body-template: --body-file の指す先 ({path}) が読めず本文を照合できない。パスを変数でなくリテラルの絶対パスで書く")
+        deny(
+            f"issue-body-template: --body-file の指す先 ({path}) が読めず本文を照合できない。パスを変数でなくリテラルの絶対パスで書く"
+        )
         return
 
     template = _template(issue_type, filing.directory)
     if template is None:
         known = ", ".join(sorted(p.stem for p in TEMPLATES.glob("*.md")))
         choices = f"型を {known} のいずれかにするか、" if known else ""
-        deny(f"issue-body-template: 型 [{issue_type}] に対応する骨格が .github/ISSUE_TEMPLATE/ にも skills/issue/templates/ にも無く本文を照合できない。{choices}skills/issue/templates/{issue_type}.md を足す")
+        deny(
+            f"issue-body-template: 型 [{issue_type}] に対応する骨格が .github/ISSUE_TEMPLATE/ にも skills/issue/templates/ にも無く本文を照合できない。{choices}skills/issue/templates/{issue_type}.md を足す"
+        )
         return
 
     errors = _errors(template, title, path)
     if errors is None:
-        deny(f"issue-body-template: validator ({VALIDATOR}) が errors 配列を返さず本文を照合できない。python3 で直接実行して出力を確かめる")
+        deny(
+            f"issue-body-template: validator ({VALIDATOR}) が errors 配列を返さず本文を照合できない。python3 で直接実行して出力を確かめる"
+        )
         return
     if errors:
         deny(f"issue-body-template: 本文の節構成が骨格と食い違う ({'; '.join(errors)})")

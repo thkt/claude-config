@@ -59,7 +59,7 @@ DR frontmatter の期限で発火する。
 Option B に月次 cron を足す。
 
 - Good, because 実行忘れが起きない
-- Bad, because 通知はゲートではない。`.claude/rules/CORRECTIONS.md` は手動統合バックログとして 13 エントリが未統合のまま積まれている
+- Bad, because 通知はゲートではない。`.claude/rules/CORRECTIONS.md` は手動統合バックログとして 13 エントリが未統合のまま積まれている (この判断の時点の実測。当該ファイルは 2026-08-21 に ADR-0097 の Deprecated と同時に削除した)
 
 ## More Information
 

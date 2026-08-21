@@ -70,3 +70,6 @@ jobs:
       # ruff は JS 依存に無いので版を直に固定する。手元は uvx ruff (2026-08-21 時点 0.16.4)。
       - name: ruff
         run: pipx run --spec ruff==0.16.4 ruff check .
+
+      - name: ruff format
+        run: pipx run --spec ruff==0.16.4 ruff format --check .

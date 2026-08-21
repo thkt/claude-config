@@ -63,13 +63,19 @@ def parse_dr(path: Path) -> tuple[str, str, str]:
     """(title, status, date) from frontmatter and the first # heading."""
     frontmatter, body = split_frontmatter(path.read_text(encoding="utf-8"))
     status = next(
-        (line.removeprefix("status:").strip().strip('"')
-         for line in frontmatter if line.startswith("status:")),
+        (
+            line.removeprefix("status:").strip().strip('"')
+            for line in frontmatter
+            if line.startswith("status:")
+        ),
         "",
     )
     date_str = next(
-        (line.removeprefix("date:").strip().strip('"')
-         for line in frontmatter if line.startswith("date:")),
+        (
+            line.removeprefix("date:").strip().strip('"')
+            for line in frontmatter
+            if line.startswith("date:")
+        ),
         "",
     )
     title = next((line[2:] for line in body if line.startswith("# ")), "")
@@ -96,13 +102,9 @@ def main() -> None:
     parts = [HEADER + "\n".join(rows), "\n## By Status\n"]
     for key, heading in STATUS_SECTIONS:
         if by_status[key]:
-            entries = "\n".join(
-                f"- **{num}**: {title}" for num, title in sorted(by_status[key])
-            )
+            entries = "\n".join(f"- **{num}**: {title}" for num, title in sorted(by_status[key]))
             parts.append(f"### {heading}\n\n{entries}\n")
-    parts.append(
-        FOOTER.format(update_date=datetime.now().astimezone().date().isoformat())
-    )
+    parts.append(FOOTER.format(update_date=datetime.now().astimezone().date().isoformat()))
 
     index_file = dr_dir / "README.md"
     fd, temp_path = tempfile.mkstemp(dir=dr_dir)

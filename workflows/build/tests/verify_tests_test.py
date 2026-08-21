@@ -40,9 +40,7 @@ class RunTest(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.root = Path(self._tmp.name)
-        _ = (self.root / "foo.test.js").write_text(
-            'test("rejects negative amounts", () => {});\n'
-        )
+        _ = (self.root / "foo.test.js").write_text('test("rejects negative amounts", () => {});\n')
         _ = (self.root / "foo.js").write_text("export const foo = 1;\n")
 
     @override
@@ -90,9 +88,7 @@ class RunTest(unittest.TestCase):
         _ = (self.root / "wrapped.test.js").write_text(
             'test(\n  "rejects negative\n  amounts",\n  () => {},\n);\n'
         )
-        results = self._run(
-            [{"files": ["wrapped.test.js"], "names": ["rejects negative amounts"]}]
-        )
+        results = self._run([{"files": ["wrapped.test.js"], "names": ["rejects negative amounts"]}])
         self.assertEqual(results[0]["found"], True)
 
     def test_whitespace_only_statement_is_not_found(self) -> None:

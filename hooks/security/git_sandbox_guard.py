@@ -28,12 +28,30 @@ from hook_payload import deny, field, parse
 # Subcommands that reach the working tree. Most move the index and leave the file behind
 # under the sandbox; checkout-index and read-tree go the other way, writing the tree from an
 # index the sandbox never blocked.
-REWRITES = frozenset({
-    "checkout", "switch", "restore", "pull", "merge", "rebase", "revert",
-    "cherry-pick", "stash", "am", "apply", "clean", "reset",
-    "rm", "mv", "sparse-checkout", "bisect", "checkout-index", "read-tree",
-    "filter-branch",
-})
+REWRITES = frozenset(
+    {
+        "checkout",
+        "switch",
+        "restore",
+        "pull",
+        "merge",
+        "rebase",
+        "revert",
+        "cherry-pick",
+        "stash",
+        "am",
+        "apply",
+        "clean",
+        "reset",
+        "rm",
+        "mv",
+        "sparse-checkout",
+        "bisect",
+        "checkout-index",
+        "read-tree",
+        "filter-branch",
+    }
+)
 
 # Printing the usage reaches no file, whichever subcommand it is asked of.
 HELP = frozenset({"--help", "-h"})
@@ -131,9 +149,7 @@ def rewrites(command: str) -> bool:
     commit message would read as a pull.
     """
     try:
-        return any(
-            c[0] == "git" and _rewrites_tree(c) for c in command_scan.commands(command)
-        )
+        return any(c[0] == "git" and _rewrites_tree(c) for c in command_scan.commands(command))
     except ValueError:
         return True
 

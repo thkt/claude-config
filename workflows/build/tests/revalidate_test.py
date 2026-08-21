@@ -82,9 +82,7 @@ class RunTest(unittest.TestCase):
         ]
         results = revalidate.run(pre, self.root)
         self.assertEqual(len(results), 3)
-        self.assertEqual(
-            [r["path"] for r in results], ["present.js", "missing.js", "present.js"]
-        )
+        self.assertEqual([r["path"] for r in results], ["present.js", "missing.js", "present.js"])
 
     def test_none_pattern_normalized_to_empty_string(self) -> None:
         results = revalidate.run([{"path": "present.js", "pattern": None}], self.root)
@@ -134,9 +132,7 @@ class CliTest(unittest.TestCase):
     def test_stdin_to_stdout_contract(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             _ = (Path(tmp) / "f.txt").write_text("has anchor here", encoding="utf-8")
-            proc = self._run(
-                json.dumps([{"path": "f.txt", "pattern": "anchor"}]), cwd=tmp
-            )
+            proc = self._run(json.dumps([{"path": "f.txt", "pattern": "anchor"}]), cwd=tmp)
             self.assertEqual(proc.returncode, 0)
             out = cast("object", json.loads(proc.stdout))
             self.assertEqual(

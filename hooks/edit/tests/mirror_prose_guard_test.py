@@ -128,7 +128,9 @@ function processOrder(order, user, config, db, logger) {
 
     def test_read_tool_is_skipped(self) -> None:
         """T-009 Tools other than Write / Edit are out of scope"""
-        path = self.write_at(".ja/skills/other/SKILL.md", "# Sample\n\nThis skill reviews the diff.")
+        path = self.write_at(
+            ".ja/skills/other/SKILL.md", "# Sample\n\nThis skill reviews the diff."
+        )
         self.assertEqual(self.run_hook(path, tool="Read"), "")
 
 

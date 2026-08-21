@@ -137,7 +137,6 @@ class SkillContract(unittest.TestCase):
             for needle in ("templates/page.md", "_candidates.md", repairs[lang]):
                 self.assertIn(needle, step, f"{lang}: {needle}")
 
-
     def test_the_page_reaches_a_plan_through_thinks_finder(self) -> None:
         """The page a run writes reaches an implementation only by think citing it. No index and
         no lookup at implementation time stand between the two, so this is the whole path."""
