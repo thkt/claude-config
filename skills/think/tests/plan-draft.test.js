@@ -224,6 +224,29 @@ test("the skeleton carries an unconditional place for a rule bearing across unit
 });
 
 // Reading the rules after the units are cut means cutting them again when a rule lands.
+// The seam unit rests on the wiring gap an incident showed (build.js's validate comment), not on
+// think telling every unit to stub its neighbours. Stating the stub as the default would put the
+// skill ahead of TESTING.md, whose Test double preference makes Real the first choice.
+test("the seam step states the wiring gap and imposes no stubbing default", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const step = doc
+      .split("\n")
+      .find((line) => /^\d+\. /.test(line) && line.includes("seam: true"));
+    assert.ok(step, `${lang}: a step places the seam unit`);
+    assert.match(
+      step,
+      lang === "ja" ? /配線/ : /wiring/,
+      `${lang}: the step names the gap the seam unit covers`,
+    );
+    assert.doesNotMatch(
+      step,
+      lang === "ja" ? /各 unit のテストは自分の境界を/ : /Each unit's tests stub/,
+      `${lang}: the step states no repo-wide stubbing default`,
+    );
+  }
+});
+
 // The table deciding what a research report contributes lives in the reference. Drop the line
 // that routes there and the rules stay on disk with nothing sending a reader to them.
 test("Phase 2 routes the research report's parts to the intake reference", () => {
