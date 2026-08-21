@@ -164,11 +164,8 @@ test("T-022 a run where no reviewer declares a disposition returns every finding
   );
 });
 
-// Companion to T-022: there the source stays at the default and the default must ride
-// through. Here one source declares a valid override (want, with disposition_reason), and
-// Integrate returns it unmerged (its own source_ids holds only that one id), so nothing
-// forces a stronger sibling to win. This is the plan's seam claim: a reviewer's disposition
-// survives triage and the real Integrate call all the way to the returned finding.
+// Companion to T-022, which rides the default through. Here the source declares an override.
+// Its source_ids holds one id, so no sibling competes; T-026 covers the merge itself.
 test("T-023 reviewer が上書きした disposition が Integrate 後の返り値にも残る", async () => {
   const { result, record } = await run([{ path: "sample.js", churn: 0 }], {
     security: {

@@ -869,10 +869,9 @@ const integrated = await agent(
 // フォールバック先を triage 前の findings にすると、id が付く前の配列に落ちるので、
 // challenge が disputed と判定した finding を黙って呼び戻すことになる。
 const integratedFindings = (integrated && integrated.findings) || survivorsInput;
-// toCriticRef は Integrate に渡す前に disposition を落とすので、Integrate が返す disposition
-// は survivors 由来ではなく、ここでは信用しない。script が source_ids から再算出する。強さの
-// 全順序 (must > want > imo > nits、agents/_lib/finding-schema.md § Disposition と一致) は
-// DECLARABLE_DISPOSITIONS の並びを単一の情報源とし、ここで別の数値として再掲しない。
+// toCriticRef は Integrate に渡す前に disposition を落とすので、Integrate が返す値は
+// survivors 由来ではなく信用しない。順位は DECLARABLE_DISPOSITIONS から導き、
+// agents/_lib/finding-schema.md が持つ全順序をここへ書き写さない。
 const DISPOSITION_RANK = Object.fromEntries(
   [...DECLARABLE_DISPOSITIONS].map((d, i) => [d, DECLARABLE_DISPOSITIONS.size - i]),
 );

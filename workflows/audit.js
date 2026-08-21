@@ -885,11 +885,9 @@ const integrated = await agent(
 // Falling back to the pre-triage findings array would land on the state before ids were
 // assigned, silently readmitting findings the challenge pass had disputed.
 const integratedFindings = (integrated && integrated.findings) || survivorsInput;
-// toCriticRef strips disposition before Integrate ever sees a finding, so whatever disposition
-// Integrate returns is not sourced from the survivors and is not trusted here. The script
-// re-derives it from source_ids instead: the strength order (must > want > imo > nits, matching
-// agents/_lib/finding-schema.md § Disposition) has one source, DECLARABLE_DISPOSITIONS's
-// ordering, rather than a second hand-written copy here.
+// toCriticRef strips disposition before Integrate sees a finding, so what Integrate returns is
+// not sourced from the survivors and is not trusted. The rank derives from
+// DECLARABLE_DISPOSITIONS rather than restating the order agents/_lib/finding-schema.md owns.
 const DISPOSITION_RANK = Object.fromEntries(
   [...DECLARABLE_DISPOSITIONS].map((d, i) => [d, DECLARABLE_DISPOSITIONS.size - i]),
 );

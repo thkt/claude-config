@@ -142,10 +142,8 @@ test("T-011 ends with as many findings as survivors when Integrate returns every
   }
 });
 
-// toCriticRef strips disposition before Integrate ever sees a finding (agents/_lib/finding-schema.md
-// § Disposition Consolidation: the script, not the agent, owns the merged value). Each case below
-// has Integrate return a disposition the script must not trust, so a pass that merely keeps
-// whatever Integrate said would fail here even though it happens to output "must" by default.
+// Each case has Integrate return a disposition the script must not trust, so an implementation
+// that kept whatever Integrate said would fail here rather than pass by coincidence.
 test("T-024 imo と must を統合した finding の disposition が must になる", async () => {
   const { result } = await run({
     security: {
@@ -172,8 +170,7 @@ test("T-024 imo と must を統合した finding の disposition が must にな
           severity: "high",
           summary: "root cause absorbing both findings",
           source_ids: ["R-1", "R-2"],
-          // Deliberately not the expected value: Integrate's own projection carries no
-          // disposition, so nothing it returns here should survive into the result.
+          // Deliberately not the expected value: nothing Integrate returns should survive.
           disposition: "nits",
         },
       ],
@@ -213,5 +210,41 @@ test("T-025 統合元が全て既定値のままなら統合後の disposition �
     result.findings[0].disposition,
     "must",
     "neither R-1 nor R-2 declared an override, so both stayed at the default must and the consolidated value is must, not the want Integrate returned",
+  );
+});
+
+// T-024 and T-025 both expect the default, so a consolidation hardcoded to must would pass
+// both. This is the case the Outcome names: two declared values merging, where the winner is
+// the stronger declared one rather than the default.
+test("T-026 want と imo を統合した finding の disposition が want になる", async () => {
+  const declared = (summary, disposition) => ({
+    file: "sample.js",
+    line: "1",
+    severity: "high",
+    summary,
+    disposition,
+    disposition_reason: "author preference",
+  });
+  const { result } = await run({
+    security: { findings: [declared("security finding", "imo")] },
+    silence: { findings: [declared("silence finding", "want")] },
+    challenge: BOTH_CONFIRMED,
+    integrate: {
+      findings: [
+        {
+          file: "sample.js",
+          line: "1",
+          severity: "high",
+          summary: "root cause absorbing both findings",
+          source_ids: ["R-1", "R-2"],
+          disposition: "nits",
+        },
+      ],
+    },
+  });
+  assert.equal(
+    result.findings[0].disposition,
+    "want",
+    "want outranks imo, so neither the weaker source nor the default decides the merged value",
   );
 });
