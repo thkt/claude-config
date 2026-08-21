@@ -224,12 +224,16 @@ test("the skeleton carries an unconditional place for a rule bearing across unit
 });
 
 // Reading the rules after the units are cut means cutting them again when a rule lands.
-// Naming a base is not free. build branches from it and passes --base, overriding the branch the
-// run is on, so a base written out of habit sends the PR at whatever branch planning happened on.
-// Empty is the correct default: build keeps the current branch and /pr measures the base from the
-// reflog once the branch exists.
-test("base is opt-in, and build treats an empty one as keep-the-current-branch", () => {
+// Naming a base is not free: build branches from it and passes --base, overriding the branch the
+// run is on. What it means belongs to build, which owns the arg, and think restating it would put
+// a second copy where a plan writer reads it as something to fill in.
+test("base stays build's arg, documented there and absent from think", () => {
   const buildJs = readFileSync(join(root, "workflows", "build.js"), "utf8");
+  assert.match(
+    buildJs,
+    /base \(optional\)[\s\S]{0,200}epic-branch aggregation flow/,
+    "build's own arg description says when a base is passed",
+  );
   assert.match(
     buildJs,
     /always branch off \$\{baseBranch\} again/,
@@ -240,21 +244,13 @@ test("base is opt-in, and build treats an empty one as keep-the-current-branch",
     /If already on a non-default branch, keep the current branch/,
     "an empty base keeps the current branch",
   );
-  assert.match(
-    readFileSync(join(root, "skills", "pr", "SKILL.md"), "utf8"),
-    /reflog/,
-    "/pr measures the base once the branch exists",
-  );
   for (const [lang, path] of Object.entries(skills)) {
-    const row = read(path)
-      .split("\n")
-      .find((line) => line.startsWith("| base"));
-    assert.ok(row, `${lang}: the output table carries base`);
-    assert.match(
-      row,
-      lang === "ja" ? /だけ書く/ : /only when/,
-      `${lang}: the row makes base opt-in rather than always written`,
+    const doc = read(path);
+    assert.ok(
+      !doc.split("\n").some((line) => line.startsWith("| base")),
+      `${lang}: think's output table carries no base row`,
     );
+    assert.ok(!doc.includes("### base"), `${lang}: think carries no base section`);
   }
 });
 

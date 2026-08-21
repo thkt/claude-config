@@ -76,12 +76,11 @@ When a mock or design document carries UI wording verbatim (labels, placeholders
 
 Return the following to the caller in conversation.
 
-| Item               | Content                                                                                                                                                         |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ready              | true when the plan passed the self-check and no undecided points remain                                                                                         |
-| plan               | The self-checked structured plan                                                                                                                                |
-| plan file          | Path of the written `.plan.md`                                                                                                                                  |
-| base               | Written only when the implementation target differs from the default, such as aggregating into an epic branch. Write "none" otherwise and pass nothing to build |
-| blockers           | Causes of ready = false that need a user decision                                                                                                               |
-| backlog candidates | Candidates carved out of scope. "none" if none                                                                                                                  |
-| design summary     | Adopted approach, compared approaches, the `critic-design` verdict, DR needed or not                                                                            |
+| Item               | Content                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------ |
+| ready              | true when the plan passed the self-check and no undecided points remain              |
+| plan               | The self-checked structured plan                                                     |
+| plan file          | Path of the written `.plan.md`                                                       |
+| blockers           | Causes of ready = false that need a user decision                                    |
+| backlog candidates | Candidates carved out of scope. "none" if none                                       |
+| design summary     | Adopted approach, compared approaches, the `critic-design` verdict, DR needed or not |

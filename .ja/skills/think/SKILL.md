@@ -81,7 +81,6 @@ contract が引用できるのは 1 箇所の振る舞いだけで、周辺構�
 | ready              | plan が自己点検を通過し、未決着の論点が無いとき true    |
 | plan               | 自己点検済みの構造化 plan                               |
 | plan file          | 書き出した `.plan.md` のパス                            |
-| base               | 既定と違う実装先を選んだときだけ書く。epic ブランチへ集約する場合など。既定でよければ「なし」と書き、build の引数にも入れない |
 | blockers           | ready = false の原因のうちユーザー判断が要る論点        |
 | backlog candidates | スコープ外へ切り出した候補。無ければ「なし」            |
 | 設計要約           | 採用した案、比較した案、`critic-design` の判定、DR 要否 |
