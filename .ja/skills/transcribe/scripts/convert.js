@@ -20,7 +20,8 @@ export function cellText(cell) {
 export function cellsOf(row) {
   const out = [];
   for (let i = 0; i < row.length; i++) {
-    const text = cellText(row[i]).trim();
+    // 語中の NBSP は trim() を通り抜け、出力を後から grep するときに当たらなくなる。
+    const text = cellText(row[i]).replace(/\u00a0/g, " ").trim();
     if (text !== "") out.push({ col: i, text });
   }
   return out;

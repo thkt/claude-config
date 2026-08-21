@@ -20,7 +20,8 @@ export function cellText(cell) {
 export function cellsOf(row) {
   const out = [];
   for (let i = 0; i < row.length; i++) {
-    const text = cellText(row[i]).trim();
+    // A no-break space inside a cell survives trim() and defeats a later grep of the output.
+    const text = cellText(row[i]).replace(/\u00a0/g, " ").trim();
     if (text !== "") out.push({ col: i, text });
   }
   return out;
