@@ -19,9 +19,9 @@ const eachLanguage = async (check) => {
 
 const commitBlock = (doc) => doc.split("```bash\n")[1]?.split("```")[0] ?? "";
 
-// code.js writes the subject of every unit commit build makes, so the two produce the history of
-// one repository. The rules are one row, too small to earn a file read per unit, so the copy in
-// the prompt stands and this holds it to the row it copied.
+// code.js writes the subject of every unit commit build makes, so the two write one history.
+// The rules are one row, too small to earn a file read per unit, so the copy in the prompt stands
+// and this holds it to the row it copied.
 test("the subject rules code.js hands its commit agent match this skill's Subject row", async () => {
   const row = (await readFile(skills.en, "utf8"))
     .split("\n")

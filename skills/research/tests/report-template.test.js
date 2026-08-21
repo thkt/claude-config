@@ -13,8 +13,8 @@ const at = (lang, ...parts) => join(root, ...(lang === "ja" ? [".ja"] : []), ...
 const skillPath = (lang) => at(lang, "skills", "research", "SKILL.md");
 const templatePath = (lang) => at(lang, "skills", "research", "templates", "research.md");
 const verificationPath = (lang) => at(lang, "skills", "research", "references", "verification.md");
-// think's SKILL.md sends the report's parts to this reference, so the table naming them lives
-// there. Pointing these checks at the skill body would find only the line that delegates.
+// The table naming the report's parts lives here. A check aimed at the skill body would find
+// only the line that delegates.
 const thinkPath = (lang) => at(lang, "skills", "think", "references", "research-report-intake.md");
 
 function read(path) {

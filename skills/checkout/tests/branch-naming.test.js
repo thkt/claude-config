@@ -53,8 +53,7 @@ test("every section a step cites exists", () =>
   }));
 
 // scribe creates scribe/<yyyymmdd-HHMMSS>, so a date prohibition with no subject would read as a
-// repository-wide rule and contradict it. The subject is the rules now, not the skill, since
-// build assembles names by them too.
+// repository-wide rule and contradict it.
 test("the date prohibition is scoped to the names these rules build", async () => {
   const scoped = {
     ja: /この規則で作る名前に日付は入れない/,
@@ -71,8 +70,7 @@ test("the date prohibition is scoped to the names these rules build", async () =
   );
 });
 
-// build cutting branches its own way puts a second shape of name in the same repository. It reads
-// the file through bundled(), so the path has to be the one that exists.
+// build cutting branches its own way puts a second shape of name in the same repository.
 test("build's Branch phase assembles the name by these same rules", async () => {
   const reference = "skills/checkout/references/branch-naming.md";
   for (const prefix of ["", ".ja/"]) {
