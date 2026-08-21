@@ -35,6 +35,9 @@ SEPARATORS = frozenset({";", "|", "||", "&&", "&", "\n"})
 # one command. As punctuation the newline stays a token, while one inside quotes stays
 # part of its token, so a multi-line commit message holds together.
 _NEWLINE = "\x00"
+# A line continuation is escaped onto this instead of onto _NEWLINE. shlex returns the same
+# character escaped or not, so as _NEWLINE it reads as the separator and splits the command.
+_CONTINUATION = "\x01"
 _PUNCTUATION = "();<>|&" + _NEWLINE
 
 _HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1")
@@ -66,10 +69,24 @@ def _without_heredocs(text: str) -> str:
     return "\n".join(kept)
 
 
+def _restore(token: str) -> str:
+    """A backslash still ahead of _CONTINUATION means shlex read both as quoted text, where
+    the two characters are literal. Outside quotes it consumes the backslash, leaving the
+    continuation to drop so the lines it separated join.
+    """
+    return (
+        token.replace("\\" + _CONTINUATION, "\\\n")
+        .replace(_CONTINUATION, "")
+        .replace(_NEWLINE, "\n")
+    )
+
+
 def _tokens(text: str) -> list[str]:
-    lexer = shlex.shlex(text.replace("\n", _NEWLINE), posix=True, punctuation_chars=_PUNCTUATION)
+    prepared = text.replace("\\\n", "\\" + _CONTINUATION).replace("\n", _NEWLINE)
+    lexer = shlex.shlex(prepared, posix=True, punctuation_chars=_PUNCTUATION)
     lexer.whitespace_split = True
-    return [token.replace(_NEWLINE, "\n") for token in lexer]
+    # A continuation between two words lexes as its own token, where the shell leaves nothing.
+    return [_restore(token) for token in lexer if token != _CONTINUATION]
 
 
 def commands(text: str) -> Iterator[list[str]]:

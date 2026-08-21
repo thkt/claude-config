@@ -109,6 +109,59 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(self.names("./a=b --flag"), ["a=b"])
         self.assertEqual(self.names("1FOO=x rm -rf y"), ["1FOO=x"])
 
+    def test_a_line_continuation_does_not_split_a_command(self) -> None:
+        """T-023 A backslash before a newline joins the two lines into one command"""
+        # Split at the continuation, the security hook is handed an rm carrying no path.
+        self.assertEqual(
+            list(command_scan.commands("rm -rf \\\n  /tmp/x")), [["rm", "-rf", "/tmp/x"]]
+        )
+        # The other direction: an argument whose basename is destructive would stand in command
+        # position and be denied for a deletion the line never runs.
+        self.assertEqual(self.names("cp x \\\n  /some/dir/rm"), ["cp"])
+
+    def test_a_continuation_before_a_flag_keeps_it_on_the_same_command(self) -> None:
+        """T-024 A flag written after a continuation stays readable on the command it belongs to"""
+        # Split here, --title falls off the gh call and the gate denies a command carrying one.
+        found = list(command_scan.commands('gh issue create --repo r \\\n  --title "[Bug] x"'))
+        self.assertEqual(found, [["gh", "issue", "create", "--repo", "r", "--title", "[Bug] x"]])
+        self.assertEqual(command_scan.flag_value(found[0], "--title"), "[Bug] x")
+
+    def test_a_continuation_inside_a_command_prefix_keeps_it_matchable(self) -> None:
+        """T-025 A continuation between gh and its subcommand leaves the prefix still matching"""
+        # Split here, starts_with misses and the filing gate skips its check and exits 0.
+        found = list(command_scan.commands('gh \\\n  issue create --title "[Bug] x"'))
+        self.assertEqual(len(found), 1)
+        self.assertTrue(command_scan.starts_with(found[0], ["gh", "issue", "create"]))
+
+    def test_a_continuation_inside_a_word_joins_the_halves(self) -> None:
+        """T-026 A continuation with no space around it leaves no gap in the token"""
+        self.assertEqual(list(command_scan.commands("ec\\\nho hi")), [["echo", "hi"]])
+
+    def test_a_backslash_newline_inside_quotes_stays_literal(self) -> None:
+        """T-027 Inside quotes the backslash and the newline are text, not a continuation"""
+        # A commit message can hold both characters. Dropping them there rewrites the message.
+        self.assertEqual(
+            list(command_scan.commands("git commit -m 'a \\\nb'")),
+            [["git", "commit", "-m", "a \\\nb"]],
+        )
+
+    def test_a_continued_line_reads_the_same_as_the_joined_one(self) -> None:
+        """T-028 Taking a continuation out of the input never changes the token stream"""
+        # Every step ahead of shlex works on lines and cannot see quoting, which is where this
+        # bug came from. The property holds across all of them, so a later step cannot reopen it.
+        for continued in [
+            "rm -rf \\\n  /tmp/x",
+            'gh issue create --repo r \\\n  --title "[Bug] x"',
+            "cat > /tmp/m.txt << 'EOF'\nbody\nEOF\ngit commit \\\n  -F /tmp/m.txt",
+            "find . -type f \\\n  -exec rm {} \\;",
+        ]:
+            joined = continued.replace("\\\n  ", " ").replace("\\\n", "")
+            self.assertEqual(
+                list(command_scan.commands(continued)),
+                list(command_scan.commands(joined)),
+                continued,
+            )
+
 
 class TestFlagValue(unittest.TestCase):
     def test_reads_the_value_after_a_flag(self) -> None:
