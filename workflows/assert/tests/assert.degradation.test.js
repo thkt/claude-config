@@ -265,3 +265,89 @@ test("T-008 assert running a nested audit with no challenge stub receives challe
     "a run that really nested audit and saw its challenge fail open (challenge_ran=false) lands on gate Ready (caveat)",
   );
 });
+
+// The gate branch itself is unchanged; only gate_reason is new on the return value.
+//
+// T-002's literal state, build and tests both failing, is unreachable: buildCol === "fail"
+// forces dynamicOk false, so the test-exec agent never runs and testsCol can only be "skipped".
+// boot.build: "fail" is the closest reachable state, and it already gates NotReady on build
+// alone, which is what the case needs: a non-issue cause with zero issues.
+const makeGateReasonAgent =
+  ({ boot = bootOk, issues = [] } = {}) =>
+  (prompt, opts) => {
+    const label = opts && opts.label;
+    if (label === "bootstrap") return boot;
+    if (label === "test-exec") return { outcome: "pass", passed: 1, failed: 0 };
+    if (label === "adversarial") return { ran: true, tests: [] };
+    if (label === "codex-review") return { ran: true, findings: [] };
+    if (label === "synthesize") return { issues, root_causes: [], report: "ok" };
+    if (label === "cleanup") return {};
+    return undefined;
+  };
+
+test("T-001 issue が 1 件以上あるだけで NotReady になった run の gate_reason に issue の件数が入る", async () => {
+  const issues = [
+    { file: "a.js", line: 10, severity: "high", summary: "x", source: ["audit"] },
+    { file: "b.js", line: 20, severity: "medium", summary: "y", source: ["audit"] },
+  ];
+  const { result } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: makeGateReasonAgent({ issues }) },
+  });
+  assert.equal(
+    result.gate,
+    "NotReady",
+    "build passes and tests pass, so issues alone gate NotReady",
+  );
+  assert.ok(
+    result.gate_reason !== undefined,
+    "gate_reason is present on the return value alongside gate",
+  );
+  const reasonText = JSON.stringify(result.gate_reason);
+  assert.match(
+    reasonText,
+    /issue/i,
+    "gate_reason names the issue condition as one of the conditions that held",
+  );
+  assert.match(
+    reasonText,
+    new RegExp(`\\b${issues.length}\\b`),
+    "gate_reason carries the issue count (2), not just the word issue",
+  );
+});
+
+test("T-002 build と tests が fail で issue が 0 件の run の gate_reason に issue の件数が入らない", async () => {
+  const failBoot = { ...bootOk, build: "fail" };
+  const { result } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: makeGateReasonAgent({ boot: failBoot }) },
+  });
+  assert.equal(result.gate, "NotReady", "a failed build gates NotReady with zero issues");
+  assert.ok(
+    result.gate_reason !== undefined,
+    "gate_reason is present on the return value alongside gate",
+  );
+  const reasonText = JSON.stringify(result.gate_reason);
+  assert.ok(
+    !/issue/i.test(reasonText),
+    "with zero issues the issue condition never held, so gate_reason names build/tests only",
+  );
+});
+
+// A repository with no build concept reaches Ready with buildCol "skipped" (install ok + build
+// skipped keeps envFail false). A hardcoded "build pass" would contradict the sibling `build`.
+test("T-003 a Ready run whose build was skipped does not report build as passing", async () => {
+  const skippedBoot = { ...bootOk, build: "skipped" };
+  const { result } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: makeGateReasonAgent({ boot: skippedBoot }) },
+  });
+  assert.equal(result.gate, "Ready", "no build concept and passing tests still reach Ready");
+  assert.equal(result.build, "skipped", "the build column reports what bootstrap returned");
+  const reasonText = JSON.stringify(result.gate_reason);
+  assert.ok(
+    !/build pass/.test(reasonText),
+    "gate_reason does not claim a build that never ran passed",
+  );
+  assert.match(reasonText, /build skipped/, "gate_reason reports the build column it read");
+});

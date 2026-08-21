@@ -292,6 +292,9 @@ log(
 );
 
 let gate = "NotReady";
+// severity も disposition も gate に影響しないので、NotReady を読んだ人間は findings から
+// 原因を導けない。実際に成立した条件を並べる。
+const gateReason = [];
 let issues = [];
 let testsCol = "skipped";
 let adversarialSummary = {
@@ -574,10 +577,19 @@ try {
   // findings が未検証のときに付く。
   if (buildCol === "fail" || testsCol === "fail" || issues.length > 0 || challengeStalled) {
     gate = "NotReady";
+    if (buildCol === "fail") gateReason.push("build fail");
+    if (testsCol === "fail") gateReason.push("tests fail");
+    if (issues.length > 0) gateReason.push(`${issues.length} issue(s)`);
+    if (challengeStalled) gateReason.push("challenge stalled");
   } else if (!envFail && !auditDegraded && (testsCol === "pass" || testsCol === "no-runner")) {
     gate = "Ready";
+    gateReason.push(`build ${buildCol}`, `tests ${testsCol}`, "0 issues");
   } else {
     gate = "Ready (caveat)";
+    if (envFail) gateReason.push("env fail (dynamic verification skipped)");
+    if (auditDegraded) gateReason.push("audit challenge failed open");
+    if (testsCol !== "pass" && testsCol !== "no-runner" && !envFail)
+      gateReason.push(`tests ${testsCol}`);
   }
 } finally {
   // ---- Cleanup: worktree 撤去 (結果に関わらず必ず走る) ----
@@ -599,6 +611,7 @@ log(`Gate: ${gate} (build=${buildCol}, tests=${testsCol}, issues=${issues.length
 
 return {
   gate,
+  gate_reason: gateReason,
   mode: boot.mode,
   build: buildCol,
   tests: testsCol,

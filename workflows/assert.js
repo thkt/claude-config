@@ -294,6 +294,9 @@ log(
 );
 
 let gate = "NotReady";
+// Neither severity nor disposition gates, so a NotReady reader cannot infer the cause from the
+// findings alone. These are the conditions that actually held.
+const gateReason = [];
 let issues = [];
 let testsCol = "skipped";
 let adversarialSummary = {
@@ -586,10 +589,19 @@ try {
   // reasons, or when the nested audit failed open and left its findings unverified.
   if (buildCol === "fail" || testsCol === "fail" || issues.length > 0 || challengeStalled) {
     gate = "NotReady";
+    if (buildCol === "fail") gateReason.push("build fail");
+    if (testsCol === "fail") gateReason.push("tests fail");
+    if (issues.length > 0) gateReason.push(`${issues.length} issue(s)`);
+    if (challengeStalled) gateReason.push("challenge stalled");
   } else if (!envFail && !auditDegraded && (testsCol === "pass" || testsCol === "no-runner")) {
     gate = "Ready";
+    gateReason.push(`build ${buildCol}`, `tests ${testsCol}`, "0 issues");
   } else {
     gate = "Ready (caveat)";
+    if (envFail) gateReason.push("env fail (dynamic verification skipped)");
+    if (auditDegraded) gateReason.push("audit challenge failed open");
+    if (testsCol !== "pass" && testsCol !== "no-runner" && !envFail)
+      gateReason.push(`tests ${testsCol}`);
   }
 } finally {
   // ---- Cleanup: tear down the worktree (always runs regardless of outcome) ----
@@ -611,6 +623,7 @@ log(`Gate: ${gate} (build=${buildCol}, tests=${testsCol}, issues=${issues.length
 
 return {
   gate,
+  gate_reason: gateReason,
   mode: boot.mode,
   build: buildCol,
   tests: testsCol,
