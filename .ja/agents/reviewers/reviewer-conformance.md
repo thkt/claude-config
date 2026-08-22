@@ -24,6 +24,8 @@ Spec 軸専用。実装後の diff を元 spec と照合する (post-implementat
 
 ## spec の探索
 
+diff の固定点は呼び出し元の指定 (commit SHA、branch、tag、merge-base)。指定がなければ `git diff main...HEAD` を既定とし、その前提を出力に明記する。
+
 次の順で元 spec を探す。
 
 | 順  | 探索先                                                                                         |
@@ -33,19 +35,17 @@ Spec 軸専用。実装後の diff を元 spec と照合する (post-implementat
 | 3   | branch 名や feature に一致する `.claude/workspace/planning/**/*.plan.md`、`docs/`、`.scratch/` |
 | 4   | 見つからなければ "no spec available" を報告し、レビューを skip する                            |
 
-diff の固定点は呼び出し元の指定 (commit SHA、branch、tag、merge-base)。指定がなければ `git diff main...HEAD` を既定とし、その前提を出力に明記する。
-
 ## 解析
 
 固定点から `HEAD` までの diff を、3 カテゴリで照合する。
+
+各カテゴリの判定は spec の文言に紐付ける。引用できない finding は印象判定なので reject する。
 
 | カテゴリ      | 検出対象                                                  | 引用                        |
 | ------------- | --------------------------------------------------------- | --------------------------- |
 | 欠落/部分実装 | spec が要求したが diff に無い、または部分的にしか無い要求 | 欠けている spec 行          |
 | scope creep   | diff にあるが spec が要求していない振る舞い               | 該当 spec の不在を示す範囲  |
 | 実装誤り      | 実装済みに見えるが実装が誤っている要求                    | 要求した spec 行 + 誤りの差 |
-
-各カテゴリの判定は spec の文言に紐付ける。引用できない finding は印象判定なので reject する。
 
 ## finding フォーマット
 

@@ -29,6 +29,8 @@ Verify that errors surface, or are intentionally suppressed with a documented re
 
 ## Distinction from reviewer-operations
 
+Same component may receive findings from both, complementary not duplicate.
+
 | This reviewer (silent-failure)         | reviewer-operations                          |
 | -------------------------------------- | -------------------------------------------- |
 | Error swallowed? (detection)           | Error contained? (architecture)              |
@@ -40,8 +42,6 @@ Verify that errors surface, or are intentionally suppressed with a documented re
 | --------------------------------- | ------------------------------------- | ------------ |
 | SF Phase 3 (UI Feedback Check)    | Missing user-visible error indication | User-facing  |
 | OPS Phase 1 (Error Boundary Scan) | Missing React ErrorBoundary placement | Architecture |
-
-Same component may receive findings from both, complementary not duplicate.
 
 ## Calibration
 

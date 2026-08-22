@@ -24,6 +24,8 @@ Spec axis only. It checks the implemented diff against the originating spec (pos
 
 ## Spec Source Discovery
 
+The diff fixed point is whatever the caller supplies (commit SHA, branch, tag, merge-base). If unspecified, default to `git diff main...HEAD` and state that assumption in the output.
+
 Find the originating spec in this order.
 
 | Order | Source                                                                                            |
@@ -33,19 +35,17 @@ Find the originating spec in this order.
 | 3     | `.claude/workspace/planning/**/*.plan.md`, `docs/`, or `.scratch/` matching the branch or feature |
 | 4     | If nothing is found, report "no spec available" and skip the review                               |
 
-The diff fixed point is whatever the caller supplies (commit SHA, branch, tag, merge-base). If unspecified, default to `git diff main...HEAD` and state that assumption in the output.
-
 ## Analysis
 
 Check the diff from the fixed point to `HEAD` against the spec in three categories.
+
+Tie each judgement to the spec text. A finding you cannot quote is impression-based; reject it.
 
 | Category              | What to detect                                                           | Quote                                |
 | --------------------- | ------------------------------------------------------------------------ | ------------------------------------ |
 | Missing/partial       | Requirements the spec asked for that are absent or only partial          | The missing spec line                |
 | Scope creep           | Behaviour in the diff the spec did not ask for                           | The range with no matching spec line |
 | Implemented-but-wrong | Requirements that look implemented but where the implementation is wrong | The required spec line + the gap     |
-
-Tie each judgement to the spec text. A finding you cannot quote is impression-based; reject it.
 
 ## Finding Format
 
@@ -61,12 +61,12 @@ Every finding carries Category + quoted spec line + Location + Severity. A findi
 
 ## Distinction from related reviewers
 
-| Concern | This reviewer (conformance)        | reviewer-causation     |
-| ------- | ---------------------------------- | ---------------------- |
-| Lens    | Does the impl match the spec?      | Is the fix root-cause? |
-| Timing  | Post-implementation (diff vs spec) | At fix review          |
+| Concern | This reviewer (conformance)        | reviewer-causation        |
+| ------- | ---------------------------------- | ------------------------- |
+| Lens    | Does the impl match the spec?      | Is the fix root-cause?    |
+| Timing  | Post-implementation (diff vs spec) | At fix review             |
 | Output  | 3 categories + spec quote          | Root cause + patch detect |
-| /audit  | Out of pool                        | Once after Wave 1      |
+| /audit  | Out of pool                        | Once after Wave 1         |
 
 ## Output
 
