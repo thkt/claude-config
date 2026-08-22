@@ -81,10 +81,6 @@ const SEVERITY_MAP = {
   low: "low",
 };
 const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1 };
-// `if (!sev) continue;` (P3 または未知の severity) を通って落ちた finding は、mergeIssues の
-// 返り値配列だけを見ても痕跡が残らない。WORKFLOWS.md § Degradation recording は loss
-// granularity を主チャネル (workflow の返り値) に残すことを要求するので、mergeIssues は
-// issues と並べて dropped 件数も返す。
 const mergeIssues = (findings) => {
   const groups = new Map();
   let dropped = 0;
@@ -305,8 +301,8 @@ let gate = "NotReady";
 // 原因を導けない。実際に成立した条件を並べる。
 const gateReason = [];
 let issues = [];
-// mergeIssues が `if (!sev) continue;` で落とした件数。WORKFLOWS.md § Degradation recording:
-// 返り値が loss granularity の主チャネルなので、issues を縮めるだけでなく result.dropped に乗せる。
+// `if (!sev) continue;` で落ちた finding は、返り値の issues に痕跡を残さない。
+// WORKFLOWS.md § Degradation recording はその件数を返り値へ載せることを求める。
 let dropped = 0;
 let testsCol = "skipped";
 let adversarialSummary = {
@@ -319,19 +315,13 @@ let adversarialSummary = {
 let synth = null;
 let codexReview = null;
 let audit = null;
-// ここで宣言する (try 内の使用箇所で const にしない) のは、run record を書き込む地点が
-// Synthesize より前の throw でも読めるようにするため。その場合は Synthesize 前の既定値
-// (false) のまま残る。
+// try 内で const にしない。記録は finally から書くので、Synthesize より前の throw では
+// スコープ外になる。
 let challengeStalled = false;
 let auditDegraded = false;
 
-// ---- Run recording: 確定した run ごとに 1 行、build.js の recordRun (workflows/build.js の
-// recordRun closure) に倣う ----
-// payload はこの closure の外側スコープの let から組み立てるため、呼び出し時点でこれらの
-// 変数が持っていた値 (早期 throw 時の Synthesize 前の既定値を含む) を常に反映する。
-// record.py は payload をそのまま複製するので、ここでキーを増やしても向こう側の変更は不要。
-// record.py はこの workflow に同梱されるため、上の worktree.py / bootstrap.py と同じ
-// SCRIPTS の bundled() path で解決する (WORKFLOWS.md § Reference notation)。
+// ---- Run recording: 確定した run ごとに 1 行。build.js の recordRun に倣う ----
+// record.py は payload をそのまま複製するので、ここでキーを増やしても向こう側は変えなくてよい。
 const RECORD_SCHEMA = {
   type: "object",
   additionalProperties: false,

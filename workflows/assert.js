@@ -82,10 +82,6 @@ const SEVERITY_MAP = {
   low: "low",
 };
 const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1 };
-// Findings that fall through `if (!sev) continue;` (P3 or an unrecognized severity) leave
-// mergeIssues's return array with no trace of the loss. WORKFLOWS.md § Degradation recording
-// requires that count on the primary channel (the workflow return value), so mergeIssues
-// reports it alongside issues rather than only shrinking the array silently.
 const mergeIssues = (findings) => {
   const groups = new Map();
   let dropped = 0;
@@ -307,9 +303,8 @@ let gate = "NotReady";
 // findings alone. These are the conditions that actually held.
 const gateReason = [];
 let issues = [];
-// Count of findings mergeIssues dropped via `if (!sev) continue;` (P3 or an unrecognized
-// severity). WORKFLOWS.md § Degradation recording: the return value is the primary channel
-// for loss granularity, so this rides on result.dropped rather than only shrinking issues.
+// A finding dropped by `if (!sev) continue;` leaves no trace in the returned issues array.
+// WORKFLOWS.md § Degradation recording puts that count on the return value.
 let dropped = 0;
 let testsCol = "skipped";
 let adversarialSummary = {
@@ -322,19 +317,13 @@ let adversarialSummary = {
 let synth = null;
 let codexReview = null;
 let audit = null;
-// Declared here (not `const` at their point of use inside try) so the point that writes the
-// run record can read them even when the throw that ends the run lands before Synthesize sets
-// them; they then keep their pre-Synthesize default (false).
+// Not `const` inside the try: the record is written from the finally block, which a throw
+// before Synthesize would otherwise reach with these out of scope.
 let challengeStalled = false;
 let auditDegraded = false;
 
 // ---- Run recording: one jsonl row per settled run, modeled on build.js's recordRun ----
-// (workflows/build.js, the recordRun closure). The payload is assembled from the closure's
-// outer-scope lets, so it always reflects whatever those variables held at call time, including
-// their pre-Synthesize defaults on an early throw. record.py copies the payload verbatim, so a
-// key added here needs no matching change there. record.py ships under workflows/assert/, so it
-// resolves through the same SCRIPTS bundled() path as worktree.py / bootstrap.py above
-// (WORKFLOWS.md § Reference notation).
+// record.py copies the payload verbatim, so a key added here needs no change there.
 const RECORD_SCHEMA = {
   type: "object",
   additionalProperties: false,

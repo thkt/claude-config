@@ -21,9 +21,7 @@ from typing import cast
 HERE = Path(__file__).resolve().parent
 SCRIPT = HERE.parent / "record.py"
 
-# The keys an assert run's row carries: the gate verdict, its per-condition reasons, the
-# build/tests columns, the scope mode, the per-severity issue counts, and the dropped-findings
-# count, plus the recorder's own generated_at.
+# Every row carries these, so a reader never branches on the kind of run.
 ROW_FIELDS = {
     "gate",
     "gate_reason",
