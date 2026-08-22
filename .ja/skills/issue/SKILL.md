@@ -70,7 +70,7 @@ issue 番号または URL だけを受け取った場合は、起票済み issue
 
 ## Phase 4: 起票
 
-1. heredoc を使って `cat` で本文を一時ファイルへ書き出し、${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <テンプレート選択で選んだ骨格ファイル> <title> <body-file> を実行する。検証エラーは ${CLAUDE_SKILL_DIR}/references/validation-errors.md に従って修正し、修正後に再実行する。既存 issue の更新時は元の骨格ファイルを特定できないため、代わりに `--content-only <body-file>` を渡す
+1. heredoc を使って `cat` で本文を一時ファイルへ書き出し、${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py `<テンプレート選択で選んだ骨格ファイル>` `<title>` `<body-file>` を実行する。検証エラーは ${CLAUDE_SKILL_DIR}/references/validation-errors.md に従って修正し、修正後に再実行する。既存 issue の更新時は元の骨格ファイルを特定できないため、代わりに `--content-only <body-file>` を渡す
 2. Issue のプレビューを提示する。新しい内容を補わず、本文の内容をそのまま提示する。既存 issue の更新時は本文全体ではなく、変更または追加する節だけを並べる。AskUserQuestion で確認し、新規起票時は `Create this issue?`、既存 issue の更新時は `Update this issue?` と尋ねる
 3. 検証に合格し、ユーザーの確認を得たら、ラベルを付けて `gh issue create --title "<title>" --body-file <path>` で起票する。出力された Issue URL を取得する。既存 issue の更新時は `gh issue edit <ref> --body-file <path>` で書き戻す
 4. 下表から渡し先を選んで提案する。いずれの処理も自動実行しない

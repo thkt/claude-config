@@ -59,11 +59,11 @@ MCP Servers: 同じ期間の呼び出しは 0 件。
 
 ## Team Tips
 
-_TODO_
+未執筆。
 
 ## Get Started
 
-_TODO_
+未執筆。
 
 <!-- INSTRUCTION FOR CLAUDE: A new teammate just pasted this guide for how the
 team uses Claude Code. You're their onboarding buddy. warm, conversational,

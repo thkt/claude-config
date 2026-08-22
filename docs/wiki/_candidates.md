@@ -19,7 +19,7 @@
 - 外部発想の issue には source:<origin> ラベルを付ける #30 #31 #32 #33 #39 #40 #41
 - 軽量バックログ複数件は 1 PR に束ねて複数 Closes する #44 #45
 - script/agent 出力は JSON stdout、error stderr、banner なしの機械可読形式にする #13 #54
-- audit report 命名は <YYYY-MM-DD>-<HHMMSS>-<slug>.md、slug は skill 名一致 #47 #51 #52 #53
+- audit report 命名は `<YYYY-MM-DD>-<HHMMSS>-<slug>.md`、slug は skill 名一致 #47 #51 #52 #53
 - 翻訳は情報系 prose のみ、file:line、severity、Closes 等の構造化フィールドは verbatim #175 #176
 - policy 値 (effort/model) は per-file 定数でなく behavioral capture テストで固定する #191 #192 #199 #223 #224
 - hook payload の形状は smoke test で実測確定し fixture 化してから gate を作る #150 #154
