@@ -57,6 +57,8 @@ Spec駆動のE2Eテスト生成を /codeと /featureに統合する。専用agen
 
 ## 変更対象
 
+変更なし: generator-test, evaluator-test, generating-tdd-tests
+
 | ファイル                                                     | 変更内容                                                       |
 | ------------------------------------------------------------ | -------------------------------------------------------------- |
 | `templates/spec/template.md`                                 | Test Scenarios に `Type: e2e` 行追加                           |
@@ -65,8 +67,6 @@ Spec駆動のE2Eテスト生成を /codeと /featureに統合する。専用agen
 | `skills/feature/SKILL.md`                                    | Phase 4.5 拡張（スクショ後に E2E 生成）                        |
 | `skills/orchestrating-workflows/references/code-workflow.md` | E2E phase 追記                                                 |
 | `skills/e2e/SKILL.md`                                        | 廃止                                                           |
-
-変更なし: generator-test, evaluator-test, generating-tdd-tests
 
 ## 起動条件
 

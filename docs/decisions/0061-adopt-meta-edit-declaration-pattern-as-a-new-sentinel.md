@@ -118,14 +118,14 @@ A weekly read of per-project `.declarator/state/edits.jsonl` (aggregated across 
 
 ### Related Issues (to be filed after acceptance)
 
+Starting kinds for the Phase 1 MVP (subject to revision in the Phase 1 Issue based on baseline observation): `edit_refactor_only`, `edit_boundary_condition`, `edit_docs_only`. Rationale: the first covers the largest share of "minor change" self-classifications that decay catches, the second is the smallest concrete bug class with a sharp test obligation, the third unblocks the docs-batch workflow that meta-edit observed as the highest bypass-pressure surface.
+
 | Repo                            | Scope                                                                     | Phase                                           |
 | ------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------- |
 | `~/GitHub/cli/declarator` (new) | MCP server + PreToolUse hook + edit log MVP (3 starting kinds, see below) | 1                                               |
 | `~/GitHub/plugins/sentinels`    | Register declarator plugin into the marketplace once Phase 1 ships        | 1                                               |
 | `~/GitHub/cli/gates`            | Kind-bound test selection (G2)                                            | 2 (deferred until Phase 1 reassessment trigger) |
 | `~/GitHub/cli/chronicler`       | Kind metadata in edit detection (G3)                                      | 2 (deferred until Phase 1 reassessment trigger) |
-
-Starting kinds for the Phase 1 MVP (subject to revision in the Phase 1 Issue based on baseline observation): `edit_refactor_only`, `edit_boundary_condition`, `edit_docs_only`. Rationale: the first covers the largest share of "minor change" self-classifications that decay catches, the second is the smallest concrete bug class with a sharp test obligation, the third unblocks the docs-batch workflow that meta-edit observed as the highest bypass-pressure surface.
 
 ### Spike Reference
 

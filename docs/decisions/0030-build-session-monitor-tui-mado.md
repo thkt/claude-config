@@ -62,13 +62,13 @@ ratatuiベースのRust TUIバイナリ `mado` を新規構築する。Ghostty s
 
 ### データソース: JSONL のみ
 
+実証: gatesプロジェクトのJSONLでhook_progress 3,973件、stop_hook_summary 198件を確認。preventedContinuationフィールドでpass/block判定可能。
+
 | 検討した方式   | 判定 | 理由                                                                       |
 | -------------- | ---- | -------------------------------------------------------------------------- |
 | JSONL のみ     | 採用 | hook_progress, stop_hook_summary が JSONL に記録済み。追加データソース不要 |
 | Event ファイル | 却下 | gates/shields 側の改修が必要。疎結合だが YAGNI                             |
 | 共有 SQLite    | 却下 | recall との結合度が上がる。責務が異なる                                    |
-
-実証: gatesプロジェクトのJSONLでhook_progress 3,973件、stop_hook_summary 198件を確認。preventedContinuationフィールドでpass/block判定可能。
 
 ### Terminal Jump: AppleScript + cwd マッチ
 

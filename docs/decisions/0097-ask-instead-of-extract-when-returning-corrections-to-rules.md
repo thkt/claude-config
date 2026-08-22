@@ -98,6 +98,8 @@ Stop hook が debounce つきで問いを出し、答えを受けて規則ファ
 
 Confirmation の「`claude` を呼ぶ行を持たない」条項が、守るべきものを守らなくなった。この条項が禁じたのは LLM に抽出させて自動で書くことだが、2026-08-14 の変更で `## ask` が追記を subagent へ委ねた時点で、LLM が抽出して LLM が書く形になっている。条項が縛っていたのは、その LLM がどのプロセスで走るかだけだった。
 
+#### 却下理由の再評価
+
 却下した「LLM に抽出させ、結果を自動で書く」の理由 3 つを、分離した `claude -p` へ当てはめ直した。
 
 | 却下理由                                  | 分離した `claude -p` で成立するか                                                            |
@@ -105,6 +107,8 @@ Confirmation の「`claude` を呼ぶ行を持たない」条項が、守るべ�
 | 毎ターン 17 秒から 83 秒のブロック        | しない。`start_new_session` で切り離すので hook は数ミリ秒で返り、10 秒の timeout に届かない |
 | 25 秒 timeout で placeholder へ退避       | しない。timeout が掛からず、退避先の placeholder も持たない                                  |
 | 空 placeholder 492 個。抽出の質を測れない | する。しかも会話に 1 行も出なくなるので、旧実装より気付きにくい                              |
+
+#### 分離の実装と計測
 
 3 つ目だけが残り、気付く経路を別に用意する。子の stdout と stderr を `~/.cache/claude-reflection_ask/runs/<session>/log.txt` へ落とし、wrapper が終了コードを追記する。次のセッションの hook がその行を読み、`exit=0` でない run があれば `systemMessage` で 1 行だけ端末へ出す。報告した log は改名するので、同じ失敗は 1 度しか出ない。`additionalContext` でなく `systemMessage` を使うのは、対処できるのが端末を読む人間だからで、モデルの context は分離が空けたかった場所そのものだから。
 

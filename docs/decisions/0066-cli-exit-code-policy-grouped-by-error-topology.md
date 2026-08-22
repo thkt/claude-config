@@ -80,6 +80,8 @@ Chosen option: Option B。Option A は未使用 code が増えて読み手のノ
 
 retryable 軸が中心。ADR-0065 の 9 種をそのまま採用。`TIMEOUT` (124) と `TEMP_FAILURE` (75) の分離が effective。
 
+70 INTERNAL は使用頻度低いが許容 (assert violation 等)。
+
 | Exit | Const         | JSON `error.code` | 主な発生条件                |
 | ---- | ------------- | ----------------- | --------------------------- |
 | 0    | EX_OK         | (none)            | Ok                          |
@@ -91,11 +93,11 @@ retryable 軸が中心。ADR-0065 の 9 種をそのまま採用。`TIMEOUT` (12
 | 124  | GNU `timeout` | `TIMEOUT`         | API timeout                 |
 | 104  | PJ 拡張       | `UNKNOWN`         | 分類不能 (退避)             |
 
-70 INTERNAL は使用頻度低いが許容 (assert violation 等)。
-
 ### Group 2: ローカル semantic 検索
 
 `amici::cli::exit_code::codes` を基盤として、INTERNAL/UNKNOWN 分離を追加。Timeout は通常発生しない (ローカル処理) ので 124 は採用しない。
+
+`amici::cli::exit_code` に `INTERNAL` と `UNKNOWN` を追加することで、グループ 2 全体が共通基盤を共有できる。
 
 | Exit | Const        | JSON `error.code` | 主な発生条件                               |
 | ---- | ------------ | ----------------- | ------------------------------------------ |
@@ -108,11 +110,11 @@ retryable 軸が中心。ADR-0065 の 9 種をそのまま採用。`TIMEOUT` (12
 | 75   | EX_TEMPFAIL  | `TEMP_FAILURE`    | model download retry 可能な失敗            |
 | 104  | PJ 拡張      | `UNKNOWN`         | 分類不能 (退避)                            |
 
-`amici::cli::exit_code` に `INTERNAL` と `UNKNOWN` を追加することで、グループ 2 全体が共通基盤を共有できる。
-
 ### Group 3: Hook tool (fail-closed/open)
 
 Hook は exit code で挙動を分岐する (0 = allow, 非0 = block)。1 と 2 を意図的に分けて、advisory と blocking を区別する。
+
+Hook tool は外形契約 (0/1/2) が支配的なので、内部詳細は JSON stderr で出す。sysexits.h の細分類はオプション。
 
 | Exit | 出典        | 意味                  | Hook 挙動                   |
 | ---- | ----------- | --------------------- | --------------------------- |
@@ -121,8 +123,6 @@ Hook は exit code で挙動を分岐する (0 = allow, 非0 = block)。1 と 2 
 | 2    | 慣例        | blocking 失敗         | block (PreToolUse 系で使用) |
 | 64   | EX_USAGE    | Hook 入力 JSON 不正   | block (Hook 入力契約違反)   |
 | 70   | EX_SOFTWARE | Hook 自身の内部不具合 | block (fail-closed)         |
-
-Hook tool は外形契約 (0/1/2) が支配的なので、内部詳細は JSON stderr で出す。sysexits.h の細分類はオプション。
 
 ### Cross-Group Rules
 
