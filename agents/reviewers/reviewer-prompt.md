@@ -105,3 +105,4 @@ Follow ~/.claude/agents/_lib/finding-schema.md. Skip files whose type does not m
 | ---------- | ----------------------------------------------- |
 | Prefix     | PQ                                              |
 | Categories | token-efficiency / structure / format / clarity |
+| Severity   | high / medium / low                             |

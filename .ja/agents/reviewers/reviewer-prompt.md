@@ -105,3 +105,4 @@ reviewer エージェント (`agents/reviewers/`) の必須セクション: titl
 | ---------- | ----------------------------------------------- |
 | Prefix     | PQ                                              |
 | カテゴリ   | token-efficiency / structure / format / clarity |
+| Severity   | high / medium / low                             |
