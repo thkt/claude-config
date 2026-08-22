@@ -44,6 +44,8 @@ argument-hint: "[research subject or question]"
 
 ## Phase 4: ドメインスコープ並列調査
 
+入力は 2 つある。Phase 3 が選ばせた意図とドメインが下のドメイン表の行を決め、Phase 2 の引き継ぎ表が渡す Constraints 表は、引き継ぎ元の Domain が現在の Domain と一致するときだけ入力に取る。
+
 Explore、ugrep、bfs、Read を並列起動する。各コマンドと生出力は scratch にそのまま追記する。これが監査証跡で、Phase 7 の Disconfirmation はここから直接引用し再構築しない。発見事項にはその場でソースを書く。
 
 意図が Feature planning か Bug investigation なら `Agent(subagent_type: explorer-feature)` も起動する。この起動はバックグラウンドで走るので、他の探索を続けながら完了通知を待つ。返り値は `{ findings: [{ statement: string, source: string }] }` の JSON 1 object で受け取り、受け取るまで次の Phase へ進まない。この起動条件に当たるとき、または `.codegraph/` index があるときは ${CLAUDE_SKILL_DIR}/references/tactics.md を読み、該当する手段を適用する。

@@ -44,6 +44,8 @@ Skip if `$ARGUMENTS` clearly indicates both. Otherwise ask via AskUserQuestion. 
 
 ## Phase 4: Domain-Scoped Parallel Investigation
 
+Two inputs arrive here. The intent and domain Phase 3 settled pick the row of the domain table below, and the Constraints table Phase 2's handoff table passes is taken as input only when the handoff's Domain matches the current one.
+
 Launch Explore / ugrep / bfs / Read in parallel. Append each command and its raw output verbatim to the scratch. This is the audit trail; Phase 7 Disconfirmation quotes it directly and does not reconstruct. State the source for each finding in place.
 
 For Feature planning or Bug investigation intent, also invoke `Agent(subagent_type: explorer-feature)`. The spawn runs in the background, so keep the other searches going while its completion notification is pending. Take the result as a single JSON object `{ findings: [{ statement: string, source: string }] }`, and do not move to the next Phase before it arrives. When that trigger fires, or when a `.codegraph/` index exists, read ${CLAUDE_SKILL_DIR}/references/tactics.md and apply the tactics whose trigger matches.
