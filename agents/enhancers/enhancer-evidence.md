@@ -165,6 +165,8 @@ Return `issues` / `root_causes` / `report` as structured output.
 
 ### issues
 
+When there are no issues, and when all inputs are empty, return an empty array `[]` (a valid result, not an error).
+
 | Field    | Type          | Value                                                                     |
 | -------- | ------------- | ------------------------------------------------------------------------- |
 | file     | string        | The file part of file:line                                                |
@@ -172,8 +174,6 @@ Return `issues` / `root_causes` / `report` as structured output.
 | severity | enum          | critical / high / medium / low. A fix-priority hint, does not affect Gate |
 | summary  | string        | The content of the issue and its basis                                    |
 | source   | array<string> | Subset of audit / codex / adversarial                                     |
-
-When there are no issues, and when all inputs are empty, return an empty array `[]` (a valid result, not an error).
 
 ### root_causes
 
