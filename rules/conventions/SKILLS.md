@@ -94,6 +94,7 @@ A skill can satisfy every mechanical rule and still read poorly.
 | Single responsibility       | One task per skill. A second unrelated trigger is a split signal         | description joins 2+ unrelated capabilities                        |
 | Description distinctiveness | Sentence 1 enumerates the capability with concrete verbs and objects     | Generic verbs like helps with or manages that fit many skills      |
 | Imperative voice            | Body commands the agent directly                                         | Passive recital of what the skill does                             |
+| Phase handoff               | A value handed to a later Phase has its source written into the receiver | The sending Phase alone says Phase N uses this, with no landing point |
 | Verifiable completion       | Steps end with checkable conditions and an explicit stop point           | Done-state absent, or a confirmation order with no check condition |
 | Concrete calibration        | A Good / Bad pair, Yes / Not contrast, or numeric threshold per judgment | Rules stated abstractly with no example                            |
 | Progressive disclosure      | SKILL.md stays thin; detail moves to references/                         | Inline dumps that belong in references/                            |
