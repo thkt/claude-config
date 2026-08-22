@@ -322,6 +322,67 @@ let adversarialSummary = {
 let synth = null;
 let codexReview = null;
 let audit = null;
+// Declared here (not `const` at their point of use inside try) so the point that writes the
+// run record can read them even when the throw that ends the run lands before Synthesize sets
+// them; they then keep their pre-Synthesize default (false).
+let challengeStalled = false;
+let auditDegraded = false;
+
+// ---- Run recording: one jsonl row per settled run, modeled on build.js's recordRun ----
+// (workflows/build.js, the recordRun closure). The payload is assembled from the closure's
+// outer-scope lets, so it always reflects whatever those variables held at call time, including
+// their pre-Synthesize defaults on an early throw. record.py copies the payload verbatim, so a
+// key added here needs no matching change there. record.py ships under workflows/assert/, so it
+// resolves through the same SCRIPTS bundled() path as worktree.py / bootstrap.py above
+// (WORKFLOWS.md § Reference notation).
+const RECORD_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["path"],
+  properties: {
+    path: { type: "string", description: "path from record.py's stdout JSON, verbatim" },
+  },
+};
+const recordRun = async () => {
+  const issueCounts = {};
+  for (const i of issues) {
+    const sev = i.severity || "unknown";
+    issueCounts[sev] = (issueCounts[sev] || 0) + 1;
+  }
+  const payload = {
+    gate,
+    gate_reason: gateReason,
+    build: buildCol,
+    tests: testsCol,
+    mode: boot.mode,
+    issue_counts: issueCounts,
+    dropped_findings: dropped,
+    challenge_stalled: challengeStalled,
+    audit_degraded: auditDegraded,
+  };
+  const written = await agent(
+    anchor(
+      `Record one assert run; do not judge, summarize, or edit any value. The steps are, (1) write this exact JSON to a temp file; ` +
+        `(2) run \`python3 ${SCRIPTS}/record.py < <tempfile>\`; ` +
+        `(3) return the script's stdout path verbatim. ` +
+        `The script prints {"path":...}.\n` +
+        `The input JSON is as follows.\n${JSON.stringify(payload)}`,
+    ),
+    {
+      label: "record",
+      agentType: "general-purpose",
+      schema: RECORD_SCHEMA,
+      model: "haiku",
+    },
+  );
+  const path = String((written && written.path) || "").trim();
+  // Recording never gates assert, so a failed relay falls open instead of stopping the run.
+  if (!path) {
+    log(
+      `The run row was not written (the recorder returned no path), so this run is missing from assert-runs.jsonl.`,
+    );
+  }
+};
 
 try {
   // ---- Evidence: audit ∥ Codex review ∥ test run ∥ adversarial generation ----
@@ -563,13 +624,13 @@ try {
 
   // ---- Synthesize: enhancer-evidence integration -> script decides the gate ----
   phase("Synthesize");
-  const challengeStalled = codexFindings.length > 0 && !challenged && !verified;
+  challengeStalled = codexFindings.length > 0 && !challenged && !verified;
   // The nested audit workflow's own challenge_ran distinguishes "challenge produced
   // verdicts" from "fail-open (challenge did not run, so audit.js let all findings through
   // as confirmed)". The zero-findings early return carries challenge_ran=false too and
   // counts as degraded, closing the hole where a run whose reviewers found nothing and
   // whose challenge never ran still reaches Ready with zero issues.
-  const auditDegraded = !!audit && audit.challenge_ran === false;
+  auditDegraded = !!audit && audit.challenge_ran === false;
   const auditFindingsIntro = auditDegraded
     ? "The nested audit workflow's challenge stage did not run (fail-open), so treat the following findings as unverified; include them in issues as-is but flag this in the report."
     : "The integrated findings from the audit workflow (critic-verified; include them in issues as-is) are as follows.";
@@ -630,6 +691,9 @@ try {
       model: "sonnet",
     },
   );
+  // Placed in finally (not after the try block) so a throw inside try still leaves a row: the
+  // finally block runs before the throw propagates out of the workflow.
+  await recordRun();
 }
 
 log(`Gate: ${gate} (build=${buildCol}, tests=${testsCol}, issues=${issues.length})`);

@@ -405,3 +405,107 @@ test("T-011 a run whose findings all carry a recognised severity reports zero dr
     "a run whose findings all carry a recognised severity reports zero dropped findings",
   );
 });
+
+// U-003: assert records one row per settled run in $HOME/.claude/history/assert-runs.jsonl,
+// following build.js's recordRun (workflows/assert/record.py already accepts arbitrary payload
+// keys, so this unit only wires assert.js to build that payload and hand it to the agent that
+// runs the recorder). A failed record must not stop the run (WORKFLOWS.md § Degradation
+// recording), so a recorder returning nothing still lets the gate reach its own return value,
+// with the loss surfaced through log() instead.
+const recordCallsOf = (calls) => calls.agent.filter((c) => c.opts && c.opts.label === "record");
+
+// build.js's own recordRun puts the stringified payload on the prompt's last line (see
+// build/tests/build.behavior.test.js's T-008, "the payload is the prompt's last line, where
+// recordRun puts the stringified JSON"); assert's recorder is asked to mirror that exactly.
+const recordPayloadOf = (call) => JSON.parse(call.prompt.trim().split("\n").pop());
+
+test("T-012 a run that reaches a gate writes one row carrying that gate and the per-severity issue counts", async () => {
+  const issues = [
+    { file: "a.js", line: 10, severity: "high", summary: "x", source: ["audit"] },
+    { file: "b.js", line: 20, severity: "medium", summary: "y", source: ["audit"] },
+    { file: "c.js", line: 30, severity: "high", summary: "z", source: ["audit"] },
+  ];
+  const { result, calls } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: makeGateReasonAgent({ issues }) },
+  });
+  const records = recordCallsOf(calls);
+  assert.equal(records.length, 1, "the run writes exactly one record row");
+  const payload = recordPayloadOf(records[0]);
+  assert.equal(payload.gate, result.gate, "the row carries the gate this run reached");
+  assert.equal(
+    payload.issue_counts && payload.issue_counts.high,
+    2,
+    "the row's issue_counts.high matches the two high-severity issues",
+  );
+  assert.equal(
+    payload.issue_counts && payload.issue_counts.medium,
+    1,
+    "the row's issue_counts.medium matches the one medium-severity issue",
+  );
+});
+
+test("T-013 a recorder returning nothing leaves the gate unchanged and names the unwritten row in log()", async () => {
+  const { result, logs } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: makeAgent({ ran: true, tests: [] }) }, // the "record" label falls through to undefined
+  });
+  assert.equal(
+    result.gate,
+    "Ready",
+    "the gate this run computed from its own evidence is unchanged by a recorder that returns nothing",
+  );
+  assert.ok(
+    logs.some((m) => /assert-runs\.jsonl/.test(m)),
+    "the unwritten row reaches log() naming the file it is missing from",
+  );
+});
+
+test("T-014 a throw inside the try still leaves a row for that run", async () => {
+  const recordCalls = [];
+  const throwingAgent = (prompt, opts) => {
+    const label = opts && opts.label;
+    if (label === "codex-review") throw new Error("codex review crashed");
+    if (label === "record") recordCalls.push(prompt);
+    return makeAgent({ ran: true, tests: [] })(prompt, opts);
+  };
+  await assert.rejects(
+    () => runWorkflow(assertJs, { args: {}, stubs: { agent: throwingAgent } }),
+    /codex review crashed/,
+    "the throw inside the try still propagates out of the workflow",
+  );
+  assert.equal(
+    recordCalls.length,
+    1,
+    "the record row is written from a point the finally block reaches before the throw propagates",
+  );
+});
+
+test("T-015 the row carries challenge_stalled and audit_degraded as booleans", async () => {
+  const stalledAgent = (prompt, opts) => {
+    const label = opts && opts.label;
+    if (label === "codex-review")
+      return { ran: true, findings: [{ file: "a.js", line: 1, severity: "P1", summary: "x" }] };
+    if (label === "challenge" || label === "verify") return undefined; // both stall
+    return makeAgent({ ran: true, tests: [] })(prompt, opts);
+  };
+  const { calls } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: stalledAgent, workflow: makeAuditWorkflowStub(false) },
+  });
+  const records = recordCallsOf(calls);
+  assert.equal(records.length, 1, "the run writes exactly one record row");
+  const payload = recordPayloadOf(records[0]);
+  assert.equal(typeof payload.challenge_stalled, "boolean", "challenge_stalled is a boolean");
+  assert.equal(typeof payload.audit_degraded, "boolean", "audit_degraded is a boolean");
+  assert.equal(
+    payload.challenge_stalled,
+    true,
+    "the Codex findings were unverified this run (challenge and verify both stalled)",
+  );
+  assert.equal(
+    payload.audit_degraded,
+    true,
+    "the nested audit workflow's challenge stage failed open this run",
+  );
+});

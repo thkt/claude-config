@@ -319,6 +319,67 @@ let adversarialSummary = {
 let synth = null;
 let codexReview = null;
 let audit = null;
+// ここで宣言する (try 内の使用箇所で const にしない) のは、run record を書き込む地点が
+// Synthesize より前の throw でも読めるようにするため。その場合は Synthesize 前の既定値
+// (false) のまま残る。
+let challengeStalled = false;
+let auditDegraded = false;
+
+// ---- Run recording: 確定した run ごとに 1 行、build.js の recordRun (workflows/build.js の
+// recordRun closure) に倣う ----
+// payload はこの closure の外側スコープの let から組み立てるため、呼び出し時点でこれらの
+// 変数が持っていた値 (早期 throw 時の Synthesize 前の既定値を含む) を常に反映する。
+// record.py は payload をそのまま複製するので、ここでキーを増やしても向こう側の変更は不要。
+// record.py はこの workflow に同梱されるため、上の worktree.py / bootstrap.py と同じ
+// SCRIPTS の bundled() path で解決する (WORKFLOWS.md § Reference notation)。
+const RECORD_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["path"],
+  properties: {
+    path: { type: "string", description: "record.py の stdout JSON から得た path をそのまま" },
+  },
+};
+const recordRun = async () => {
+  const issueCounts = {};
+  for (const i of issues) {
+    const sev = i.severity || "unknown";
+    issueCounts[sev] = (issueCounts[sev] || 0) + 1;
+  }
+  const payload = {
+    gate,
+    gate_reason: gateReason,
+    build: buildCol,
+    tests: testsCol,
+    mode: boot.mode,
+    issue_counts: issueCounts,
+    dropped_findings: dropped,
+    challenge_stalled: challengeStalled,
+    audit_degraded: auditDegraded,
+  };
+  const written = await agent(
+    anchor(
+      `assert の 1 run を記録する。値を判断・要約・編集しない。手順は、(1) 次の JSON を一時ファイルへそのまま書く。` +
+        `(2) \`python3 ${SCRIPTS}/record.py < <tempfile>\` を実行する。` +
+        `(3) script の stdout の path をそのまま返す。` +
+        `script は {"path":...} を print する。\n` +
+        `入力 JSON は次のとおり。\n${JSON.stringify(payload)}`,
+    ),
+    {
+      label: "record",
+      agentType: "general-purpose",
+      schema: RECORD_SCHEMA,
+      model: "haiku",
+    },
+  );
+  const path = String((written && written.path) || "").trim();
+  // 記録は assert を gate しないので、relay 失敗は run を止めず fail-open する。
+  if (!path) {
+    log(
+      `run の行が書けなかった (recorder が path を返さなかった) ため、この run は assert-runs.jsonl から抜けている。`,
+    );
+  }
+};
 
 try {
   // ---- Evidence: audit ∥ Codex review ∥ test 実行 ∥ adversarial 生成 ----
@@ -551,12 +612,12 @@ try {
 
   // ---- Synthesize: enhancer-evidence 統合 -> script が gate 判定 ----
   phase("Synthesize");
-  const challengeStalled = codexFindings.length > 0 && !challenged && !verified;
+  challengeStalled = codexFindings.length > 0 && !challenged && !verified;
   // 入れ子の audit workflow 自身の challenge_ran は「challenge が verdicts を返した run」と
   // 「fail-open (challenge が走らず audit.js が全件 confirmed のまま通した run)」を区別する
   // 値。findings が 0 件の早期 return も challenge_ran=false を返すため degraded に含める。
   // reviewer が何も出さず challenge も走らなかった run が issues 0 件のまま Ready に届く穴を塞ぐ。
-  const auditDegraded = !!audit && audit.challenge_ran === false;
+  auditDegraded = !!audit && audit.challenge_ran === false;
   const auditFindingsIntro = auditDegraded
     ? "入れ子の audit workflow の challenge stage が走らなかった (fail-open) ため、以下の findings は未検証として扱う。そのまま issues に含めてよいが、report で表面化する。"
     : "audit workflow の統合済み findings (critic 検証済み。そのまま issues に含める) は次のとおり。";
@@ -617,6 +678,9 @@ try {
       model: "sonnet",
     },
   );
+  // finally に置く (try 直後ではない) のは、try 内の throw でも行を残すため。finally block は
+  // throw が workflow の外へ伝播する前に走る。
+  await recordRun();
 }
 
 log(`Gate: ${gate} (build=${buildCol}, tests=${testsCol}, issues=${issues.length})`);
