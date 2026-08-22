@@ -76,12 +76,9 @@ test("result.adversarial shows the stage as not run with a diagnostic reason whe
   );
 });
 
-test("result.adversarial shows a stall distinct from zero tests when the triage block throws", async () => {
-  // testRunP and adversarialP already carry .catch(() => null) on the agent side, so
-  // reproducing a block throw uses the triage verdict agent (label "triage:*"), which is
-  // awaited through parallel with no catch. The harness's parallel rejects when a thunk throws,
-  // so the IIFE throws as a whole and the outer .catch(() => null) folds triageRes to null.
-  // This pins that the stall marker survives in the summary for that entire throw class.
+test("a triage agent that throws promotes its test fail-close rather than excluding it", async () => {
+  // parallel resolves the throw to null (#434), so the IIFE does not throw and assert.js reads
+  // verdicts[i] as null, taking its documented fail-close branch.
   const failTest = {
     test_name: "t1",
     target: "src/foo.js:3",
@@ -94,14 +91,12 @@ test("result.adversarial shows a stall distinct from zero tests when the triage 
     if (label && label.startsWith("triage:")) throw new Error("triage agent crashed");
     return makeAgent({ ran: true, tests: [failTest] })(prompt, opts);
   };
-  const thrownRun = await runWorkflow(assertJs, { args: {}, stubs: { agent: throwingAgent } });
-  const adv = thrownRun.result && thrownRun.result.adversarial;
-  assert.ok(adv, "result.adversarial comes back on a throw too");
-  assert.equal(
-    adv.stall,
-    "triage stage threw / no output",
-    "a throw in the triage block is recorded as a stall, distinct from a clean zero",
-  );
+  const run = await runWorkflow(assertJs, { args: {}, stubs: { agent: throwingAgent } });
+  const adv = run.result && run.result.adversarial;
+  assert.ok(adv, "result.adversarial comes back with the triage verdict missing");
+  assert.equal(adv.promoted, 1, "the untriaged failure is promoted rather than dropped");
+  assert.equal(adv.excluded, 0, "nothing is excluded on a verdict nobody produced");
+  assert.equal(adv.stall, undefined, "the block did not throw, so no stall marker is set");
 });
 
 // U-002: on a run where the nested workflow("audit") failed open (challenge_ran=false), the
@@ -443,15 +438,17 @@ test("T-013 a recorder returning nothing leaves the gate unchanged and names the
 
 test("T-014 a throw inside the try still leaves a row for that run", async () => {
   const recordCalls = [];
+  // synthesize is awaited outside parallel, so its throw propagates; a throw inside a parallel
+  // thunk resolves to null instead and never reaches the try's boundary (#434).
   const throwingAgent = (prompt, opts) => {
     const label = opts && opts.label;
-    if (label === "codex-review") throw new Error("codex review crashed");
+    if (label === "synthesize") throw new Error("synthesize crashed");
     if (label === "record") recordCalls.push(prompt);
     return makeAgent({ ran: true, tests: [] })(prompt, opts);
   };
   await assert.rejects(
     () => runWorkflow(assertJs, { args: {}, stubs: { agent: throwingAgent } }),
-    /codex review crashed/,
+    /synthesize crashed/,
     "the throw inside the try still propagates out of the workflow",
   );
   assert.equal(
