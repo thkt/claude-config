@@ -74,3 +74,8 @@ jobs:
 
       - name: ruff format
         run: pipx run --spec ruff==0.16.4 ruff format --check .
+
+      # rumdl は JS 依存に無いので版を直に固定する。ruff と同じ形。`fmt` でなく `check` なのは、
+      # コードスパン内の末尾スペースと見出しレベルで、自動修正が内容を壊す実例が出たため (#329)。
+      - name: rumdl
+        run: pipx run --spec rumdl==0.2.58 rumdl check .
