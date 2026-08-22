@@ -83,12 +83,16 @@ const SEVERITY_MAP = {
 const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1 };
 const mergeIssues = (findings) => {
   const groups = new Map();
+  let dropped = 0;
   for (const f of findings) {
     const key = String(f.severity || "")
       .trim()
       .replace(/^\[|\]$/g, "");
     const sev = SEVERITY_MAP[key] === undefined ? null : SEVERITY_MAP[key];
-    if (!sev) continue;
+    if (!sev) {
+      dropped++;
+      continue;
+    }
     const sources = Array.isArray(f.source) ? f.source : f.source ? [f.source] : [];
     const k = `${f.file || ""}:${f.line || 0}`;
     const prev = groups.get(k);
@@ -101,12 +105,13 @@ const mergeIssues = (findings) => {
       groups.set(k, { ...f, severity: sev, source: prev.source });
     }
   }
-  return [...groups.values()].sort(
+  const issues = [...groups.values()].sort(
     (a, b) =>
       SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] ||
       String(a.file || "").localeCompare(String(b.file || "")) ||
       (a.line || 0) - (b.line || 0),
   );
+  return { issues, dropped };
 };
 
 const BOOTSTRAP_SCHEMA = {
@@ -296,6 +301,9 @@ let gate = "NotReady";
 // 原因を導けない。実際に成立した条件を並べる。
 const gateReason = [];
 let issues = [];
+// `if (!sev) continue;` で落ちた finding は、返り値の issues に痕跡を残さない。
+// WORKFLOWS.md § Degradation recording はその件数を返り値へ載せることを求める。
+let dropped = 0;
 let testsCol = "skipped";
 let adversarialSummary = {
   total: 0,
@@ -307,6 +315,68 @@ let adversarialSummary = {
 let synth = null;
 let codexReview = null;
 let audit = null;
+// try 内で const にしない。記録は finally から書くので、Synthesize より前の throw では
+// スコープ外になる。
+let challengeStalled = false;
+let auditDegraded = false;
+
+// ---- Run recording: 確定した run ごとに 1 行。build.js の recordRun に倣う ----
+// record.py は payload をそのまま複製するので、ここでキーを増やしても向こう側は変えなくてよい。
+const RECORD_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["path"],
+  properties: {
+    path: { type: "string", description: "record.py の stdout JSON から得た path をそのまま" },
+  },
+};
+const recordRun = async () => {
+  const issueCounts = {};
+  for (const i of issues) {
+    const sev = i.severity || "unknown";
+    issueCounts[sev] = (issueCounts[sev] || 0) + 1;
+  }
+  const payload = {
+    gate,
+    gate_reason: gateReason,
+    build: buildCol,
+    tests: testsCol,
+    mode: boot.mode,
+    issue_counts: issueCounts,
+    dropped_findings: dropped,
+    challenge_stalled: challengeStalled,
+    audit_degraded: auditDegraded,
+  };
+  // recordRun は finally の中で走るので、ここで throw すると try が投げていた例外を置き換え、
+  // run の本当の失敗が recorder の失敗の裏に隠れる。
+  let written = null;
+  try {
+    written = await agent(
+      anchor(
+        `assert の 1 run を記録する。値を判断・要約・編集しない。手順は、(1) 次の JSON を一時ファイルへそのまま書く。` +
+          `(2) \`python3 ${SCRIPTS}/record.py < <tempfile>\` を実行する。` +
+          `(3) script の stdout の path をそのまま返す。` +
+          `script は {"path":...} を print する。\n` +
+          `入力 JSON は次のとおり。\n${JSON.stringify(payload)}`,
+      ),
+      {
+        label: "record",
+        agentType: "general-purpose",
+        schema: RECORD_SCHEMA,
+        model: "haiku",
+      },
+    );
+  } catch {
+    written = null;
+  }
+  const path = String((written && written.path) || "").trim();
+  // 記録は assert を gate しないので、relay 失敗は run を止めず fail-open する。
+  if (!path) {
+    log(
+      `run の行が書けなかった (recorder が path を返さなかった) ため、この run は assert-runs.jsonl から抜けている。`,
+    );
+  }
+};
 
 try {
   // ---- Evidence: audit ∥ Codex review ∥ test 実行 ∥ adversarial 生成 ----
@@ -539,12 +609,12 @@ try {
 
   // ---- Synthesize: enhancer-evidence 統合 -> script が gate 判定 ----
   phase("Synthesize");
-  const challengeStalled = codexFindings.length > 0 && !challenged && !verified;
+  challengeStalled = codexFindings.length > 0 && !challenged && !verified;
   // 入れ子の audit workflow 自身の challenge_ran は「challenge が verdicts を返した run」と
   // 「fail-open (challenge が走らず audit.js が全件 confirmed のまま通した run)」を区別する
   // 値。findings が 0 件の早期 return も challenge_ran=false を返すため degraded に含める。
   // reviewer が何も出さず challenge も走らなかった run が issues 0 件のまま Ready に届く穴を塞ぐ。
-  const auditDegraded = !!audit && audit.challenge_ran === false;
+  auditDegraded = !!audit && audit.challenge_ran === false;
   const auditFindingsIntro = auditDegraded
     ? "入れ子の audit workflow の challenge stage が走らなかった (fail-open) ため、以下の findings は未検証として扱う。そのまま issues に含めてよいが、report で表面化する。"
     : "audit workflow の統合済み findings (critic 検証済み。そのまま issues に含める) は次のとおり。";
@@ -569,7 +639,7 @@ try {
     },
   );
   // enhancer が stall したら統合前の素材から fail-close で issues を組む
-  issues = mergeIssues(synth ? synth.issues : [...auditFindings, ...promoted]);
+  ({ issues, dropped } = mergeIssues(synth ? synth.issues : [...auditFindings, ...promoted]));
 
   // gate 規則。build smoke fail / test fail / issues 1 件以上は
   // NotReady。severity は修正優先度のヒントに留まり、gate には影響しない。caveat は issues 0 を
@@ -605,6 +675,9 @@ try {
       model: "sonnet",
     },
   );
+  // finally に置く (try 直後ではない) のは、try 内の throw でも行を残すため。finally block は
+  // throw が workflow の外へ伝播する前に走る。
+  await recordRun();
 }
 
 log(`Gate: ${gate} (build=${buildCol}, tests=${testsCol}, issues=${issues.length})`);
@@ -616,6 +689,7 @@ return {
   build: buildCol,
   tests: testsCol,
   issues,
+  dropped,
   root_causes: (synth && synth.root_causes) || [],
   adversarial: adversarialSummary,
   outcome_ref: boot.outcome === "absent" ? "absent" : "present",

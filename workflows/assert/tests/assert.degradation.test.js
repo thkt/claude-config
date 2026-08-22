@@ -16,24 +16,10 @@ import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflow } from "../../_lib/run-workflow.js";
+import { bootOk, recordCallsOf, recordPayloadOf } from "./_fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const assertJs = join(here, "..", "..", "assert.js");
-
-// The bootstrap return value that makes dynamicOk true (worktree_ok true / install ok / build
-// pass).
-const bootOk = {
-  codex_available: true,
-  mode: "target",
-  diff_kind: "",
-  scope_files: ["src/foo.js"],
-  outcome: "absent",
-  worktree_ok: true,
-  worktree_path: "/tmp/assert-wt",
-  install: "ok",
-  build: "pass",
-  reason: "",
-};
 
 // The shortest agent stub carrying every stage but adversarial. advReturn is injected as the
 // adversarial stage's return value (null = stall, { ran: true, tests: [] } = genuine no-tests).
@@ -350,4 +336,200 @@ test("T-003 a Ready run whose build was skipped does not report build as passing
     "gate_reason does not claim a build that never ran passed",
   );
   assert.match(reasonText, /build skipped/, "gate_reason reports the build column it read");
+});
+
+// U-001: mergeIssues's `if (!sev) continue;` branch drops a finding whose severity SEVERITY_MAP
+// maps to null (P3) or does not carry at all (unknown severity), and up to now that drop left no
+// trace on the return value (WORKFLOWS.md § Degradation recording: loss granularity). The count
+// of findings dropped this way is read off the workflow's own return value (result.dropped),
+// since mergeIssues is a function local to the vm-evaluated script body and is not otherwise
+// observable from a test (see run-workflow.js's header comment on script evaluation).
+test("T-010 a finding whose severity is not in SEVERITY_MAP stays out of issues and is counted as dropped", async () => {
+  const droppedFinding = {
+    file: "a.js",
+    line: 10,
+    severity: "P4",
+    summary: "unrecognised severity",
+    source: ["audit"],
+  };
+  const keptFinding = {
+    file: "b.js",
+    line: 20,
+    severity: "high",
+    summary: "recognised severity",
+    source: ["audit"],
+  };
+  const { result } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: makeGateReasonAgent({ issues: [droppedFinding, keptFinding] }) },
+  });
+  assert.equal(result.issues.length, 1, "only the recognised-severity finding reaches issues");
+  assert.ok(
+    !result.issues.some((i) => i.file === "a.js" && i.line === 10),
+    "the finding with an unrecognised severity (P4) stays out of issues",
+  );
+  assert.equal(
+    result.dropped,
+    1,
+    "the finding dropped for its unrecognised severity is counted on the return value",
+  );
+});
+
+test("T-011 a run whose findings all carry a recognised severity reports zero dropped findings", async () => {
+  const issues = [
+    { file: "a.js", line: 10, severity: "high", summary: "x", source: ["audit"] },
+    { file: "b.js", line: 20, severity: "medium", summary: "y", source: ["audit"] },
+  ];
+  const { result } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: makeGateReasonAgent({ issues }) },
+  });
+  assert.equal(result.issues.length, 2, "both recognised-severity findings reach issues");
+  assert.equal(
+    result.dropped,
+    0,
+    "a run whose findings all carry a recognised severity reports zero dropped findings",
+  );
+});
+
+// U-003: assert records one row per settled run in $HOME/.claude/history/assert-runs.jsonl,
+// following build.js's recordRun (workflows/assert/record.py already accepts arbitrary payload
+// keys, so this unit only wires assert.js to build that payload and hand it to the agent that
+// runs the recorder). A failed record must not stop the run (WORKFLOWS.md § Degradation
+// recording), so a recorder returning nothing still lets the gate reach its own return value,
+// with the loss surfaced through log() instead.
+
+test("T-012 a run that reaches a gate writes one row carrying that gate and the per-severity issue counts", async () => {
+  const issues = [
+    { file: "a.js", line: 10, severity: "high", summary: "x", source: ["audit"] },
+    { file: "b.js", line: 20, severity: "medium", summary: "y", source: ["audit"] },
+    { file: "c.js", line: 30, severity: "high", summary: "z", source: ["audit"] },
+  ];
+  const { result, calls } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: makeGateReasonAgent({ issues }) },
+  });
+  const records = recordCallsOf(calls);
+  assert.equal(records.length, 1, "the run writes exactly one record row");
+  const payload = recordPayloadOf(records[0]);
+  assert.equal(payload.gate, result.gate, "the row carries the gate this run reached");
+  assert.equal(
+    payload.issue_counts && payload.issue_counts.high,
+    2,
+    "the row's issue_counts.high matches the two high-severity issues",
+  );
+  assert.equal(
+    payload.issue_counts && payload.issue_counts.medium,
+    1,
+    "the row's issue_counts.medium matches the one medium-severity issue",
+  );
+});
+
+test("T-013 a recorder returning nothing leaves the gate unchanged and names the unwritten row in log()", async () => {
+  const { result, logs } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: makeAgent({ ran: true, tests: [] }) }, // the "record" label falls through to undefined
+  });
+  assert.equal(
+    result.gate,
+    "Ready",
+    "the gate this run computed from its own evidence is unchanged by a recorder that returns nothing",
+  );
+  assert.ok(
+    logs.some((m) => /assert-runs\.jsonl/.test(m)),
+    "the unwritten row reaches log() naming the file it is missing from",
+  );
+});
+
+test("T-014 a throw inside the try still leaves a row for that run", async () => {
+  const recordCalls = [];
+  const throwingAgent = (prompt, opts) => {
+    const label = opts && opts.label;
+    if (label === "codex-review") throw new Error("codex review crashed");
+    if (label === "record") recordCalls.push(prompt);
+    return makeAgent({ ran: true, tests: [] })(prompt, opts);
+  };
+  await assert.rejects(
+    () => runWorkflow(assertJs, { args: {}, stubs: { agent: throwingAgent } }),
+    /codex review crashed/,
+    "the throw inside the try still propagates out of the workflow",
+  );
+  assert.equal(
+    recordCalls.length,
+    1,
+    "the record row is written from a point the finally block reaches before the throw propagates",
+  );
+});
+
+test("T-015 the row carries challenge_stalled and audit_degraded as booleans", async () => {
+  const stalledAgent = (prompt, opts) => {
+    const label = opts && opts.label;
+    if (label === "codex-review")
+      return { ran: true, findings: [{ file: "a.js", line: 1, severity: "P1", summary: "x" }] };
+    if (label === "challenge" || label === "verify") return undefined; // both stall
+    return makeAgent({ ran: true, tests: [] })(prompt, opts);
+  };
+  const { calls } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: stalledAgent, workflow: makeAuditWorkflowStub(false) },
+  });
+  const records = recordCallsOf(calls);
+  assert.equal(records.length, 1, "the run writes exactly one record row");
+  const payload = recordPayloadOf(records[0]);
+  assert.equal(typeof payload.challenge_stalled, "boolean", "challenge_stalled is a boolean");
+  assert.equal(typeof payload.audit_degraded, "boolean", "audit_degraded is a boolean");
+  assert.equal(
+    payload.challenge_stalled,
+    true,
+    "the Codex findings were unverified this run (challenge and verify both stalled)",
+  );
+  assert.equal(
+    payload.audit_degraded,
+    true,
+    "the nested audit workflow's challenge stage failed open this run",
+  );
+});
+
+// The Testing Decisions clause asks for both sides of the gate to leave a row. T-012 and T-016
+// drive runs carrying issues, so only NotReady was covered.
+test("T-016 a Ready-gated run appends exactly one record row", async () => {
+  const { result, calls } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: {
+      agent: (prompt, opts) => {
+        if (opts && opts.label === "record")
+          return { path: "/home/u/.claude/history/assert-runs.jsonl" };
+        return makeAgent({ ran: true, tests: [] })(prompt, opts);
+      },
+    },
+  });
+  assert.equal(result.gate, "Ready", "no issues and passing evidence gate Ready");
+  assert.equal(
+    recordCallsOf(calls).length,
+    1,
+    "a Ready run writes one row, same as a NotReady run",
+  );
+});
+
+// recordRun sits in the finally block, so a throw there replaces whatever the try block was
+// throwing. A recorder failure must not stop the run, and must not mask the real one either.
+test("T-017 a recorder that throws leaves the gate unchanged and names the unwritten row in log()", async () => {
+  const { result, logs } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: {
+      agent: (prompt, opts) => {
+        if (opts && opts.label === "record") throw new Error("recorder exploded");
+        return makeAgent({ ran: true, tests: [] })(prompt, opts);
+      },
+    },
+  });
+  assert.equal(
+    result.gate,
+    "Ready",
+    "a throwing recorder does not change the gate the run computed",
+  );
+  assert.ok(
+    logs.some((m) => /assert-runs\.jsonl/.test(m)),
+    "the unwritten row reaches log() naming the file it is missing from",
+  );
 });

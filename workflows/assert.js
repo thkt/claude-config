@@ -84,12 +84,16 @@ const SEVERITY_MAP = {
 const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1 };
 const mergeIssues = (findings) => {
   const groups = new Map();
+  let dropped = 0;
   for (const f of findings) {
     const key = String(f.severity || "")
       .trim()
       .replace(/^\[|\]$/g, "");
     const sev = SEVERITY_MAP[key] === undefined ? null : SEVERITY_MAP[key];
-    if (!sev) continue;
+    if (!sev) {
+      dropped++;
+      continue;
+    }
     const sources = Array.isArray(f.source) ? f.source : f.source ? [f.source] : [];
     const k = `${f.file || ""}:${f.line || 0}`;
     const prev = groups.get(k);
@@ -102,12 +106,13 @@ const mergeIssues = (findings) => {
       groups.set(k, { ...f, severity: sev, source: prev.source });
     }
   }
-  return [...groups.values()].sort(
+  const issues = [...groups.values()].sort(
     (a, b) =>
       SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] ||
       String(a.file || "").localeCompare(String(b.file || "")) ||
       (a.line || 0) - (b.line || 0),
   );
+  return { issues, dropped };
 };
 
 const BOOTSTRAP_SCHEMA = {
@@ -298,6 +303,9 @@ let gate = "NotReady";
 // findings alone. These are the conditions that actually held.
 const gateReason = [];
 let issues = [];
+// A finding dropped by `if (!sev) continue;` leaves no trace in the returned issues array.
+// WORKFLOWS.md § Degradation recording puts that count on the return value.
+let dropped = 0;
 let testsCol = "skipped";
 let adversarialSummary = {
   total: 0,
@@ -309,6 +317,68 @@ let adversarialSummary = {
 let synth = null;
 let codexReview = null;
 let audit = null;
+// Not `const` inside the try: the record is written from the finally block, which a throw
+// before Synthesize would otherwise reach with these out of scope.
+let challengeStalled = false;
+let auditDegraded = false;
+
+// ---- Run recording: one jsonl row per settled run, modeled on build.js's recordRun ----
+// record.py copies the payload verbatim, so a key added here needs no change there.
+const RECORD_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["path"],
+  properties: {
+    path: { type: "string", description: "path from record.py's stdout JSON, verbatim" },
+  },
+};
+const recordRun = async () => {
+  const issueCounts = {};
+  for (const i of issues) {
+    const sev = i.severity || "unknown";
+    issueCounts[sev] = (issueCounts[sev] || 0) + 1;
+  }
+  const payload = {
+    gate,
+    gate_reason: gateReason,
+    build: buildCol,
+    tests: testsCol,
+    mode: boot.mode,
+    issue_counts: issueCounts,
+    dropped_findings: dropped,
+    challenge_stalled: challengeStalled,
+    audit_degraded: auditDegraded,
+  };
+  // recordRun runs in the finally block, so a throw here would replace whatever the try block
+  // was throwing and hide the run's real failure behind a recorder failure.
+  let written = null;
+  try {
+    written = await agent(
+      anchor(
+        `Record one assert run; do not judge, summarize, or edit any value. The steps are, (1) write this exact JSON to a temp file; ` +
+          `(2) run \`python3 ${SCRIPTS}/record.py < <tempfile>\`; ` +
+          `(3) return the script's stdout path verbatim. ` +
+          `The script prints {"path":...}.\n` +
+          `The input JSON is as follows.\n${JSON.stringify(payload)}`,
+      ),
+      {
+        label: "record",
+        agentType: "general-purpose",
+        schema: RECORD_SCHEMA,
+        model: "haiku",
+      },
+    );
+  } catch {
+    written = null;
+  }
+  const path = String((written && written.path) || "").trim();
+  // Recording never gates assert, so a failed relay falls open instead of stopping the run.
+  if (!path) {
+    log(
+      `The run row was not written (the recorder returned no path), so this run is missing from assert-runs.jsonl.`,
+    );
+  }
+};
 
 try {
   // ---- Evidence: audit ∥ Codex review ∥ test run ∥ adversarial generation ----
@@ -550,13 +620,13 @@ try {
 
   // ---- Synthesize: enhancer-evidence integration -> script decides the gate ----
   phase("Synthesize");
-  const challengeStalled = codexFindings.length > 0 && !challenged && !verified;
+  challengeStalled = codexFindings.length > 0 && !challenged && !verified;
   // The nested audit workflow's own challenge_ran distinguishes "challenge produced
   // verdicts" from "fail-open (challenge did not run, so audit.js let all findings through
   // as confirmed)". The zero-findings early return carries challenge_ran=false too and
   // counts as degraded, closing the hole where a run whose reviewers found nothing and
   // whose challenge never ran still reaches Ready with zero issues.
-  const auditDegraded = !!audit && audit.challenge_ran === false;
+  auditDegraded = !!audit && audit.challenge_ran === false;
   const auditFindingsIntro = auditDegraded
     ? "The nested audit workflow's challenge stage did not run (fail-open), so treat the following findings as unverified; include them in issues as-is but flag this in the report."
     : "The integrated findings from the audit workflow (critic-verified; include them in issues as-is) are as follows.";
@@ -581,7 +651,7 @@ try {
     },
   );
   // if the enhancer stalls, assemble issues fail-close from the pre-integration material
-  issues = mergeIssues(synth ? synth.issues : [...auditFindings, ...promoted]);
+  ({ issues, dropped } = mergeIssues(synth ? synth.issues : [...auditFindings, ...promoted]));
 
   // Gate rule. Build smoke fail / test fail / one or more
   // issues means NotReady. Severity remains a fix-priority hint and never affects the
@@ -617,6 +687,9 @@ try {
       model: "sonnet",
     },
   );
+  // Placed in finally (not after the try block) so a throw inside try still leaves a row: the
+  // finally block runs before the throw propagates out of the workflow.
+  await recordRun();
 }
 
 log(`Gate: ${gate} (build=${buildCol}, tests=${testsCol}, issues=${issues.length})`);
@@ -628,6 +701,7 @@ return {
   build: buildCol,
   tests: testsCol,
   issues,
+  dropped,
   root_causes: (synth && synth.root_causes) || [],
   adversarial: adversarialSummary,
   outcome_ref: boot.outcome === "absent" ? "absent" : "present",
