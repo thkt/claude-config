@@ -43,6 +43,44 @@ const toHostRealmError = (err) => {
   return err;
 };
 
+// The own properties production leaves on an error it hands to the script, in the order it
+// writes them. Measured 2026-08-22 (#441): the object's prototype is null, so `e instanceof
+// Error` is false there and cause, errors and any custom property are gone. Handing a script
+// the host Error itself would let it branch on instanceof under test and take the other branch
+// in production.
+export const SCRIPT_ERROR_KEYS = ["name", "message", "stack", "toString"];
+
+// A non-Error throw is left as it is: what production does with one was not measured.
+const toScriptRealmError = (err) => {
+  if (!(err instanceof Error)) return err;
+  const supply = {
+    name: err.name,
+    message: err.message,
+    stack: typeof err.stack === "string" ? err.stack : `${err.name}: ${err.message}`,
+    toString: () => `${err.name}: ${err.message}`,
+  };
+  const shim = Object.create(null);
+  for (const key of SCRIPT_ERROR_KEYS) shim[key] = supply[key];
+  return shim;
+};
+
+// Every injected global is a host function called from vm code, so each is a place a host error
+// can reach the script.
+const asProductionThrow =
+  (fn) =>
+  (...callArgs) => {
+    try {
+      const out = fn(...callArgs);
+      return out instanceof Promise
+        ? out.catch((err) => {
+            throw toScriptRealmError(err);
+          })
+        : out;
+    } catch (err) {
+      throw toScriptRealmError(err);
+    }
+  };
+
 // Plain objects and arrays built inside the vm context carry that context's intrinsics
 // (its own Array.prototype, Object.prototype, ...), so a host-side assert.deepStrictEqual
 // sees them as structurally equal but not reference-equal to a host literal and fails.
@@ -129,22 +167,22 @@ export async function runWorkflow(scriptPath, { args = {}, stubs = {} } = {}) {
   const calls = { agent: [], workflow: [], phase: [] };
   const logs = [];
 
-  const agent = async (prompt, opts = {}) => {
+  const agent = asProductionThrow(async (prompt, opts = {}) => {
     const hostPrompt = rehome(prompt);
     const hostOpts = rehome(opts);
     calls.agent.push({ prompt: hostPrompt, opts: hostOpts });
     return stubs.agent ? stubs.agent(hostPrompt, hostOpts) : undefined;
-  };
-  const workflow = async (name, wfArgs) => {
+  });
+  const workflow = asProductionThrow(async (name, wfArgs) => {
     const hostArgs = rehome(wfArgs);
     calls.workflow.push({ name, args: hostArgs });
     return stubs.workflow ? stubs.workflow(name, hostArgs) : undefined;
-  };
+  });
   // The production contract both of these mirror: a thunk or stage that throws is left as null
   // at its own index, no compaction, no reordering, and the call itself never rejects.
   // Promise.all rejected the whole call, so a script whose thunk throws failed under test and
   // ran in production (#434).
-  const parallel = async (tasks) =>
+  const parallel = asProductionThrow(async (tasks) =>
     Promise.all(
       tasks.map(async (t) => {
         try {
@@ -153,9 +191,10 @@ export async function runWorkflow(scriptPath, { args = {}, stubs = {} } = {}) {
           return null;
         }
       }),
-    );
+    ),
+  );
   // Each item flows through all stages as (prev, originalItem, index).
-  const pipeline = async (items, ...stages) => {
+  const pipeline = asProductionThrow(async (items, ...stages) => {
     if (stubs.pipeline) return stubs.pipeline(items, ...stages);
     return Promise.all(
       items.map(async (item, index) => {
@@ -170,13 +209,13 @@ export async function runWorkflow(scriptPath, { args = {}, stubs = {} } = {}) {
         return prev;
       }),
     );
-  };
-  const phase = (title) => {
+  });
+  const phase = asProductionThrow((title) => {
     calls.phase.push(rehome(title));
-  };
-  const log = (message) => {
+  });
+  const log = asProductionThrow((message) => {
     logs.push(rehome(message));
-  };
+  });
 
   // The supply side of PRODUCTION_GLOBALS. budget holds the state of a run with no token
   // target, production's default, so a script branching on budget.total takes the same path
