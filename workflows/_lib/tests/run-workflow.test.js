@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { PRODUCTION_GLOBALS, runWorkflow } from "../run-workflow.js";
+import { PRODUCTION_GLOBALS, SCRIPT_ERROR_KEYS, runWorkflow } from "../run-workflow.js";
 
 // runWorkflow's contract reads the source from a file path (readFileSync), so the script body is
 // written to a temporary file first. Each test uses its own temporary directory so script files
@@ -170,5 +170,48 @@ test("T-014 a parallel whose thunk returns a rejected promise leaves null at tha
   await withScript(source, async (path) => {
     const { result } = await runWorkflow(path, { args: {} });
     assert.deepEqual(result.out, [null, 2]);
+  });
+});
+
+// A stub that throws is the harness's only host-origin error path, and production hands such an
+// error to the script as a null-prototype object carrying SCRIPT_ERROR_KEYS and nothing else.
+test("T-015 an error the harness throws into the script arrives in production's shape", async () => {
+  const source = `
+    try {
+      await agent("x");
+      return { caught: false };
+    } catch (e) {
+      return {
+        caught: true,
+        keys: Object.keys(e),
+        isError: e instanceof Error,
+        prototypeIsNull: Object.getPrototypeOf(e) === null,
+        stringified: e.toString(),
+        name: e.name,
+        message: e.message,
+        hasCause: "cause" in e,
+        code: e.code ?? null,
+      };
+    }
+  `;
+  await withScript(source, async (path) => {
+    const { result } = await runWorkflow(path, {
+      stubs: {
+        agent: () => {
+          const err = new TypeError("stub-failed", { cause: new RangeError("root") });
+          err.code = "E_CUSTOM";
+          throw err;
+        },
+      },
+    });
+    assert.equal(result.caught, true, "the throw reaches the script");
+    assert.deepEqual(result.keys, SCRIPT_ERROR_KEYS, "the own properties are the supplied list");
+    assert.equal(result.isError, false, "instanceof Error is false, as in production");
+    assert.equal(result.prototypeIsNull, true);
+    assert.equal(result.name, "TypeError", "the name crosses");
+    assert.equal(result.message, "stub-failed");
+    assert.equal(result.stringified, "TypeError: stub-failed");
+    assert.equal(result.hasCause, false, "cause does not cross, as in production");
+    assert.equal(result.code, null, "a custom property does not cross, as in production");
   });
 });

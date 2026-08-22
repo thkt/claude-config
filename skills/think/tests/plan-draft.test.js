@@ -769,3 +769,45 @@ test("SKILL.md and the template use the same heading word", () => {
     );
   }
 });
+
+// #417 and #424 each placed a seam unit whose files were tests alone, leaving nothing for the
+// Red step to fail on (#433).
+test("think SKILL.md requires a seam unit to carry the file that makes the connection, and says what to do when it cannot", () => {
+  const ja = read(skills.ja);
+  assert.match(
+    ja,
+    /seam unit の files には.{0,30}非テストファイル/,
+    "ja: the non-test file is required",
+  );
+  assert.match(ja, /seam unit を置かず/, "ja: the replacing operation");
+  assert.match(ja, /配線を作る unit の tests/, "ja: where the assertion goes instead");
+
+  const en = read(skills.en);
+  assert.match(en, /at least one non-test file/i, "en: the non-test file is required");
+  assert.match(en, /place no seam unit/i, "en: the replacing operation");
+  assert.match(
+    en,
+    /tests of the unit that makes the wiring/i,
+    "en: where the assertion goes instead",
+  );
+});
+
+// A step inserted mid-list leaves a duplicate number behind unless the tail is renumbered, and the
+// prose checks above pass either way because they never read the number.
+test("Phase 3's numbered steps run 1..N without a gap or a repeat, and both languages carry the same count", () => {
+  // The ### subsections below the list carry numbered lists of their own, so the slice stops at
+  // the first one.
+  const numbers = (lang) =>
+    [
+      ...phase(read(skills[lang]), 3)
+        .split(/^### /m)[0]
+        .matchAll(/^(\d+)\. /gm),
+    ].map((m) => Number(m[1]));
+  const ja = numbers("ja");
+  const en = numbers("en");
+  // expected is built from ja, so a slice that found nothing would compare [] against [].
+  assert.ok(ja.length > 0, "the step list was found");
+  const expected = Array.from({ length: ja.length }, (_, i) => i + 1);
+  assert.deepEqual(ja, expected, "ja: the steps are numbered 1..N in order");
+  assert.deepEqual(en, expected, "en: the steps are numbered 1..N in order");
+});
