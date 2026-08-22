@@ -5,7 +5,7 @@ when_to_use: .xlsx / .xls / .ods ファイルのパスが渡された, Excel の
 allowed-tools: Bash(node:*) Read
 ---
 
-# transcribe
+# /transcribe - スプレッドシート読み取り
 
 Read ツールは xlsx を開けない。このリポジトリに入れた hucre をライブラリとして使い、シートを読む。
 

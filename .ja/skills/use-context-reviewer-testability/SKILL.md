@@ -8,7 +8,7 @@ context: fork
 user-invocable: false
 ---
 
-# テスト容易性レビュー
+# use-context-reviewer-testability
 
 ## 検出
 

@@ -5,7 +5,7 @@ when_to_use: a path to a .xlsx / .xls / .ods file was given, read an Excel file,
 allowed-tools: Bash(node:*) Read
 ---
 
-# transcribe
+# /transcribe - Spreadsheet Reader
 
 The Read tool cannot open an xlsx. Use hucre, installed in this repository, as a library to read the sheets.
 
