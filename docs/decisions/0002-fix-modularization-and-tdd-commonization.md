@@ -315,9 +315,9 @@ references/commands/code/
 ## リファレンス
 
 - [ADR 0001](./0001-code-command-responsibility-separation.md) - `/code` モジュール化パターン
-- [ミラーの法則](../../skills/applying-code-principles/SKILL.md) - 認知負荷原則
-- [DRY原則](../../skills/applying-code-principles/SKILL.md) - 知識の重複
-- [SOLID原則](../../skills/applying-code-principles/SKILL.md) - SRP の適用
+- ミラーの法則 (`../../skills/applying-code-principles/SKILL.md`) - 認知負荷原則
+- DRY原則 (`../../skills/applying-code-principles/SKILL.md`) - 知識の重複
+- SOLID原則 (`../../skills/applying-code-principles/SKILL.md`) - SRP の適用
 - [COMMANDS.md](../COMMANDS.md) - コマンドドキュメント
 
 ## 将来の検討事項

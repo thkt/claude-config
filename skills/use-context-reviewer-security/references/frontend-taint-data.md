@@ -2,7 +2,7 @@
 
 Taint patterns whose source crosses an origin boundary or whose sink navigates or persists a credential. These require data flow understanding beyond regex pattern matching and complement the guardrails static rules.
 
-### 1. postMessage Origin Verification
+## 1. postMessage Origin Verification
 
 Flows from `window.addEventListener('message', handler)` into DOM manipulation, a state update, or navigation inside the handler.
 
@@ -23,7 +23,7 @@ window.addEventListener("message", (e) => {
 });
 ```
 
-### 2. URL Parameter to Redirect Flow
+## 2. URL Parameter to Redirect Flow
 
 Flows from `URLSearchParams`, `location.search`, `location.hash`, or route params into `location.href`, `location.replace()`, `location.assign()`, or `window.open()`.
 
@@ -47,7 +47,7 @@ if (next) {
 }
 ```
 
-### 3. JWT in localStorage
+## 3. JWT in localStorage
 
 Flows from an authentication response or a token refresh into `localStorage.setItem('token', jwt)` or `sessionStorage.setItem('auth', jwt)`.
 

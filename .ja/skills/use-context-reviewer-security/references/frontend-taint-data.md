@@ -2,7 +2,7 @@
 
 source がオリジン境界をまたぐか、sink がナビゲーションまたは資格情報の永続化を行う taint パターン。regex マッチングを超えるデータフロー理解が必要で、guardrails の静的ルールを補完する。
 
-### 1. postMessage の origin 検証
+## 1. postMessage の origin 検証
 
 `window.addEventListener('message', handler)` から、ハンドラ内の DOM 操作、state 更新、ナビゲーションへ流れる。
 
@@ -23,7 +23,7 @@ window.addEventListener("message", (e) => {
 });
 ```
 
-### 2. URL パラメータからリダイレクトへのフロー
+## 2. URL パラメータからリダイレクトへのフロー
 
 `URLSearchParams`/`location.search`/`location.hash`/ルートパラメータから、`location.href`/`location.replace()`/`location.assign()`/`window.open()` へ流れる。
 
@@ -47,7 +47,7 @@ if (next) {
 }
 ```
 
-### 3. localStorage 内の JWT
+## 3. localStorage 内の JWT
 
 認証レスポンスやトークンリフレッシュから `localStorage.setItem('token', jwt)` や `sessionStorage.setItem('auth', jwt)` へ流れる。
 

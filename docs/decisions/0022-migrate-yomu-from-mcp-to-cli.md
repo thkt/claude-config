@@ -64,7 +64,7 @@ CLI をデフォルトにしつつ、`yomu mcp` で既存 MCP サーバーモー
 
 ## Decision Outcome
 
-**Chosen option: Option 1 (Pure CLI)**
+Chosen option: Option 1 (Pure CLI)
 
 Occam's Razor:
 MCP の利点が yomu では薄く、CLI で同等の機能を提供できる。YAGNI: 後方互換や feature

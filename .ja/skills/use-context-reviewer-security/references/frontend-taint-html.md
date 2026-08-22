@@ -2,7 +2,7 @@
 
 sink がマークアップまたは属性を document へ書き込む taint パターン。regex マッチングを超えるデータフロー理解が必要で、guardrails の静的ルールを補完する。
 
-### 1. サニタイザなしの dangerouslySetInnerHTML
+## 1. サニタイザなしの dangerouslySetInnerHTML
 
 ユーザー入力、API レスポンス、URL パラメータから `dangerouslySetInnerHTML={{ __html: value }}` へ流れる。
 
@@ -20,7 +20,7 @@ sink がマークアップまたは属性を document へ書き込む taint パ�
 <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(apiResponse.body) }} />
 ```
 
-### 2. 関数引数から DOM メソッドへ
+## 2. 関数引数から DOM メソッドへ
 
 関数パラメータやコールバック引数から `innerHTML`, `outerHTML`, `insertAdjacentHTML()`, `document.write()` へ流れる。
 
@@ -42,7 +42,7 @@ function renderContent(html: string) {
 }
 ```
 
-### 3. javascript: URL を持つ href 変数
+## 3. javascript: URL を持つ href 変数
 
 ユーザー入力、データベース値、API レスポンスから `<a href={variable}>` や `location.href = variable` へ流れる。
 

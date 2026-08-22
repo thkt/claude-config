@@ -6,7 +6,7 @@ decision-makers: thkt
 
 # Marketplace構造の維持
 
-Technical Story: [SOW: Marketplace構造最適化](../../workspace/planning/20260103-marketplace-optimization/sow.md)
+Technical Story: SOW: Marketplace構造最適化 (`../../workspace/planning/20260103-marketplace-optimization/sow.md`)
 
 ## Context and Problem Statement
 
@@ -110,9 +110,9 @@ Chosen option: "Option A: Marketplace維持", because プラグインキャッ�
 
 ## References
 
-- [Research: Plugin System Verification](.claude/workspace/research/2026-01-03-plugin-system-verification.md)
+- Research: Plugin System Verification (`.claude/workspace/research/2026-01-03-plugin-system-verification.md`)
 - [Official Docs: Claude Code Plugins Reference](https://code.claude.com/docs/en/plugins-reference.md)
-- [Superseded SOW](../../workspace/planning/20260103-plugin-architecture/sow.md)
+- Superseded SOW (`../../workspace/planning/20260103-plugin-architecture/sow.md`)
 
 ---
 

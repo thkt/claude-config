@@ -2,7 +2,7 @@
 
 Taint patterns whose sink writes markup or an attribute into the document. These require data flow understanding beyond regex pattern matching and complement the guardrails static rules.
 
-### 1. dangerouslySetInnerHTML without Sanitizer
+## 1. dangerouslySetInnerHTML without Sanitizer
 
 Flows from user input, an API response, or a URL parameter into `dangerouslySetInnerHTML={{ __html: value }}`.
 
@@ -20,7 +20,7 @@ Flows from user input, an API response, or a URL parameter into `dangerouslySetI
 <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(apiResponse.body) }} />
 ```
 
-### 2. Function Argument to DOM Method
+## 2. Function Argument to DOM Method
 
 Flows from a function parameter or a callback argument into `innerHTML`, `outerHTML`, `insertAdjacentHTML()`, or `document.write()`.
 
@@ -42,7 +42,7 @@ function renderContent(html: string) {
 }
 ```
 
-### 3. href Variable with javascript: URL
+## 3. href Variable with javascript: URL
 
 Flows from user input, a database value, or an API response into `<a href={variable}>` or `location.href = variable`.
 

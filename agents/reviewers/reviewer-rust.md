@@ -39,15 +39,15 @@ Rust code only (`*.rs`, `Cargo.toml`). Non-Rust code out of scope. For language-
 
 Allocation hot paths (`Vec::new()` in tight loops, redundant `String::from`) are reviewer-efficiency's domain. This reviewer flags only when the fix requires Rust-specific idiom guidance (e.g., `with_capacity`, `Cow<str>`, `&'static str`).
 
-| Concern                       | This reviewer (rust) | reviewer-design         | reviewer-silence         |
-| ----------------------------- | -------------------- | ----------------------- | ------------------------ |
-| Lens                          | Rust-idiomatic?      | Module earns interface? | Silent failure pattern?  |
-| `let _ = ` swallowed `Result` | Idiom violation      | Out of scope            | Empty handler equivalent |
-| `Box<dyn Trait>` overuse      | Trait design smell   | Out of scope            | Out of scope             |
-| `unsafe` without SAFETY       | Invariant gap        | Out of scope            | Out of scope             |
-| `clone()` abuse               | Ownership smell      | Out of scope            | Out of scope             |
-| async blocking call           | Boundary violation   | Out of scope            | Out of scope             |
-| Scope                         | `*.rs` only          | Any language            | Any language             |
+| Concern                      | This reviewer (rust) | reviewer-design         | reviewer-silence         |
+| ---------------------------- | -------------------- | ----------------------- | ------------------------ |
+| Lens                         | Rust-idiomatic?      | Module earns interface? | Silent failure pattern?  |
+| `let _ =` swallowed `Result` | Idiom violation      | Out of scope            | Empty handler equivalent |
+| `Box<dyn Trait>` overuse     | Trait design smell   | Out of scope            | Out of scope             |
+| `unsafe` without SAFETY      | Invariant gap        | Out of scope            | Out of scope             |
+| `clone()` abuse              | Ownership smell      | Out of scope            | Out of scope             |
+| async blocking call          | Boundary violation   | Out of scope            | Out of scope             |
+| Scope                        | `*.rs` only          | Any language            | Any language             |
 
 ## Tooling
 

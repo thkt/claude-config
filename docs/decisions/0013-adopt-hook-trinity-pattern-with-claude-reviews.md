@@ -89,8 +89,8 @@ reviews     → PreToolUse(Skill)       → プロジェクト全体の分析
 
 ## References
 
-- [SOW](../workspace/planning/2026-02-22-claude-reviews/sow.md) (local planning artifact, not committed)
-- [Spec](../workspace/planning/2026-02-22-claude-reviews/spec.md) (local planning artifact, not committed)
+- SOW (`../workspace/planning/2026-02-22-claude-reviews/sow.md`) (local planning artifact, not committed)
+- Spec (`../workspace/planning/2026-02-22-claude-reviews/spec.md`) (local planning artifact, not committed)
 - ADR-0006: 決定論的処理のスクリプト化パターン
 - ADR-0009: IDR 生成の外部リポジトリ化（Rust）, 同様の Rust 外部化パターン
 

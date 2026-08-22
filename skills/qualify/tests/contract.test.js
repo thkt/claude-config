@@ -72,8 +72,8 @@ test("build's stop conditions are never copied into the skill body", () => {
       /\d/,
       `${lang}: no threshold or count is copied into Phase 2`,
     );
-    assert.match(doc, /const validate = /, `${lang}: a step locates validate at run time`);
-    assert.match(doc, /const oversizedUnits = /, `${lang}: oversizedUnits is among what gets read`);
+    assert.match(doc, /const validate =/, `${lang}: a step locates validate at run time`);
+    assert.match(doc, /const oversizedUnits =/, `${lang}: oversizedUnits is among what gets read`);
     assert.match(doc, /workflows\/build\.js/, `${lang}: it states that what to read is build.js`);
   });
 });

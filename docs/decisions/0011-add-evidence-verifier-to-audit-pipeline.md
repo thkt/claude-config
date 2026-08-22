@@ -91,7 +91,7 @@ After:
 5. Any + weak_evidence → challenger verdict 維持
 6. Verifier-only mode: verified→confirmed, weak_evidence→needs_context, unverifiable→exclude
 
-詳細は [team-integration.md](../agents/teams/team-integration.md)。
+詳細は `../agents/teams/team-integration.md`。
 
 ## Rollback Plan
 

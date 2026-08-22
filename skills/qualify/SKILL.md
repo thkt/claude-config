@@ -27,7 +27,7 @@ Under needs-plan the decision to pick it up does not change, while the next step
 
 With a `## Plan` section, read build.js's own conditions at run time, apply them, and treat every violation as a blocker. Build stops on the same conditions, so every severity stays blocker. Carrying the inspection on without reading those conditions leaves the output unable to separate no violation from conditions never applied.
 
-1. Locate them by running ugrep over ${CLAUDE_SKILL_DIR}/../../workflows/build.js for the lines matching `const validate = |const UNIT_CAPS = |const oversizedUnits = `. When any of them goes unmatched, report the anchor you could not read and stop
+1. Locate them by running ugrep over ${CLAUDE_SKILL_DIR}/../../workflows/build.js for the lines matching `const validate =|const UNIT_CAPS =|const oversizedUnits =`. When any of them goes unmatched, report the anchor you could not read and stop
 2. Read the places it hits
 3. Apply what you read to the issue's Plan section and list the violations
 
