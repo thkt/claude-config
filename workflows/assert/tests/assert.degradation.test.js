@@ -489,3 +489,47 @@ test("T-015 the row carries challenge_stalled and audit_degraded as booleans", a
     "the nested audit workflow's challenge stage failed open this run",
   );
 });
+
+// The Testing Decisions clause asks for both sides of the gate to leave a row. T-012 and T-016
+// drive runs carrying issues, so only NotReady was covered.
+test("T-016 a Ready-gated run appends exactly one record row", async () => {
+  const { result, calls } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: {
+      agent: (prompt, opts) => {
+        if (opts && opts.label === "record")
+          return { path: "/home/u/.claude/history/assert-runs.jsonl" };
+        return makeAgent({ ran: true, tests: [] })(prompt, opts);
+      },
+    },
+  });
+  assert.equal(result.gate, "Ready", "no issues and passing evidence gate Ready");
+  assert.equal(
+    recordCallsOf(calls).length,
+    1,
+    "a Ready run writes one row, same as a NotReady run",
+  );
+});
+
+// recordRun sits in the finally block, so a throw there replaces whatever the try block was
+// throwing. A recorder failure must not stop the run, and must not mask the real one either.
+test("T-017 a recorder that throws leaves the gate unchanged and names the unwritten row in log()", async () => {
+  const { result, logs } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: {
+      agent: (prompt, opts) => {
+        if (opts && opts.label === "record") throw new Error("recorder exploded");
+        return makeAgent({ ran: true, tests: [] })(prompt, opts);
+      },
+    },
+  });
+  assert.equal(
+    result.gate,
+    "Ready",
+    "a throwing recorder does not change the gate the run computed",
+  );
+  assert.ok(
+    logs.some((m) => /assert-runs\.jsonl/.test(m)),
+    "the unwritten row reaches log() naming the file it is missing from",
+  );
+});

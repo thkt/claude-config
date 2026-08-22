@@ -360,21 +360,28 @@ const recordRun = async () => {
     challenge_stalled: challengeStalled,
     audit_degraded: auditDegraded,
   };
-  const written = await agent(
-    anchor(
-      `Record one assert run; do not judge, summarize, or edit any value. The steps are, (1) write this exact JSON to a temp file; ` +
-        `(2) run \`python3 ${SCRIPTS}/record.py < <tempfile>\`; ` +
-        `(3) return the script's stdout path verbatim. ` +
-        `The script prints {"path":...}.\n` +
-        `The input JSON is as follows.\n${JSON.stringify(payload)}`,
-    ),
-    {
-      label: "record",
-      agentType: "general-purpose",
-      schema: RECORD_SCHEMA,
-      model: "haiku",
-    },
-  );
+  // recordRun runs in the finally block, so a throw here would replace whatever the try block
+  // was throwing and hide the run's real failure behind a recorder failure.
+  let written = null;
+  try {
+    written = await agent(
+      anchor(
+        `Record one assert run; do not judge, summarize, or edit any value. The steps are, (1) write this exact JSON to a temp file; ` +
+          `(2) run \`python3 ${SCRIPTS}/record.py < <tempfile>\`; ` +
+          `(3) return the script's stdout path verbatim. ` +
+          `The script prints {"path":...}.\n` +
+          `The input JSON is as follows.\n${JSON.stringify(payload)}`,
+      ),
+      {
+        label: "record",
+        agentType: "general-purpose",
+        schema: RECORD_SCHEMA,
+        model: "haiku",
+      },
+    );
+  } catch {
+    written = null;
+  }
   const path = String((written && written.path) || "").trim();
   // Recording never gates assert, so a failed relay falls open instead of stopping the run.
   if (!path) {

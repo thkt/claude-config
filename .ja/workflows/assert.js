@@ -357,21 +357,28 @@ const recordRun = async () => {
     challenge_stalled: challengeStalled,
     audit_degraded: auditDegraded,
   };
-  const written = await agent(
-    anchor(
-      `assert の 1 run を記録する。値を判断・要約・編集しない。手順は、(1) 次の JSON を一時ファイルへそのまま書く。` +
-        `(2) \`python3 ${SCRIPTS}/record.py < <tempfile>\` を実行する。` +
-        `(3) script の stdout の path をそのまま返す。` +
-        `script は {"path":...} を print する。\n` +
-        `入力 JSON は次のとおり。\n${JSON.stringify(payload)}`,
-    ),
-    {
-      label: "record",
-      agentType: "general-purpose",
-      schema: RECORD_SCHEMA,
-      model: "haiku",
-    },
-  );
+  // recordRun は finally の中で走るので、ここで throw すると try が投げていた例外を置き換え、
+  // run の本当の失敗が recorder の失敗の裏に隠れる。
+  let written = null;
+  try {
+    written = await agent(
+      anchor(
+        `assert の 1 run を記録する。値を判断・要約・編集しない。手順は、(1) 次の JSON を一時ファイルへそのまま書く。` +
+          `(2) \`python3 ${SCRIPTS}/record.py < <tempfile>\` を実行する。` +
+          `(3) script の stdout の path をそのまま返す。` +
+          `script は {"path":...} を print する。\n` +
+          `入力 JSON は次のとおり。\n${JSON.stringify(payload)}`,
+      ),
+      {
+        label: "record",
+        agentType: "general-purpose",
+        schema: RECORD_SCHEMA,
+        model: "haiku",
+      },
+    );
+  } catch {
+    written = null;
+  }
   const path = String((written && written.path) || "").trim();
   // 記録は assert を gate しないので、relay 失敗は run を止めず fail-open する。
   if (!path) {
