@@ -16,24 +16,10 @@ import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflow } from "../../_lib/run-workflow.js";
+import { bootOk, recordCallsOf, recordPayloadOf } from "./_fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const assertJs = join(here, "..", "..", "assert.js");
-
-// The bootstrap return value that makes dynamicOk true (worktree_ok true / install ok / build
-// pass).
-const bootOk = {
-  codex_available: true,
-  mode: "target",
-  diff_kind: "",
-  scope_files: ["src/foo.js"],
-  outcome: "absent",
-  worktree_ok: true,
-  worktree_path: "/tmp/assert-wt",
-  install: "ok",
-  build: "pass",
-  reason: "",
-};
 
 // The shortest agent stub carrying every stage but adversarial. advReturn is injected as the
 // adversarial stage's return value (null = stall, { ran: true, tests: [] } = genuine no-tests).
@@ -412,12 +398,6 @@ test("T-011 a run whose findings all carry a recognised severity reports zero dr
 // runs the recorder). A failed record must not stop the run (WORKFLOWS.md § Degradation
 // recording), so a recorder returning nothing still lets the gate reach its own return value,
 // with the loss surfaced through log() instead.
-const recordCallsOf = (calls) => calls.agent.filter((c) => c.opts && c.opts.label === "record");
-
-// build.js's own recordRun puts the stringified payload on the prompt's last line (see
-// build/tests/build.behavior.test.js's T-008, "the payload is the prompt's last line, where
-// recordRun puts the stringified JSON"); assert's recorder is asked to mirror that exactly.
-const recordPayloadOf = (call) => JSON.parse(call.prompt.trim().split("\n").pop());
 
 test("T-012 a run that reaches a gate writes one row carrying that gate and the per-severity issue counts", async () => {
   const issues = [

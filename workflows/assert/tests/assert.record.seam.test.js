@@ -12,6 +12,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { runWorkflow } from "../../_lib/run-workflow.js";
+import { bootOk, recordCallsOf, recordPayloadOf } from "./_fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const assertJs = join(here, "..", "..", "assert.js");
@@ -39,21 +40,6 @@ const runRecord = (payload) => {
   }
 };
 
-// The bootstrap return value that makes dynamicOk true (worktree_ok true / install ok / build
-// pass), lifted from assert.degradation.test.js's bootOk.
-const bootOk = {
-  codex_available: true,
-  mode: "target",
-  diff_kind: "",
-  scope_files: ["src/foo.js"],
-  outcome: "absent",
-  worktree_ok: true,
-  worktree_path: "/tmp/assert-wt",
-  install: "ok",
-  build: "pass",
-  reason: "",
-};
-
 // Every stage but "record" answers with a fixed fake, so the run reaches its own gate/issues
 // deterministically. "record" is left unstubbed (falls through to undefined) so its payload is
 // read off calls.agent instead of being fabricated, then carried to the real record.py below.
@@ -67,11 +53,6 @@ const agentStub = (issues) => (prompt, opts) => {
   if (label === "cleanup") return {};
   return undefined;
 };
-
-// assert.js's own recordRun puts the stringified payload on the prompt's last line, the same
-// form build.js's recordRun uses (see workflows/assert/tests/assert.degradation.test.js's
-// recordPayloadOf).
-const recordPayloadOf = (call) => JSON.parse(call.prompt.trim().split("\n").pop());
 
 // The per-severity tally computed straight from the returned issues, independent of
 // recordRun's own issueCounts loop, so this does not simply re-check recordRun against itself.
@@ -93,7 +74,7 @@ test("T-016 the row the real record.py wrote carries the same per-severity count
   });
   assert.ok(result.issues.length > 0, "the run returns issues to tally against");
 
-  const records = calls.agent.filter((c) => c.opts && c.opts.label === "record");
+  const records = recordCallsOf(calls);
   assert.equal(records.length, 1, "the run calls the recorder exactly once");
   const payload = recordPayloadOf(records[0]);
 
