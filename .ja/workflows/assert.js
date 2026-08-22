@@ -81,14 +81,22 @@ const SEVERITY_MAP = {
   low: "low",
 };
 const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1 };
+// `if (!sev) continue;` (P3 または未知の severity) を通って落ちた finding は、mergeIssues の
+// 返り値配列だけを見ても痕跡が残らない。WORKFLOWS.md § Degradation recording は loss
+// granularity を主チャネル (workflow の返り値) に残すことを要求するので、mergeIssues は
+// issues と並べて dropped 件数も返す。
 const mergeIssues = (findings) => {
   const groups = new Map();
+  let dropped = 0;
   for (const f of findings) {
     const key = String(f.severity || "")
       .trim()
       .replace(/^\[|\]$/g, "");
     const sev = SEVERITY_MAP[key] === undefined ? null : SEVERITY_MAP[key];
-    if (!sev) continue;
+    if (!sev) {
+      dropped++;
+      continue;
+    }
     const sources = Array.isArray(f.source) ? f.source : f.source ? [f.source] : [];
     const k = `${f.file || ""}:${f.line || 0}`;
     const prev = groups.get(k);
@@ -101,12 +109,13 @@ const mergeIssues = (findings) => {
       groups.set(k, { ...f, severity: sev, source: prev.source });
     }
   }
-  return [...groups.values()].sort(
+  const issues = [...groups.values()].sort(
     (a, b) =>
       SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] ||
       String(a.file || "").localeCompare(String(b.file || "")) ||
       (a.line || 0) - (b.line || 0),
   );
+  return { issues, dropped };
 };
 
 const BOOTSTRAP_SCHEMA = {
@@ -296,6 +305,9 @@ let gate = "NotReady";
 // 原因を導けない。実際に成立した条件を並べる。
 const gateReason = [];
 let issues = [];
+// mergeIssues が `if (!sev) continue;` で落とした件数。WORKFLOWS.md § Degradation recording:
+// 返り値が loss granularity の主チャネルなので、issues を縮めるだけでなく result.dropped に乗せる。
+let dropped = 0;
 let testsCol = "skipped";
 let adversarialSummary = {
   total: 0,
@@ -569,7 +581,7 @@ try {
     },
   );
   // enhancer が stall したら統合前の素材から fail-close で issues を組む
-  issues = mergeIssues(synth ? synth.issues : [...auditFindings, ...promoted]);
+  ({ issues, dropped } = mergeIssues(synth ? synth.issues : [...auditFindings, ...promoted]));
 
   // gate 規則。build smoke fail / test fail / issues 1 件以上は
   // NotReady。severity は修正優先度のヒントに留まり、gate には影響しない。caveat は issues 0 を
@@ -616,6 +628,7 @@ return {
   build: buildCol,
   tests: testsCol,
   issues,
+  dropped,
   root_causes: (synth && synth.root_causes) || [],
   adversarial: adversarialSummary,
   outcome_ref: boot.outcome === "absent" ? "absent" : "present",

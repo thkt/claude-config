@@ -82,14 +82,22 @@ const SEVERITY_MAP = {
   low: "low",
 };
 const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1 };
+// Findings that fall through `if (!sev) continue;` (P3 or an unrecognized severity) leave
+// mergeIssues's return array with no trace of the loss. WORKFLOWS.md § Degradation recording
+// requires that count on the primary channel (the workflow return value), so mergeIssues
+// reports it alongside issues rather than only shrinking the array silently.
 const mergeIssues = (findings) => {
   const groups = new Map();
+  let dropped = 0;
   for (const f of findings) {
     const key = String(f.severity || "")
       .trim()
       .replace(/^\[|\]$/g, "");
     const sev = SEVERITY_MAP[key] === undefined ? null : SEVERITY_MAP[key];
-    if (!sev) continue;
+    if (!sev) {
+      dropped++;
+      continue;
+    }
     const sources = Array.isArray(f.source) ? f.source : f.source ? [f.source] : [];
     const k = `${f.file || ""}:${f.line || 0}`;
     const prev = groups.get(k);
@@ -102,12 +110,13 @@ const mergeIssues = (findings) => {
       groups.set(k, { ...f, severity: sev, source: prev.source });
     }
   }
-  return [...groups.values()].sort(
+  const issues = [...groups.values()].sort(
     (a, b) =>
       SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] ||
       String(a.file || "").localeCompare(String(b.file || "")) ||
       (a.line || 0) - (b.line || 0),
   );
+  return { issues, dropped };
 };
 
 const BOOTSTRAP_SCHEMA = {
@@ -298,6 +307,10 @@ let gate = "NotReady";
 // findings alone. These are the conditions that actually held.
 const gateReason = [];
 let issues = [];
+// Count of findings mergeIssues dropped via `if (!sev) continue;` (P3 or an unrecognized
+// severity). WORKFLOWS.md § Degradation recording: the return value is the primary channel
+// for loss granularity, so this rides on result.dropped rather than only shrinking issues.
+let dropped = 0;
 let testsCol = "skipped";
 let adversarialSummary = {
   total: 0,
@@ -581,7 +594,7 @@ try {
     },
   );
   // if the enhancer stalls, assemble issues fail-close from the pre-integration material
-  issues = mergeIssues(synth ? synth.issues : [...auditFindings, ...promoted]);
+  ({ issues, dropped } = mergeIssues(synth ? synth.issues : [...auditFindings, ...promoted]));
 
   // Gate rule. Build smoke fail / test fail / one or more
   // issues means NotReady. Severity remains a fix-priority hint and never affects the
@@ -628,6 +641,7 @@ return {
   build: buildCol,
   tests: testsCol,
   issues,
+  dropped,
   root_causes: (synth && synth.root_causes) || [],
   adversarial: adversarialSummary,
   outcome_ref: boot.outcome === "absent" ? "absent" : "present",

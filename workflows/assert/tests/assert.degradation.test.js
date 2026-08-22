@@ -351,3 +351,57 @@ test("T-003 a Ready run whose build was skipped does not report build as passing
   );
   assert.match(reasonText, /build skipped/, "gate_reason reports the build column it read");
 });
+
+// U-001: mergeIssues's `if (!sev) continue;` branch drops a finding whose severity SEVERITY_MAP
+// maps to null (P3) or does not carry at all (unknown severity), and up to now that drop left no
+// trace on the return value (WORKFLOWS.md § Degradation recording: loss granularity). The count
+// of findings dropped this way is read off the workflow's own return value (result.dropped),
+// since mergeIssues is a function local to the vm-evaluated script body and is not otherwise
+// observable from a test (see run-workflow.js's header comment on script evaluation).
+test("T-010 a finding whose severity is not in SEVERITY_MAP stays out of issues and is counted as dropped", async () => {
+  const droppedFinding = {
+    file: "a.js",
+    line: 10,
+    severity: "P4",
+    summary: "unrecognised severity",
+    source: ["audit"],
+  };
+  const keptFinding = {
+    file: "b.js",
+    line: 20,
+    severity: "high",
+    summary: "recognised severity",
+    source: ["audit"],
+  };
+  const { result } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: makeGateReasonAgent({ issues: [droppedFinding, keptFinding] }) },
+  });
+  assert.equal(result.issues.length, 1, "only the recognised-severity finding reaches issues");
+  assert.ok(
+    !result.issues.some((i) => i.file === "a.js" && i.line === 10),
+    "the finding with an unrecognised severity (P4) stays out of issues",
+  );
+  assert.equal(
+    result.dropped,
+    1,
+    "the finding dropped for its unrecognised severity is counted on the return value",
+  );
+});
+
+test("T-011 a run whose findings all carry a recognised severity reports zero dropped findings", async () => {
+  const issues = [
+    { file: "a.js", line: 10, severity: "high", summary: "x", source: ["audit"] },
+    { file: "b.js", line: 20, severity: "medium", summary: "y", source: ["audit"] },
+  ];
+  const { result } = await runWorkflow(assertJs, {
+    args: {},
+    stubs: { agent: makeGateReasonAgent({ issues }) },
+  });
+  assert.equal(result.issues.length, 2, "both recognised-severity findings reach issues");
+  assert.equal(
+    result.dropped,
+    0,
+    "a run whose findings all carry a recognised severity reports zero dropped findings",
+  );
+});
