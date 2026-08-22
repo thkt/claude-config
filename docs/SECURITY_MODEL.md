@@ -12,13 +12,13 @@ ref: <https://zenn.dev/commander/articles/72a907ce68a8c1>
 
 shields (command guard, file ACL, secrets check) belongs to the same binary family but is not wired into `settings.json`, so it does not count as a layer (see Dormant in [HOOKS](./HOOKS.md)).
 
+Important: L1 and L2 tune human intervention points (UX). L3 is the actual security boundary.
+
 | Layer               | Implementation                                        | What It Stops                  | Bypass via Bash |
 | ------------------- | ----------------------------------------------------- | ------------------------------ | --------------- |
 | L1: Deny Rules      | `settings.json` `permissions.deny` (43 rules)         | Per tool_use block             | Yes             |
 | L2: PreToolUse Hook | 3 hooks in `hooks/security/` + 3 in `hooks/pre-bash/` | Dangerous patterns inside Bash | Partial         |
 | L3: Process Sandbox | sandbox-runtime (`settings.json` `sandbox`)           | Filesystem writes and network  | No              |
-
-Important: L1 and L2 tune human intervention points (UX). L3 is the actual security boundary.
 
 ### Current L3 Configuration
 

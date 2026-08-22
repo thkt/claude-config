@@ -124,6 +124,8 @@ Phase 2 PR で JSON schema を `serde` 派生型として実装し、本 ADR の
 
 複数分類が当てはまる場合の優先順位。scout の実エラーソース (clap parse/URL invalid/404/rate limit/timeout/JSON parse/network IO) から 5 段に絞る。
 
+ルールの読み方: 上から順に評価。マッチした時点で確定。例: GitHub API から 404 と rate limit 余地のあるレスポンスが同時にあった場合、優先 3 で 66 NOT_FOUND を採用 (rate limit より先に 404 評価)。
+
 | 優先 | ルール                                            | 分類                               |
 | ---- | ------------------------------------------------- | ---------------------------------- |
 | 1    | env var missing / 設定起因 / 引数誤り             | 64 USAGE_ERROR                     |
@@ -132,8 +134,6 @@ Phase 2 PR で JSON schema を `serde` 派生型として実装し、本 ADR の
 | 4    | retry で回復見込みあり (rate limit, 5xx, timeout) | 75 TEMP_FAILURE または 124 TIMEOUT |
 | 5    | アプリ内部不具合と判断できる                      | 70 INTERNAL                        |
 | 退避 | 上記いずれにも分類できない                        | 104 UNKNOWN                        |
-
-ルールの読み方: 上から順に評価。マッチした時点で確定。例: GitHub API から 404 と rate limit 余地のあるレスポンスが同時にあった場合、優先 3 で 66 NOT_FOUND を採用 (rate limit より先に 404 評価)。
 
 `UNKNOWN` が増える場合は分類設計の signal。`anyhow::Error` の握り潰しを検知する目的で意図的に独立。
 

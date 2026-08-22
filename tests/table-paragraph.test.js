@@ -1,6 +1,7 @@
 // MARKDOWN.md § Do not puts a table's explanation before the table, so the reader holds the rule
-// before the rows it governs. docs/** (48) still carries paragraphs below its tables and stays out
-// of this scan until it is cleaned. workflows/ and commands/ hold no markdown.
+// before the rows it governs. docs/** stays out: its paragraphs below a table read that table's
+// result back, or carry the section around it, and hoisting either one degrades the page (#450).
+// workflows/ and commands/ hold no markdown.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
@@ -34,8 +35,13 @@ const DERIVED_CONCLUSIONS = new Map([
 
 // An ordered list is not a paragraph, and reading `1. foo` as one fails a file that carries steps.
 const CONTINUES_A_BLOCK = /^(?:[|#>*-]|\d+[.)]\s)/;
+const OPENS_A_BLOCK = /^(?:[|*-]|\d+[.)]\s|```)/;
 
 const keyFor = (path, text) => `${path} :: ${text.split(/(?<=[。.])\s*/)[0]}`;
+const nextNonEmpty = (lines, i) => {
+  for (let j = i + 1; j < lines.length; j++) if (lines[j].trim()) return lines[j].trim();
+  return "";
+};
 
 const markdownUnder = async (dir) => {
   let entries;
@@ -68,7 +74,11 @@ const paragraphsAfterTables = (source) => {
       continue;
     }
     if (inFence || !line) continue;
-    if (inTable && !CONTINUES_A_BLOCK.test(line)) out.push({ line: i + 1, text: line });
+    // A paragraph the next block opens under introduces that block, not the table above it.
+    // The lookahead sits last so it runs only for a line that is otherwise a hit.
+    if (inTable && !CONTINUES_A_BLOCK.test(line) && !OPENS_A_BLOCK.test(nextNonEmpty(lines, i))) {
+      out.push({ line: i + 1, text: line });
+    }
     inTable = line.startsWith("|");
   }
   return out;
@@ -115,4 +125,23 @@ test("every DERIVED_CONCLUSIONS entry still names a paragraph that exists", asyn
     [],
     `DERIVED_CONCLUSIONS holds entries that no longer occur:\n${stale.join("\n")}`,
   );
+});
+
+// Two of these shapes occur nowhere in the tree, so a scan of it passes however they are handled.
+test("the classifier separates a trailing explanation from the shapes that are not one", () => {
+  const table = "| a | b |\n| - | - |\n| 1 | 2 |\n";
+  const cases = [
+    ["a trailing paragraph", `${table}\nExplains the rows above.\n`, ["Explains the rows above."]],
+    ["an ordered list", `${table}\n1. A step, not a paragraph.\n`, []],
+    ["a lead-in to a list", `${table}\nThe options are:\n\n- one\n`, []],
+    ["a lead-in to a table", `${table}\nThe next table:\n\n${table}`, []],
+    ["a fenced block", `${table}\n\`\`\`\nnot prose\n\`\`\`\n`, []],
+  ];
+  for (const [name, source, expected] of cases) {
+    assert.deepEqual(
+      paragraphsAfterTables(source).map((h) => h.text),
+      expected,
+      name,
+    );
+  }
 });

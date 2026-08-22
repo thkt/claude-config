@@ -28,6 +28,8 @@ flowchart LR
 
 `Workflow({name: "build", args: {issue, repo, base?}})` で起動する。Plan 節付き issue を入力に、7 つの stage を決定論スクリプトとして実行する。判断の分担は「抽出と実装は LLM、検証と進行はスクリプト」で、LLM の出力は毎回スクリプト側の照合を通る。
 
+正しさの確認は plan 自身のアンカー (Preconditions、files スコープ、T-NNN 言明、conformance) との比較であり、範囲を定めない欠陥探索ではない。欠陥探索は draft PR への `/audit` が担う。
+
 | Stage      | 内容                                                                                                    |
 | ---------- | ------------------------------------------------------------------------------------------------------- |
 | Load       | issue 本文を逐語 fetch し、`## Plan` の U-NNN/T-NNN id を決定論収集。LLM 抽出の結果と id クロスチェック |
@@ -37,8 +39,6 @@ flowchart LR
 | Cleanup    | simplify skill による整理と test 検証。テストが落ちたら編集を stash で巻き戻す                          |
 | Verify     | 決定論チェック (diff スコープ + T-NNN 照合) と並行して conformance/structure review                     |
 | Ship       | 残余 commit + draft PR。PR 本文の fact 節はデータから決定論レンダリングする                             |
-
-正しさの確認は plan 自身のアンカー (Preconditions、files スコープ、T-NNN 言明、conformance) との比較であり、範囲を定めない欠陥探索ではない。欠陥探索は draft PR への `/audit` が担う。
 
 ### 停止条件
 
@@ -86,6 +86,8 @@ build が入れ子で呼ぶのは code のみ。他は単体起動する。
 
 ## Command → 実装マッピング
 
+skill は SKILL.md の手順を会話の文脈で実行し、workflow はスクリプトが進行を強制する。fan-out、ループ、ゲートを持つ処理は workflow に置き、LLM の裁量で飛ばせない形にする ([WORKFLOWS](../rules/conventions/WORKFLOWS.md))。
+
 | コマンド  | 実装                    | 形態                                    |
 | --------- | ----------------------- | --------------------------------------- |
 | `/think`  | `skills/think/SKILL.md` | skill (critic-design を起動)            |
@@ -94,8 +96,6 @@ build が入れ子で呼ぶのは code のみ。他は単体起動する。
 | `/code`   | `workflows/code.js`     | workflow (build から入れ子でも呼ばれる) |
 | `/audit`  | `workflows/audit.js`    | workflow                                |
 | `/polish` | `workflows/polish.js`   | workflow                                |
-
-skill は SKILL.md の手順を会話の文脈で実行し、workflow はスクリプトが進行を強制する。fan-out、ループ、ゲートを持つ処理は workflow に置き、LLM の裁量で飛ばせない形にする ([WORKFLOWS](../rules/conventions/WORKFLOWS.md))。
 
 ## 関連
 
