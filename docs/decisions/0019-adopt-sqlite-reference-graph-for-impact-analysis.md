@@ -54,7 +54,7 @@ Rust の petgraph crate でインメモリグラフを構築。DB には保存�
 
 ## Decision Outcome
 
-**Chosen option: A (SQLite Reference Graph)**
+Chosen option: A (SQLite Reference Graph)
 
 理由:
 

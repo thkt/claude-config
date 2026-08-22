@@ -52,4 +52,4 @@ Preview URL: http://localhost:3000
 | Scope            | Auth token refresh is not included (separate PR)            | Omitted on large PRs (reviewer guesses boundary) |
 | Design Decisions | Used streaming to avoid OOM on large datasets               | Omitted (forces reviewer to guess why)           |
 | How to Test      | Click Export → verify .csv downloads with 3 rows            | Test the feature (vague)                         |
-| Preview URL      | Preview URL: http://localhost:3000/dashboard                | Missing despite UI changes                       |
+| Preview URL      | Preview URL: <http://localhost:3000/dashboard>              | Missing despite UI changes                       |

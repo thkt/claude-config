@@ -162,8 +162,8 @@ ADR 0001/0002/0003 から強制ルールを抽出：
 
 ## 関連ルール
 
-- [MODULARIZATION_RULES.md](../rules/workflows/MODULARIZATION_RULES.md)
-- [PLUGIN_ARCHITECTURE.md](../rules/conventions/PLUGIN_ARCHITECTURE.md)
+- `../rules/workflows/MODULARIZATION_RULES.md`
+- `../rules/conventions/PLUGIN_ARCHITECTURE.md`
 
 ## Reassessment Triggers
 

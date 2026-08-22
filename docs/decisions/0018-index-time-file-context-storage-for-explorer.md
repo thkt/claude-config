@@ -46,7 +46,7 @@ indexing 時に import 文を `file_context` テーブルに保存。query 時�
 
 ## Decision Outcome
 
-**A: Index-time storage を採用。**
+A: Index-time storage を採用。
 
 最大の理由はデータ整合性。B では index 後にファイルが変更されると、DB 内のチャンク（旧コード）とディスクから読んだ imports（新コード）が食い違い、AI に不正確な文脈を渡すリスクがある。imports は表示専用データだが、不正確な表示は AI の判断を誤らせるため、整合性は非機能要件ではなく機能的な正しさの問題。
 

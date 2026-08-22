@@ -27,7 +27,7 @@ needs-plan では着手の判断が変わらない一方、次の手は issue �
 
 Plan 節があるときは、build.js の判定条件を実行時に読んで適用し、違反した項目をすべて blocker として扱う。build が同じ条件で止まるため、重大度は blocker のままにする。条件を読めないまま検分を続けると、違反が無い状態と条件を当てていない状態を出力が区別できない。
 
-1. ugrep で ${CLAUDE_SKILL_DIR}/../../workflows/build.js を探し、`const validate = |const UNIT_CAPS = |const oversizedUnits = ` に一致する行の位置を特定する。いずれかがヒットしなければ、読めなかったアンカーを報告して停止する
+1. ugrep で ${CLAUDE_SKILL_DIR}/../../workflows/build.js を探し、`const validate =|const UNIT_CAPS =|const oversizedUnits =` に一致する行の位置を特定する。いずれかがヒットしなければ、読めなかったアンカーを報告して停止する
 2. Read でヒットした箇所を読む
 3. issue 本文の Plan 節を読んだ条件に当てて、違反を列挙する
 

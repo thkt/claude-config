@@ -152,7 +152,7 @@ references/commands/code/
 ## References
 
 - [ADR 0002](./0002-fix-modularization-and-tdd-commonization.md) - 同様のパターンを `/fix` に適用
-- [Miller's Law](../../skills/applying-code-principles/SKILL.md) - 認知負荷原則
+- Miller's Law (`../../skills/applying-code-principles/SKILL.md`) - 認知負荷原則
 - [COMMANDS.md](../COMMANDS.md) - コマンドドキュメント
 
 ---
