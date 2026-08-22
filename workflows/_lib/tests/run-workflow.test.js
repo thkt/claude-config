@@ -148,3 +148,27 @@ test("T-012 setTimeout resumes after waiting, and clearTimeout cancels that resu
     },
   );
 });
+
+// Nothing pinned parallel against the contract, so it drifted to Promise.all and rejected (#434).
+test("T-013 a parallel whose thunk throws resolves rather than rejecting", async () => {
+  const source = `
+    const out = await parallel([() => 1, () => { throw new Error("boom"); }, () => 3]);
+    return { out };
+  `;
+  await withScript(source, async (path) => {
+    const { result } = await runWorkflow(path, { args: {} });
+    assert.deepEqual(result.out, [1, null, 3], "the throwing thunk leaves null at its own index");
+  });
+});
+
+// The contract draws no line between a throw and a returned rejection.
+test("T-014 a parallel whose thunk returns a rejected promise leaves null at that index", async () => {
+  const source = `
+    const out = await parallel([() => Promise.reject(new Error("boom")), () => 2]);
+    return { out };
+  `;
+  await withScript(source, async (path) => {
+    const { result } = await runWorkflow(path, { args: {} });
+    assert.deepEqual(result.out, [null, 2]);
+  });
+});

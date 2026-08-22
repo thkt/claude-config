@@ -140,11 +140,21 @@ export async function runWorkflow(scriptPath, { args = {}, stubs = {} } = {}) {
     calls.workflow.push({ name, args: hostArgs });
     return stubs.workflow ? stubs.workflow(name, hostArgs) : undefined;
   };
+  // The production contract both of these mirror: a thunk or stage that throws is left as null
+  // at its own index, no compaction, no reordering, and the call itself never rejects.
+  // Promise.all rejected the whole call, so a script whose thunk throws failed under test and
+  // ran in production (#434).
   const parallel = async (tasks) =>
-    Promise.all(tasks.map((t) => (typeof t === "function" ? t() : t)));
-  // The default mirrors the production runtime contract: every item flows through all
-  // stages as (prev, originalItem, index), and an item whose stage throws is left as
-  // null at its original position (no compaction, no reordering).
+    Promise.all(
+      tasks.map(async (t) => {
+        try {
+          return await (typeof t === "function" ? t() : t);
+        } catch {
+          return null;
+        }
+      }),
+    );
+  // Each item flows through all stages as (prev, originalItem, index).
   const pipeline = async (items, ...stages) => {
     if (stubs.pipeline) return stubs.pipeline(items, ...stages);
     return Promise.all(
