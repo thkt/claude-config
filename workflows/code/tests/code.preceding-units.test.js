@@ -111,6 +111,31 @@ test("fences the preceding-units block and states that its body is data, not ins
   );
 });
 
+// The block's opening line tells the agent its body is data, so an instruction placed inside it
+// would contradict that (#448).
+test("tells the second unit to read the preceding files, in a line outside the fence", async () => {
+  const { calls } = await runWorkflow(codeJs, {
+    args: { plan: twoUnitPlan, repo: "" },
+    stubs: { agent: stubWith() },
+  });
+
+  const prompt = promptFor(calls, "impl:U-2");
+  assert.match(
+    prompt,
+    /---- preceding units end ----\nRead those files before implementing/,
+    "the instruction follows the closing fence rather than sitting inside the block",
+  );
+});
+
+test("leaves the read instruction out of a single-unit plan", async () => {
+  const { calls } = await runWorkflow(codeJs, {
+    args: { plan: oneUnitPlan, repo: "" },
+    stubs: { agent: stubWith() },
+  });
+
+  assert.doesNotMatch(promptFor(calls, "impl:U-1"), /Read those files before implementing/);
+});
+
 test("flattens a newline in a goal so it cannot open a line of its own inside the block", async () => {
   // The fence is read line by line, so the guarantee is that no part of a goal ever starts a
   // line. This goal carries the closing marker to make a break visible if flattening stopped.
