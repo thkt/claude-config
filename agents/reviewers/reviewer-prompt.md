@@ -18,6 +18,8 @@ Detect verbose prose where table form parses cleaner, format non-compliance, and
 
 ## Scope
 
+Quality review for LLM-facing prompt files under rules, skills, agents, and templates.
+
 | In Scope                   | Out of Scope                                                 |
 | -------------------------- | ------------------------------------------------------------ |
 | `workflows/*.js`           | General code logic                                           |
@@ -26,8 +28,6 @@ Detect verbose prose where table form parses cleaner, format non-compliance, and
 | `skills/*/references/*.md` | Content correctness (domain-specific)                        |
 | `agents/**/*.md`           | Security concerns                                            |
 | `templates/**/*.md`        | .ja/ translations (structure-only per rule)                  |
-
-Quality review for LLM-facing prompt files under rules, skills, agents, and templates.
 
 ## Analysis Phases
 
@@ -50,6 +50,8 @@ Quality review for LLM-facing prompt files under rules, skills, agents, and temp
 
 ### Phase 2: Structure
 
+Threshold 3+ parallel items. 2 items in prose is acceptable.
+
 | Pattern                                   | Suggested structure              |
 | ----------------------------------------- | -------------------------------- |
 | Bullet list with consistent key-value     | Table with key/value cols        |
@@ -58,9 +60,15 @@ Quality review for LLM-facing prompt files under rules, skills, agents, and temp
 | Inline conditions with actions            | Decision table                   |
 | Numbered list without ordering dependency | Table (order not semantic)       |
 
-Threshold 3+ parallel items. 2 items in prose is acceptable.
-
 ### Phase 3: Format Compliance
+
+Required sections are settled per target below. An Output given by template reference counts as the section being present.
+
+| Target            | Required sections              |
+| ----------------- | ------------------------------ |
+| Reviewer agent    | title, Analysis Phases, Output |
+| Other agent types | title, Output                  |
+| Skill             | Input, Execution, Output       |
 
 | Check                | Rule                                                                                                   | Applies to                       |
 | -------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------------- |
@@ -68,10 +76,8 @@ Threshold 3+ parallel items. 2 items in prose is acceptable.
 | Agent frontmatter    | name, description, tools, model (context recommended)                                                  | `agents/**/*.md`                 |
 | Skill frontmatter    | name, description (per ~/.claude/rules/conventions/SKILLS.md)                                          | `skills/*/SKILL.md`              |
 | Workflow degradation | Failed/missing sub-results recorded at loss granularity (per ~/.claude/rules/conventions/WORKFLOWS.md) | `workflows/*.js`                 |
-| Section completeness | Required sections present (see below)                                                                  | `agents/*.md`, `skills/SKILL.md` |
+| Section completeness | Meets the required-sections table                                                                      | `agents/*.md`, `skills/SKILL.md` |
 | Table alignment      | Consistent column separators, no ragged rows                                                           | All                              |
-
-Reviewer agent (`agents/reviewers/`) required sections: title, Analysis Phases, Output. Other agent types (generators, teams, architects): title, Output. Skill required sections: Input, Execution, Output. Output via template reference is acceptable.
 
 ### Phase 4: Clarity
 
