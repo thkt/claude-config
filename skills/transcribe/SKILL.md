@@ -44,12 +44,12 @@ node ${CLAUDE_SKILL_DIR}/scripts/cli.js verify <xlsx> <dir>
 
 Layout-specific judgment lives in a profile. The definitions are in `profiles` in `scripts/convert.js`.
 
+Reach for `generic` first on an unknown layout. Add a profile only when you want tables restored. A profile carries five judgments, and a judgment set to null is not performed.
+
 | Profile             | Target                                                            | Behavior                                                                     |
 | ------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | `generic` (default) | A file whose layout is unknown                                    | Reads nothing as a table. Only folds merged cells, so no information is lost |
 | `ja-api-spec`       | A Japanese API design document with 項番 and パラメータ名 columns | Restores headings, parameter tables, two-tier headers and code blocks        |
-
-Reach for `generic` first on an unknown layout. Add a profile only when you want tables restored. A profile carries five judgments, and a judgment set to null is not performed.
 
 | Key                  | Judgment                                                                                                 |
 | -------------------- | -------------------------------------------------------------------------------------------------------- |

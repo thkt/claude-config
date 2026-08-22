@@ -58,12 +58,12 @@ Severity `split` does not stop build. It goes on neither the blocker list nor th
 
 The thresholds come from PREFLIGHT's Task Decomposition, of whose four rows only the two that can be evaluated here are used. Lines has no source in a plan. Layers needs the layer names settled, and qualify has no step that settles them, so there is nothing to count against. Put the two rows left out in the advice list with that reason.
 
+This is not the same question `/issue`'s split assessment asked. That one runs before the body is written, so it never saw a plan, and what it counted were the criteria raised from the description. What is counted here is the plan's files and units, which did not exist when `/issue` decided. It is not a declined suggestion raised twice.
+
 | What is counted | How it is counted                                                                                                                      | Threshold |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------- |
 | Files           | Collect every unit's files and count by responsibility. A file and its `.ja/` mirror count as one, as do a change and its tests        | ≥5        |
 | Features        | The number of unit groups sharing no files with each other. A seam unit crosses everything by definition, so it counts toward no group | ≥3        |
-
-This is not the same question `/issue`'s split assessment asked. That one runs before the body is written, so it never saw a plan, and what it counted were the criteria raised from the description. What is counted here is the plan's files and units, which did not exist when `/issue` decided. It is not a declined suggestion raised twice.
 
 ## Phase 4: Verdict and output
 
