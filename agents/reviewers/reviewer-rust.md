@@ -35,6 +35,10 @@ Rust code only (`*.rs`, `Cargo.toml`). Non-Rust code out of scope. For language-
 
 ## Distinction from related reviewers
 
+`let _ = result_value` may receive findings from both this reviewer (RU2 error discipline) and reviewer-silence (SF1 catch equivalent). Complementary, not duplicate.
+
+Allocation hot paths (`Vec::new()` in tight loops, redundant `String::from`) are reviewer-efficiency's domain. This reviewer flags only when the fix requires Rust-specific idiom guidance (e.g., `with_capacity`, `Cow<str>`, `&'static str`).
+
 | Concern                       | This reviewer (rust) | reviewer-design         | reviewer-silence         |
 | ----------------------------- | -------------------- | ----------------------- | ------------------------ |
 | Lens                          | Rust-idiomatic?      | Module earns interface? | Silent failure pattern?  |
@@ -45,11 +49,9 @@ Rust code only (`*.rs`, `Cargo.toml`). Non-Rust code out of scope. For language-
 | async blocking call           | Boundary violation   | Out of scope            | Out of scope             |
 | Scope                         | `*.rs` only          | Any language            | Any language             |
 
-`let _ = result_value` may receive findings from both this reviewer (RU2 error discipline) and reviewer-silence (SF1 catch equivalent). Complementary, not duplicate.
-
-Allocation hot paths (`Vec::new()` in tight loops, redundant `String::from`) are reviewer-efficiency's domain. This reviewer flags only when the fix requires Rust-specific idiom guidance (e.g., `with_capacity`, `Cow<str>`, `&'static str`).
-
 ## Tooling
+
+Run clippy first. Reviewer focuses on issues clippy cannot catch (design judgment, idiom in context, missing SAFETY rationale, async boundary).
 
 | Tool                                                                                  | Purpose                                                |
 | ------------------------------------------------------------------------------------- | ------------------------------------------------------ |
@@ -58,8 +60,6 @@ Allocation hot paths (`Vec::new()` in tight loops, redundant `String::from`) are
 | `cargo metadata --format-version=1 --no-deps`                                         | Workspace layout, lints config detection               |
 | `cargo tree --workspace --depth 1`                                                    | Direct dependency surface                              |
 | `ugrep` / `bfs`                                                                       | Pattern search across `.rs` files                      |
-
-Run clippy first. Reviewer focuses on issues clippy cannot catch (design judgment, idiom in context, missing SAFETY rationale, async boundary).
 
 > Note (2026-05-13): per Claude Code changelog (entries at lines 42, 216, 2430 of `~/.claude/cache/changelog.md`), space-containing matchers such as `Bash(ls *)`, `Bash(mkdir *)`, and `Bash(git log:*)` are supported as prefix matches. The earlier "tokenizes on whitespace" claim was a false generalization from a single failed scout dogfood run; the real cause was likely a missing `settings.json` allow rule at that time. Either form (`Bash(cargo clippy:*)` for tight scope or `Bash(cargo:*)` for broader scope including install/publish) is valid syntax; pick by the trust boundary you want, not by a matcher-parser concern.
 
@@ -80,6 +80,8 @@ This guards against false-premise findings where the reviewer's intuition contra
 
 ## Pre-Finding Documentation Scan
 
+If any of these records the decision rationale, downgrade `documented?` to `Partial` (with citation) rather than `No`. Only assert `No` when the entire surrounding context is silent.
+
 Before flagging a finding as `documented?: No`, scan the surrounding context for existing rationale.
 
 | Scope                   | Look for                                                                                       |
@@ -90,8 +92,6 @@ Before flagging a finding as `documented?: No`, scan the surrounding context for
 | Error / message strings | `.expect("...")`, `panic!("...")`, `error!("...")`, format strings explaining the failure mode |
 | Test names              | `fn test_<spec_being_verified>` form. Test names often record the rationale                    |
 | Test doc comments       | Test functions with rustdoc often state the invariant being enforced                           |
-
-If any of these records the decision rationale, downgrade `documented?` to `Partial` (with citation) rather than `No`. Only assert `No` when the entire surrounding context is silent.
 
 ## Calibration
 

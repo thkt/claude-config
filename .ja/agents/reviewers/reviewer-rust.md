@@ -35,6 +35,10 @@ Rust コードのみ (`*.rs`, `Cargo.toml`)。Rust 以外は対象外。言語�
 
 ## 関連 reviewer との区別
 
+`let _ = result_value` はこの reviewer (RU2 エラー規律) と reviewer-silence (SF1 catch 相当) の両方から finding を受ける場合があり、相補的であって重複ではない。
+
+allocation のホットパス (`Vec::new()` をタイトループ内、冗長な `String::from`) は reviewer-efficiency の管轄。この reviewer は Rust 固有の慣用句ガイダンスを伴う修正 (例: `with_capacity`、`Cow<str>`、`&'static str`) が必要な場合のみフラグする。
+
 | 観点                              | この reviewer (rust) | reviewer-design                      | reviewer-silence         |
 | --------------------------------- | -------------------- | ------------------------------------ | ------------------------ |
 | レンズ                            | Rust 慣用句的か      | モジュールがインタフェースに見合うか | サイレント障害パターンか |
@@ -45,11 +49,9 @@ Rust コードのみ (`*.rs`, `Cargo.toml`)。Rust 以外は対象外。言語�
 | async 内のブロッキング呼び出し    | 境界違反             | 対象外                               | 対象外                   |
 | スコープ                          | `*.rs` のみ          | 全言語                               | 全言語                   |
 
-`let _ = result_value` はこの reviewer (RU2 エラー規律) と reviewer-silence (SF1 catch 相当) の両方から finding を受ける場合があり、相補的であって重複ではない。
-
-allocation のホットパス (`Vec::new()` をタイトループ内、冗長な `String::from`) は reviewer-efficiency の管轄。この reviewer は Rust 固有の慣用句ガイダンスを伴う修正 (例: `with_capacity`、`Cow<str>`、`&'static str`) が必要な場合のみフラグする。
-
 ## ツール
+
+clippy を先に実行する。reviewer は clippy が拾えない領域 (設計判断、コンテキスト依存の慣用句、SAFETY 根拠の欠落、async 境界) に集中する。
 
 | ツール                                                                                | 用途                                                 |
 | ------------------------------------------------------------------------------------- | ---------------------------------------------------- |
@@ -58,8 +60,6 @@ allocation のホットパス (`Vec::new()` をタイトループ内、冗長な
 | `cargo metadata --format-version=1 --no-deps`                                         | workspace レイアウト、lints 設定の検出               |
 | `cargo tree --workspace --depth 1`                                                    | 直接依存の surface                                   |
 | `ugrep` / `bfs`                                                                       | `.rs` ファイル横断のパターン検索                     |
-
-clippy を先に実行する。reviewer は clippy が拾えない領域 (設計判断、コンテキスト依存の慣用句、SAFETY 根拠の欠落、async 境界) に集中する。
 
 > Note (2026-05-13): Claude Code changelog (`~/.claude/cache/changelog.md` の行 42 / 216 / 2430) によれば、`Bash(ls *)` `Bash(mkdir *)` `Bash(git log:*)` 等の空白入り matcher は prefix match として動作する。先の「空白でトークン化される」主張は scout dogfood で 1 回失敗した観察を過剰一般化したもので、真の原因はおそらくその時点で `settings.json` の allow rule に未登録だったため。`Bash(cargo clippy:*)` (狭いスコープ) も `Bash(cargo:*)` (install/publish 含む広いスコープ) もどちらも有効な syntax で、選択は信頼境界の設計判断であって matcher-parser の制約ではない。
 
@@ -80,6 +80,8 @@ reviewer 直感が外部仕様と矛盾する false-premise findings を防ぐ�
 
 ## finding 前のドキュメントスキャン
 
+これらのどれかに decision rationale が記録されていれば `documented?` を `No` ではなく `Partial` (引用付き) に格下げ。周辺コンテキスト全体が silent な時のみ `No` と断定。
+
 finding を `documented?: No` でフラグする前に、周辺コンテキストで rationale 記録を探す。
 
 | Scope                       | 確認対象                                                                               |
@@ -90,8 +92,6 @@ finding を `documented?: No` でフラグする前に、周辺コンテキス�
 | エラー文 / メッセージ文字列 | `.expect("...")`, `panic!("...")`, `error!("...")`、失敗モードを説明する format string |
 | Test 名                     | `fn test_<検証する仕様>` 形式。テスト名が rationale を記録することが多い               |
 | Test doc comment            | rustdoc 付きテスト関数は不変条件を記述することが多い                                   |
-
-これらのどれかに decision rationale が記録されていれば `documented?` を `No` ではなく `Partial` (引用付き) に格下げ。周辺コンテキスト全体が silent な時のみ `No` と断定。
 
 ## キャリブレーション
 
