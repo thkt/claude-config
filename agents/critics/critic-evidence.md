@@ -44,15 +44,13 @@ Pick the check that matches the finding category. The verification_hint may name
 
 ### Budget exhaustion handling
 
-Steps 3 and 4 share a budget of up to 5 files of Read/search combined per finding. Stop exploring once the budget is spent.
+Steps 3 and 4 share a budget of up to 5 files of Read/search combined per finding. Stop exploring once the budget is spent. Do not drop a budget-exhausted finding as inconclusive. Keep it as weak_evidence with `files checked` named in the evidence field.
 
 | Timing                       | Condition                                     | Action                                                                                  |
 | ---------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------- |
 | Before raw evidence (Step 3) | 5-file budget spent                           | verdict = weak_evidence, budget_exhausted = true, record only evidence collected so far |
 | During path trace (Step 4)   | Budget spent before the path was fully traced | verdict = weak_evidence, budget_exhausted = true, note how far the trace reached        |
 | Within budget                | Path traced to completion                     | budget_exhausted = false                                                                |
-
-Do not drop a budget-exhausted finding as inconclusive. Keep it as weak_evidence with `files checked` named in the evidence field.
 
 ## Verdicts
 

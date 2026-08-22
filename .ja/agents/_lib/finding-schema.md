@@ -28,12 +28,12 @@ integrator/leader が spawn した reviewer の `name:` frontmatter から `Agen
 
 これらは別フィールド。混ぜてはいけない。
 
+Trigger が Reasoning の冒頭句と同一なら、その finding は抽象すぎる。verifier が再現可能な観測条件として Trigger を書き直す。
+
 | Field     | 質問           | 例                                                                               |
 | --------- | -------------- | -------------------------------------------------------------------------------- |
 | Trigger   | いつ発火するか | "Bash tool 呼び出しのたび (PreToolUse hook が毎回走る)"                          |
 | Reasoning | なぜ悪いか     | "awk fork+exec がホットパスで 2-5ms かかり、case フィルタの短絡前にコストが入る" |
-
-Trigger が Reasoning の冒頭句と同一なら、その finding は抽象すぎる。verifier が再現可能な観測条件として Trigger を書き直す。
 
 ### 報告基準
 
@@ -69,6 +69,8 @@ Evidence, Trigger, Reasoning は具体的な言語を使う。
 
 Severity は影響の大きさを表す。Disposition は読んだ人間が次に何をするかを表す。マージを止めるべきか作者の判断に委ねてよいかは severity が答えない軸なので、2 つを 1 つの finding に並べて載せる。
 
+「併走する severity」は目安であって導出規則ではない。既定値は severity から導かず must に固定する。`workflows/assert.js` の gate は severity を見ず `issues.length > 0` だけで NotReady を出すので、severity 由来の既定値だと blocking な finding へ nits が付く。
+
 DR-0078 が定めた共通コア (Severity/Evidence/一行 claim/ID) に足す 1 本目の軸。この語彙は audit 側に閉じ、`/preview` へは戻さない (`skills/preview/tests/plan-alignment.test.js` が禁止している)。
 
 | 値   | 意味                                 | 併走する severity | 供給元                          |
@@ -79,8 +81,6 @@ DR-0078 が定めた共通コア (Severity/Evidence/一行 claim/ID) に足す 1
 | nits | 見た目の指摘。直すかは任意           | low               | 下記 3 本の reviewer            |
 | ask  | コードだけでは決まらない。人間に聞く | 対応なし          | critic の needs_context verdict |
 | info | 処理済み。記録として残す             | 対応なし          | triage の disputed / downgraded |
-
-「併走する severity」は目安であって導出規則ではない。既定値は severity から導かず must に固定する。`workflows/assert.js` の gate は severity を見ず `issues.length > 0` だけで NotReady を出すので、severity 由来の既定値だと blocking な finding へ nits が付く。
 
 | 規則          | 内容                                                                                                        |
 | ------------- | ----------------------------------------------------------------------------------------------------------- |
@@ -103,6 +103,8 @@ DR-0078 が定めた共通コア (Severity/Evidence/一行 claim/ID) に足す 1
 
 ### Context Test
 
+各 reviewer の Calibration セクションにドメイン別 REPORT/SKIP 例がある。迷ったら SKIP を優先。challenger は false negative を捕まえる存在だが、false positive は pipeline capacity を浪費する。
+
 | コンテキスト    | アクション                                                  |
 | --------------- | ----------------------------------------------------------- |
 | Cold path       | severity >= high でない限り除外                             |
@@ -110,8 +112,6 @@ DR-0078 が定めた共通コア (Severity/Evidence/一行 claim/ID) に足す 1
 | Framework idiom | framework/library の慣用に従う → 除外                       |
 | Indirect cover  | caller または integration test 経由でテスト済み → 除外 (TC) |
 | Semantic differ | 構造は似ているが business logic が異なる → 除外 (DRY)       |
-
-各 reviewer の Calibration セクションにドメイン別 REPORT/SKIP 例がある。迷ったら SKIP を優先。challenger は false negative を捕まえる存在だが、false positive は pipeline capacity を浪費する。
 
 ## Memory の用途
 
@@ -190,9 +190,9 @@ frontmatter に `memory` を持つ reviewer は、agent-memory を下表の線�
 
 reviewer 個別定義で上書きされない限り、すべての reviewer が以下を適用する。
 
+ドメイン特化のガード (入力欠如、依存利用不可) は各 reviewer 自身の `## Error Handling` セクションに残す。
+
 | Error        | アクション                                       |
 | ------------ | ------------------------------------------------ |
 | bfs 空       | 0 ファイル発見と報告; clean と推論しない         |
 | ツールエラー | エラーをログ、ファイルをスキップ、summary に記録 |
-
-ドメイン特化のガード (入力欠如、依存利用不可) は各 reviewer 自身の `## Error Handling` セクションに残す。

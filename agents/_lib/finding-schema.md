@@ -28,12 +28,12 @@ The integrator/leader populates `Agent` from the spawning reviewer's `name:` fro
 
 These are distinct fields. Do not merge them.
 
+If Trigger is identical to Reasoning's opening clause, the finding is too abstract. Restate Trigger as an observable condition that a verifier could reproduce.
+
 | Field     | Question           | Example                                                                          |
 | --------- | ------------------ | -------------------------------------------------------------------------------- |
 | Trigger   | When does it fire? | "Every Bash tool call (PreToolUse hook runs on every invocation)"                |
 | Reasoning | Why is it bad?     | "awk fork+exec on hot path costs 2-5ms before the case filter can short-circuit" |
-
-If Trigger is identical to Reasoning's opening clause, the finding is too abstract. Restate Trigger as an observable condition that a verifier could reproduce.
 
 ### Reporting Bar
 
@@ -69,6 +69,8 @@ Evidence, Trigger, and Reasoning fields MUST use concrete language.
 
 Severity states how large the impact is. Disposition states what the reader does next. Whether a finding blocks a merge or is left to the author is an axis severity does not answer, so the two ride on one finding together.
 
+"Severity it rides with" is a guide, not a derivation rule. The default is pinned to must rather than derived from severity. `workflows/assert.js`'s gate ignores severity and returns NotReady on `issues.length > 0` alone, so a severity-derived default would put nits on a finding that blocks the merge.
+
 This is the first axis added to the common core DR-0078 settled (Severity / Evidence / one-line claim / ID). The vocabulary stays on the audit side and does not return to `/preview`, which `skills/preview/tests/plan-alignment.test.js` forbids.
 
 | Value | Meaning                                  | Severity it rides with | Supplied by                        |
@@ -79,8 +81,6 @@ This is the first axis added to the common core DR-0078 settled (Severity / Evid
 | nits  | Cosmetic. Fixing it is optional          | low                    | the 3 reviewers below              |
 | ask   | Undecidable from code alone. Ask a human | none                   | the critic's needs_context verdict |
 | info  | Already handled. Kept for the record     | none                   | triage's disputed / downgraded     |
-
-"Severity it rides with" is a guide, not a derivation rule. The default is pinned to must rather than derived from severity. `workflows/assert.js`'s gate ignores severity and returns NotReady on `issues.length > 0` alone, so a severity-derived default would put nits on a finding that blocks the merge.
 
 | Rule           | Content                                                                                                        |
 | -------------- | -------------------------------------------------------------------------------------------------------------- |
@@ -103,6 +103,8 @@ Apply in order. If any filter excludes, do not report.
 
 ### Context Test
 
+Each reviewer's Calibration section has domain-specific REPORT/SKIP examples. When uncertain, prefer SKIP. The challenger exists to catch false negatives, but false positives waste pipeline capacity.
+
 | Context         | Action                                                            |
 | --------------- | ----------------------------------------------------------------- |
 | Cold path       | Exclude unless severity >= high                                   |
@@ -110,8 +112,6 @@ Apply in order. If any filter excludes, do not report.
 | Framework idiom | Follows framework/library convention → exclude                    |
 | Indirect cover  | Tested through caller or integration test → exclude (TC)          |
 | Semantic differ | Structurally similar but different business logic → exclude (DRY) |
-
-Each reviewer's Calibration section has domain-specific REPORT/SKIP examples. When uncertain, prefer SKIP. The challenger exists to catch false negatives, but false positives waste pipeline capacity.
 
 ## Memory Usage
 
@@ -190,9 +190,9 @@ For example, "Unused import in 7 files" is one finding with severity from the wo
 
 All reviewers apply the following unless overridden in their own definition.
 
+Domain-specific guards (missing input, unavailable dependency) remain in each reviewer's own `## Error Handling` section.
+
 | Error             | Action                                   |
 | ----------------- | ---------------------------------------- |
 | bfs returns empty | Report 0 files found, do not infer clean |
 | Tool error        | Log error, skip file, note in summary    |
-
-Domain-specific guards (missing input, unavailable dependency) remain in each reviewer's own `## Error Handling` section.
