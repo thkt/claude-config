@@ -137,6 +137,7 @@ Every subcommand should have `Examples:` in `after_help`.
 - Include one realistic flag combination when flags materially change behavior.
 
 Root help should include operator-level information that affects automation, for
+
 ### example
 
 - exit codes

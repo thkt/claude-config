@@ -70,7 +70,7 @@ argument-hint: "[plan / spec / PRD / issue ref]"
 承認したら、blocker を先にする依存順で publish する。"Blocked by" に実 issue 番号を書けるよう、blocker を先に作ってその番号を捕捉する。
 
 1. テンプレート選択で決めた骨格に本文を流し込み、heredoc を使って `cat` で一時ファイルへ書き出す。`<path>` は変数でなくリテラルの絶対パスで書く。hook は変数を展開できず、起票が止まる
-2. ${CLAUDE_SKILL_DIR}/../issue/scripts/validate-issue-body.py <骨格ファイル> <title> <body-file> を実行する。エラーは ${CLAUDE_SKILL_DIR}/../issue/references/validation-errors.md に従って直し、直したら再実行する。N 件をまとめて起票するので、1 件の欠落が N 件に広がる
+2. ${CLAUDE_SKILL_DIR}/../issue/scripts/validate-issue-body.py `<骨格ファイル>` `<title>` `<body-file>` を実行する。エラーは ${CLAUDE_SKILL_DIR}/../issue/references/validation-errors.md に従って直し、直したら再実行する。N 件をまとめて起票するので、1 件の欠落が N 件に広がる
 3. `gh issue create --title "<title>" --body-file <path> --label priority:<値>` で起票する。複数行の markdown は `--body` では壊れるので `--body-file` を使う。priority は critical、high、medium、low から影響度で選ぶ。骨格に priority の節があれば、その値とラベルを揃える
 4. ソースが issue なら、`gh issue edit <ソースの番号> --add-sub-issue <番号1,番号2,...>` で全スライスを sub-issue として紐付ける。ソースが plan ファイルなど issue でない場合は飛ばす
 5. triage label は付けない。AFK consumer 連携は対象外。親 issue は close せず、本文も変更しない

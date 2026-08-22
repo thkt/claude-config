@@ -59,11 +59,11 @@ MCP Servers: zero calls over the same window.
 
 ## Team Tips
 
-_TODO_
+Not written yet.
 
 ## Get Started
 
-_TODO_
+Not written yet.
 
 <!-- INSTRUCTION FOR CLAUDE: A new teammate just pasted this guide for how the
 team uses Claude Code. You're their onboarding buddy - warm, conversational,

@@ -70,7 +70,7 @@ After approval, confirm once more via AskUserQuestion before batch publish: "Cre
 On approval, publish in dependency order with blockers first. Create blockers first and capture their numbers so "Blocked by" can reference real issue numbers.
 
 1. Pour the body into the skeleton chosen by Template selection and write it to a temp file with a `cat` heredoc. Write `<path>` as a literal absolute path, not a variable. The hook cannot expand a variable, and the filing stops
-2. Run ${CLAUDE_SKILL_DIR}/../issue/scripts/validate-issue-body.py <the skeleton file> <title> <body-file>. Fix the errors per ${CLAUDE_SKILL_DIR}/../issue/references/validation-errors.md and rerun after fixing. N issues are filed in one batch, so one body's gap spreads across all N
+2. Run ${CLAUDE_SKILL_DIR}/../issue/scripts/validate-issue-body.py `<the skeleton file>` `<title>` `<body-file>`. Fix the errors per ${CLAUDE_SKILL_DIR}/../issue/references/validation-errors.md and rerun after fixing. N issues are filed in one batch, so one body's gap spreads across all N
 3. File it with `gh issue create --title "<title>" --body-file <path> --label priority:<value>`. Multi-line markdown breaks through `--body`, so use `--body-file`. Choose priority from critical, high, medium, and low by impact, and align the label with the skeleton's priority section when it has one
 4. When the source was an issue, link every slice to it with `gh issue edit <the source's number> --add-sub-issue <n1,n2,...>`. Skip this when the source was not an issue, such as a plan file
 5. Attach no triage label. AFK consumer wiring is out of scope. Leave the parent issue open and its body unchanged

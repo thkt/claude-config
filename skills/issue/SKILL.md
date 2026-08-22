@@ -70,7 +70,7 @@ Run this only when a /think plan draft exists. Without one, do not create the `#
 
 ## Phase 4: Publishing
 
-1. Write the body to a temp file with a `cat` heredoc and run ${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py <the skeleton chosen in Template source> <title> <body-file>. Fix validation errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md and rerun after fixing. When updating a filed issue the original skeleton cannot be identified, so pass `--content-only <body-file>` instead
+1. Write the body to a temp file with a `cat` heredoc and run ${CLAUDE_SKILL_DIR}/scripts/validate-issue-body.py `<the skeleton chosen in Template source>` `<title>` `<body-file>`. Fix validation errors per ${CLAUDE_SKILL_DIR}/references/validation-errors.md and rerun after fixing. When updating a filed issue the original skeleton cannot be identified, so pass `--content-only <body-file>` instead
 2. Present the issue preview. Add nothing new and present what the body carries as it stands. When updating a filed issue, list the sections being changed or added rather than the whole body. Confirm via AskUserQuestion, asking `Create this issue?` for a new filing and `Update this issue?` when updating a filed issue
 3. Once validation passed and the user confirmed, attach labels and file it with `gh issue create --title "<title>" --body-file <path>`. Capture the issue URL from the output. When updating a filed issue, write back with `gh issue edit <ref> --body-file <path>`
 4. Pick the destination from the table below and suggest it. Launch none of them automatically

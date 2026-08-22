@@ -74,7 +74,7 @@ When claiming a violation of an external API or platform specification (GitHub, 
 Findings without a verified source citation are flagged `verification: pending_spec_check` rather than asserted as confirmed violations.
 
 - BAD: "GitHub rejects `.hidden` repo names" (no source) → actually false; GitHub allows `.github`. false-premise
-- GOOD: "Suspected: GitHub may reject `.hidden` repo names. Verify against https://docs.github.com/en/repositories before flagging" with `verification: pending_spec_check`
+- GOOD: "Suspected: GitHub may reject `.hidden` repo names. Verify against <https://docs.github.com/en/repositories> before flagging" with `verification: pending_spec_check`
 
 This guards against false-premise findings where the reviewer's intuition contradicts the actual external spec.
 
