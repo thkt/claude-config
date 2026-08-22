@@ -1,7 +1,5 @@
 // MARKDOWN.md § Do not puts a table's explanation before the table, so the reader holds the rule
-// before the rows it governs. docs/** stays out: its paragraphs below a table read that table's
-// result back, or carry the section around it, and hoisting either one degrades the page (#450).
-// workflows/ and commands/ hold no markdown.
+// before the rows it governs. workflows/ and commands/ hold no markdown.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
@@ -9,7 +7,11 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const SCANNED = ["agents", "rules", "skills"];
+const SCANNED = ["agents", "rules", "skills", "docs"];
+// The same row lets a conclusion the table derives stay below it, and a DR's narrative reaches
+// that shape 24 times. Listing each would make an allowlist nobody prunes, so the directory stays
+// out and this line carries the judgement (#450).
+const SKIPPED = new Set(["docs/decisions"]);
 
 // MARKDOWN.md's row exempts a conclusion the table derives, and no regex separates one from an
 // explanation. Each key carries the opening sentence, so rewriting the conclusion asks for the
@@ -53,8 +55,9 @@ const markdownUnder = async (dir) => {
   const out = [];
   for (const e of entries) {
     const path = join(dir, e.name);
-    if (e.isDirectory()) out.push(...(await markdownUnder(path)));
-    else if (e.name.endsWith(".md")) out.push(path);
+    if (e.isDirectory()) {
+      if (!SKIPPED.has(relative(root, path))) out.push(...(await markdownUnder(path)));
+    } else if (e.name.endsWith(".md")) out.push(path);
   }
   return out;
 };

@@ -106,6 +106,8 @@ Phase 2 PR で JSON schema を `serde` 派生型として実装し、本 ADR の
 | 124      | GNU coreutils `timeout` 慣例           | `--preserve-status` 非指定時 |
 | 80-104   | PJ 拡張枠 (kodak_diary 記事方針を採用) | 細分類が必要なときのみ採番   |
 
+`error.retryable` は `code == "TEMP_FAILURE"` か `code == "TIMEOUT"` の時のみ `true`、他は `false`。`TIMEOUT` と `TEMP_FAILURE` を分けるのは、retry sleep duration が違うため (timeout は backoff を長めに、rate limit は短め)。
+
 | Exit | Const / 出典       | JSON `error.code` | scout での発生条件                                                                     |
 | ---- | ------------------ | ----------------- | -------------------------------------------------------------------------------------- |
 | 0    | EX_OK              | (none)            | Ok 経路                                                                                |
@@ -118,13 +120,13 @@ Phase 2 PR で JSON schema を `serde` 派生型として実装し、本 ADR の
 | 104  | PJ 拡張            | `UNKNOWN`         | 上記いずれにも分類できない (退避先、増えたら設計見直し signal)                         |
 | 124  | GNU `timeout` 慣例 | `TIMEOUT`         | fetch / research の全体 timeout, API timeout (retry policy が `TEMP_FAILURE` と異なる) |
 
-`error.retryable` は `code == "TEMP_FAILURE"` か `code == "TIMEOUT"` の時のみ `true`、他は `false`。`TIMEOUT` と `TEMP_FAILURE` を分けるのは、retry sleep duration が違うため (timeout は backoff を長めに、rate limit は短め)。
-
 ### Classification Priority
 
 複数分類が当てはまる場合の優先順位。scout の実エラーソース (clap parse/URL invalid/404/rate limit/timeout/JSON parse/network IO) から 5 段に絞る。
 
 ルールの読み方: 上から順に評価。マッチした時点で確定。例: GitHub API から 404 と rate limit 余地のあるレスポンスが同時にあった場合、優先 3 で 66 NOT_FOUND を採用 (rate limit より先に 404 評価)。
+
+`UNKNOWN` が増える場合は分類設計の signal。`anyhow::Error` の握り潰しを検知する目的で意図的に独立。
 
 | 優先 | ルール                                            | 分類                               |
 | ---- | ------------------------------------------------- | ---------------------------------- |
@@ -135,16 +137,14 @@ Phase 2 PR で JSON schema を `serde` 派生型として実装し、本 ADR の
 | 5    | アプリ内部不具合と判断できる                      | 70 INTERNAL                        |
 | 退避 | 上記いずれにも分類できない                        | 104 UNKNOWN                        |
 
-`UNKNOWN` が増える場合は分類設計の signal。`anyhow::Error` の握り潰しを検知する目的で意図的に独立。
-
 ### Migration Strategy
+
+Phase 2 で JSON `error.code` を導入した時点で、内部の `ScoutError::user_error`/`internal`/`transient` から sysexits 6 種への分類関数を確定させる。Phase 3 では分類関数の出力を `ExitCode` に流すだけで完結する。
 
 | Phase | 対象                                         | 互換性                     | リリース            |
 | ----- | -------------------------------------------- | -------------------------- | ------------------- |
 | 2     | `--json` global flag + JSON schema 出力      | 非破壊 (Markdown 経路維持) | 0.8.x で minor bump |
 | 3     | exit code を 0/1/2 → 0/64/65/66/74/75 に拡張 | 破壊的 (既存 script 影響)  | 1.0.0 で major bump |
-
-Phase 2 で JSON `error.code` を導入した時点で、内部の `ScoutError::user_error`/`internal`/`transient` から sysexits 6 種への分類関数を確定させる。Phase 3 では分類関数の出力を `ExitCode` に流すだけで完結する。
 
 ### Trade-offs
 

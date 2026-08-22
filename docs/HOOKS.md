@@ -11,6 +11,8 @@ The Rust binaries are also distributed as sentinels plugins, but registration go
 | Script hooks  | `~/.claude/hooks/**/*.{sh,py}` | `settings.json`                  |
 | Rust binaries | `brew install thkt/tap/{tool}` | `settings.json` (direct command) |
 
+### Language
+
 A hook is a shell script when its work is a few checks and a fork, and Python when the logic
 is long enough to want structure or is shared with a test. `mirror_prose_guard.py` is the second
 kind: its rule lives in `_lib/mirror_prose.py` and the repository-wide sweep test imports the same
@@ -32,14 +34,6 @@ The directory answers which event, so the filename answers the target and the op
 shape is `<target>_<operation>`: the target is what this hook looks at, the operation is what it
 does to it. A reader narrows by the leading word.
 
-| Kind        | Shape                 | Example                     |
-| ----------- | --------------------- | --------------------------- |
-| Python hook | `<target>_<op>.py`    | `git_sandbox_guard.py`      |
-| shell hook  | `<target>-<op>.sh`    | `failure-alert.sh`          |
-| _lib module | `<noun>.py`           | `command_scan.py`           |
-| Python test | `<hook name>_test.py` | `git_sandbox_guard_test.py` |
-| shell test  | `<hook name>.test.sh` | `failure-alert.test.sh`     |
-
 Python separates with underscores, shell with hyphens. A module under `_lib/` is imported, so underscores are required between its
 words, and the hooks themselves import none of each other, so nothing technical binds them.
 They match anyway because it makes the test name land on `<hook name>_test.py`, reachable from
@@ -53,6 +47,14 @@ Two exceptions. Something wrapping an external app whole takes `<app>_<what it m
 `amphetamine_agent_session` keeps "only during an agent's turn" in the name. Something a single
 word covers stays one word (`statusline`). A test covering several hooks at once carries a name
 for that group (`rust-edit.test.sh` covers the pre/post pair plus `_lib/rust_target.py`).
+
+| Kind        | Shape                 | Example                     |
+| ----------- | --------------------- | --------------------------- |
+| Python hook | `<target>_<op>.py`    | `git_sandbox_guard.py`      |
+| shell hook  | `<target>-<op>.sh`    | `failure-alert.sh`          |
+| _lib module | `<noun>.py`           | `command_scan.py`           |
+| Python test | `<hook name>_test.py` | `git_sandbox_guard_test.py` |
+| shell test  | `<hook name>.test.sh` | `failure-alert.test.sh`     |
 
 ## Narrowing the work
 
@@ -235,12 +237,12 @@ once per window", is the exception and says so where it is written.
 
 The mode names how the script itself reacts to an error, not whether the tool call survives. Only a PreToolUse hook can stop a call, and it does so by printing a decision rather than by exiting non-zero. Claude Code keeps running when a hook exits with an error.
 
+A fail-closed hook can still ignore one specific failure, which is not a downgrade: `textlint_fix.py` stops on its own defects and ignores textlint's exit code, because the edit has already landed by the time it runs.
+
 | Mode        | The script                                          | In shell            | In Python                  | Used by                            |
 | ----------- | --------------------------------------------------- | ------------------- | -------------------------- | ---------------------------------- |
 | fail-open   | Runs past an error and exits 0                      | `set +e`            | Catches and returns        | Observation and notification hooks |
 | fail-closed | Stops at the first error, including its own defects | `set -euo pipefail` | Lets the exception through | Security and convention hooks      |
-
-A fail-closed hook can still ignore one specific failure, which is not a downgrade: `textlint_fix.py` stops on its own defects and ignores textlint's exit code, because the edit has already landed by the time it runs.
 
 ### 4. Composable
 

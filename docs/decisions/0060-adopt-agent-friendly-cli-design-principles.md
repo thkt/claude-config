@@ -84,6 +84,8 @@ Chosen option: Option B (3 軸 + 補強 + 将来課題の段階導入)。エー�
 
 2023 年改訂の製品品質モデルは旧 Usability を Interaction capability に再定義し、副特性を拡張した。本 ADR の 3 軸はエージェントを利用者と置いたときの Interaction capability の実装形に相当し、レビュー時の観点語彙として以下の対応を使う。
 
+Appropriateness recognizability / User engagement / Inclusivity は人間 UI 前提の副特性であり、エージェント利用者では判定対象にしない。
+
 | 25010:2023 副特性                | 本 ADR での対応                                                              |
 | -------------------------------- | ---------------------------------------------------------------------------- |
 | Self-descriptiveness (2023 新設) | 自己発見軸 (Noun-Verb, `conflicts_with`) + 将来課題の describe コマンド      |
@@ -91,8 +93,6 @@ Chosen option: Option B (3 軸 + 補強 + 将来課題の段階導入)。エー�
 | Learnability                     | Noun-Verb 命名のツール間一貫性                                               |
 | Operability                      | 機械可読軸 (`--json`, stdout/stderr 分離) + stdin 統一 + BrokenPipe handling |
 | User assistance                  | エラー JSON の `next_step` (将来課題の必須化対象)                            |
-
-Appropriateness recognizability / User engagement / Inclusivity は人間 UI 前提の副特性であり、エージェント利用者では判定対象にしない。
 
 ### Reassessment Triggers
 

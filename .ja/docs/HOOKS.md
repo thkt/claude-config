@@ -11,6 +11,8 @@ Rust バイナリは sentinels プラグインとしても配布するが、登�
 | スクリプト hooks | `~/.claude/hooks/**/*.{sh,py}` | `settings.json`                  |
 | Rust バイナリ    | `brew install thkt/tap/{tool}` | `settings.json` (コマンド直登録) |
 
+### 言語
+
 hook をシェルスクリプトで書くのは、仕事が数個の判定と 1 回の fork で済むとき。構造が要るほど処理が長いか、テストと共有するときは Python で書く。`mirror_prose_guard.py` が後者で、規則そのものは `_lib/mirror_prose.py` にあり、リポジトリ一括検査のテストも同じモジュールを読む。
 
 テストは hook 本体と同じ言語で書く。シェルに残すのは、スタブとしてシェルスクリプトを PATH へ置くものだけで、`amphetamine_agent_session` の osascript と `rust-edit` の cargo がこれにあたる。
@@ -21,6 +23,12 @@ Python 側では、1 つのメソッドが最初の失敗で止まると残り�
 
 ディレクトリがイベントを答えるので、ファイル名は対象と操作を答える。形は `<対象>_<操作>` で、対象はこの hook が見るもの、操作はそれに対して何をするか。読み手は先頭の語で対象を絞り込める。
 
+Python はアンダースコアで区切る。shell はハイフンで区切る。`_lib/` のモジュールは import されるので、語の区切りにアンダースコアが要る。hook 本体どうしは import しないため、技術的な縛りが無い。それでも揃えるのは、テスト名が `<hook 名>_test.py` で一致し、hook からテストを変換なしで引けるため。
+
+操作を表す語は、名詞としても読める語 (guard/gate/fix/index/alert/rewrite) を選ぶ。`notify` のような動詞専用の語は名前として据わりが悪い。既に英語として読める動詞句 (`rm_to_trash`, `body_proofread`) はそのまま置く。
+
+例外は 2 つ。外部アプリを丸ごと扱うものは `<アプリ名>_<管理対象>` とし、`amphetamine_agent_session` は「エージェントのターン中だけ」という限定を名前に残す。1 語で足りるものは 1 語で置く (`statusline`)。複数の hook をまとめて見るテストは、その群を表す名前を持つ (`rust-edit.test.sh` は pre/post の 2 本と `_lib/rust_target.py` を見る)。
+
 | 種別            | 形                  | 例                          |
 | --------------- | ------------------- | --------------------------- |
 | Python hook     | `<対象>_<操作>.py`  | `git_sandbox_guard.py`      |
@@ -28,12 +36,6 @@ Python 側では、1 つのメソッドが最初の失敗で止まると残り�
 | _lib モジュール | `<名詞>.py`         | `command_scan.py`           |
 | Python テスト   | `<hook 名>_test.py` | `git_sandbox_guard_test.py` |
 | shell テスト    | `<hook 名>.test.sh` | `failure-alert.test.sh`     |
-
-Python はアンダースコアで区切る。shell はハイフンで区切る。`_lib/` のモジュールは import されるので、語の区切りにアンダースコアが要る。hook 本体どうしは import しないため、技術的な縛りが無い。それでも揃えるのは、テスト名が `<hook 名>_test.py` で一致し、hook からテストを変換なしで引けるため。
-
-操作を表す語は、名詞としても読める語 (guard/gate/fix/index/alert/rewrite) を選ぶ。`notify` のような動詞専用の語は名前として据わりが悪い。既に英語として読める動詞句 (`rm_to_trash`, `body_proofread`) はそのまま置く。
-
-例外は 2 つ。外部アプリを丸ごと扱うものは `<アプリ名>_<管理対象>` とし、`amphetamine_agent_session` は「エージェントのターン中だけ」という限定を名前に残す。1 語で足りるものは 1 語で置く (`statusline`)。複数の hook をまとめて見るテストは、その群を表す名前を持つ (`rust-edit.test.sh` は pre/post の 2 本と `_lib/rust_target.py` を見る)。
 
 ## 実行の絞り込み
 
@@ -201,12 +203,12 @@ shields (コマンドガード、ファイル ACL、secrets チェック) と re
 
 このモードが名指すのは、スクリプト自身がエラーにどう反応するかであって、ツール呼び出しが生き延びるかどうかではない。呼び出しを止められるのは PreToolUse の hook だけで、止め方は決定を出力することであり、非 0 で終わることではない。hook がエラーで終わっても Claude Code は動き続ける。
 
+fail-closed の hook が特定の失敗を 1 つだけ無視するのは格下げではない。`textlint_fix.py` は自身の欠陥では止まるが textlint の終了コードは無視する。この hook が走る時点で編集はすでに適用されているからである。
+
 | モード      | スクリプトの振る舞い                   | シェルでの書き方    | Python での書き方        | 使う場面          |
 | ----------- | -------------------------------------- | ------------------- | ------------------------ | ----------------- |
 | fail-open   | エラーを踏み越えて 0 で終わる          | `set +e`            | 例外を握って return する | 観測と通知の hook |
 | fail-closed | 自身の欠陥を含め、最初のエラーで止まる | `set -euo pipefail` | 例外を伝播させる         | 安全と規約の hook |
-
-fail-closed の hook が特定の失敗を 1 つだけ無視するのは格下げではない。`textlint_fix.py` は自身の欠陥では止まるが textlint の終了コードは無視する。この hook が走る時点で編集はすでに適用されているからである。
 
 ### 4. 組み合わせられる
 
