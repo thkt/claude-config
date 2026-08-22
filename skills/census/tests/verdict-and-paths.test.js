@@ -105,7 +105,7 @@ test("the template carries the columns the mining step records", () =>
     }
   }));
 
-// MARKDOWN.md § Do not forbids a paragraph immediately after a table.
+// MARKDOWN.md § Do not puts what a table's rows need to be read above the table.
 test("the tally row sits before the DR Promotion Candidates table", () =>
   eachLanguage(templates, (doc, lang) => {
     const tally = doc.indexOf("keep {N} / downgrade {N} / drop {N}");
