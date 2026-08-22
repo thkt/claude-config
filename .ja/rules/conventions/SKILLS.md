@@ -20,6 +20,15 @@ paths:
 | false          | Agent 専用 | `use-context-<agent>` | use-context-reviewer-security                 |
 | false          | Workflow   | `use-workflow-<noun>` | use-workflow-tdd-cycle, use-workflow-pageshot |
 
+## H1
+
+読み手が開いた skill を、人が打つものかモデルだけが辿る wrapper かで見分けられるようにする。
+
+| user-invocable | H1                     | 例                                |
+| -------------- | ---------------------- | --------------------------------- |
+| true (既定)    | `/<name>` で始める     | `# /issue - GitHub Issue Generation` |
+| false          | skill 名そのもの       | `# use-cli-scout`                 |
+
 ## ディレクトリ構造
 
 すべてのスキルは `skills/` 直下に置き、共有フラグメントは `_lib/` 直下に置く。

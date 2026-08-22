@@ -8,7 +8,7 @@ context: fork
 user-invocable: false
 ---
 
-# 可読性レビュー
+# use-context-reviewer-readability
 
 しきい値は、作業記憶や 1 画面集中といった認知限界と、McCabe complexity のような確立されたメトリクスに基づく。下表は推奨値で、検出表はそれを超えた全件でなく報告に値する逸脱だけを挙げる。関数引数の推奨は 3、検出は 5 超。
 

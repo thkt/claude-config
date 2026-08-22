@@ -20,6 +20,15 @@ Name a skill after the operation it performs. Replace generic names like helper,
 | false          | Agent-only | `use-context-<agent>` | use-context-reviewer-security                 |
 | false          | Workflow   | `use-workflow-<noun>` | use-workflow-tdd-cycle, use-workflow-pageshot |
 
+## H1
+
+The H1 tells a reader which kind of skill they opened: one a person types, or a wrapper only the model reaches.
+
+| user-invocable | H1                            | Example                              |
+| -------------- | ----------------------------- | ------------------------------------ |
+| true (default) | Opens with `/<name>`          | `# /issue - GitHub Issue Generation` |
+| false          | The skill's own name          | `# use-cli-scout`                    |
+
 ## Directory structure
 
 All skills live directly under `skills/`, and shared fragments under `_lib/`.

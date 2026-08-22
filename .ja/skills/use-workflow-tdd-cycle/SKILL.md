@@ -7,7 +7,7 @@ context: fork
 user-invocable: false
 ---
 
-# TDD サイクル
+# use-workflow-tdd-cycle
 
 公開 API を通して振る舞いをテストする。Mock はシステム境界でのみ。
 

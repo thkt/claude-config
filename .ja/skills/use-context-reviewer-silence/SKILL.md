@@ -8,7 +8,7 @@ context: fork
 user-invocable: false
 ---
 
-# サイレント失敗レビュー
+# use-context-reviewer-silence
 
 ## 検出
 

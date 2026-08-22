@@ -7,7 +7,7 @@ model: opus
 user-invocable: false
 ---
 
-# use-workflow-pageshot - PR スクリーンショット/動画ヘルパー
+# use-workflow-pageshot
 
 ## 入力
 

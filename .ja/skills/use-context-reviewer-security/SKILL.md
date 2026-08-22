@@ -8,7 +8,7 @@ context: fork
 user-invocable: false
 ---
 
-# セキュリティ レビュー
+# use-context-reviewer-security
 
 ## 検出 (OWASP Top 10)
 
