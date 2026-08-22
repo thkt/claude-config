@@ -11,7 +11,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "$SCRIPT_DIR/../../tests/helpers.sh"
+source "$SCRIPT_DIR/helpers.sh"
 HOOK="$SCRIPT_DIR/../statusline.sh"
 
 TEST_TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/statusline-tests-XXXXXX")

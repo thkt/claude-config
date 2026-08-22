@@ -5,7 +5,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "$SCRIPT_DIR/../../tests/helpers.sh"
+source "$SCRIPT_DIR/helpers.sh"
 HOOK="$SCRIPT_DIR/../failure-alert.sh"
 
 # Template under $TMPDIR: macOS mktemp without a template ignores TMPDIR

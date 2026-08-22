@@ -23,8 +23,9 @@ jobs:
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
 
-      # The tests exec the hooks directly and each opens with a zsh shebang. has_japanese
-      # greps under en_US.UTF-8, which this image does not generate.
+      # The two remaining shell tests exec hooks that open with a zsh shebang. The Python
+      # tests pipe Japanese through subprocess in text mode, which reads the locale encoding,
+      # and this image does not generate en_US.UTF-8.
       - name: Install zsh and generate the locale
         run: |
           sudo apt-get update
