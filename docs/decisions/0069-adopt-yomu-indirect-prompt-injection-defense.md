@@ -49,12 +49,12 @@ chunks テーブル schema version 9 で 2 column 追加 (additive ALTER ADD COL
 
 JSON 出力で 2 field 追加 (additive optional):
 
+silent-default-false の罠 (空配列 `[]` が「検査済みクリーン」と誤読される) を構造的に排除する。`injection_flags` の field 不在 = matcher 未走行、空 Vec = matcher 走行 + ヒットなし、Some Vec = matcher 走行 + ヒット。`injection_check` sentinel は response 単位で matcher 状態を 1 箇所に集約し、consumer が「matcher 未走行の chunk を LLM 投入してはならない」契約を実装できる。
+
 | Field             | 位置               | 型                  | serde 属性                                           |
 | ----------------- | ------------------ | ------------------- | ---------------------------------------------------- |
 | `injection_flags` | per-chunk          | `Option<Vec<&str>>` | `skip_serializing_if = "Option::is_none"`、`default` |
 | `injection_check` | response top-level | enum sentinel       | 必須。3 値: `ran`、`skipped`、`unavailable`          |
-
-silent-default-false の罠 (空配列 `[]` が「検査済みクリーン」と誤読される) を構造的に排除する。`injection_flags` の field 不在 = matcher 未走行、空 Vec = matcher 走行 + ヒットなし、Some Vec = matcher 走行 + ヒット。`injection_check` sentinel は response 単位で matcher 状態を 1 箇所に集約し、consumer が「matcher 未走行の chunk を LLM 投入してはならない」契約を実装できる。
 
 ### Migration
 

@@ -28,6 +28,8 @@ A fix confined to 1-3 files skips this column and completes directly via `/fix <
 
 Launched via `Workflow({name: "build", args: {issue, repo, base?}})`. Taking a plan-backed issue as input, it runs 7 stages as a deterministic script. The division of labor is "extraction and implementation go to the LLM, verification and progression stay in the script": every LLM output passes a script-side cross-check.
 
+Correctness checking is a comparison against the plan's own anchors (Preconditions, files scope, T-NNN statements, conformance), not an open-ended defect hunt. Defect hunting belongs to `/audit` on the draft PR.
+
 | Stage      | What it does                                                                                                         |
 | ---------- | -------------------------------------------------------------------------------------------------------------------- |
 | Load       | Fetch the issue body verbatim, collect `## Plan` U-NNN / T-NNN ids deterministically, cross-check the LLM extraction |
@@ -37,8 +39,6 @@ Launched via `Workflow({name: "build", args: {issue, repo, base?}})`. Taking a p
 | Cleanup    | A simplify-skill pass with test validation. Failing tests roll the edits back via stash                              |
 | Verify     | Deterministic checks (diff scope + T-NNN matching) alongside conformance / structure reviews                         |
 | Ship       | Remainder commit + draft PR. The PR body's fact sections are rendered deterministically from data                    |
-
-Correctness checking is a comparison against the plan's own anchors (Preconditions, files scope, T-NNN statements, conformance), not an open-ended defect hunt. Defect hunting belongs to `/audit` on the draft PR.
 
 ### Stop Conditions
 
@@ -86,6 +86,8 @@ build nests only code. The others launch standalone.
 
 ## Command → Implementation Mapping
 
+A skill executes its SKILL.md procedure in the conversation context; a workflow's script enforces progression. Processing that carries fan-out, loops, or gates goes into a workflow, in a shape the LLM cannot skip at its discretion ([WORKFLOWS](../rules/conventions/WORKFLOWS.md)).
+
 | Command   | Implementation          | Form                                   |
 | --------- | ----------------------- | -------------------------------------- |
 | `/think`  | `skills/think/SKILL.md` | Skill (launches critic-design)         |
@@ -94,8 +96,6 @@ build nests only code. The others launch standalone.
 | `/code`   | `workflows/code.js`     | Workflow (also nested from build)      |
 | `/audit`  | `workflows/audit.js`    | Workflow                               |
 | `/polish` | `workflows/polish.js`   | Workflow                               |
-
-A skill executes its SKILL.md procedure in the conversation context; a workflow's script enforces progression. Processing that carries fan-out, loops, or gates goes into a workflow, in a shape the LLM cannot skip at its discretion ([WORKFLOWS](../rules/conventions/WORKFLOWS.md)).
 
 ## Related
 

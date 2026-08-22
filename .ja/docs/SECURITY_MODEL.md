@@ -12,13 +12,13 @@ LLM はテキスト生成器であり、tool_use は出力フォーマットの 
 
 shields (コマンドガード、ファイル ACL、secrets チェック) は同ファミリーのバイナリだが `settings.json` へ配線しておらず、防御には数えない ([HOOKS](./HOOKS.md)の休止中を参照)。
 
+重要: L1 と L2 は人間の介入ポイントの調整 (UX)。L3 が実セキュリティ境界。
+
 | レイヤー            | 実装                                            | 何を止めるか                       | Bash 経由でバイパス可能か |
 | ------------------- | ----------------------------------------------- | ---------------------------------- | ------------------------- |
 | L1: Deny Rules      | `settings.json` の `permissions.deny` (43 件)   | 個別 tool_use ブロック             | 可                        |
 | L2: PreToolUse Hook | `hooks/security/` 3 本 + `hooks/pre-bash/` 3 本 | Bash 内の危険パターン              | 部分的                    |
 | L3: Process Sandbox | sandbox-runtime (`settings.json` の `sandbox`)  | ファイルシステム書込とネットワーク | 不可                      |
-
-重要: L1 と L2 は人間の介入ポイントの調整 (UX)。L3 が実セキュリティ境界。
 
 ### L3 の現在の設定
 
