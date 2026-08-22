@@ -21,9 +21,11 @@ const trackedTests = async () => {
   return stdout.split("\n").filter((p) => p.trim() && !p.startsWith(".ja/"));
 };
 
-// A template literal would need the expression evaluated; no test here names itself with one.
-const testNames = (source) =>
-  [...source.matchAll(/^\s*test\(\s*"((?:[^"\\]|\\.)*)"/gm)].map((m) => m[1]);
+// Every registration form the runner accepts, in any of the three quote characters. A template
+// literal carrying an interpolation is read as its raw source, which is enough to spot the
+// language; evaluating it would need the surrounding scope.
+const REGISTRATION = /^\s*(?:test|it|describe)(?:\.\w+)?\(\s*(["'`])((?:[^\\]|\\.)*?)\1/gm;
+export const testNames = (source) => [...source.matchAll(REGISTRATION)].map((m) => m[2]);
 
 test("no test on the English side is named in Japanese", async () => {
   const offenders = [];
@@ -50,4 +52,29 @@ test("the id-numbering reference tells a plan to write T-NNN in English", async 
     const doc = await readFile(path, "utf8");
     assert.match(doc, /MIRROR\.md/, `${path} points at the rule that owns the prose language`);
   }
+});
+
+// The sweep is only as wide as this extractor. It missed two single-quoted names already in the
+// tree (build.behavior.test.js), so a Japanese name written in any form below passed unseen.
+test("testNames reads every registration form, not just a double-quoted test()", () => {
+  const source = [
+    'test("double quoted", () => {});',
+    "test('single quoted', () => {});",
+    'test.skip("skipped", () => {});',
+    "test.only('only', () => {});",
+    "test.todo(`todo`, () => {});",
+    "it('it form', () => {});",
+    'describe("describe form", () => {});',
+    '  test("indented", () => {});',
+  ].join("\n");
+  assert.deepEqual(testNames(source).sort(), [
+    "describe form",
+    "double quoted",
+    "indented",
+    "it form",
+    "only",
+    "single quoted",
+    "skipped",
+    "todo",
+  ]);
 });
