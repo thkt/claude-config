@@ -49,18 +49,18 @@ Judge by whether removal causes misreading. Angle-brackets like `<branch>` are t
 
 ## Do not
 
-| Pattern                                 | Applies to | Fix                                                                            |
-| --------------------------------------- | ---------- | ------------------------------------------------------------------------------ |
-| `≠`                                     | All        | Rewrite as positive form or use `is not X`                                     |
-| `()` for contrast                       | All        | Split with `.`                                                                 |
-| `—`                                     | All        | Split into sentences with `.`, or replace with `,` / `:` / `-` by context      |
-| Line-ending `:` or `Label: value`       | All        | Promote to a heading or a table, or rewrite as prose. Literal colons stay fine |
-| All-caps for emphasis                   | All        | Use normal case                                                                |
-| Physical line breaks inside a paragraph | All        | Write each paragraph on a single line. Tooling handles soft-wrapping           |
-| Paragraph after a table                 | All        | Put the explanation (rule, context, exceptions) before the table               |
-| `**bold**`                              | LLM-facing | Use tables or sections. Convert bold-first bullets to a table                  |
-| Emoji in prose                          | LLM-facing | Remove. User-visible emoji are the exception                                   |
-| Unicode decoration                      | Prose      | Use ASCII                                                                      |
+| Pattern                                 | Applies to | Fix                                                                                                             |
+| --------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------- |
+| `≠`                                     | All        | Rewrite as positive form or use `is not X`                                                                      |
+| `()` for contrast                       | All        | Split with `.`                                                                                                  |
+| `—`                                     | All        | Split into sentences with `.`, or replace with `,` / `:` / `-` by context                                       |
+| Line-ending `:` or `Label: value`       | All        | Promote to a heading or a table, or rewrite as prose. Literal colons stay fine                                  |
+| All-caps for emphasis                   | All        | Use normal case                                                                                                 |
+| Physical line breaks inside a paragraph | All        | Write each paragraph on a single line. Tooling handles soft-wrapping                                            |
+| Paragraph after a table                 | All        | Put the explanation (rule, context, exceptions) before the table. A conclusion the table derives stays below it |
+| `**bold**`                              | LLM-facing | Use tables or sections. Convert bold-first bullets to a table                                                   |
+| Emoji in prose                          | LLM-facing | Remove. User-visible emoji are the exception                                                                    |
+| Unicode decoration                      | Prose      | Use ASCII                                                                                                       |
 
 ## References
 
