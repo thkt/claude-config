@@ -67,7 +67,7 @@ Agent 完了時に以下のフィールドを返す。verifications が空でも
 | Field         | Type   | Value                                                                                                       |
 | ------------- | ------ | ----------------------------------------------------------------------------------------------------------- |
 | verifications | list   | 各 item は finding_id、verdict (verified / weak_evidence / unverifiable)、budget_exhausted、evidence を含む |
-| summary       | object | verdict ごとの件数。verifications から導出される人間向けの補助情報                                          |
+| summary       | object | verdict ごとの件数                                          |
 
 ## 制約
 

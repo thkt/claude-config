@@ -48,7 +48,7 @@ See `~/.claude/agents/_lib/calibration-examples.md` section A11Y.
 
 ## Output
 
-Follow ~/.claude/agents/_lib/finding-schema.md. When no HTML is found, report "No HTML to review". When a11y-specialist-skills is unavailable run visual-only checks (contrast, motion), and when the external skill times out continue with completed checks. Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no HTML is found, report "No HTML to review". When a11y-specialist-skills is unavailable run visual-only checks (contrast, motion), and when the external skill times out continue with completed checks.
 
 | Field        | Value                                                                                                                  |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------- |

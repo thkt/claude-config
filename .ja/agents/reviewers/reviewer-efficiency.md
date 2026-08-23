@@ -56,7 +56,7 @@ background: true
 
 ## アウトプット
 
-~/.claude/agents/_lib/finding-schema.md に従う。コードが見つからないときは "No code to review" を報告する。共通ガード (glob 結果なし、ツールエラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。Cold-path のマイナーな問題は集約により severity が上がる場合を除いて除外 (schema の Context Test 参照)。
+~/.claude/agents/_lib/finding-schema.md に従う。コードが見つからないときは "No code to review" を報告する。Cold-path のマイナーな問題は集約により severity が上がる場合を除いて除外 (schema の Context Test 参照)。
 
 | フィールド   | 値                                                                                |
 | ------------ | --------------------------------------------------------------------------------- |

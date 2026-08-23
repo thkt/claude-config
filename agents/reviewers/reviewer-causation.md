@@ -57,7 +57,7 @@ See `~/.claude/agents/_lib/calibration-examples.md` section RC.
 
 ## Output
 
-Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults. A justification-camouflage finding maps to `workaround`. Never propose deleting the comment alone; deleting it hides the signal. The fix targets the cause the comment excuses, preferring existing state or mechanisms over adding new ones.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". A justification-camouflage finding maps to `workaround`. Never propose deleting the comment alone; deleting it hides the signal. The fix targets the cause the comment excuses, preferring existing state or mechanisms over adding new ones.
 
 | Field        | Value                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |

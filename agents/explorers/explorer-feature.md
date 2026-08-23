@@ -48,7 +48,7 @@ Discover project structure and entry points with bfs and LS. Search for key expo
 
 ## Output
 
-Return the following fields when the agent completes. Each finding carries a source (a file:line citation, or "inferred from X").
+Return the following fields when the agent completes.
 
 | Field                 | Type   | Value                                                                                          |
 | --------------------- | ------ | ---------------------------------------------------------------------------------------------- |

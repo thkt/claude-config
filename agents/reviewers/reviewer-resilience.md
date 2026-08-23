@@ -55,7 +55,7 @@ See `~/.claude/agents/_lib/calibration-examples.md` section CHX.
 
 ## Output
 
-Follow ~/.claude/agents/\_lib/finding-schema.md. When no code is found, report "No code to review". Common guards (glob empty, tool error) follow ~/.claude/agents/\_lib/finding-schema.md defaults.
+Follow ~/.claude/agents/\_lib/finding-schema.md. When no code is found, report "No code to review".
 
 | Field        | Value                                                     |
 | ------------ | --------------------------------------------------------- |

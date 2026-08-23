@@ -60,7 +60,7 @@ See `~/.claude/agents/_lib/calibration-examples.md` section RP.
 
 ## Output
 
-Follow ~/.claude/agents/_lib/finding-schema.md. When no React is found, report "No React to review". Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no React is found, report "No React to review".
 
 | Field        | Value                                                                                                  |
 | ------------ | ------------------------------------------------------------------------------------------------------ |

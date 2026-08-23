@@ -99,7 +99,7 @@ See `~/.claude/agents/_lib/calibration-examples.md` section RU. If absent, calib
 
 ## Output
 
-Follow ~/.claude/agents/_lib/finding-schema.md. When no `Cargo.toml` is found, report "No Rust to review". When `cargo` is unavailable review source-only and note it in the summary, when workspace lints are missing note the absence and review against defaults, and when clippy times out skip the Phase 1 clippy dedup and mark findings unverified. Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no `Cargo.toml` is found, report "No Rust to review". When `cargo` is unavailable review source-only and note it in the summary, when workspace lints are missing note the absence and review against defaults, and when clippy times out skip the Phase 1 clippy dedup and mark findings unverified.
 
 | Field        | Value                                                                    |
 | ------------ | ------------------------------------------------------------------------ |
