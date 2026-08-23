@@ -321,6 +321,7 @@ let audit = null;
 // before Synthesize would otherwise reach with these out of scope.
 let challengeStalled = false;
 let auditDegraded = false;
+let auditReason = "";
 
 // ---- Run recording: one jsonl row per settled run, modeled on build.js's recordRun ----
 // record.py copies the payload verbatim, so a key added here needs no change there.
@@ -626,9 +627,18 @@ try {
   // as confirmed)". The zero-findings early return carries challenge_ran=false too and
   // counts as degraded, closing the hole where a run whose reviewers found nothing and
   // whose challenge never ran still reaches Ready with zero issues.
-  auditDegraded = !!audit && audit.challenge_ran === false;
+  // A stopped audit carries no challenge_ran, and a rejected thunk leaves null in parallel()'s
+  // slot, so an equality check alone reads both as a healthy zero-findings audit.
+  auditReason = !audit
+    ? "nested audit returned nothing"
+    : audit.stopped
+      ? `nested audit stopped (${audit.stopped})`
+      : audit.challenge_ran === false
+        ? "audit challenge failed open"
+        : "";
+  auditDegraded = auditReason !== "";
   const auditFindingsIntro = auditDegraded
-    ? "The nested audit workflow's challenge stage did not run (fail-open), so treat the following findings as unverified; include them in issues as-is but flag this in the report."
+    ? `The nested audit workflow degraded (${auditReason}), so treat the following findings as unverified; include them in issues as-is but flag this in the report.`
     : "The integrated findings from the audit workflow (critic-verified; include them in issues as-is) are as follows.";
   synth = await agent(
     anchor(
@@ -669,7 +679,7 @@ try {
   } else {
     gate = "Ready (caveat)";
     if (envFail) gateReason.push("env fail (dynamic verification skipped)");
-    if (auditDegraded) gateReason.push("audit challenge failed open");
+    if (auditDegraded) gateReason.push(auditReason);
     if (testsCol !== "pass" && testsCol !== "no-runner" && !envFail)
       gateReason.push(`tests ${testsCol}`);
   }

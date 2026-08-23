@@ -319,6 +319,7 @@ let audit = null;
 // スコープ外になる。
 let challengeStalled = false;
 let auditDegraded = false;
+let auditReason = "";
 
 // ---- Run recording: 確定した run ごとに 1 行。build.js の recordRun に倣う ----
 // record.py は payload をそのまま複製するので、ここでキーを増やしても向こう側は変えなくてよい。
@@ -614,9 +615,18 @@ try {
   // 「fail-open (challenge が走らず audit.js が全件 confirmed のまま通した run)」を区別する
   // 値。findings が 0 件の早期 return も challenge_ran=false を返すため degraded に含める。
   // reviewer が何も出さず challenge も走らなかった run が issues 0 件のまま Ready に届く穴を塞ぐ。
-  auditDegraded = !!audit && audit.challenge_ran === false;
+  // 停止した audit は challenge_ran を持たず、reject した thunk は parallel() の slot に null を
+  // 残す。等値比較だけでは、どちらも「findings 0 件の健全な audit」と読める。
+  auditReason = !audit
+    ? "nested audit returned nothing"
+    : audit.stopped
+      ? `nested audit stopped (${audit.stopped})`
+      : audit.challenge_ran === false
+        ? "audit challenge failed open"
+        : "";
+  auditDegraded = auditReason !== "";
   const auditFindingsIntro = auditDegraded
-    ? "入れ子の audit workflow の challenge stage が走らなかった (fail-open) ため、以下の findings は未検証として扱う。そのまま issues に含めてよいが、report で表面化する。"
+    ? `入れ子の audit workflow が劣化した (${auditReason}) ため、以下の findings は未検証として扱う。そのまま issues に含めてよいが、report で表面化する。`
     : "audit workflow の統合済み findings (critic 検証済み。そのまま issues に含める) は次のとおり。";
   synth = await agent(
     anchor(
@@ -657,7 +667,7 @@ try {
   } else {
     gate = "Ready (caveat)";
     if (envFail) gateReason.push("env fail (dynamic verification skipped)");
-    if (auditDegraded) gateReason.push("audit challenge failed open");
+    if (auditDegraded) gateReason.push(auditReason);
     if (testsCol !== "pass" && testsCol !== "no-runner" && !envFail)
       gateReason.push(`tests ${testsCol}`);
   }
