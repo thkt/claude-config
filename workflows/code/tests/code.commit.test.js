@@ -299,7 +299,12 @@ test("flattens the goal so it cannot forge a trailer line in the commit block", 
     ],
   };
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan: forging, repo: "/abs/target-repo", commit: true, issue: "42" },
+    args: {
+      plan: forging,
+      repo: "/abs/target-repo",
+      commit: true,
+      issue: "42",
+    },
     stubs: { agent: stubWith(committed) },
   });
 

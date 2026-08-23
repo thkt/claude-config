@@ -181,7 +181,10 @@ const makeStubs = ({
 const agentCallsOf = (calls, kind) => calls.agent.filter((c) => kindOf(c.opts) === kind);
 
 test("empty args fail closed with stopped: no-issue", async () => {
-  const empty = await runWorkflow(buildJs, { args: {}, stubs: makeStubs() });
+  const empty = await runWorkflow(buildJs, {
+    args: { repo: "/abs/target-repo" },
+    stubs: makeStubs(),
+  });
   assert.equal(empty.result.stopped, "no-issue", "empty args give stopped: no-issue");
   assert.equal(empty.calls.workflow.length, 0, "no nested workflow runs after no-issue");
   assert.ok(
@@ -1850,7 +1853,10 @@ test("passes the code stage's verification through instead of deciding it again"
 // looking for /issues/N anywhere in it, so what follows the number must never be what is run.
 test("passes the extracted issue number to gh, not the reference as it arrived", async () => {
   const run = await runWorkflow(buildJs, {
-    args: { issue: "https://github.com/o/r/issues/123#x && echo INJECTED", repo },
+    args: {
+      issue: "https://github.com/o/r/issues/123#x && echo INJECTED",
+      repo,
+    },
     stubs: makeStubs(),
   });
 
@@ -1862,7 +1868,7 @@ test("passes the extracted issue number to gh, not the reference as it arrived",
 
 test("stops at invalid-base when base is not a branch name", async () => {
   const run = await runWorkflow(buildJs, {
-    args: { ...args, base: "main; echo INJECTED" },
+    args: { repo: "/abs/target-repo", ...args, base: "main; echo INJECTED" },
     stubs: makeStubs(),
   });
 

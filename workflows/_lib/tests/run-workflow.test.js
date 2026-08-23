@@ -156,7 +156,7 @@ test("T-013 a parallel whose thunk throws resolves rather than rejecting", async
     return { out };
   `;
   await withScript(source, async (path) => {
-    const { result } = await runWorkflow(path, { args: {} });
+    const { result } = await runWorkflow(path, { args: { repo: "/abs/target-repo" } });
     assert.deepEqual(result.out, [1, null, 3], "the throwing thunk leaves null at its own index");
   });
 });
@@ -168,7 +168,7 @@ test("T-014 a parallel whose thunk returns a rejected promise leaves null at tha
     return { out };
   `;
   await withScript(source, async (path) => {
-    const { result } = await runWorkflow(path, { args: {} });
+    const { result } = await runWorkflow(path, { args: { repo: "/abs/target-repo" } });
     assert.deepEqual(result.out, [null, 2]);
   });
 });
