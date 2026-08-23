@@ -3,11 +3,13 @@
 Run: python3 hooks/security/tests/rm_to_trash_test.py
 """
 
+import ast
 import json
 import subprocess
 import sys
 import unittest
 from pathlib import Path
+from typing import cast
 
 HOOK = Path(__file__).resolve().parents[1] / "rm_to_trash.py"
 
@@ -99,6 +101,29 @@ class TestRmToTrash(unittest.TestCase):
         # Reading the assignment as the command name misses rm, and the deletion runs.
         self.assert_denied("FOO=1 rm -rf /tmp/x")
         self.assert_denied("FOO=1 BAR=2 rm -rf /tmp/x")
+
+
+class TestPrefilterCoversEveryVerb(unittest.TestCase):
+    """main()'s TRIGGERS prefilter answers "is this a deletion" ahead of kind(), so a verb it
+    does not match returns before the scan and is never denied. VERBS is read out of the source
+    rather than hard-coded, so a verb added there is covered without touching this test."""
+
+    def test_every_deletion_verb_is_denied(self) -> None:
+        """T-012 Every VERBS member reaches a denial through the prefilter"""
+        source = (Path(__file__).resolve().parents[1] / "rm_to_trash.py").read_text(
+            encoding="utf-8"
+        )
+        tree = ast.parse(source)
+        verbs: set[str] = set()
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and any(
+                isinstance(t, ast.Name) and t.id == "VERBS" for t in node.targets
+            ):
+                verbs = set(ast.literal_eval(cast("ast.Call", node.value).args[0]))
+        self.assertTrue(verbs, "VERBS not found in rm_to_trash.py")
+        for verb in sorted(verbs):
+            with self.subTest(verb=verb):
+                self.assertIn("deny", run_hook(f"{verb} /tmp/x"))
 
 
 if __name__ == "__main__":

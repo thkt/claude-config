@@ -182,8 +182,12 @@ def starts_with(tokens: list[str], prefix: Sequence[str]) -> bool:
 
 
 def git_clean_only_lists(rest: list[str]) -> bool:
-    """Whether a git clean call prints its targets instead of removing them."""
-    for arg in rest:
+    """Whether a git clean call prints its targets instead of removing them.
+
+    Everything past `--` names a pathspec, and a file named `-notes` read as a flag would
+    carry the dry-run bit and clear an actual deletion.
+    """
+    for arg in rest[: rest.index("--")] if "--" in rest else rest:
         if arg == "--dry-run":
             return True
         # Short flags combine, so the dry-run bit arrives inside -nd as well as alone.

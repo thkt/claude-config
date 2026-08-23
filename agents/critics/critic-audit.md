@@ -77,7 +77,7 @@ Return the following fields on task completion. Empty challenges is a valid resu
 | Field      | Type   | Value                                                                                                                                                                                        |
 | ---------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | challenges | list   | Each item includes finding_id, verdict (confirmed / disputed / downgraded / needs_context), original_severity, adjusted_severity (only when downgraded, otherwise null), reasoning, evidence |
-| summary    | object | Count per verdict                                                                                                                               |
+| summary    | object | Count per verdict                                                                                                                                                                            |
 
 ## Constraints
 

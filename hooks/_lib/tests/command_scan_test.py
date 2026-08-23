@@ -207,5 +207,28 @@ class TestStartsWith(unittest.TestCase):
         self.assertFalse(command_scan.starts_with(["gh", "issue"], ["gh", "issue", "create"]))
 
 
+class TestGitCleanOnlyLists(unittest.TestCase):
+    """Both deletion guards read dry-run through this one call, so the contract is pinned here
+    rather than in either hook's suite. rm_to_trash passes the raw arguments and
+    git_sandbox_guard passes them already truncated at `--`, and the two must land alike."""
+
+    def test_dry_run_forms_only_list(self) -> None:
+        """T-020 The long flag and the short bit, alone or combined, only list"""
+        self.assertTrue(command_scan.git_clean_only_lists(["--dry-run"]))
+        self.assertTrue(command_scan.git_clean_only_lists(["-n"]))
+        self.assertTrue(command_scan.git_clean_only_lists(["-nd"]))
+
+    def test_force_deletes(self) -> None:
+        """T-021 Without the dry-run bit the call removes files"""
+        self.assertFalse(command_scan.git_clean_only_lists(["-fd"]))
+        self.assertFalse(command_scan.git_clean_only_lists([]))
+
+    def test_a_pathspec_shaped_like_a_flag_does_not_clear_it(self) -> None:
+        """T-022 A file named past `--` is a pathspec, never the dry-run flag"""
+        self.assertFalse(command_scan.git_clean_only_lists(["-fd", "--", "-notes"]))
+        self.assertFalse(command_scan.git_clean_only_lists(["-fd", "--", "-n"]))
+        self.assertTrue(command_scan.git_clean_only_lists(["-n", "--", "-notes"]))
+
+
 if __name__ == "__main__":
     _ = unittest.main(verbosity=2)
