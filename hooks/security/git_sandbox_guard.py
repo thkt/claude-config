@@ -16,6 +16,7 @@ is not cleared.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -56,8 +57,9 @@ REWRITES = frozenset(
 # Printing the usage reaches no file, whichever subcommand it is asked of.
 HELP = frozenset({"--help", "-h"})
 
-# git reads everything past this as a path, so a file named `-h` is not a request for help.
-PATH_SEPARATOR = "--"
+# The environment names that pick the repository, the same targets `--git-dir` and
+# `--work-tree` name on the command line.
+GIT_ENV = frozenset({"GIT_DIR", "GIT_WORK_TREE"})
 
 # Flags that keep a subcommand off the tree. checkout takes -b / -B and switch takes -c / -C,
 # and creating a branch leaves every file where it is. -n / --dry-run only prints, --cached
@@ -103,14 +105,19 @@ UNRESOLVED = (
     + "解決できないまま実行するなら dangerouslyDisableSandbox: true を付ける。"
 )
 
+UNRESOLVED_PROBE = (
+    "git-sandbox-guard: この呼び出しがどのリポジトリへ届くかを判定できない。"
+    + "git が PATH にあるか、対象リポジトリを読めるかを確認する。rev-parse の出力: "
+)
 
-def _flags(rest: list[str]) -> list[str]:
-    """The arguments up to the path separator.
 
-    What follows names files, and reading those as flags would let `git rm -- -h` pass as a
-    request for help.
-    """
-    return rest[: rest.index(PATH_SEPARATOR)] if PATH_SEPARATOR in rest else rest
+# git's own wording for the one failure that means "this is not a repository". Every other
+# stderr leaves the target unknown.
+NOT_A_REPOSITORY = re.compile(r"not a git repository|this operation must be run in a work tree")
+
+
+class Unresolved(Exception):
+    """The probe could not answer which repository a call reaches."""
 
 
 def _rewrites_tree(tokens: list[str]) -> bool:
@@ -123,7 +130,7 @@ def _rewrites_tree(tokens: list[str]) -> bool:
     if subcommand not in REWRITES:
         return False
 
-    rest = _flags(rest)
+    rest = command_scan.before_pathspec(rest)
     if any(a in HELP for a in rest):
         return False
     if subcommand in READ_FLAGS:
@@ -140,21 +147,27 @@ def _rewrites_tree(tokens: list[str]) -> bool:
     return True
 
 
-def rewriting_call(command: str) -> list[str] | None:
-    """The first git call on the line that writes tracked files in the working tree.
+def rewriting_targets(command: str) -> list[tuple[tuple[str, ...], tuple[tuple[str, str], ...]]]:
+    """One probe key per git call on the line that writes tracked files in the working tree.
 
     Not a regex over the raw string: it cannot tell where a token sits, so `git pull` inside a
-    commit message would read as a pull.
+    commit message would read as a pull. Every call is kept, not the first: `git checkout main
+    && git -C <elsewhere> checkout main` reaches two repositories, and stopping at the first
+    leaves the second unprobed. Deduplicated, so the common line forks rev-parse once.
     """
+    keys: list[tuple[tuple[str, ...], tuple[tuple[str, str], ...]]] = []
     try:
-        for tokens in command_scan.commands(command):
-            if tokens[0] == "git" and _rewrites_tree(tokens):
-                return tokens
+        for env, tokens in command_scan.commands_with_env(command):
+            if tokens[0] != "git" or not _rewrites_tree(tokens):
+                continue
+            key = (tuple(_redirects(tokens)), tuple(sorted(_git_env(env).items())))
+            if key not in keys:
+                keys.append(key)
     except ValueError:
         # Standing in for the call keeps the guard on the cwd repository, where clearing the
         # line would drop it.
-        return ["git"]
-    return None
+        return [((), ())]
+    return keys
 
 
 def _redirects(tokens: list[str]) -> list[str]:
@@ -170,6 +183,15 @@ def _redirects(tokens: list[str]) -> list[str]:
     return tokens[1 : len(tokens) - len(rest) - 1]
 
 
+def _git_env(env: dict[str, str]) -> dict[str, str]:
+    """The assignments ahead of the command that pick the repository.
+
+    A shell prefix reaches the same place `--git-dir` does, so a guard reading only the flags
+    passes `GIT_DIR=<guarded>/.git git checkout main` through.
+    """
+    return {name: value for name, value in env.items() if name in GIT_ENV}
+
+
 def _guarded_root() -> Path | None:
     """The config directory the sandbox protects.
 
@@ -182,16 +204,25 @@ def _guarded_root() -> Path | None:
         return None
 
 
-def _toplevel(cwd: str | Path, redirects: list[str]) -> Path | None:
+def _toplevel(cwd: str | Path, redirects: tuple[str, ...], env: dict[str, str]) -> Path | None:
+    """The working tree the call reaches.
+
+    None only when git answers that there is no repository. Every other failure raises, because
+    a probe that could not run says nothing about which repository the call lands in, and
+    reading that as "not the guarded one" turns the guard off.
+    """
     result = subprocess.run(
         ["git", "-C", str(cwd), *redirects, "rev-parse", "--show-toplevel"],
         capture_output=True,
         text=True,
         check=False,
+        env=dict(os.environ, **env),
     )
-    if result.returncode != 0 or not result.stdout.strip():
+    if result.returncode == 0 and result.stdout.strip():
+        return Path(result.stdout.strip())
+    if NOT_A_REPOSITORY.search(result.stderr):
         return None
-    return Path(result.stdout.strip())
+    raise Unresolved(result.stderr.strip() or f"rev-parse exited {result.returncode}")
 
 
 def main() -> None:
@@ -210,26 +241,30 @@ def main() -> None:
         return
     # Decided before rev-parse is forked: most payloads carrying the letters `git` run no git
     # at all, and the scan answers that without starting a process.
-    tokens = rewriting_call(command)
-    if tokens is None:
+    targets = rewriting_targets(command)
+    if not targets:
         return
 
-    cwd = payload.get("cwd")
-    top = _toplevel(cwd if isinstance(cwd, str) and cwd else Path.cwd(), _redirects(tokens))
-    # The call reaches no repository, so it rewrites no tree this guard protects.
-    if top is None:
-        return
-
-    # Asked after the repository is known, so an unresolvable config directory stops calls
-    # inside a repository alone rather than every git on the machine.
+    cwd = payload.get("cwd") if isinstance(payload.get("cwd"), str) else None
     guarded = _guarded_root()
-    if guarded is None:
-        deny(UNRESOLVED)
-        return
-    # A repository checked out anywhere else writes freely, so only this one needs the guard.
-    if top != guarded:
-        return
-    deny(REASON)
+    for redirects, env in targets:
+        try:
+            top = _toplevel(cwd or Path.cwd(), redirects, dict(env))
+        except Unresolved as failure:
+            deny(f"{UNRESOLVED_PROBE}{failure}")
+            return
+        # The call reaches no repository, so it rewrites no tree this guard protects.
+        if top is None:
+            continue
+        # Asked after a repository is known, so an unresolvable config directory stops calls
+        # inside a repository alone rather than every git on the machine.
+        if guarded is None:
+            deny(UNRESOLVED)
+            return
+        # A repository checked out anywhere else writes freely, so only this one needs the guard.
+        if top == guarded:
+            deny(REASON)
+            return
 
 
 if __name__ == "__main__":

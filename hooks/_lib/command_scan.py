@@ -26,6 +26,9 @@ VALUED_WRAPPER_FLAGS = frozenset({"-u", "-g", "-p", "-n", "-P", "-I", "-d", "-s"
 # the hook that stops rm passes it through.
 ENV_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 
+# git reads everything past this as a path, not as a flag.
+PATH_SEPARATOR = "--"
+
 # find runs whatever follows these, so the scan continues past them inside one command.
 EXEC_FLAGS = frozenset({"-exec", "-execdir", "-ok", "-okdir"})
 
@@ -95,6 +98,16 @@ def commands(text: str) -> Iterator[list[str]]:
     Raises ValueError on input shlex cannot close, which lets a fail-closed hook
     deny rather than guess.
     """
+    for _, tokens in commands_with_env(text):
+        yield tokens
+
+
+def commands_with_env(text: str) -> Iterator[tuple[dict[str, str], list[str]]]:
+    """The same walk as commands(), keeping the assignments that precede each command.
+
+    An assignment can change where a command lands (`GIT_DIR=` picks the repository), so a hook
+    that answers "which target does this reach" cannot read the tokens alone.
+    """
     current: list[str] = []
     for token in _tokens(_without_heredocs(text)):
         if token in SEPARATORS:
@@ -107,11 +120,14 @@ def commands(text: str) -> Iterator[list[str]]:
         yield from _resolve(current)
 
 
-def _resolve(tokens: list[str]) -> Iterator[list[str]]:
+def _resolve(tokens: list[str]) -> Iterator[tuple[dict[str, str], list[str]]]:
     """Emit the real command a token list runs, plus any it runs through -exec."""
+    env: dict[str, str] = {}
     index = 0
     while index < len(tokens):
         if ENV_ASSIGNMENT.match(tokens[index]):
+            name, _, value = tokens[index].partition("=")
+            env[name] = value
             index += 1
         elif Path(tokens[index]).name in WRAPPERS:
             index += 1
@@ -126,7 +142,7 @@ def _resolve(tokens: list[str]) -> Iterator[list[str]]:
     if index >= len(tokens):
         return
     resolved = [Path(tokens[index]).name, *tokens[index + 1 :]]
-    yield resolved
+    yield env, resolved
 
     for position, token in enumerate(resolved):
         if token in EXEC_FLAGS and position + 1 < len(resolved):
@@ -181,13 +197,18 @@ def starts_with(tokens: list[str], prefix: Sequence[str]) -> bool:
     return tokens[: len(prefix)] == list(prefix)
 
 
-def git_clean_only_lists(rest: list[str]) -> bool:
-    """Whether a git clean call prints its targets instead of removing them.
+def before_pathspec(rest: list[str]) -> list[str]:
+    """The arguments up to `--`.
 
-    Everything past `--` names a pathspec, and a file named `-notes` read as a flag would
-    carry the dry-run bit and clear an actual deletion.
+    What follows names files, and reading those as flags lets `git rm -- -h` pass as a request
+    for help and `git clean -fd -- -notes` pass as a dry run.
     """
-    for arg in rest[: rest.index("--")] if "--" in rest else rest:
+    return rest[: rest.index(PATH_SEPARATOR)] if PATH_SEPARATOR in rest else rest
+
+
+def git_clean_only_lists(rest: list[str]) -> bool:
+    """Whether a git clean call prints its targets instead of removing them."""
+    for arg in before_pathspec(rest):
         if arg == "--dry-run":
             return True
         # Short flags combine, so the dry-run bit arrives inside -nd as well as alone.

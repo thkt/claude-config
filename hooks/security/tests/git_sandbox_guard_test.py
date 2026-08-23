@@ -291,6 +291,27 @@ class TestTargetRepository(unittest.TestCase):
         command = f"git -C {self.guarded} checkout main"
         self.assertIn(DENY_MARK, run_hook(command, self.outside, dangling), "does not deny")
 
+    def test_every_call_on_the_line_is_probed(self) -> None:
+        """T-026 A redirected call is denied even when an earlier git call is not"""
+        command = f"git checkout main && git -C {self.guarded} checkout main"
+        self.assertIn(DENY_MARK, run_hook(command, self.outside, self.guarded), "does not deny")
+
+    def test_an_environment_prefix_reaches_the_guarded_tree(self) -> None:
+        """T-027 GIT_DIR / GIT_WORK_TREE pick the repository the same way the flags do"""
+        command = f"GIT_DIR={self.guarded}/.git GIT_WORK_TREE={self.guarded} git checkout main"
+        self.assertIn(DENY_MARK, run_hook(command, self.outside, self.guarded), "does not deny")
+
+    def test_an_environment_prefix_on_a_read_passes(self) -> None:
+        """T-028 The prefix alone is not a rewrite, so a read still passes"""
+        command = f"GIT_DIR={self.guarded}/.git GIT_WORK_TREE={self.guarded} git status"
+        self.assertNotIn(DENY_MARK, run_hook(command, self.outside, self.guarded), "denies")
+
+    def test_a_probe_that_cannot_answer_is_fail_closed(self) -> None:
+        """T-029 A rev-parse failure that is not "no repository" denies rather than passing"""
+        missing = Path(self.tmpdir.name) / "gone"
+        command = f"git -C {missing} checkout main"
+        self.assertIn(DENY_MARK, run_hook(command, self.outside, self.guarded), "does not deny")
+
     def test_the_fail_closed_deny_stops_at_repositories(self) -> None:
         """T-025 An unresolvable config directory leaves a cwd outside any repository alone"""
         dangling = Path(self.tmpdir.name) / "not-there"
