@@ -60,7 +60,7 @@ const callOf = (calls, label) => calls.agent.find((c) => c.opts && c.opts.label 
 
 test("T-001 hands the rejudge agent the survivor list and the post-fix diff to re-judge against", async () => {
   const uncommitted = await runWorkflow(polishJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: agentStub({ diffKind: "uncommitted", rejudge: bothResolved }) },
   });
   const call = callOf(uncommitted.calls, "rejudge");
@@ -76,7 +76,7 @@ test("T-001 hands the rejudge agent the survivor list and the post-fix diff to r
   );
 
   const branch = await runWorkflow(polishJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: agentStub({ diffKind: "branch", rejudge: bothResolved }) },
   });
   assert.match(
@@ -88,7 +88,7 @@ test("T-001 hands the rejudge agent the survivor list and the post-fix diff to r
 
 test("T-002 lists a finding judged still_open under reopened with its id and severity", async () => {
   const { result } = await runWorkflow(polishJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: agentStub({
         rejudge: {
@@ -108,7 +108,7 @@ test("T-002 lists a finding judged still_open under reopened with its id and sev
 
 test("T-002b lists a survivor missing a verdict under reopened as still_open", async () => {
   const { result } = await runWorkflow(polishJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: agentStub({ rejudge: { verdicts: [{ id: "F1", verdict: "resolved" }] } }),
     },
@@ -122,7 +122,7 @@ test("T-002b lists a survivor missing a verdict under reopened as still_open", a
 
 test("T-003 sets reopened to null with a reason when the rejudge agent returns nothing", async () => {
   const { result } = await runWorkflow(polishJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: agentStub({ rejudge: undefined }) },
   });
   assert.equal(result.reopened, null, "an unjudged run must not read as zero reopened");
@@ -131,7 +131,7 @@ test("T-003 sets reopened to null with a reason when the rejudge agent returns n
 
 test("T-004 does not start the rejudge agent when there is no survivor", async () => {
   const { calls, result } = await runWorkflow(polishJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: agentStub({
         challenge: {
@@ -150,7 +150,7 @@ test("T-004 does not start the rejudge agent when there is no survivor", async (
 
 test("T-005 does not start the rejudge agent in mode review", async () => {
   const { calls, result } = await runWorkflow(polishJs, {
-    args: { mode: "review" },
+    args: { repo: "/abs/target-repo", mode: "review" },
     stubs: { agent: agentStub({ rejudge: bothResolved }) },
   });
   assert.equal(callOf(calls, "rejudge"), undefined);

@@ -35,13 +35,17 @@ const parseArgs = () => {
 const opts = parseArgs();
 const scope = typeof opts.scope === "string" ? opts.scope : "";
 const repo = typeof opts.repo === "string" ? opts.repo : "";
+if (!repo) {
+  return {
+    stopped: "no-repo",
+    why: `対象リポジトリを args.repo に絶対パスで渡す: Workflow({name: "polish", args: {repo: "/abs/path"}})。`,
+  };
+}
 const mode = opts.mode === "review" || opts.mode === "cleanup" ? opts.mode : "full";
 const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 
 const anchor = (p) =>
-  repo
-    ? `git / ファイル / ビルドのコマンドはすべて ${repo} の repository から実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`
-    : p;
+  `git / ファイル / ビルドのコマンドはすべて ${repo} の repository から実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`;
 const scopeNote = (diffKind) =>
   scope
     ? `対象 scope は ${scope}。scope 外のファイルに触れる fix は落とす。`

@@ -36,13 +36,17 @@ const parseArgs = () => {
 const opts = parseArgs();
 const scope = typeof opts.scope === "string" ? opts.scope : "";
 const repo = typeof opts.repo === "string" ? opts.repo : "";
+if (!repo) {
+  return {
+    stopped: "no-repo",
+    why: `Pass the target repository as args.repo (absolute path): Workflow({name: "polish", args: {repo: "/abs/path"}}).`,
+  };
+}
 const mode = opts.mode === "review" || opts.mode === "cleanup" ? opts.mode : "full";
 const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 
 const anchor = (p) =>
-  repo
-    ? `Run every git, file, and build command from the repository at ${repo} (begin each shell command with \`cd ${repo} && \`).\n\n${p}`
-    : p;
+  `Run every git, file, and build command from the repository at ${repo} (begin each shell command with \`cd ${repo} && \`).\n\n${p}`;
 const scopeNote = (diffKind) =>
   scope
     ? `The target scope is ${scope}. Drop any fix touching files outside it.`
