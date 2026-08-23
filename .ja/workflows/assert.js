@@ -291,6 +291,10 @@ if (boot.mode === "none") {
 const envFail = !boot.worktree_ok || boot.install === "fail";
 const buildCol = envFail ? "skipped" : boot.build;
 const dynamicOk = !envFail && buildCol !== "fail";
+// 下の Evidence 2 段は隔離 worktree で作業するので、anchor は 2 つ目の場所を名指すことになる。
+// dynamicOk が worktree_ok を含むため、ここを使う地点では path が必ず立つ。
+const inWorktree = (p) =>
+  `Run every git / file / build command from the worktree at ${boot.worktree_path} (start each shell command with \`cd ${boot.worktree_path} && \`).\n\n${p}`;
 log(
   `Bootstrap: mode=${boot.mode} files=${boot.scope_files.length} build=${buildCol}` +
     (dynamicOk ? "" : ` (動的検証 skip: ${boot.reason || "env fail"})`),
@@ -389,17 +393,17 @@ try {
   phase("Evidence");
   const fileList = boot.scope_files.join("\n");
   const testRunRaw =
-    `assert の test 実行段階を担当する。worktree ${boot.worktree_path} 内でプロジェクトの test コマンドを検出し、\`timeout 600 codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} "Run the project test command. Report: (1) test exit code and last 50 lines of stderr if non-zero, (2) test summary (total/passed/failed)." </dev/null\` で 1 回だけ実行する。` +
+    `assert の test 実行段階を担当する。プロジェクトの test コマンドを検出し、\`timeout 600 codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} "Run the project test command. Report: (1) test exit code and last 50 lines of stderr if non-zero, (2) test summary (total/passed/failed)." </dev/null\` で 1 回だけ実行する。` +
     `build は bootstrap 済みなので再実行しない。test runner が見つからなければ outcome: no-runner、timeout やその他の実行不能は outcome: skipped とし notes に理由を書く。修正はしない。`;
   const adversarialRaw =
-    `assert の adversarial testing 段階を担当する。worktree ${boot.worktree_path} 内で \`timeout 600 codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} --full-auto "<prompt>" </dev/null\` を実行する。<prompt> は次の英文をそのまま使い、Target files に対象一覧を埋める。\n` +
+    `assert の adversarial testing 段階を担当する。\`timeout 600 codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} --full-auto "<prompt>" </dev/null\` を実行する。<prompt> は次の英文をそのまま使い、Target files に対象一覧を埋める。\n` +
     `---\n` +
     `You are an adversarial tester. Your goal is to find bugs by writing tests that the original developer likely missed.\n\nTarget files:\n${fileList}\n\n` +
     `Instructions:\n1. Read each target file and understand its behavior\n2. Generate edge-case tests targeting:\n   - Boundary values (empty, zero, max, off-by-one)\n   - Error paths (invalid input, null/nil equivalents, failure modes)\n   - Input validation gaps (special characters, injection, overflow)\n   - State transitions (concurrent access, race conditions if applicable)\n   - Implicit assumptions (hardcoded limits, timezone, locale)\n3. Write tests using the project's existing test framework and naming convention\n4. Place tests following the project's test directory and file-naming convention\n5. Run the tests\n6. Report results in this exact format:\n\nADVERSARIAL_RESULTS_START\ntest_name: <name>\ntarget: <file:line being tested>\nassertion: <what the test asserts>\nresult: PASS | FAIL\nfailure_detail: <error message if FAIL>\n---\n(repeat for each test)\nADVERSARIAL_RESULTS_END\n` +
     `---\n` +
     `出力の ADVERSARIAL_RESULTS ブロックを tests に構造化する。timeout や実行不能は ran: false とし notes に理由を書く。worktree の外に触れない。`;
-  const testRunPrompt = anchor(testRunRaw);
-  const adversarialPrompt = anchor(adversarialRaw);
+  const testRunPrompt = inWorktree(testRunRaw);
+  const adversarialPrompt = inWorktree(adversarialRaw);
   const testRunP = dynamicOk
     ? agent(testRunPrompt, {
         agentType: "general-purpose",

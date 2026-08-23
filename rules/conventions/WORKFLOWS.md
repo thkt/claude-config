@@ -36,11 +36,11 @@ The `bundled` search excludes `.ja/`. The definition is duplicated per script, s
 
 A script accepts `args` as either a string or an object. The string is shorthand, and each script decides what it names. A script where repo is optional returns the prompt untouched when repo is empty; one where repo is mandatory always prepends.
 
-| Target                 | Convention                                                                                                                             |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Reading args           | Use an object as it stands. Parse a string as JSON only when it starts with `{`, and read it as shorthand when that fails              |
-| String options         | Confirm the type with `typeof`, and fall to the default when `trim()` is empty. The `base` naming a diff comparison defaults to `main` |
-| A script taking `repo` | Define `anchor(p)` and pass every prompt bound for an agent through it. anchor prepends one sentence asking for `cd <repo> &&`         |
+| Target                 | Convention                                                                                                                                                                                                           |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reading args           | Use an object as it stands. Parse a string as JSON only when it starts with `{`, and read it as shorthand when that fails                                                                                            |
+| String options         | Confirm the type with `typeof`, and fall to the default when `trim()` is empty. The `base` naming a diff comparison defaults to `main`                                                                               |
+| A script taking `repo` | Define `anchor(p)` and pass every prompt bound for an agent through it. anchor prepends one sentence asking for `cd <repo> &&`. A stage working somewhere other than the repo takes a separate pin naming that place |
 
 ## Degradation recording
 
