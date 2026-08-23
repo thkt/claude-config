@@ -24,6 +24,11 @@ from pathlib import Path
 from typing import override
 
 HOOK = Path(__file__).resolve().parents[1] / "client_identifier_gate.py"
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+
+import hook_harness  # noqa: E402
+
 GUARDED_REPO = Path(__file__).resolve().parents[3]
 
 TERM = "zzplaceholderclient"
@@ -77,15 +82,8 @@ class ClientIdentifierGateTest(unittest.TestCase):
         )
         env = dict(os.environ)
         env["CLAUDE_CLIENT_NAMES_FILE"] = str(self.list_path if list_path is None else list_path)
-        proc = subprocess.run(
-            [sys.executable, str(HOOK)],
-            input=payload,
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-        self.assertEqual(proc.returncode, 0, proc.stderr)
-        return json.loads(proc.stdout) if proc.stdout.strip() else None
+        stdout = hook_harness.run(HOOK, payload, env)
+        return json.loads(stdout) if stdout.strip() else None
 
     def decision_of(self, out: object) -> object:
         return _field(out, "hookSpecificOutput", "permissionDecision")

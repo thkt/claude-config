@@ -7,9 +7,7 @@
 Run: python3 hooks/pre-bash/tests/body_proofread_test.py
 """
 
-import json
 import os
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -17,6 +15,10 @@ from pathlib import Path
 from typing import override
 
 HOOK = Path(__file__).resolve().parents[1] / "body_proofread.py"
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+
+import hook_harness  # noqa: E402
 
 # ≥50 Japanese chars (has_japanese threshold) with a deterministic finding (redundant expression)
 LINTED_BODY = "この機能はユーザーが設定を変更することができます。この説明は日本語判定の五十文字閾値を超えるための追加の文章です。"
@@ -49,16 +51,8 @@ class TestBodyProofread(unittest.TestCase):
         tool_input: dict[str, str] | None = None,
         env: dict[str, str] | None = None,
     ) -> str:
-        payload = json.dumps({"tool_name": tool, "tool_input": tool_input or {"command": command}})
-        result = subprocess.run(
-            [sys.executable, str(HOOK)],
-            input=payload,
-            capture_output=True,
-            text=True,
-            check=False,
-            env=env,
-        )
-        return result.stdout
+        payload = {"tool_name": tool, "tool_input": tool_input or {"command": command}}
+        return hook_harness.run(HOOK, payload, env)
 
     def with_body_file(self, name: str = "plain") -> Path:
         directory = self.root / name

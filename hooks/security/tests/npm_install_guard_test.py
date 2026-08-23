@@ -6,9 +6,7 @@ rather than the one this machine happens to have.
 Run: python3 hooks/security/tests/npm_install_guard_test.py
 """
 
-import json
 import os
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -16,6 +14,10 @@ from pathlib import Path
 from typing import ClassVar, override
 
 HOOK = Path(__file__).resolve().parents[1] / "npm_install_guard.py"
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+
+import hook_harness  # noqa: E402
 
 # The value alone, so the assertion survives jq switching between -c and pretty output.
 # Asserting on the value rather than on any output at all: PreToolUse reads only
@@ -50,16 +52,8 @@ class TestNpmInstallGuard(unittest.TestCase):
         cls.tmpdir.cleanup()
 
     def run_hook(self, home: Path, command: str) -> str:
-        payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
-        result = subprocess.run(
-            [sys.executable, str(HOOK)],
-            input=payload,
-            capture_output=True,
-            text=True,
-            check=False,
-            env=dict(os.environ, HOME=str(home)),
-        )
-        return result.stdout
+        payload = {"tool_name": "Bash", "tool_input": {"command": command}}
+        return hook_harness.run(HOOK, payload, dict(os.environ, HOME=str(home)))
 
     def assert_denied(self, home: Path, command: str) -> None:
         with self.subTest(command=command):

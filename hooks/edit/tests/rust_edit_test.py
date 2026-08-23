@@ -21,6 +21,11 @@ from pathlib import Path
 from typing import override
 
 HOOK_DIR = Path(__file__).resolve().parents[1]
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+
+import hook_harness  # noqa: E402
+
 PRE = HOOK_DIR / "rust_pre_edit.py"
 POST = HOOK_DIR / "rust_post_edit.py"
 
@@ -73,16 +78,8 @@ class TestRustEdit(unittest.TestCase):
         self.assertEqual(shutil.which("cargo", path=self.env["PATH"]), str(stub))
 
     def run_hook(self, hook: Path, path: Path | str, **env: str) -> str:
-        payload = json.dumps({"tool_name": "Edit", "tool_input": {"file_path": str(path)}})
-        result = subprocess.run(
-            [sys.executable, str(hook)],
-            input=payload,
-            capture_output=True,
-            text=True,
-            check=False,
-            env={**self.env, **env},
-        )
-        return result.stdout
+        payload = {"tool_name": "Edit", "tool_input": {"file_path": str(path)}}
+        return hook_harness.run(hook, payload, {**self.env, **env})
 
     def cargo_calls(self) -> list[str]:
         return self.calls.read_text(encoding="utf-8").split()

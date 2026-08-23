@@ -18,6 +18,10 @@ from typing import ClassVar, override
 
 HOOK = Path(__file__).resolve().parents[1] / "git_sandbox_guard.py"
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+
+import hook_harness  # noqa: E402
+
 # The value alone, so the assertion survives jq switching between -c and pretty output.
 DENY_MARK = '"deny"'
 
@@ -41,17 +45,8 @@ def run_hook(
             "tool_input": {"command": command, "dangerouslyDisableSandbox": escaped},
         }
     )
-    result = subprocess.run(
-        [sys.executable, str(HOOK)],
-        input=payload,
-        capture_output=True,
-        text=True,
-        check=False,
-        env=dict(os.environ, CLAUDE_CONFIG_DIR=str(config), PATH=path or os.environ["PATH"]),
-    )
-    if result.returncode != 0:
-        raise AssertionError(f"hook exited {result.returncode}: {result.stderr.strip()}")
-    return result.stdout
+    env = dict(os.environ, CLAUDE_CONFIG_DIR=str(config), PATH=path or os.environ["PATH"])
+    return hook_harness.run(HOOK, payload, env)
 
 
 class TestGitSandboxGuard(unittest.TestCase):

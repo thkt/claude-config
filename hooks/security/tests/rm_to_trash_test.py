@@ -3,13 +3,15 @@
 Run: python3 hooks/security/tests/rm_to_trash_test.py
 """
 
-import json
-import subprocess
 import sys
 import unittest
 from pathlib import Path
 
 HOOK = Path(__file__).resolve().parents[1] / "rm_to_trash.py"
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+
+import hook_harness  # noqa: E402
 
 sys.path.insert(0, str(HOOK.parents[1] / "_lib"))
 sys.path.insert(0, str(HOOK.parent))
@@ -23,17 +25,8 @@ def run_hook(command: str) -> str:
     A hook that dies before writing anything returns an empty string, which every
     "is not a deny" assertion accepts.
     """
-    payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
-    result = subprocess.run(
-        [sys.executable, str(HOOK)],
-        input=payload,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        raise AssertionError(f"hook exited {result.returncode}: {result.stderr.strip()}")
-    return result.stdout
+    payload = {"tool_name": "Bash", "tool_input": {"command": command}}
+    return hook_harness.run(HOOK, payload)
 
 
 class TestRmToTrash(unittest.TestCase):
