@@ -68,7 +68,7 @@ See `~/.claude/agents/_lib/calibration-examples.md` section SEC.
 
 ## Output
 
-Follow ~/.claude/agents/_lib/finding-schema.md. Relaxed reporting bar (override). When no code is found, report "No code to review". Reasoning uses threat model. Actor capability, attack vector, concrete impact.
+Follow ~/.claude/agents/_lib/finding-schema.md. Relaxed reporting bar (override). When no code is found, report "No code to review". Reasoning uses the threat model, naming actor capability, attack vector, and concrete impact.
 
 | Field        | Value                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------- |

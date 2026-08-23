@@ -11,6 +11,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from typing import ClassVar, override
@@ -21,7 +22,19 @@ HOOK = Path(__file__).resolve().parents[1] / "git_sandbox_guard.py"
 DENY_MARK = '"deny"'
 
 
-def run_hook(command: str, cwd: Path, config: Path, escaped: bool = False) -> str:
+def run_hook(
+    command: str,
+    cwd: Path,
+    config: Path,
+    escaped: bool = False,
+    path: str | None = None,
+) -> str:
+    """The hook's stdout, after confirming it ran.
+
+    A hook that dies before writing anything returns an empty string, which every
+    "is not a deny" assertion accepts. Checking the exit status keeps those from passing on a
+    hook that never ran.
+    """
     payload = json.dumps(
         {
             "tool_name": "Bash",
@@ -35,8 +48,10 @@ def run_hook(command: str, cwd: Path, config: Path, escaped: bool = False) -> st
         capture_output=True,
         text=True,
         check=False,
-        env=dict(os.environ, CLAUDE_CONFIG_DIR=str(config)),
+        env=dict(os.environ, CLAUDE_CONFIG_DIR=str(config), PATH=path or os.environ["PATH"]),
     )
+    if result.returncode != 0:
+        raise AssertionError(f"hook exited {result.returncode}: {result.stderr.strip()}")
     return result.stdout
 
 
@@ -311,6 +326,24 @@ class TestTargetRepository(unittest.TestCase):
         missing = Path(self.tmpdir.name) / "gone"
         command = f"git -C {missing} checkout main"
         self.assertIn(DENY_MARK, run_hook(command, self.outside, self.guarded), "does not deny")
+
+    def test_a_probe_that_never_answers_is_fail_closed(self) -> None:
+        """T-030 A rev-parse that stalls past the bound denies rather than blocking forever"""
+        shim = Path(self.tmpdir.name) / "shim"
+        shim.mkdir(exist_ok=True)
+        stall = shim / "git"
+        _ = stall.write_text("#!/bin/sh\nsleep 60\n")
+        stall.chmod(0o755)
+        started = time.monotonic()
+        # PATH, not a patched constant: the bound has to hold around the real subprocess call.
+        out = run_hook(
+            f"git -C {self.guarded} checkout main",
+            self.outside,
+            self.guarded,
+            path=f"{shim}:{os.environ['PATH']}",
+        )
+        self.assertIn(DENY_MARK, out, "does not deny")
+        self.assertLess(time.monotonic() - started, 30, "did not bound the probe")
 
     def test_the_fail_closed_deny_stops_at_repositories(self) -> None:
         """T-025 An unresolvable config directory leaves a cwd outside any repository alone"""

@@ -3,18 +3,27 @@
 Run: python3 hooks/security/tests/rm_to_trash_test.py
 """
 
-import ast
 import json
 import subprocess
 import sys
 import unittest
 from pathlib import Path
-from typing import cast
 
 HOOK = Path(__file__).resolve().parents[1] / "rm_to_trash.py"
 
+sys.path.insert(0, str(HOOK.parents[1] / "_lib"))
+sys.path.insert(0, str(HOOK.parent))
+
+import rm_to_trash  # noqa: E402
+
 
 def run_hook(command: str) -> str:
+    """The hook's stdout, after confirming it ran.
+
+    A hook that dies before writing anything returns an empty string, which every
+    "is not a deny" assertion accepts. Checking the exit status keeps those from passing on a
+    hook that never ran.
+    """
     payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
     result = subprocess.run(
         [sys.executable, str(HOOK)],
@@ -23,6 +32,8 @@ def run_hook(command: str) -> str:
         text=True,
         check=False,
     )
+    if result.returncode != 0:
+        raise AssertionError(f"hook exited {result.returncode}: {result.stderr.strip()}")
     return result.stdout
 
 
@@ -105,23 +116,12 @@ class TestRmToTrash(unittest.TestCase):
 
 class TestPrefilterCoversEveryVerb(unittest.TestCase):
     """main()'s TRIGGERS prefilter answers "is this a deletion" ahead of kind(), so a verb it
-    does not match returns before the scan and is never denied. VERBS is read out of the source
+    does not match returns before the scan and is never denied. VERBS is read off the module
     rather than hard-coded, so a verb added there needs no edit here."""
 
     def test_every_deletion_verb_is_denied(self) -> None:
         """T-012 Every VERBS member reaches a denial through the prefilter"""
-        source = (Path(__file__).resolve().parents[1] / "rm_to_trash.py").read_text(
-            encoding="utf-8"
-        )
-        tree = ast.parse(source)
-        verbs: set[str] = set()
-        for node in tree.body:
-            if isinstance(node, ast.Assign) and any(
-                isinstance(t, ast.Name) and t.id == "VERBS" for t in node.targets
-            ):
-                verbs = set(ast.literal_eval(cast("ast.Call", node.value).args[0]))
-        self.assertTrue(verbs, "VERBS not found in rm_to_trash.py")
-        for verb in sorted(verbs):
+        for verb in sorted(rm_to_trash.VERBS):
             with self.subTest(verb=verb):
                 self.assertIn("deny", run_hook(f"{verb} /tmp/x"))
 

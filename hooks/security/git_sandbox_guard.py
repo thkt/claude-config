@@ -112,6 +112,10 @@ UNRESOLVED_PROBE = (
 )
 
 
+# A PreToolUse hook sits in front of the user's command, so a probe that never returns blocks
+# the call. On a network filesystem or a repository being repacked, rev-parse can stall.
+PROBE_TIMEOUT_SECONDS = 10
+
 # git's own wording for the one failure that means "this is not a repository".
 NOT_A_REPOSITORY = re.compile(r"not a git repository|this operation must be run in a work tree")
 
@@ -209,13 +213,17 @@ def _toplevel(cwd: str | Path, redirects: tuple[str, ...], env: dict[str, str]) 
     Every other failure raises: a probe that could not run says nothing about where the call
     lands, and reading that as "not the guarded one" turns the guard off.
     """
-    result = subprocess.run(
-        ["git", "-C", str(cwd), *redirects, "rev-parse", "--show-toplevel"],
-        capture_output=True,
-        text=True,
-        check=False,
-        env=dict(os.environ, **env),
-    )
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(cwd), *redirects, "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=dict(os.environ, **env),
+            timeout=PROBE_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as expiry:
+        raise Unresolved(f"rev-parse did not answer in {PROBE_TIMEOUT_SECONDS}s") from expiry
     if result.returncode == 0 and result.stdout.strip():
         return Path(result.stdout.strip())
     if NOT_A_REPOSITORY.search(result.stderr):

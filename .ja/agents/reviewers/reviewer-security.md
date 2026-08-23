@@ -68,7 +68,7 @@ reviewer-security は `~/.claude/agents/_lib/finding-schema.md` で定義され�
 
 ## アウトプット
 
-~/.claude/agents/_lib/finding-schema.md に従う。緩和された reporting bar (override)。コードが見つからないときは "No code to review" を報告する。Reasoning は脅威モデルを使う。アクターの能力、攻撃ベクトル、具体的な影響。
+~/.claude/agents/_lib/finding-schema.md に従う。緩和された reporting bar (override)。コードが見つからないときは "No code to review" を報告する。Reasoning は脅威モデルを使い、アクターの能力、攻撃ベクトル、具体的な影響を挙げる。
 
 | フィールド   | 値                                                                                              |
 | ------------ | ----------------------------------------------------------------------------------------------- |
