@@ -179,3 +179,14 @@ def flag_value(tokens: list[str], flag: str) -> str | None:
 def starts_with(tokens: list[str], prefix: Sequence[str]) -> bool:
     """Whether a command opens with the given token sequence."""
     return tokens[: len(prefix)] == list(prefix)
+
+
+def git_clean_only_lists(rest: list[str]) -> bool:
+    """Whether a git clean call prints its targets instead of removing them."""
+    for arg in rest:
+        if arg == "--dry-run":
+            return True
+        # Short flags combine, so the dry-run bit arrives inside -nd as well as alone.
+        if arg.startswith("-") and not arg.startswith("--") and "n" in arg:
+            return True
+    return False

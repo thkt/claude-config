@@ -95,17 +95,6 @@ REASON = (
 )
 
 
-def _clean_only_lists(rest: list[str]) -> bool:
-    """Whether a git clean call prints its targets instead of removing them."""
-    for arg in rest:
-        if arg == "--dry-run":
-            return True
-        # Short flags combine, so the dry-run bit arrives inside -nd as well as alone.
-        if arg.startswith("-") and not arg.startswith("--") and "n" in arg:
-            return True
-    return False
-
-
 def _flags(rest: list[str]) -> list[str]:
     """The arguments up to the path separator.
 
@@ -135,7 +124,7 @@ def _rewrites_tree(tokens: list[str]) -> bool:
     if subcommand in READ_ARGUMENTS:
         return not (rest and rest[0] in READ_ARGUMENTS[subcommand])
     if subcommand == "clean":
-        return not _clean_only_lists(rest)
+        return not command_scan.git_clean_only_lists(rest)
     if subcommand == "restore":
         # --staged alone rewrites the index. Paired with --worktree it reaches the tree too.
         return "--worktree" in rest or "--staged" not in rest
