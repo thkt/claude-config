@@ -113,6 +113,11 @@ const makeAuditWorkflowStub = (challengeRan) => (name) =>
       }
     : undefined;
 
+// A nested audit that ran normally. A run with no workflow stub leaves audit null, which is a
+// degradation, so every test asserting Ready has to stand one up.
+const healthyAudit = (name) =>
+  name === "audit" ? { findings: [], challenge_ran: true, verify_ran: true } : undefined;
+
 // The synthesize agent is called exactly once per run.
 const synthesizePromptOf = (calls) => {
   const call = calls.agent.find((c) => c.opts && c.opts.label === "synthesize");
@@ -321,7 +326,7 @@ test("T-003 a Ready run whose build was skipped does not report build as passing
   const skippedBoot = { ...bootOk, build: "skipped" };
   const { result } = await runWorkflow(assertJs, {
     args: {},
-    stubs: { agent: makeGateReasonAgent({ boot: skippedBoot }) },
+    stubs: { agent: makeGateReasonAgent({ boot: skippedBoot }), workflow: healthyAudit },
   });
   assert.equal(result.gate, "Ready", "no build concept and passing tests still reach Ready");
   assert.equal(result.build, "skipped", "the build column reports what bootstrap returned");
@@ -423,7 +428,8 @@ test("T-012 a run that reaches a gate writes one row carrying that gate and the 
 test("T-013 a recorder returning nothing leaves the gate unchanged and names the unwritten row in log()", async () => {
   const { result, logs } = await runWorkflow(assertJs, {
     args: {},
-    stubs: { agent: makeAgent({ ran: true, tests: [] }) }, // the "record" label falls through to undefined
+    // the "record" label falls through to undefined
+    stubs: { agent: makeAgent({ ran: true, tests: [] }), workflow: healthyAudit },
   });
   assert.equal(
     result.gate,
@@ -498,6 +504,7 @@ test("T-016 a Ready-gated run appends exactly one record row", async () => {
           return { path: "/home/u/.claude/history/assert-runs.jsonl" };
         return makeAgent({ ran: true, tests: [] })(prompt, opts);
       },
+      workflow: healthyAudit,
     },
   });
   assert.equal(result.gate, "Ready", "no issues and passing evidence gate Ready");
@@ -518,6 +525,7 @@ test("T-017 a recorder that throws leaves the gate unchanged and names the unwri
         if (opts && opts.label === "record") throw new Error("recorder exploded");
         return makeAgent({ ran: true, tests: [] })(prompt, opts);
       },
+      workflow: healthyAudit,
     },
   });
   assert.equal(
@@ -530,3 +538,41 @@ test("T-017 a recorder that throws leaves the gate unchanged and names the unwri
     "the unwritten row reaches log() naming the file it is missing from",
   );
 });
+
+// A stopped nested audit spawned no reviewer at all, yet challenge_ran is absent rather than
+// false, so an equality check alone read it as a healthy audit that found nothing (#461).
+const stoppedAudit = (name) =>
+  name === "audit" ? { stopped: "no-repo", why: "pass args.repo" } : undefined;
+// parallel() leaves null in a rejected thunk's slot, which is the same shape one step further.
+const deadAudit = (name) => (name === "audit" ? null : undefined);
+
+for (const [label, workflowStub] of [
+  ["stops", stoppedAudit],
+  ["returns nothing", deadAudit],
+]) {
+  test(`T-018 a run whose nested audit ${label} does not call its findings critic-verified`, async () => {
+    const { calls } = await runWorkflow(assertJs, {
+      args: {},
+      stubs: { agent: makeAgent({ ran: true, tests: [] }), workflow: workflowStub },
+    });
+    const prompt = synthesizePromptOf(calls);
+    assert.ok(prompt.length > 0, "the synthesize agent ran");
+    assert.ok(
+      !/critic-verified/i.test(prompt),
+      `an audit that ${label} is not called critic-verified`,
+    );
+  });
+
+  test(`T-019 the gate does not reach Ready when the nested audit ${label}`, async () => {
+    const { result } = await runWorkflow(assertJs, {
+      args: {},
+      stubs: { agent: makeAgent({ ran: true, tests: [] }), workflow: workflowStub },
+    });
+    assert.notEqual(result.gate, "Ready", `an audit that ${label} keeps the run off Ready`);
+    assert.match(
+      JSON.stringify(result.gate_reason),
+      /nested audit (stopped|returned nothing)/,
+      "gate_reason names what the audit failed to do, not the challenge stage it never reached",
+    );
+  });
+}
