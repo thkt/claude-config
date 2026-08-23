@@ -23,6 +23,8 @@ const parseArgs = () => {
   return {};
 };
 
+// 見るのは units の有無だけ。plan の構造検証と preconditions の再検証は build の Load と
+// Revalidate が持ち、単体で呼ぶ側がそれを済ませてから渡す (#185)。
 const input = parseArgs();
 const plan = input.plan;
 
