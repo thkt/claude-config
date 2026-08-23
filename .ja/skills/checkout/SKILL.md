@@ -23,7 +23,7 @@ build の Branch 段を手で行う版。ブランチ名は同じ規則で組み
 
 ## ブランチ命名
 
-名前の組み立てと type の判定は ${CLAUDE_SKILL_DIR}/references/branch-naming.md に従う。build も Branch phase で同じ規則を引く。
+名前の組み立てと type の判定は ${CLAUDE_SKILL_DIR}/references/branch-naming.md に従う。
 
 ## エラー処理
 

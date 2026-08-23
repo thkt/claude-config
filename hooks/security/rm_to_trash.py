@@ -51,17 +51,6 @@ REASONS = {
 }
 
 
-def _only_lists(rest: list[str]) -> bool:
-    """Whether a git clean call prints its targets instead of removing them."""
-    for arg in rest:
-        if arg == "--dry-run":
-            return True
-        # Short flags combine, so the dry-run bit arrives inside -nd as well as alone.
-        if arg.startswith("-") and not arg.startswith("--") and "n" in arg:
-            return True
-    return False
-
-
 def _deletes(tokens: list[str]) -> str | None:
     """Which form of deletion a command takes, or None when it deletes nothing."""
     if tokens[0] in VERBS:
@@ -70,7 +59,7 @@ def _deletes(tokens: list[str]) -> str | None:
         return "find"
     if tokens[0] == "git":
         subcommand, rest = command_scan.git_subcommand(tokens)
-        if subcommand == "clean" and not _only_lists(rest):
+        if subcommand == "clean" and not command_scan.git_clean_only_lists(rest):
             return "clean"
     return None
 

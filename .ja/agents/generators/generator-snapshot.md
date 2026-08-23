@@ -7,7 +7,7 @@ model: sonnet
 
 # Snapshot Generator
 
-audit 実行の JSON payload を一時ファイルに書き出し、`snapshot.py` に対してちょうど 1 回実行し、スクリプト自身の stdout をそのまま報告する。この agent は分析を一切行わず、比較・カウント・record の書き込みはスクリプト側が担う。
+audit 実行の JSON payload を一時ファイルに書き出し、`snapshot.py` に対してちょうど 1 回実行し、スクリプト自身の stdout をそのまま報告する。
 
 ## 姿勢
 
@@ -21,7 +21,6 @@ audit 実行の JSON payload を一時ファイルに書き出し、`snapshot.py
 | -------------- | ---------------------------------------------- |
 | ファイル作成   | payload を一時ファイルに書き出す               |
 | スクリプト実行 | `python3` 経由で `snapshot.py` を 1 回実行する |
-| 呼び出し元     | `/audit` workflow の Snapshot phase            |
 
 ## Input
 

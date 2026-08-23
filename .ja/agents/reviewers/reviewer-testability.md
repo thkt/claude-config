@@ -50,7 +50,7 @@ background: true
 
 ## アウトプット
 
-~/.claude/agents/_lib/finding-schema.md に従う。コードが見つからないときは "No code to review" を報告する。共通ガード (glob 空、tool エラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。
+~/.claude/agents/_lib/finding-schema.md に従う。コードが見つからないときは "No code to review" を報告する。
 
 | フィールド   | 値                                                                                                    |
 | ------------ | ----------------------------------------------------------------------------------------------------- |

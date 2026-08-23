@@ -21,7 +21,7 @@ Read `.claude/OUTCOME.md`. If it does not exist, generate it via `/outcome`. The
 
 ## Phase 2: Design Exploration
 
-Ground the approaches in the real code and existing research before making them. Steps 1 through 4 gather that grounding, and they finish with no approach yet in existence.
+Ground the approaches in the real code and existing research before making them. Steps 1 through 4 finish with no approach yet in existence.
 
 1. Read the relevant code. When the task, the issue, or a research report cites a mock image or screenshot, open that image file with Read as well. Absence from the text is not evidence the element does not exist
 2. Derive a lowercase hyphenated slug from the task's words and run ${CLAUDE_SKILL_DIR}/../research/scripts/find-prior-research.py <slug> .claude/workspace/research. Read the matching report from the candidates on stdout, and take each of its parts per the table in ${CLAUDE_SKILL_DIR}/references/research-report-intake.md. With no candidate, proceed as though no research report exists

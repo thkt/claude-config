@@ -1,6 +1,6 @@
 # Canonical Finding Schema
 
-Base fields required from all audit sub-reviewers. Leader (Medium tier) or Integrator (Large tier) normalizes domain-specific extensions during integration.
+Base fields required from all audit sub-reviewers.
 
 ## Base Fields (required)
 

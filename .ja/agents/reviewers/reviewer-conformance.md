@@ -13,7 +13,7 @@ background: true
 
 ## スコープ
 
-このエージェントは `/audit` の reviewer pool に入らない。下記の独自フォーマットを使い `~/.claude/agents/_lib/finding-schema.md` には従わない。
+下記の独自フォーマットを使い `~/.claude/agents/_lib/finding-schema.md` には従わない。
 
 Spec 軸専用。実装後の diff を元 spec と照合する (post-implementation)。
 

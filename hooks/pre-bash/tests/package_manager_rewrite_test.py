@@ -8,7 +8,6 @@ Run: python3 hooks/pre-bash/tests/package_manager_rewrite_test.py
 
 import json
 import os
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -16,6 +15,10 @@ from pathlib import Path
 from typing import ClassVar, cast, override
 
 HOOK = Path(__file__).resolve().parents[1] / "package_manager_rewrite.py"
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+
+import hook_harness  # noqa: E402
 
 
 def _field(node: object, *keys: str) -> str | None:
@@ -53,16 +56,8 @@ class TestPackageManagerRewrite(unittest.TestCase):
         cls.tmpdir.cleanup()
 
     def run_hook(self, command: str) -> str:
-        payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
-        result = subprocess.run(
-            [sys.executable, str(HOOK)],
-            input=payload,
-            capture_output=True,
-            text=True,
-            check=False,
-            env=self.env,
-        )
-        return result.stdout
+        payload = {"tool_name": "Bash", "tool_input": {"command": command}}
+        return hook_harness.run(HOOK, payload, self.env)
 
     # The rewritten command alone, so each assertion states the conversion instead of the
     # JSON around it. T-013 covers the envelope.

@@ -3,25 +3,25 @@
 Run: python3 hooks/security/tests/rm_to_trash_test.py
 """
 
-import json
-import subprocess
 import sys
 import unittest
 from pathlib import Path
 
 HOOK = Path(__file__).resolve().parents[1] / "rm_to_trash.py"
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+
+import hook_harness  # noqa: E402
+
+sys.path.insert(0, str(HOOK.parents[1] / "_lib"))
+sys.path.insert(0, str(HOOK.parent))
+
+import rm_to_trash  # noqa: E402
+
 
 def run_hook(command: str) -> str:
-    payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
-    result = subprocess.run(
-        [sys.executable, str(HOOK)],
-        input=payload,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return result.stdout
+    payload = {"tool_name": "Bash", "tool_input": {"command": command}}
+    return hook_harness.run(HOOK, payload)
 
 
 class TestRmToTrash(unittest.TestCase):
@@ -99,6 +99,18 @@ class TestRmToTrash(unittest.TestCase):
         # Reading the assignment as the command name misses rm, and the deletion runs.
         self.assert_denied("FOO=1 rm -rf /tmp/x")
         self.assert_denied("FOO=1 BAR=2 rm -rf /tmp/x")
+
+
+class TestPrefilterCoversEveryVerb(unittest.TestCase):
+    """main()'s TRIGGERS prefilter answers "is this a deletion" ahead of kind(), so a verb it
+    does not match returns before the scan and is never denied. VERBS is read off the module
+    rather than hard-coded, so a verb added there needs no edit here."""
+
+    def test_every_deletion_verb_is_denied(self) -> None:
+        """T-012 Every VERBS member reaches a denial through the prefilter"""
+        for verb in sorted(rm_to_trash.VERBS):
+            with self.subTest(verb=verb):
+                self.assertIn("deny", run_hook(f"{verb} /tmp/x"))
 
 
 if __name__ == "__main__":

@@ -62,7 +62,7 @@ See `~/.claude/agents/_lib/calibration-examples.md` section TC.
 
 ## Output
 
-Follow ~/.claude/agents/\_lib/finding-schema.md. When no tests are found, report "No tests to review". Common guards (glob empty, tool error) follow ~/.claude/agents/\_lib/finding-schema.md defaults.
+Follow ~/.claude/agents/\_lib/finding-schema.md. When no tests are found, report "No tests to review".
 
 | Field        | Value                                                                                                   |
 | ------------ | ------------------------------------------------------------------------------------------------------- |

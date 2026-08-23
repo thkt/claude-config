@@ -21,7 +21,7 @@ argument-hint: "[task description]"
 
 ## Phase 2: 設計探索
 
-案は、実在するコードと既存の調査に照らしてから作る。手順 1 から 4 がその材料を集める工程で、案が 1 つも無い状態で終える。
+案は、実在するコードと既存の調査に照らしてから作る。手順 1 から 4 は、案が 1 つも無い状態で終える。
 
 1. 関連コードを読む。タスク、issue、調査レポートのいずれかがモック画像を参照しているなら、その画像も Read で開く。テキスト側に記載が無いことを、その要素が存在しない根拠にしない
 2. タスクの語から小文字ハイフン区切りの slug を作る。${CLAUDE_SKILL_DIR}/../research/scripts/find-prior-research.py <slug> .claude/workspace/research を実行する。標準出力の候補から該当するレポートを読み、各箇所を ${CLAUDE_SKILL_DIR}/references/research-report-intake.md の表のとおり扱う。候補が 0 件なら調査レポートは無いものとして進む

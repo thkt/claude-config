@@ -61,7 +61,7 @@ See `~/.claude/agents/_lib/calibration-examples.md` section DRY.
 
 ## Output
 
-Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Evidence lists each occurrence as `Location N: fileN:line snippet`. Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Evidence lists each occurrence as `Location N: fileN:line snippet`.
 
 | Field        | Value                                                             |
 | ------------ | ----------------------------------------------------------------- |
