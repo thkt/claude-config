@@ -20,6 +20,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
 
@@ -57,8 +58,8 @@ REWRITES = frozenset(
 # Printing the usage reaches no file, whichever subcommand it is asked of.
 HELP = frozenset({"--help", "-h"})
 
-# The environment names that pick the repository, the same targets `--git-dir` and
-# `--work-tree` name on the command line.
+# A shell prefix reaches the same repository `--git-dir` and `--work-tree` name, so a guard
+# reading only the flags passes `GIT_DIR=<guarded>/.git git checkout main` through.
 GIT_ENV = frozenset({"GIT_DIR", "GIT_WORK_TREE"})
 
 # Flags that keep a subcommand off the tree. checkout takes -b / -B and switch takes -c / -C,
@@ -111,13 +112,19 @@ UNRESOLVED_PROBE = (
 )
 
 
-# git's own wording for the one failure that means "this is not a repository". Every other
-# stderr leaves the target unknown.
+# git's own wording for the one failure that means "this is not a repository".
 NOT_A_REPOSITORY = re.compile(r"not a git repository|this operation must be run in a work tree")
 
 
 class Unresolved(Exception):
     """The probe could not answer which repository a call reaches."""
+
+
+class Target(NamedTuple):
+    """Where one git call points itself, in the form the rev-parse probe takes."""
+
+    redirects: tuple[str, ...]
+    env: tuple[tuple[str, str], ...]
 
 
 def _rewrites_tree(tokens: list[str]) -> bool:
@@ -147,30 +154,31 @@ def _rewrites_tree(tokens: list[str]) -> bool:
     return True
 
 
-def rewriting_targets(command: str) -> list[tuple[tuple[str, ...], tuple[tuple[str, str], ...]]]:
-    """One probe key per git call on the line that writes tracked files in the working tree.
+def rewriting_targets(command: str) -> list[Target]:
+    """One target per git call on the line that writes tracked files in the working tree.
 
     Not a regex over the raw string: it cannot tell where a token sits, so `git pull` inside a
-    commit message would read as a pull. Every call is kept, not the first: `git checkout main
-    && git -C <elsewhere> checkout main` reaches two repositories, and stopping at the first
-    leaves the second unprobed. Deduplicated, so the common line forks rev-parse once.
+    commit message would read as a pull. Every call is kept, not the first, because
+    `git checkout main && git -C <elsewhere> checkout main` reaches two repositories.
+    Deduplicated, so the common single-call line still forks rev-parse once.
     """
-    keys: list[tuple[tuple[str, ...], tuple[tuple[str, str], ...]]] = []
+    targets: list[Target] = []
     try:
         for env, tokens in command_scan.commands_with_env(command):
             if tokens[0] != "git" or not _rewrites_tree(tokens):
                 continue
-            key = (tuple(_redirects(tokens)), tuple(sorted(_git_env(env).items())))
-            if key not in keys:
-                keys.append(key)
+            picked = {name: value for name, value in env.items() if name in GIT_ENV}
+            target = Target(_redirects(tokens), tuple(sorted(picked.items())))
+            if target not in targets:
+                targets.append(target)
     except ValueError:
         # Standing in for the call keeps the guard on the cwd repository, where clearing the
         # line would drop it.
-        return [((), ())]
-    return keys
+        return [Target((), ())]
+    return targets
 
 
-def _redirects(tokens: list[str]) -> list[str]:
+def _redirects(tokens: list[str]) -> tuple[str, ...]:
     """git's own options, which sit ahead of the subcommand.
 
     `-C`, `--git-dir`, and `--work-tree` each point the call at a repository other than the one
@@ -179,17 +187,8 @@ def _redirects(tokens: list[str]) -> list[str]:
     """
     subcommand, rest = command_scan.git_subcommand(tokens)
     if subcommand is None:
-        return []
-    return tokens[1 : len(tokens) - len(rest) - 1]
-
-
-def _git_env(env: dict[str, str]) -> dict[str, str]:
-    """The assignments ahead of the command that pick the repository.
-
-    A shell prefix reaches the same place `--git-dir` does, so a guard reading only the flags
-    passes `GIT_DIR=<guarded>/.git git checkout main` through.
-    """
-    return {name: value for name, value in env.items() if name in GIT_ENV}
+        return ()
+    return tuple(tokens[1 : len(tokens) - len(rest) - 1])
 
 
 def _guarded_root() -> Path | None:
@@ -205,11 +204,10 @@ def _guarded_root() -> Path | None:
 
 
 def _toplevel(cwd: str | Path, redirects: tuple[str, ...], env: dict[str, str]) -> Path | None:
-    """The working tree the call reaches.
+    """The working tree the call reaches, None when git answers that there is none.
 
-    None only when git answers that there is no repository. Every other failure raises, because
-    a probe that could not run says nothing about which repository the call lands in, and
-    reading that as "not the guarded one" turns the guard off.
+    Every other failure raises: a probe that could not run says nothing about where the call
+    lands, and reading that as "not the guarded one" turns the guard off.
     """
     result = subprocess.run(
         ["git", "-C", str(cwd), *redirects, "rev-parse", "--show-toplevel"],
@@ -247,9 +245,9 @@ def main() -> None:
 
     cwd = payload.get("cwd") if isinstance(payload.get("cwd"), str) else None
     guarded = _guarded_root()
-    for redirects, env in targets:
+    for target in targets:
         try:
-            top = _toplevel(cwd or Path.cwd(), redirects, dict(env))
+            top = _toplevel(cwd or Path.cwd(), target.redirects, dict(target.env))
         except Unresolved as failure:
             deny(f"{UNRESOLVED_PROBE}{failure}")
             return

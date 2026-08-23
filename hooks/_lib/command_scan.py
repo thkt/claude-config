@@ -103,10 +103,10 @@ def commands(text: str) -> Iterator[list[str]]:
 
 
 def commands_with_env(text: str) -> Iterator[tuple[dict[str, str], list[str]]]:
-    """The same walk as commands(), keeping the assignments that precede each command.
+    """Each command with the assignments that precede it.
 
     An assignment can change where a command lands (`GIT_DIR=` picks the repository), so a hook
-    that answers "which target does this reach" cannot read the tokens alone.
+    answering "which target does this reach" cannot read the tokens alone.
     """
     current: list[str] = []
     for token in _tokens(_without_heredocs(text)):
