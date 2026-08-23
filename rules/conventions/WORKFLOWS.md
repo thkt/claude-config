@@ -34,7 +34,7 @@ The `bundled` search excludes `.ja/`. The definition is duplicated per script, s
 
 ## Taking arguments and prompts
 
-A script accepts `args` as either a string or an object. The string is shorthand, and each script decides what it names. A script where repo is optional returns the prompt untouched when repo is empty; one where repo is mandatory always prepends.
+A script accepts `args` as either a string or an object. The string is shorthand, and each script decides what it names. Every script requires `repo` (DR-0105), so a bare string, which cannot carry one, stops the run at launch. A JSON object written as a string can carry it and goes through.
 
 | Target                 | Convention                                                                                                                                                                                                           |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

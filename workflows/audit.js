@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Deterministic audit fan-out. File routing (glob table) runs in the script, so reviewer selection cannot drift; git I/O and each reviewer / critic run as agents. Pipeline is reviewer -> challenge -> verify -> integrate, not reviewer -> aggregate. Callable standalone or nested from build via workflow("audit").',
   whenToUse:
-    "Fires the full adversarial reviewer set on a diff deterministically, instead of leaving review to the main loop's discretion. Invoked directly as /audit or Workflow({name:'audit'}); there is no launcher skill. BEFORE invoking, if scope or focus is unclear, ask the user two things: focus (all / security / performance / quality / a11y) and scope (the staged HEAD diff, a path, or another repo). Then pass them as args, e.g. Workflow({name:'audit', args:{focus:'security', scope:'src/'}}). A path scope targets the tracked files under it, a revision scope targets its diff, and base (default main) is the comparison point when scope is omitted and the tree is clean; omit args to audit the uncommitted changes with focus=all, falling back to the branch diff against main. This workflow owns both the clarification handoff and the fan-out.",
+    "Fires the full adversarial reviewer set on a diff deterministically, instead of leaving review to the main loop's discretion. Invoked directly as /audit or Workflow({name:'audit'}); there is no launcher skill. BEFORE invoking, if scope or focus is unclear, ask the user two things: focus (all / security / performance / quality / a11y) and scope (the staged HEAD diff, a path, or another repo). Then pass them as args, e.g. Workflow({name:'audit', args:{focus:'security', scope:'src/'}}). A path scope targets the tracked files under it, a revision scope targets its diff, and base (default main) is the comparison point when scope is omitted and the tree is clean; pass repo alone to audit the uncommitted changes with focus=all, falling back to the branch diff against main. This workflow owns both the clarification handoff and the fan-out.",
   phases: [
     { title: "Pre-flight" },
     { title: "Route" },
@@ -42,14 +42,18 @@ const opts = parseArgs();
 const scope = typeof opts.scope === "string" ? opts.scope : "";
 const focus = typeof opts.focus === "string" ? opts.focus : "all";
 const repo = typeof opts.repo === "string" ? opts.repo : "";
+if (!repo) {
+  return {
+    stopped: "no-repo",
+    why: `Pass the target repository as args.repo (absolute path): Workflow({name: "audit", args: {repo: "/abs/path"}}).`,
+  };
+}
 // noLimit skips the >30-file guard; skipPreflight lets a caller that already
 // drove tests to green (build's Code phase) suppress the redundant test run.
 const noLimit = opts.noLimit === true;
 const skipPreflight = opts.skipPreflight === true;
 const anchor = (p) =>
-  repo
-    ? `Run every git command from the repository at ${repo} (begin each shell command with \`cd ${repo} && \`).\n\n${p}`
-    : p;
+  `Run every git command from the repository at ${repo} (begin each shell command with \`cd ${repo} && \`).\n\n${p}`;
 // A finding's summary is LLM free text folded verbatim into the next stage's prompt,
 // so an injected directive hiding in it must not read as an instruction. This is why
 // fenced differs from build.js's fencedBody: a fixed marker can be closed early by a

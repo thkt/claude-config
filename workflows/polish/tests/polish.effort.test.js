@@ -35,7 +35,7 @@ const agentStub = (prompt, opts) => {
 
 const runToFix = () =>
   runWorkflow(polishJs, {
-    args: { scope: "sample.js" },
+    args: { repo: "/abs/target-repo", scope: "sample.js" },
     stubs: { agent: agentStub },
   });
 

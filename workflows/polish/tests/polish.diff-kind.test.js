@@ -37,7 +37,7 @@ const promptOf = (calls, label) => calls.agent.find((c) => c.opts && c.opts.labe
 
 test("the Review prompt carries the branch fallback check and the --base run when scope is omitted", async () => {
   const { calls } = await runWorkflow(polishJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: agentStub("branch") },
   });
   const review = promptOf(calls, "codex");
@@ -47,7 +47,7 @@ test("the Review prompt carries the branch fallback check and the --base run whe
 
 test("the fix and cleanup targets become base...HEAD when diff_kind is branch", async () => {
   const { calls, result } = await runWorkflow(polishJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: agentStub("branch") },
   });
   assert.match(promptOf(calls, "fix"), /git diff main\.\.\.HEAD/, "fix targets the branch diff");
@@ -57,7 +57,7 @@ test("the fix and cleanup targets become base...HEAD when diff_kind is branch", 
 
 test("the fix target stays git diff HEAD when diff_kind is uncommitted", async () => {
   const { calls } = await runWorkflow(polishJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: agentStub("uncommitted") },
   });
   assert.match(promptOf(calls, "fix"), /git diff HEAD/);
@@ -65,9 +65,16 @@ test("the fix target stays git diff HEAD when diff_kind is uncommitted", async (
 
 test("a given base propagates into the Review and Fix prompts", async () => {
   const { calls } = await runWorkflow(polishJs, {
-    args: { base: "develop" },
+    args: { repo: "/abs/target-repo", base: "develop" },
     stubs: { agent: agentStub("branch") },
   });
   assert.match(promptOf(calls, "codex"), /codex review --base develop/);
   assert.match(promptOf(calls, "fix"), /git diff develop\.\.\.HEAD/);
+});
+
+test("T-003 a polish run with no args.repo stops with no-repo and names the argument shape", async () => {
+  const { result, calls } = await runWorkflow(polishJs, { args: {}, stubs: {} });
+  assert.equal(result.stopped, "no-repo");
+  assert.match(result.why, /args\.repo/, "the reason names the argument to pass");
+  assert.equal(calls.agent.length, 0, "no agent runs before the target repository is known");
 });

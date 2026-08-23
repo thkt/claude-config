@@ -21,7 +21,7 @@ const INTEGRATED = {
 
 const runToIntegrate = () =>
   runWorkflow(auditJs, {
-    args: { focus: "security", skipPreflight: true },
+    args: { repo: "/abs/target-repo", focus: "security", skipPreflight: true },
     stubs: { agent: defaultAgentStub({ integrate: INTEGRATED }) },
   });
 
@@ -48,7 +48,7 @@ test("the challenge and verify agents run at effort xhigh", async () => {
 // { verdicts: [{ id, verdict, severity, why }] }.
 test("a run whose challenge stub returns verdicts carries challenge_ran=true and a counted tally", async () => {
   const { result } = await runWorkflow(auditJs, {
-    args: { focus: "security", skipPreflight: true },
+    args: { repo: "/abs/target-repo", focus: "security", skipPreflight: true },
     stubs: {
       agent: defaultAgentStub({
         integrate: INTEGRATED,

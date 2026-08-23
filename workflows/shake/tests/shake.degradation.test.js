@@ -61,7 +61,10 @@ test("records the smell stage stall in the per-target result so it differs from 
     return undefined;
   };
 
-  const { result } = await runWorkflow(shakeJs, { args: {}, stubs: { agent: agentStub } });
+  const { result } = await runWorkflow(shakeJs, {
+    args: { repo: "/abs/target-repo" },
+    stubs: { agent: agentStub },
+  });
   assert.ok(
     result && Array.isArray(result.targets),
     "the workflow returns an array of per-target results",
@@ -101,7 +104,7 @@ test("records the dropped target id in the final return value when the pipeline 
   };
 
   const { result } = await runWorkflow(shakeJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: agentStub, pipeline: dropPipeline(["t-drop"]) },
   });
   assert.ok(result && Array.isArray(result.targets), "the workflow returns a result object");
@@ -116,4 +119,11 @@ test("records the dropped target id in the final return value when the pipeline 
     JSON.stringify(result).includes("t-drop"),
     "the final return value records the dropped target id t-drop",
   );
+});
+
+test("T-005 a shake run with no args.repo stops with no-repo and names the argument shape", async () => {
+  const { result, calls } = await runWorkflow(shakeJs, { args: {}, stubs: {} });
+  assert.equal(result.stopped, "no-repo");
+  assert.match(result.why, /args\.repo/, "the reason names the argument to pass");
+  assert.equal(calls.agent.length, 0, "no agent runs before the target repository is known");
 });

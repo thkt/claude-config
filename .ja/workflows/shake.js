@@ -39,11 +39,15 @@ const opts = parseArgs();
 const scope = typeof opts.scope === "string" ? opts.scope : "";
 const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 const repo = typeof opts.repo === "string" ? opts.repo : "";
+if (!repo) {
+  return {
+    stopped: "no-repo",
+    why: `対象リポジトリを args.repo に絶対パスで渡す: Workflow({name: "shake", args: {repo: "/abs/path"}})。`,
+  };
+}
 
 const anchor = (p) =>
-  repo
-    ? `git / ファイル / テストのコマンドはすべて ${repo} の repository から実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`
-    : p;
+  `git / ファイル / テストのコマンドはすべて ${repo} の repository から実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`;
 
 const RUNS = 10;
 const MAX_FIX_ATTEMPTS = 3;

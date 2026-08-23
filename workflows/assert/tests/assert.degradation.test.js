@@ -36,11 +36,11 @@ const makeAgent = (advReturn) => (prompt, opts) => {
 
 test("result.adversarial shows a stall distinct from zero tests when the adversarial agent returns null", async () => {
   const stallRun = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: makeAgent(null) }, // adversarial agent stall
   });
   const zeroRun = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: makeAgent({ ran: true, tests: [] }) }, // alive, zero tests
   });
 
@@ -64,7 +64,7 @@ test("result.adversarial shows a stall distinct from zero tests when the adversa
 
 test("result.adversarial shows the stage as not run with a diagnostic reason when the agent self-reports ran: false", async () => {
   const selfSkipRun = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: makeAgent({ ran: false, tests: [], notes: "sandbox denied codex exec" }) },
   });
   const adv = selfSkipRun.result && selfSkipRun.result.adversarial;
@@ -91,7 +91,10 @@ test("a triage agent that throws promotes its test fail-close rather than exclud
     if (label && label.startsWith("triage:")) throw new Error("triage agent crashed");
     return makeAgent({ ran: true, tests: [failTest] })(prompt, opts);
   };
-  const run = await runWorkflow(assertJs, { args: {}, stubs: { agent: throwingAgent } });
+  const run = await runWorkflow(assertJs, {
+    args: { repo: "/abs/target-repo" },
+    stubs: { agent: throwingAgent },
+  });
   const adv = run.result && run.result.adversarial;
   assert.ok(adv, "result.adversarial comes back with the triage verdict missing");
   assert.equal(adv.promoted, 1, "the untriaged failure is promoted rather than dropped");
@@ -126,7 +129,7 @@ const synthesizePromptOf = (calls) => {
 
 test("T-004 the Synthesize prompt does not call audit findings critic-verified when audit returns challenge_ran=false", async () => {
   const { calls } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: makeAgent({ ran: true, tests: [] }),
       workflow: makeAuditWorkflowStub(false),
@@ -142,7 +145,7 @@ test("T-004 the Synthesize prompt does not call audit findings critic-verified w
 
 test("T-005 the wording is unchanged when audit returns challenge_ran=true", async () => {
   const { calls } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: makeAgent({ ran: true, tests: [] }),
       workflow: makeAuditWorkflowStub(true),
@@ -158,7 +161,7 @@ test("T-005 the wording is unchanged when audit returns challenge_ran=true", asy
 
 test("T-006 the gate becomes Ready (caveat) rather than Ready when audit returns challenge_ran=false with zero issues", async () => {
   const { result } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: makeAgent({ ran: true, tests: [] }),
       workflow: makeAuditWorkflowStub(false),
@@ -173,7 +176,7 @@ test("T-006 the gate becomes Ready (caveat) rather than Ready when audit returns
 
 test("T-007 the gate stays Ready when audit returns challenge_ran=true with zero issues and passing tests", async () => {
   const { result } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: makeAgent({ ran: true, tests: [] }),
       workflow: makeAuditWorkflowStub(true),
@@ -188,7 +191,7 @@ test("T-007 the gate stays Ready when audit returns challenge_ran=true with zero
 
 test("T-009 the gate becomes Ready (caveat) rather than Ready when audit returns zero findings and challenge_ran=false", async () => {
   const { result } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: makeAgent({ ran: true, tests: [] }),
       workflow: (name) =>
@@ -239,7 +242,7 @@ const runRealAudit = async (name, wfArgs) => {
 
 test("T-008 assert running a nested audit with no challenge stub receives challenge_ran=false and keeps the gate off Ready", async () => {
   const { result } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: makeAgent({ ran: true, tests: [] }),
       workflow: runRealAudit,
@@ -277,7 +280,7 @@ test("T-001 a run gated NotReady by issues alone carries the issue count in gate
     { file: "b.js", line: 20, severity: "medium", summary: "y", source: ["audit"] },
   ];
   const { result } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: makeGateReasonAgent({ issues }) },
   });
   assert.equal(
@@ -305,7 +308,7 @@ test("T-001 a run gated NotReady by issues alone carries the issue count in gate
 test("T-002 a run gated with zero issues names no issue count in gate_reason", async () => {
   const failBoot = { ...bootOk, build: "fail" };
   const { result } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: makeGateReasonAgent({ boot: failBoot }) },
   });
   assert.equal(result.gate, "NotReady", "a failed build gates NotReady with zero issues");
@@ -325,7 +328,7 @@ test("T-002 a run gated with zero issues names no issue count in gate_reason", a
 test("T-003 a Ready run whose build was skipped does not report build as passing", async () => {
   const skippedBoot = { ...bootOk, build: "skipped" };
   const { result } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: makeGateReasonAgent({ boot: skippedBoot }), workflow: healthyAudit },
   });
   assert.equal(result.gate, "Ready", "no build concept and passing tests still reach Ready");
@@ -360,7 +363,7 @@ test("T-010 a finding whose severity is not in SEVERITY_MAP stays out of issues 
     source: ["audit"],
   };
   const { result } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: makeGateReasonAgent({ issues: [droppedFinding, keptFinding] }) },
   });
   assert.equal(result.issues.length, 1, "only the recognised-severity finding reaches issues");
@@ -381,7 +384,7 @@ test("T-011 a run whose findings all carry a recognised severity reports zero dr
     { file: "b.js", line: 20, severity: "medium", summary: "y", source: ["audit"] },
   ];
   const { result } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: makeGateReasonAgent({ issues }) },
   });
   assert.equal(result.issues.length, 2, "both recognised-severity findings reach issues");
@@ -406,7 +409,7 @@ test("T-012 a run that reaches a gate writes one row carrying that gate and the 
     { file: "c.js", line: 30, severity: "high", summary: "z", source: ["audit"] },
   ];
   const { result, calls } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: makeGateReasonAgent({ issues }) },
   });
   const records = recordCallsOf(calls);
@@ -427,7 +430,7 @@ test("T-012 a run that reaches a gate writes one row carrying that gate and the 
 
 test("T-013 a recorder returning nothing leaves the gate unchanged and names the unwritten row in log()", async () => {
   const { result, logs } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     // the "record" label falls through to undefined
     stubs: { agent: makeAgent({ ran: true, tests: [] }), workflow: healthyAudit },
   });
@@ -453,7 +456,11 @@ test("T-014 a throw inside the try still leaves a row for that run", async () =>
     return makeAgent({ ran: true, tests: [] })(prompt, opts);
   };
   await assert.rejects(
-    () => runWorkflow(assertJs, { args: {}, stubs: { agent: throwingAgent } }),
+    () =>
+      runWorkflow(assertJs, {
+        args: { repo: "/abs/target-repo" },
+        stubs: { agent: throwingAgent },
+      }),
     /synthesize crashed/,
     "the throw inside the try still propagates out of the workflow",
   );
@@ -473,7 +480,7 @@ test("T-015 the row carries challenge_stalled and audit_degraded as booleans", a
     return makeAgent({ ran: true, tests: [] })(prompt, opts);
   };
   const { calls } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: stalledAgent, workflow: makeAuditWorkflowStub(false) },
   });
   const records = recordCallsOf(calls);
@@ -497,7 +504,7 @@ test("T-015 the row carries challenge_stalled and audit_degraded as booleans", a
 // drive runs carrying issues, so only NotReady was covered.
 test("T-016 a Ready-gated run appends exactly one record row", async () => {
   const { result, calls } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: (prompt, opts) => {
         if (opts && opts.label === "record")
@@ -519,7 +526,7 @@ test("T-016 a Ready-gated run appends exactly one record row", async () => {
 // throwing. A recorder failure must not stop the run, and must not mask the real one either.
 test("T-017 a recorder that throws leaves the gate unchanged and names the unwritten row in log()", async () => {
   const { result, logs } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: (prompt, opts) => {
         if (opts && opts.label === "record") throw new Error("recorder exploded");
@@ -552,7 +559,7 @@ for (const [label, workflowStub] of [
 ]) {
   test(`T-018 a run whose nested audit ${label} does not call its findings critic-verified`, async () => {
     const { calls } = await runWorkflow(assertJs, {
-      args: {},
+      args: { repo: "/abs/target-repo" },
       stubs: { agent: makeAgent({ ran: true, tests: [] }), workflow: workflowStub },
     });
     const prompt = synthesizePromptOf(calls);
@@ -565,7 +572,7 @@ for (const [label, workflowStub] of [
 
   test(`T-019 the gate does not reach Ready when the nested audit ${label}`, async () => {
     const { result } = await runWorkflow(assertJs, {
-      args: {},
+      args: { repo: "/abs/target-repo" },
       stubs: { agent: makeAgent({ ran: true, tests: [] }), workflow: workflowStub },
     });
     assert.notEqual(result.gate, "Ready", `an audit that ${label} keeps the run off Ready`);
@@ -608,4 +615,11 @@ test("T-021 the bootstrap prompt keeps the repository pin", async () => {
     stubs: { agent: makeAgent({ ran: true, tests: [] }), workflow: healthyAudit },
   });
   assert.match(promptOf(calls, "bootstrap"), /cd \/abs\/target &&/);
+});
+
+test("T-022 a assert run with no args.repo stops with no-repo and names the argument shape", async () => {
+  const { result, calls } = await runWorkflow(assertJs, { args: {}, stubs: {} });
+  assert.equal(result.stopped, "no-repo");
+  assert.match(result.why, /args\.repo/, "the reason names the argument to pass");
+  assert.equal(calls.agent.length, 0, "no agent runs before the target repository is known");
 });

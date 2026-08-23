@@ -55,7 +55,7 @@ const agentStub = (prompt, opts) => {
 
 test("records the stalled reviewer name in the per-DR result when some reviewer agent returns null", async () => {
   const { result, calls } = await runWorkflow(adriftJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: agentStub },
   });
 
@@ -124,7 +124,7 @@ const throwingExtractStub = (prompt, opts) => {
 
 test("keeps a DR whose scan stage threw in the listing instead of shrinking the denominator", async () => {
   const { result, calls } = await runWorkflow(adriftJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: throwingExtractStub },
   });
 
@@ -176,7 +176,7 @@ const injectingOutcomeStub = (prompt, opts) => {
 
 test("hands the Decision Outcome to the reviewer inside a data fence", async () => {
   const { calls } = await runWorkflow(adriftJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: injectingOutcomeStub },
   });
 
@@ -236,7 +236,7 @@ const collidingFindingsStub = (prompt, opts) => {
 
 test("counts the findings the file:line merge dropped", async () => {
   const { result } = await runWorkflow(adriftJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: collidingFindingsStub },
   });
 
@@ -267,7 +267,7 @@ const reportStub = (claim) => (prompt, opts) => {
 
 test("reports the file as written only after a separate agent finds it", async () => {
   const { result, calls } = await runWorkflow(adriftJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: reportStub({
         report: { written: true, report_path: "docs/audit/2026-01-01-000000-dr-drift.md" },
@@ -291,7 +291,7 @@ test("reports the file as written only after a separate agent finds it", async (
 
 test("does not report a file as written when the confirming agent cannot find it", async () => {
   const { result } = await runWorkflow(adriftJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: reportStub({
         report: { written: true, report_path: "docs/audit/2026-01-01-000000-dr-drift.md" },
@@ -315,7 +315,7 @@ test("does not report a file as written when the confirming agent cannot find it
 
 test("does not report an empty file as written", async () => {
   const { result } = await runWorkflow(adriftJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: reportStub({
         report: { written: true, report_path: "docs/audit/2026-01-01-000000-dr-drift.md" },
@@ -334,7 +334,7 @@ test("does not report an empty file as written", async () => {
 
 test("keeps a claimed path that is not the shape adrift writes away from the confirming agent", async () => {
   const { result, calls } = await runWorkflow(adriftJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: reportStub({
         report: { written: true, report_path: "docs/audit/x.md; rm -rf /" },
@@ -424,7 +424,7 @@ const duplicateIdStub = (prompt, opts) => {
 
 test("keeps two DRs sharing an id from being handed one another's findings", async () => {
   const { calls } = await runWorkflow(adriftJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: duplicateIdStub },
   });
 
@@ -480,7 +480,7 @@ const reviewerLabels = (calls) =>
 
 test("routes a repository carrying both Cargo.toml and package.json to the rust reviewers", async () => {
   const { calls, logs } = await runWorkflow(adriftJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: routingStub({ has_cargo_toml: true, has_package_json: true, has_tsx_files: true }),
     },
@@ -499,7 +499,7 @@ test("routes a repository carrying both Cargo.toml and package.json to the rust 
 
 test("routes a package.json repository carrying tsx files to the react reviewer", async () => {
   const { logs } = await runWorkflow(adriftJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: routingStub({ has_cargo_toml: false, has_package_json: true, has_tsx_files: true }),
     },
@@ -510,7 +510,7 @@ test("routes a package.json repository carrying tsx files to the react reviewer"
 
 test("routes a repository with neither manifest through the other row", async () => {
   const { logs } = await runWorkflow(adriftJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: routingStub({ has_cargo_toml: false, has_package_json: false, has_tsx_files: true }),
     },
@@ -527,7 +527,7 @@ test("routes a repository with neither manifest through the other row", async ()
 // to fall back on a key the branch happened not to set.
 test("gives every per-DR row the same keys whichever branch built it", async () => {
   const { calls } = await runWorkflow(adriftJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: {
       agent: routingStub({ has_cargo_toml: false, has_package_json: true, has_tsx_files: false }),
     },
@@ -579,7 +579,7 @@ const idShapeStub = (prompt, opts) => {
 
 test("reads an unpadded reference to a local DR as local, not external", async () => {
   const { result } = await runWorkflow(adriftJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: idShapeStub },
   });
 
@@ -592,7 +592,7 @@ test("reads an unpadded reference to a local DR as local, not external", async (
 
 test("matches an unpadded focus token against a padded DR id", async () => {
   const { result, calls } = await runWorkflow(adriftJs, {
-    args: { focus: "91" },
+    args: { repo: "/abs/target-repo", focus: "91" },
     stubs: { agent: idShapeStub },
   });
 
@@ -601,4 +601,23 @@ test("matches an unpadded focus token against a padded DR id", async () => {
     calls.agent.some((c) => c.opts && c.opts.label === "extract:0091"),
     "and the DR reaches the extraction stage",
   );
+});
+
+test("T-005 a adrift run with no args.repo stops with no-repo and names the argument shape", async () => {
+  const { result, calls } = await runWorkflow(adriftJs, { args: {}, stubs: {} });
+  assert.equal(result.stopped, "no-repo");
+  assert.match(result.why, /args\.repo/, "the reason names the argument to pass");
+  assert.equal(calls.agent.length, 0, "no agent runs before the target repository is known");
+});
+
+// The report path is repository-relative, so an unpinned run wrote it into the agent's own cwd.
+test("T-006 every adrift prompt names the repository given in args.repo", async () => {
+  const { calls } = await runWorkflow(adriftJs, {
+    args: { repo: "/abs/target-repo" },
+    stubs: { agent: () => undefined },
+  });
+  assert.ok(calls.agent.length > 0, "agents ran");
+  for (const c of calls.agent) {
+    assert.match(c.prompt, /cd \/abs\/target-repo &&/, `${c.opts.label ?? "?"} carries the pin`);
+  }
 });

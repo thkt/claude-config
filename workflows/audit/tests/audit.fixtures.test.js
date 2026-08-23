@@ -24,7 +24,7 @@ const INTEGRATED = {
 
 const run = (overrides) =>
   runWorkflow(auditJs, {
-    args: { focus: "security", skipPreflight: true },
+    args: { repo: "/abs/target-repo", focus: "security", skipPreflight: true },
     stubs: { agent: defaultAgentStub(overrides) },
   });
 

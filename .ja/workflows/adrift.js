@@ -41,6 +41,12 @@ const parseArgs = () => {
 const opts = parseArgs();
 const dir = typeof opts.dir === "string" ? opts.dir.trim() : "";
 const repo = typeof opts.repo === "string" ? opts.repo : "";
+if (!repo) {
+  return {
+    stopped: "no-repo",
+    why: `対象リポジトリを args.repo に絶対パスで渡す: Workflow({name: "adrift", args: {repo: "/abs/path"}})。`,
+  };
+}
 
 const focus = (Array.isArray(opts.focus) ? opts.focus : String(opts.focus || "").split(/[\s,]+/))
   .map((t) =>
@@ -61,9 +67,7 @@ const matchesFocus = (a) =>
   );
 
 const anchor = (p) =>
-  repo
-    ? `git / ファイル / 検索のコマンドはすべて ${repo} の repository から実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`
-    : p;
+  `git / ファイル / 検索のコマンドはすべて ${repo} の repository から実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`;
 
 const REVIEWERS = {
   rust: ["reviewer-rust", "reviewer-design"],

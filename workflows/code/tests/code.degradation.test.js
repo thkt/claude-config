@@ -33,7 +33,7 @@ const redNullStub = (prompt, opts) => {
 
 test("includes why in the stopped: red-failed return value when the red agent returns null", async () => {
   const { result } = await runWorkflow(codeJs, {
-    args: { plan, repo: "" },
+    args: { plan, repo: "/abs/target-repo" },
     stubs: { agent: redNullStub },
   });
   assert.equal(result.stopped, "red-failed", "a null red stops the run as red-failed");
@@ -58,7 +58,7 @@ const noRedStub = (prompt, opts) => {
 
 test("counts a unit with an unconfirmed Red in skipped rather than in completed", async () => {
   const { result } = await runWorkflow(codeJs, {
-    args: { plan, repo: "" },
+    args: { plan, repo: "/abs/target-repo" },
     stubs: { agent: noRedStub },
   });
 

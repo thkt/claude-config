@@ -44,7 +44,7 @@ const promptFor = (calls, label) => {
 
 test("carries the preceding unit's id, goal, and file paths into the second unit's prompt", async () => {
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan: twoUnitPlan, repo: "" },
+    args: { plan: twoUnitPlan, repo: "/abs/target-repo" },
     stubs: { agent: stubWith() },
   });
 
@@ -60,7 +60,7 @@ test("carries the preceding unit's id, goal, and file paths into the second unit
 
 test("leaves the preceding-units block out of the first unit's prompt", async () => {
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan: oneUnitPlan, repo: "" },
+    args: { plan: oneUnitPlan, repo: "/abs/target-repo" },
     stubs: { agent: stubWith() },
   });
 
@@ -77,7 +77,7 @@ test("places the preceding-units block ahead of the rules block", async () => {
     rules: [{ source: "docs/wiki/x.md", quote: "keep both trees in one commit" }],
   };
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan: withRules, repo: "" },
+    args: { plan: withRules, repo: "/abs/target-repo" },
     stubs: { agent: stubWith() },
   });
 
@@ -94,7 +94,7 @@ test("places the preceding-units block ahead of the rules block", async () => {
 
 test("fences the preceding-units block and states that its body is data, not instructions", async () => {
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan: twoUnitPlan, repo: "" },
+    args: { plan: twoUnitPlan, repo: "/abs/target-repo" },
     stubs: { agent: stubWith() },
   });
 
@@ -115,7 +115,7 @@ test("fences the preceding-units block and states that its body is data, not ins
 // would contradict that (#448).
 test("tells the second unit to read the preceding files, in a line outside the fence", async () => {
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan: twoUnitPlan, repo: "" },
+    args: { plan: twoUnitPlan, repo: "/abs/target-repo" },
     stubs: { agent: stubWith() },
   });
 
@@ -129,7 +129,7 @@ test("tells the second unit to read the preceding files, in a line outside the f
 
 test("leaves the read instruction out of a single-unit plan", async () => {
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan: oneUnitPlan, repo: "" },
+    args: { plan: oneUnitPlan, repo: "/abs/target-repo" },
     stubs: { agent: stubWith() },
   });
 
@@ -147,7 +147,7 @@ test("flattens a newline in a goal so it cannot open a line of its own inside th
     ],
   };
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan, repo: "" },
+    args: { plan, repo: "/abs/target-repo" },
     stubs: { agent: stubWith() },
   });
 
@@ -183,7 +183,7 @@ test("flattens the plan prose reaching a prompt so none of it can start a line",
     ],
   };
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan, repo: "" },
+    args: { plan, repo: "/abs/target-repo" },
     stubs: { agent: stubWith() },
   });
 
