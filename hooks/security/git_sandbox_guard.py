@@ -94,9 +94,8 @@ REASON = (
     + "それも拒否されたら、ユーザーに `! <コマンド>` での実行を依頼する。"
 )
 
-# Not a silent pass: the guard cannot tell whether this repository is the protected one, and
-# reading that as "not protected" would turn the guard off exactly when the environment is
-# misconfigured.
+# Not a silent pass: reading "cannot tell" as "not protected" turns the guard off exactly when
+# the environment is misconfigured.
 UNRESOLVED = (
     "git-sandbox-guard: 保護対象の設定ディレクトリを解決できないため、"
     + "このリポジトリが対象かどうかを判定できない。"
@@ -145,16 +144,15 @@ def rewriting_call(command: str) -> list[str] | None:
     """The first git call on the line that writes tracked files in the working tree.
 
     Not a regex over the raw string: it cannot tell where a token sits, so `git pull` inside a
-    commit message would read as a pull. The tokens come back rather than a flag, because which
-    repository the call reaches is read from git's own options ahead of the subcommand.
+    commit message would read as a pull.
     """
     try:
         for tokens in command_scan.commands(command):
             if tokens[0] == "git" and _rewrites_tree(tokens):
                 return tokens
     except ValueError:
-        # A line shlex cannot tokenize hides where its git call sits. Standing in for it with a
-        # bare `git` keeps the guard on the cwd repository rather than clearing the line.
+        # Standing in for the call keeps the guard on the cwd repository, where clearing the
+        # line would drop it.
         return ["git"]
     return None
 
@@ -163,9 +161,8 @@ def _redirects(tokens: list[str]) -> list[str]:
     """git's own options, which sit ahead of the subcommand.
 
     `-C`, `--git-dir`, and `--work-tree` each point the call at a repository other than the one
-    cwd sits in, and reading only cwd leaves the guard comparing the wrong tree. These are
-    replayed into the rev-parse probe rather than resolved here, so git's own precedence and
-    relative-path rules decide the answer.
+    cwd sits in. Replayed into the rev-parse probe rather than resolved here, so git's own
+    precedence and relative-path rules decide the answer.
     """
     subcommand, rest = command_scan.git_subcommand(tokens)
     if subcommand is None:
@@ -186,7 +183,6 @@ def _guarded_root() -> Path | None:
 
 
 def _toplevel(cwd: str | Path, redirects: list[str]) -> Path | None:
-    """The working tree the call reaches, or None when it reaches no repository."""
     result = subprocess.run(
         ["git", "-C", str(cwd), *redirects, "rev-parse", "--show-toplevel"],
         capture_output=True,

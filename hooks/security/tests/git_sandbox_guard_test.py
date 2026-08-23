@@ -21,6 +21,25 @@ HOOK = Path(__file__).resolve().parents[1] / "git_sandbox_guard.py"
 DENY_MARK = '"deny"'
 
 
+def run_hook(command: str, cwd: Path, config: Path, escaped: bool = False) -> str:
+    payload = json.dumps(
+        {
+            "tool_name": "Bash",
+            "cwd": str(cwd),
+            "tool_input": {"command": command, "dangerouslyDisableSandbox": escaped},
+        }
+    )
+    result = subprocess.run(
+        [sys.executable, str(HOOK)],
+        input=payload,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=dict(os.environ, CLAUDE_CONFIG_DIR=str(config)),
+    )
+    return result.stdout
+
+
 class TestGitSandboxGuard(unittest.TestCase):
     # ClassVar rather than a bare annotation: setUpClass fills these, and a bare annotation
     # reads as an instance variable that no __init__ ever assigns.
@@ -51,22 +70,7 @@ class TestGitSandboxGuard(unittest.TestCase):
         return path.resolve()
 
     def run_hook(self, command: str, cwd: Path | None = None, escaped: bool = False) -> str:
-        payload = json.dumps(
-            {
-                "tool_name": "Bash",
-                "cwd": str(cwd if cwd else self.guarded),
-                "tool_input": {"command": command, "dangerouslyDisableSandbox": escaped},
-            }
-        )
-        result = subprocess.run(
-            [sys.executable, str(HOOK)],
-            input=payload,
-            capture_output=True,
-            text=True,
-            check=False,
-            env=dict(os.environ, CLAUDE_CONFIG_DIR=str(self.guarded)),
-        )
-        return result.stdout
+        return run_hook(command, cwd if cwd else self.guarded, self.guarded, escaped)
 
     # cwd and escaped spelled out rather than **kwargs: a checker cannot see through **kwargs
     # to the signature of run_hook, and every call site reads as untyped.
@@ -243,9 +247,8 @@ class TestGitSandboxGuard(unittest.TestCase):
 
 
 class TestTargetRepository(unittest.TestCase):
-    """git points itself at a repository three ways, and the guard reads cwd. A call that
-    redirects reaches the protected tree from a cwd that is not it, so each flag is replayed
-    into the rev-parse probe and checked here."""
+    """cwd is not where the call lands. `-C`, `--git-dir`, and `--work-tree` each carry it
+    into another repository, so these run from a cwd that is not the protected one."""
 
     tmpdir: ClassVar[tempfile.TemporaryDirectory[str]]
     guarded: ClassVar[Path]
@@ -265,24 +268,6 @@ class TestTargetRepository(unittest.TestCase):
     def tearDownClass(cls) -> None:
         cls.tmpdir.cleanup()
 
-    def run_hook(self, command: str, config: Path | str) -> str:
-        payload = json.dumps(
-            {
-                "tool_name": "Bash",
-                "cwd": str(self.outside),
-                "tool_input": {"command": command},
-            }
-        )
-        result = subprocess.run(
-            [sys.executable, str(HOOK)],
-            input=payload,
-            capture_output=True,
-            text=True,
-            check=False,
-            env=dict(os.environ, CLAUDE_CONFIG_DIR=str(config)),
-        )
-        return result.stdout
-
     def test_redirect_flags_reach_the_guarded_tree(self) -> None:
         """T-022 A call redirected into the protected repository is denied from any cwd"""
         for command in (
@@ -290,22 +275,26 @@ class TestTargetRepository(unittest.TestCase):
             f"git --git-dir={self.guarded}/.git --work-tree={self.guarded} checkout main",
         ):
             with self.subTest(command=command):
-                self.assertIn(DENY_MARK, self.run_hook(command, self.guarded), "does not deny")
+                self.assertIn(
+                    DENY_MARK, run_hook(command, self.outside, self.guarded), "does not deny"
+                )
 
     def test_a_cwd_outside_any_repository_passes(self) -> None:
         """T-023 Without a redirect the call reaches no repository, so it passes"""
-        self.assertNotIn(DENY_MARK, self.run_hook("git checkout main", self.guarded), "denies")
+        self.assertNotIn(
+            DENY_MARK, run_hook("git checkout main", self.outside, self.guarded), "denies"
+        )
 
     def test_an_unresolvable_config_directory_is_fail_closed(self) -> None:
         """T-024 An unresolvable CLAUDE_CONFIG_DIR denies rather than clearing the call"""
         dangling = Path(self.tmpdir.name) / "not-there"
         command = f"git -C {self.guarded} checkout main"
-        self.assertIn(DENY_MARK, self.run_hook(command, dangling), "does not deny")
+        self.assertIn(DENY_MARK, run_hook(command, self.outside, dangling), "does not deny")
 
     def test_the_fail_closed_deny_stops_at_repositories(self) -> None:
         """T-025 An unresolvable config directory leaves a cwd outside any repository alone"""
         dangling = Path(self.tmpdir.name) / "not-there"
-        self.assertNotIn(DENY_MARK, self.run_hook("git checkout main", dangling), "denies")
+        self.assertNotIn(DENY_MARK, run_hook("git checkout main", self.outside, dangling), "denies")
 
 
 if __name__ == "__main__":

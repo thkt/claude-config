@@ -106,7 +106,7 @@ class TestRmToTrash(unittest.TestCase):
 class TestPrefilterCoversEveryVerb(unittest.TestCase):
     """main()'s TRIGGERS prefilter answers "is this a deletion" ahead of kind(), so a verb it
     does not match returns before the scan and is never denied. VERBS is read out of the source
-    rather than hard-coded, so a verb added there is covered without touching this test."""
+    rather than hard-coded, so a verb added there needs no edit here."""
 
     def test_every_deletion_verb_is_denied(self) -> None:
         """T-012 Every VERBS member reaches a denial through the prefilter"""

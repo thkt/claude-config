@@ -208,9 +208,8 @@ class TestStartsWith(unittest.TestCase):
 
 
 class TestGitCleanOnlyLists(unittest.TestCase):
-    """Both deletion guards read dry-run through this one call, so the contract is pinned here
-    rather than in either hook's suite. rm_to_trash passes the raw arguments and
-    git_sandbox_guard passes them already truncated at `--`, and the two must land alike."""
+    """Pinned here rather than in either hook's suite: rm_to_trash passes the raw arguments
+    and git_sandbox_guard passes them already truncated at `--`, and the two must land alike."""
 
     def test_dry_run_forms_only_list(self) -> None:
         """T-020 The long flag and the short bit, alone or combined, only list"""
