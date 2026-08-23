@@ -17,7 +17,7 @@ const auditJs = join(here, "..", "..", "audit.js");
 // extra overrides a reviewer's own response, which the disposition cases need to declare one.
 const runChallenge = (challenge, extra = {}) =>
   runWorkflow(auditJs, {
-    args: { focus: "security", skipPreflight: true },
+    args: { repo: "/abs/target-repo", focus: "security", skipPreflight: true },
     stubs: { agent: defaultAgentStub({ challenge, ...extra }) },
   });
 

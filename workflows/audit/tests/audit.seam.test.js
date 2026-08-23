@@ -49,7 +49,7 @@ const INTEGRATED = {
 // default responses in _fixtures.js.
 const run = async (routeFiles, { security, silence, challenge, integrate } = {}) => {
   const { result, calls } = await runWorkflow(auditJs, {
-    args: { focus: "security", skipPreflight: true },
+    args: { repo: "/abs/target-repo", focus: "security", skipPreflight: true },
     stubs: {
       agent: defaultAgentStub({
         route: { files: routeFiles },
@@ -382,7 +382,7 @@ const bootFor = (mode, diffKind) => ({
 // runWorkflow only records it in calls.workflow and never runs its body.
 const auditArgsFromAssert = async (args, boot) => {
   const { calls } = await runWorkflow(assertJs, {
-    args,
+    args: { repo: "/abs/target-repo", ...args },
     stubs: {
       agent: (prompt, opts) => {
         const label = opts && opts.label;
@@ -403,7 +403,7 @@ const auditArgsFromAssert = async (args, boot) => {
 
 const resolutionFor = async (auditArgs, probe) => {
   const { result } = await runWorkflow(auditJs, {
-    args: { ...auditArgs, skipPreflight: true },
+    args: { repo: "/abs/target-repo", ...auditArgs, skipPreflight: true },
     stubs: {
       agent: (prompt, opts) => {
         const label = opts && opts.label;

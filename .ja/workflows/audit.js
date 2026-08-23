@@ -41,14 +41,18 @@ const opts = parseArgs();
 const scope = typeof opts.scope === "string" ? opts.scope : "";
 const focus = typeof opts.focus === "string" ? opts.focus : "all";
 const repo = typeof opts.repo === "string" ? opts.repo : "";
+if (!repo) {
+  return {
+    stopped: "no-repo",
+    why: `対象リポジトリを args.repo に絶対パスで渡す: Workflow({name: "audit", args: {repo: "/abs/path"}})。`,
+  };
+}
 // noLimit は 30 ファイル超の guard を外す。skipPreflight は、test を green にしてから
 // 呼んでくる側 (build の Code phase) が test の二重実行を避けるための flag。
 const noLimit = opts.noLimit === true;
 const skipPreflight = opts.skipPreflight === true;
 const anchor = (p) =>
-  repo
-    ? `git コマンドはすべて repo ${repo} で実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`
-    : p;
+  `git コマンドはすべて repo ${repo} で実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`;
 // finding の summary は LLM が生成した自由文で、次段の prompt へそのまま埋め込まれる。
 // そこに紛れ込んだ指示が命令として読まれてはならない。fenced が build.js の fencedBody と
 // 違うのはこの点にある。固定 marker は、JSON.stringify がハイフンをエスケープしないため

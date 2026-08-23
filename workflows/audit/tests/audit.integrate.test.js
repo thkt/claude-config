@@ -17,7 +17,7 @@ const auditJs = join(here, "..", "..", "audit.js");
 // and R-2 (silence); defaultAgentStub in _fixtures.js supplies the default responses.
 const run = (opts) =>
   runWorkflow(auditJs, {
-    args: { focus: "security", skipPreflight: true },
+    args: { repo: "/abs/target-repo", focus: "security", skipPreflight: true },
     stubs: { agent: defaultAgentStub(opts) },
   });
 

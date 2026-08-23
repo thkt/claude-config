@@ -23,7 +23,7 @@ const routeOnlyStub = (files) => (prompt, opts) => {
 
 const runRoute = async (files, extra = {}) => {
   const { result, logs } = await runWorkflow(auditJs, {
-    args: { skipPreflight: true, ...extra },
+    args: { repo: "/abs/target-repo", skipPreflight: true, ...extra },
     stubs: { agent: routeOnlyStub(files) },
   });
   return { result, logs };
@@ -176,7 +176,7 @@ const scopeStub =
 
 const runScoped = async (extraArgs, stubOpts) => {
   const { result, logs, calls } = await runWorkflow(auditJs, {
-    args: { skipPreflight: true, ...extraArgs },
+    args: { repo: "/abs/target-repo", skipPreflight: true, ...extraArgs },
     stubs: { agent: scopeStub(stubOpts) },
   });
   return { result, logs, calls };

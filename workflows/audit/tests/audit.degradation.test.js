@@ -18,7 +18,7 @@ const auditJs = join(here, "..", "..", "audit.js");
 // responses and the id numbering.
 const run = (opts) =>
   runWorkflow(auditJs, {
-    args: { focus: "security", skipPreflight: true },
+    args: { repo: "/abs/target-repo", focus: "security", skipPreflight: true },
     stubs: { agent: defaultAgentStub(opts) },
   });
 
@@ -423,7 +423,7 @@ test("T-010 the Integrate prompt names the absence of verdicts on a run where ch
 // (WORKFLOWS.md § Degradation recording's fail-open row).
 test("T-034 a run whose scope-resolution status agent returns no response keeps the undetermined state in the return value and the log", async () => {
   const { result, logs } = await runWorkflow(auditJs, {
-    args: { skipPreflight: true },
+    args: { repo: "/abs/target-repo", skipPreflight: true },
     stubs: {
       agent: (prompt, opts) => {
         const label = opts && opts.label;
@@ -444,4 +444,13 @@ test("T-034 a run whose scope-resolution status agent returns no response keeps 
     logs.some((l) => /status --porcelain/.test(l)),
     "which command's result went unconfirmed survives in the log",
   );
+});
+
+// Without repo the anchor was a no-op and the agent resolved the repository from its own cwd,
+// which #204 measured running a step in the wrong checkout (DR-0105).
+test("T-035 a audit run with no args.repo stops with no-repo and names the argument shape", async () => {
+  const { result, calls } = await runWorkflow(auditJs, { args: {}, stubs: {} });
+  assert.equal(result.stopped, "no-repo");
+  assert.match(result.why, /args\.repo/, "the reason names the argument to pass");
+  assert.equal(calls.agent.length, 0, "no agent runs before the target repository is known");
 });
