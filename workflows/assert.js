@@ -49,11 +49,15 @@ const opts = parseArgs();
 const scope = typeof opts.scope === "string" ? opts.scope : "";
 const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 const repo = typeof opts.repo === "string" ? opts.repo : "";
+if (!repo) {
+  return {
+    stopped: "no-repo",
+    why: `Pass the target repository as args.repo (absolute path): Workflow({name: "assert", args: {repo: "/abs/path"}}).`,
+  };
+}
 
 const anchor = (p) =>
-  repo
-    ? `Run every git / file / build command from the ${repo} repository (start each shell command with \`cd ${repo} && \`).\n\n${p}`
-    : p;
+  `Run every git / file / build command from the ${repo} repository (start each shell command with \`cd ${repo} && \`).\n\n${p}`;
 
 // Plugin-aware asset resolution. When this script ships as a plugin, bundled assets
 // live under ~/.claude/plugins instead of ~/.claude; the shell fragment tries the

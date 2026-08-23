@@ -49,11 +49,15 @@ const opts = parseArgs();
 const scope = typeof opts.scope === "string" ? opts.scope : "";
 const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 const repo = typeof opts.repo === "string" ? opts.repo : "";
+if (!repo) {
+  return {
+    stopped: "no-repo",
+    why: `対象リポジトリを args.repo に絶対パスで渡す: Workflow({name: "assert", args: {repo: "/abs/path"}})。`,
+  };
+}
 
 const anchor = (p) =>
-  repo
-    ? `git / ファイル / ビルドのコマンドはすべて ${repo} の repository から実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`
-    : p;
+  `git / ファイル / ビルドのコマンドはすべて ${repo} の repository から実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`;
 
 // plugin 配布を考慮した資産解決。この script が plugin として配られると、同梱資産は
 // ~/.claude ではなく ~/.claude/plugins 配下に置かれる。shell 片は dev tree のパスを先に

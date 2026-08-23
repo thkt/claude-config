@@ -63,7 +63,7 @@ test("T-016 the row the real record.py wrote carries the same per-severity count
     { file: "c.js", line: 30, severity: "high", summary: "z", source: ["audit"] },
   ];
   const { result, calls } = await runWorkflow(assertJs, {
-    args: {},
+    args: { repo: "/abs/target-repo" },
     stubs: { agent: agentStub(issues) },
   });
   assert.ok(result.issues.length > 0, "the run returns issues to tally against");
