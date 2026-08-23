@@ -21,8 +21,7 @@ def run_hook(command: str) -> str:
     """The hook's stdout, after confirming it ran.
 
     A hook that dies before writing anything returns an empty string, which every
-    "is not a deny" assertion accepts. Checking the exit status keeps those from passing on a
-    hook that never ran.
+    "is not a deny" assertion accepts.
     """
     payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
     result = subprocess.run(

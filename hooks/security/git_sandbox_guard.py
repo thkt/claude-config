@@ -111,9 +111,8 @@ UNRESOLVED_PROBE = (
     + "git が PATH にあるか、対象リポジトリを読めるかを確認する。rev-parse の出力: "
 )
 
-
-# A PreToolUse hook sits in front of the user's command, so a probe that never returns blocks
-# the call. On a network filesystem or a repository being repacked, rev-parse can stall.
+# rev-parse stalls on a network filesystem or a repository being repacked, and a PreToolUse
+# hook that waits on it blocks the user's command with no fallback.
 PROBE_TIMEOUT_SECONDS = 10
 
 # git's own wording for the one failure that means "this is not a repository".

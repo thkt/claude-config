@@ -32,8 +32,7 @@ def run_hook(
     """The hook's stdout, after confirming it ran.
 
     A hook that dies before writing anything returns an empty string, which every
-    "is not a deny" assertion accepts. Checking the exit status keeps those from passing on a
-    hook that never ran.
+    "is not a deny" assertion accepts.
     """
     payload = json.dumps(
         {
