@@ -25,6 +25,15 @@ The right column lists examples, not limited to these.
 | State the scope and the sort key                                   | 最新 / 最古 / latest / oldest                                                                               |
 | State the measured value and the threshold                         | 速い / 遅い / fast / slow                                                                                   |
 
+## Tie Each Sentence to the Subject
+
+A sentence you can move to another subject unchanged is filler. Judge at the sentence level, not the word level. The pressure to make a sentence specific also pushes you to invent numbers and owners you have no material for.
+
+| Sentence state                                          | Rewrite operation                                                                                                                       |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Moves to another subject by swapping the subject's name | Replace it with a fact, example, mechanism, consequence, or judgment. Delete the sentence when you have no material for the replacement |
+| No material at hand to make it specific                 | Do not invent numbers, dates, owners, outcomes, or failure modes. Name the missing material and surface it to the human                 |
+
 ## State Scope Explicitly
 
 Models do not generalize an instruction from one item to another, nor do they infer scope you did not state. Write the intended scope into every rule, spec, and prompt.
@@ -85,19 +94,20 @@ Writing without a decided job lets the headings of the nearest existing document
 
 ## Delete the Excess
 
-Delete a sentence a reader can already read off the adjacent code, table, or heading, and one that only updates how the document itself looks or proceeds. Take the section length that covers the substance. Conditions, exceptions, and failure behavior are not redundancy, so do not drop them to make the text shorter. Typical forms below (not limited to these).
+Delete a sentence a reader can already read off the adjacent code, table, or heading, and one that only updates how the document itself looks or proceeds. Delete an instruction to the writer that arrived with the source material. Take the section length that covers the substance. Keep a sentence when the deleting side cannot state why it is there. Conditions, exceptions, and failure behavior are not redundancy, so do not drop them to make the text shorter. Typical forms below (not limited to these).
 
-| Form                   | Description                                                                                            |
-| ---------------------- | ------------------------------------------------------------------------------------------------------ |
-| Progress narration     | Announcing in place what the document is about to say or do                                            |
-| Self-characterization  | Declaring the document's own scope or nature                                                           |
-| Stance-free disclaimer | Adding a supplement without naming the misreading it rejects                                           |
-| Revision narration     | Stating the earlier wording or the overturned premise                                                  |
-| Code restatement       | Prose repeating what the code directly below states                                                    |
-| Consequence narration  | Stating what an instruction or branch leads to. Keep the instruction alone                             |
-| Measurement provenance | Recording where a number came from or what was measured. It goes stale without changing behavior       |
-| Filler section         | Built only from restatement of other sections or generalities. Removing it leaves the claims unchanged |
-| Redundant summary      | Re-stating at the end what the body already said                                                       |
-| Boilerplate frame      | Placed to fill a template, carrying nothing specific to this document                                  |
-| Hedge stacking         | Two or more hedges in one sentence, such as "might potentially" or "could possibly"                    |
-| Filler phrase          | A pleasantry aimed at the reader, such as "Looking forward to your thoughts"                           |
+| Form                   | Description                                                                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Progress narration     | Announcing in place what the document is about to say or do                                                                                 |
+| Self-characterization  | Declaring the document's own scope or nature                                                                                                |
+| Stance-free disclaimer | Adding a supplement without naming the misreading it rejects                                                                                |
+| Revision narration     | Stating the earlier wording or the overturned premise                                                                                       |
+| Reprinted brief        | An instruction to the writer that arrived with the source material, such as "keep the original texture". Obey it and leave the sentence out |
+| Code restatement       | Prose repeating what the code directly below states                                                                                         |
+| Consequence narration  | Stating what an instruction or branch leads to. Keep the instruction alone                                                                  |
+| Measurement provenance | Recording where a number came from or what was measured. It goes stale without changing behavior                                            |
+| Filler section         | Built only from restatement of other sections or generalities. Removing it leaves the claims unchanged                                      |
+| Redundant summary      | Re-stating at the end what the body already said                                                                                            |
+| Boilerplate frame      | Placed to fill a template, carrying nothing specific to this document                                                                       |
+| Hedge stacking         | Two or more hedges in one sentence, such as "might potentially" or "could possibly"                                                         |
+| Filler phrase          | A pleasantry aimed at the reader, such as "Looking forward to your thoughts"                                                                |
