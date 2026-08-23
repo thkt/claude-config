@@ -22,6 +22,9 @@ const parseArgs = () => {
   }
   return {};
 };
+// Only the presence of units is checked here. Validating the plan's structure and re-verifying
+// its preconditions belong to build's Load and Revalidate, and a standalone caller does both
+// before handing the plan over (#185).
 const input = parseArgs();
 const plan = input.plan;
 if (!plan || !Array.isArray(plan.units) || !plan.units.length) {
