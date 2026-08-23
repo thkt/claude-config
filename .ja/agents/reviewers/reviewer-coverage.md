@@ -62,7 +62,7 @@ background: true
 
 ## アウトプット
 
-~/.claude/agents/\_lib/finding-schema.md に従う。テストが見つからないときは "No tests to review" を報告する。共通ガード (glob 結果なし、ツールエラー) は ~/.claude/agents/\_lib/finding-schema.md のデフォルトに従う。
+~/.claude/agents/\_lib/finding-schema.md に従う。テストが見つからないときは "No tests to review" を報告する。
 
 | フィールド   | 値                                                                                              |
 | ------------ | ----------------------------------------------------------------------------------------------- |

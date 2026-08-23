@@ -77,7 +77,7 @@ Agent 完了時に以下のフィールドを返す。challenges が空でも有
 | Field      | Type   | Value                                                                                                                                                                                   |
 | ---------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | challenges | list   | 各 item は finding_id, verdict (confirmed / disputed / downgraded / needs_context), original_severity, adjusted_severity (downgraded のときのみ、他は null), reasoning, evidence を含む |
-| summary    | object | verdict ごとの件数。challenges から導出される人間向けの補助情報                                                                                                                         |
+| summary    | object | verdict ごとの件数                                                                                                                         |
 
 ## 制約
 

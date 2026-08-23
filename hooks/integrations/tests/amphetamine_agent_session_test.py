@@ -13,7 +13,6 @@ Run: python3 hooks/integrations/tests/amphetamine_agent_session_test.py
 import json
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 import time
@@ -23,6 +22,10 @@ from typing import override
 
 HOOK_DIR = Path(__file__).resolve().parents[1]
 HOOK = HOOK_DIR / "amphetamine_agent_session.py"
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+
+import hook_harness  # noqa: E402
 
 sys.path.insert(0, str(HOOK_DIR))
 import amphetamine_agent_session as hook  # noqa: E402
@@ -100,19 +103,12 @@ class TestAmphetamineAgentSession(unittest.TestCase):
         remaining: str = NO_SESSION,
         app: Path | None = None,
     ) -> str:
-        result = subprocess.run(
-            [sys.executable, str(HOOK), action],
-            input=json.dumps(payload),
-            capture_output=True,
-            text=True,
-            check=False,
-            env={
-                **self.env,
-                "STUB_REMAINING": remaining,
-                "CLAUDE_AMPHETAMINE_APP": str(app or self.app),
-            },
-        )
-        return result.stdout
+        env = {
+            **self.env,
+            "STUB_REMAINING": remaining,
+            "CLAUDE_AMPHETAMINE_APP": str(app or self.app),
+        }
+        return hook_harness.run(HOOK, payload, env, args=[action])
 
     def sent(self) -> str:
         return self.log.read_text(encoding="utf-8")

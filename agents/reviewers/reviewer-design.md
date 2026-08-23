@@ -59,7 +59,7 @@ See `~/.claude/agents/_lib/calibration-examples.md` section DP.
 
 ## Output
 
-Follow ~/.claude/agents/_lib/finding-schema.md. When no modules are found, report "No modules to review". Review mixed-language targets per language and do not silently skip. Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no modules are found, report "No modules to review". Review mixed-language targets per language and do not silently skip.
 
 | Field        | Value                                                                                                                             |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------- |

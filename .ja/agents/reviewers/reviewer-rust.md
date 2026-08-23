@@ -99,7 +99,7 @@ finding を `documented?: No` でフラグする前に、周辺コンテキス�
 
 ## アウトプット
 
-~/.claude/agents/_lib/finding-schema.md に従う。`Cargo.toml` が見つからないときは "No Rust to review" を報告する。`cargo` が利用不可ならソースのみでレビューしサマリーに注記し、workspace lints が無ければ不在を注記してデフォルト strict でレビューし、clippy がタイムアウトしたら Phase 1 の clippy 重複排除をスキップして findings を未検証マークする。共通ガード (glob 空、tool エラー) は ~/.claude/agents/_lib/finding-schema.md のデフォルトに従う。
+~/.claude/agents/_lib/finding-schema.md に従う。`Cargo.toml` が見つからないときは "No Rust to review" を報告する。`cargo` が利用不可ならソースのみでレビューしサマリーに注記し、workspace lints が無ければ不在を注記してデフォルト strict でレビューし、clippy がタイムアウトしたら Phase 1 の clippy 重複排除をスキップして findings を未検証マークする。
 
 | フィールド   | 値                                                                       |
 | ------------ | ------------------------------------------------------------------------ |

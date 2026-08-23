@@ -58,7 +58,7 @@ See `~/.claude/agents/_lib/calibration-examples.md` section OPS.
 
 ## Output
 
-Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Reasoning should name blast radius (what breaks, who notices). Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults. Test files and mock files excluded via Context Test (Intentional) in schema.
+Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Reasoning should name blast radius (what breaks, who notices). Test files and mock files excluded via Context Test (Intentional) in schema.
 
 | Field        | Value                                                                                   |
 | ------------ | --------------------------------------------------------------------------------------- |

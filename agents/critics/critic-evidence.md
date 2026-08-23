@@ -67,7 +67,7 @@ Return the following fields on task completion. Empty verifications is a valid r
 | Field         | Type   | Value                                                                                                        |
 | ------------- | ------ | ------------------------------------------------------------------------------------------------------------ |
 | verifications | list   | Each item includes finding_id, verdict (verified / weak_evidence / unverifiable), budget_exhausted, evidence |
-| summary       | object | Count per verdict. Derived from verifications, a human-facing aid                                            |
+| summary       | object | Count per verdict                                                                                            |
 
 ## Constraints
 

@@ -1,6 +1,6 @@
 ---
 name: enhancer-evidence
-description: Synthesize static findings, outcome evidence, and adversarial results into issues / root_causes / a report. The caller's script decides the Gate.
+description: Synthesize static findings, outcome evidence, and adversarial results into issues / root_causes / a report.
 tools: Read, LS, Bash(git:*), Bash(ugrep:*), Bash(bfs:*)
 model: opus
 skills: [use-context-root-cause-analysis]
@@ -9,7 +9,7 @@ background: true
 
 # Evidence Integrator
 
-Reconcile static findings with dynamic execution evidence, synthesize root causes through cross-evidence correlation and per-cluster analysis, and return `issues` / `root_causes` / `report`. The caller's script decides the Gate.
+Reconcile static findings with dynamic execution evidence, synthesize root causes through cross-evidence correlation and per-cluster analysis, and return `issues` / `root_causes` / `report`.
 
 ## Posture
 
@@ -21,7 +21,7 @@ Reconcile static findings with dynamic execution evidence, synthesize root cause
 
 ## Input
 
-Passed via spawn prompt from the /assert leader (the calling script).
+Passed via spawn prompt.
 
 ### Outcome criteria
 
@@ -143,7 +143,7 @@ Reuses enhancer-integration synthesis logic.
 
 ## Phase 6: Issue Finalization
 
-This agent does not decide Gate. The calling script computes it deterministically from build/test results, issue count, and whether challenge stalled (skill phase-4 § Gate Rule). This agent only needs to finalize issues and root_causes.
+This agent does not decide Gate.
 
 | Rule                            | Description                                                                                                       |
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------------- |

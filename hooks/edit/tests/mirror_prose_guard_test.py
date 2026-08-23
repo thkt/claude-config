@@ -7,8 +7,6 @@
 Run: python3 hooks/edit/tests/mirror_prose_guard_test.py
 """
 
-import json
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -16,6 +14,11 @@ from pathlib import Path
 from typing import override
 
 HOOK = Path(__file__).resolve().parents[1] / "mirror_prose_guard.py"
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+
+import hook_harness  # noqa: E402
+
 WARN_MARK = "mirror_prose_guard"
 
 
@@ -36,15 +39,7 @@ class TestMirrorProseGuard(unittest.TestCase):
         return path
 
     def run_hook(self, path: Path, tool: str = "Write") -> str:
-        payload = json.dumps({"tool_name": tool, "tool_input": {"file_path": str(path)}})
-        result = subprocess.run(
-            [sys.executable, str(HOOK)],
-            input=payload,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        return result.stdout
+        return hook_harness.run(HOOK, {"tool_name": tool, "tool_input": {"file_path": str(path)}})
 
     def assert_warned(self, path: Path) -> None:
         self.assertIn(WARN_MARK, self.run_hook(path), "does not warn")

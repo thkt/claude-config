@@ -56,7 +56,7 @@ See `~/.claude/agents/_lib/calibration-examples.md` section EFF.
 
 ## Output
 
-Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Common guards (glob empty, tool error) follow ~/.claude/agents/_lib/finding-schema.md defaults. Cold-path minor issues excluded unless consolidation raises severity (see schema's Context Test).
+Follow ~/.claude/agents/_lib/finding-schema.md. When no code is found, report "No code to review". Cold-path minor issues excluded unless consolidation raises severity (see schema's Context Test).
 
 | Field        | Value                                                                             |
 | ------------ | --------------------------------------------------------------------------------- |

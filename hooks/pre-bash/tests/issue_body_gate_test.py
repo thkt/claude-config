@@ -14,7 +14,6 @@ Run: python3 hooks/pre-bash/tests/issue_body_gate_test.py
 import json
 import re
 import shutil
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -22,6 +21,11 @@ from pathlib import Path
 from typing import override
 
 HOOK = Path(__file__).resolve().parents[1] / "issue_body_gate.py"
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+
+import hook_harness  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[3]
 
 VALID_BUG_BODY = """## What & Why
@@ -144,13 +148,7 @@ class TestIssueBodyGate(unittest.TestCase):
         payload = json.dumps(
             {"tool_name": "Bash", "tool_input": {"command": command}}, separators=(",", ":")
         )
-        result = subprocess.run(
-            [sys.executable, str(hook if hook else HOOK)],
-            input=payload,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        result = hook_harness.checked(hook if hook else HOOK, payload)
         stdout = result.stdout or ""
         try:
             out = json.loads(stdout) if stdout.strip() else None

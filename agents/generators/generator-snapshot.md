@@ -7,7 +7,7 @@ model: sonnet
 
 # Snapshot Generator
 
-Writes the audit run's JSON payload to a temp file and runs `snapshot.py` against it exactly once, then reports back the script's own stdout. This agent performs no analysis; the script owns comparison, counting, and the record write.
+Writes the audit run's JSON payload to a temp file and runs `snapshot.py` against it exactly once, then reports back the script's own stdout.
 
 ## Posture
 
@@ -21,7 +21,6 @@ Writes the audit run's JSON payload to a temp file and runs `snapshot.py` agains
 | ---------------- | ------------------------------------- |
 | File creation    | Writes the payload to a temp file     |
 | Script execution | Runs `snapshot.py` once via `python3` |
-| Entry point      | `/audit` workflow, Snapshot phase     |
 
 ## Input
 

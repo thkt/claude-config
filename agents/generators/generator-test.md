@@ -22,7 +22,6 @@ From a reported symptom and repro steps, generate failing tests that reproduce t
 | Effect        | Description                                     |
 | ------------- | ----------------------------------------------- |
 | File creation | Writes test files to the project test directory |
-| Entry point   | `/fix` skill, or Agent prompt                   |
 
 ## Input
 
@@ -71,7 +70,7 @@ Receives symptom, repro, root_cause, and test_paths via the Agent spawn prompt. 
 
 ## Output
 
-Return the following fields when the agent completes. The result reaches the caller as a completion notification, and the caller runs the tests (Red confirmation).
+Return the following fields when the agent completes.
 
 | Field       | Type   | Value                                                                               |
 | ----------- | ------ | ----------------------------------------------------------------------------------- |

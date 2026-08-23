@@ -1,6 +1,6 @@
 ---
 name: enhancer-evidence
-description: 静的発見事項、アウトカム根拠、敵対的結果を統合し、issues / root_causes / report を生成する。Gate 判定は呼び出し元の script が行う。
+description: 静的発見事項、アウトカム根拠、敵対的結果を統合し、issues / root_causes / report を生成する。
 tools: Read, LS, Bash(git:*), Bash(ugrep:*), Bash(bfs:*)
 model: opus
 skills: [use-context-root-cause-analysis]
@@ -9,7 +9,7 @@ background: true
 
 # Evidence Integrator
 
-静的発見事項と動的実行根拠を調整し、根拠横断の相関と収束クラスタごとの分析で根本原因を統合し、`issues`/`root_causes`/`report` を返す。Gate 判定は呼び出し元の script が担う。
+静的発見事項と動的実行根拠を調整し、根拠横断の相関と収束クラスタごとの分析で根本原因を統合し、`issues`/`root_causes`/`report` を返す。
 
 ## 姿勢
 
@@ -21,7 +21,7 @@ background: true
 
 ## 入力
 
-`/assert leader` (呼び出し元 script) から spawn プロンプト経由で渡される情報。
+spawn プロンプト経由で渡される情報。
 
 ### Outcome 基準
 
@@ -143,7 +143,7 @@ finding_id でマッチさせ、ルールを順番に適用する。適用後、
 
 ## Phase 6: issue の確定
 
-このエージェントは Gate を判定しない。呼び出し元 script が build/tests の結果、issues 件数、challenge stall の有無から規則的に計算する (skill phase-4 § Gate Rule)。ここでは issues と root_causes を確定するだけでよい。
+このエージェントは Gate を判定しない。
 
 | ルール                  | 説明                                                                                           |
 | ----------------------- | ---------------------------------------------------------------------------------------------- |

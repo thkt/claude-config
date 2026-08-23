@@ -12,7 +12,6 @@ Run: python3 hooks/lifecycle/tests/recall_index_test.py
 """
 
 import os
-import subprocess
 import sys
 import tempfile
 import time
@@ -21,6 +20,11 @@ from pathlib import Path
 from typing import override
 
 HOOK = Path(__file__).resolve().parents[1] / "recall_index.py"
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "_lib"))
+
+import hook_harness  # noqa: E402
+
 STUB_BODY = '#!/bin/sh\nprintf \'%s\\n\' "$*" >> "$RECALL_LOG"\n'
 
 
@@ -58,20 +62,13 @@ class TestRecallIndex(unittest.TestCase):
             RECALL_LOG=str(self.log),
             CLAUDE_RECALL_BIN=str(recall_bin if recall_bin else self.stub),
         )
-        result = subprocess.run(
-            [sys.executable, str(HOOK)],
-            input=payload,
-            capture_output=True,
-            text=True,
-            check=False,
-            env=env,
-        )
+        stdout = hook_harness.run(HOOK, payload, env)
         # The hook detaches recall, so the log needs the job to land before it is read.
         for _ in range(20):
             if self.log.stat().st_size:
                 break
             time.sleep(0.05)
-        return self.log.read_text(encoding="utf-8"), result.stdout
+        return self.log.read_text(encoding="utf-8"), stdout
 
     # A method asserting two or more things wraps each in subTest. Without it the first
     # failure skips the rest, detecting less than the sh version that counted them apart.
