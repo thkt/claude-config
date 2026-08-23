@@ -41,11 +41,15 @@ const opts = parseArgs();
 const scope = typeof opts.scope === "string" ? opts.scope : "";
 const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 const repo = typeof opts.repo === "string" ? opts.repo : "";
+if (!repo) {
+  return {
+    stopped: "no-repo",
+    why: `Pass the target repository as args.repo (absolute path): Workflow({name: "shake", args: {repo: "/abs/path"}}).`,
+  };
+}
 
 const anchor = (p) =>
-  repo
-    ? `Run every git / file / test command from the ${repo} repository (start each shell command with \`cd ${repo} && \`).\n\n${p}`
-    : p;
+  `Run every git / file / test command from the ${repo} repository (start each shell command with \`cd ${repo} && \`).\n\n${p}`;
 
 const RUNS = 10;
 const MAX_FIX_ATTEMPTS = 3;
