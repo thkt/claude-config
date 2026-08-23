@@ -121,8 +121,6 @@ test("records the dropped target id in the final return value when the pipeline 
   );
 });
 
-// Without repo the anchor was a no-op and the agent resolved the repository from its own cwd,
-// which #204 measured running a step in the wrong checkout (DR-0105).
 test("T-005 a shake run with no args.repo stops with no-repo and names the argument shape", async () => {
   const { result, calls } = await runWorkflow(shakeJs, { args: {}, stubs: {} });
   assert.equal(result.stopped, "no-repo");

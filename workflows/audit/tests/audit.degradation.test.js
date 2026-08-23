@@ -446,8 +446,6 @@ test("T-034 a run whose scope-resolution status agent returns no response keeps 
   );
 });
 
-// Without repo the anchor was a no-op and the agent resolved the repository from its own cwd,
-// which #204 measured running a step in the wrong checkout (DR-0105).
 test("T-035 a audit run with no args.repo stops with no-repo and names the argument shape", async () => {
   const { result, calls } = await runWorkflow(auditJs, { args: {}, stubs: {} });
   assert.equal(result.stopped, "no-repo");

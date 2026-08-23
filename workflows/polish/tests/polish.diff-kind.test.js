@@ -72,8 +72,6 @@ test("a given base propagates into the Review and Fix prompts", async () => {
   assert.match(promptOf(calls, "fix"), /git diff develop\.\.\.HEAD/);
 });
 
-// Without repo the anchor was a no-op and the agent resolved the repository from its own cwd,
-// which #204 measured running a step in the wrong checkout (DR-0105).
 test("T-003 a polish run with no args.repo stops with no-repo and names the argument shape", async () => {
   const { result, calls } = await runWorkflow(polishJs, { args: {}, stubs: {} });
   assert.equal(result.stopped, "no-repo");

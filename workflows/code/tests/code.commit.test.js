@@ -356,8 +356,6 @@ test("normalizes a unit id spanning lines so it cannot forge a trailer or a labe
   );
 });
 
-// Without repo the anchor was a no-op and the agent resolved the repository from its own cwd,
-// which #204 measured running a step in the wrong checkout (DR-0105).
 test("T-001 a code run with no args.repo stops with no-repo and names the argument shape", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
     args: { plan },

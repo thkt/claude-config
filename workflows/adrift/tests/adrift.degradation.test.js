@@ -603,8 +603,6 @@ test("matches an unpadded focus token against a padded DR id", async () => {
   );
 });
 
-// Without repo the anchor was a no-op and the agent resolved the repository from its own cwd,
-// which #204 measured running a step in the wrong checkout (DR-0105).
 test("T-005 a adrift run with no args.repo stops with no-repo and names the argument shape", async () => {
   const { result, calls } = await runWorkflow(adriftJs, { args: {}, stubs: {} });
   assert.equal(result.stopped, "no-repo");
@@ -612,8 +610,7 @@ test("T-005 a adrift run with no args.repo stops with no-repo and names the argu
   assert.equal(calls.agent.length, 0, "no agent runs before the target repository is known");
 });
 
-// The report agent writes under a repository-relative path, so an unpinned run wrote it into
-// whatever checkout the agent's cwd happened to be (DR-0105).
+// The report path is repository-relative, so an unpinned run wrote it into the agent's own cwd.
 test("T-006 every adrift prompt names the repository given in args.repo", async () => {
   const { calls } = await runWorkflow(adriftJs, {
     args: { repo: "/abs/target-repo" },
