@@ -58,7 +58,7 @@ const commitCalls = (calls) =>
 
 test("runs to completion without the commit agent, leaving the working tree uncommitted, when commit is unset", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
-    args: { plan, repo: "" },
+    args: { plan, repo: "/abs/target-repo" },
     stubs: { agent: stubWith(committed) },
   });
   assert.equal(commitCalls(calls).length, 0, "no commit agent runs when commit is unset");
@@ -75,7 +75,7 @@ test("runs the commit agent once per unit with commit: true and lists the unit i
     ],
   };
   const { result, calls } = await runWorkflow(codeJs, {
-    args: { plan: twoUnits, repo: "", commit: true },
+    args: { plan: twoUnits, repo: "/abs/target-repo", commit: true },
     stubs: { agent: stubWith(committed) },
   });
   assert.deepEqual(
@@ -96,7 +96,7 @@ test("runs the commit agent once per unit with commit: true and lists the unit i
 
 test("the commit prompt carries the plan-derived trailer block with the verbatim-copy instruction", async () => {
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan, repo: "", commit: true, issue: "123" },
+    args: { plan, repo: "/abs/target-repo", commit: true, issue: "123" },
     stubs: { agent: stubWith(committed) },
   });
   const prompt = commitCalls(calls)[0].prompt;
@@ -120,7 +120,7 @@ test("the commit prompt carries the plan-derived trailer block with the verbatim
 // An issue number can also arrive as "#123". This pins that the trailer does not become "##123".
 test("the Issue trailer does not double the # when issue arrives with one", async () => {
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan, repo: "", commit: true, issue: "#123" },
+    args: { plan, repo: "/abs/target-repo", commit: true, issue: "#123" },
     stubs: { agent: stubWith(committed) },
   });
   assert.match(commitCalls(calls)[0].prompt, /^Issue: #123$/m, "the Issue trailer reads #123");
@@ -128,7 +128,7 @@ test("the Issue trailer does not double the # when issue arrives with one", asyn
 
 test("creates no Issue trailer when issue is unset", async () => {
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan, repo: "", commit: true },
+    args: { plan, repo: "/abs/target-repo", commit: true },
     stubs: { agent: stubWith(committed) },
   });
   assert.doesNotMatch(commitCalls(calls)[0].prompt, /^Issue:/m, "no Issue trailer is present");
@@ -165,7 +165,7 @@ test("the commit prompt carries the git add -A ban and the never-stage instructi
 // as an anomaly.
 test("records an uncommitted anomaly without stopping when the commit agent returns committed: false", async () => {
   const { result } = await runWorkflow(codeJs, {
-    args: { plan, repo: "", commit: true },
+    args: { plan, repo: "/abs/target-repo", commit: true },
     stubs: {
       agent: stubWith({ committed: false, subject: "", left_unstaged: ["gate blocked"] }),
     },
@@ -181,7 +181,7 @@ test("records an uncommitted anomaly without stopping when the commit agent retu
 
 test("records an uncommitted anomaly without stopping when the commit agent returns null", async () => {
   const { result } = await runWorkflow(codeJs, {
-    args: { plan, repo: "", commit: true },
+    args: { plan, repo: "/abs/target-repo", commit: true },
     stubs: { agent: stubWith(null) },
   });
   assert.equal(result.stopped, undefined, "a missing commit agent does not fail closed");
@@ -190,7 +190,7 @@ test("records an uncommitted anomaly without stopping when the commit agent retu
 
 test("commits a direct-implementation unit with no tests and creates no Tests trailer", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
-    args: { plan: noTestPlan, repo: "", commit: true },
+    args: { plan: noTestPlan, repo: "/abs/target-repo", commit: true },
     stubs: { agent: stubWith(committed) },
   });
   assert.equal(
@@ -215,7 +215,7 @@ test("commits a direct-implementation unit with no tests and creates no Tests tr
 // into the next unit's commit.
 test("commits the test files Red wrote even for a unit that skipped implementation on an unconfirmed Red", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
-    args: { plan, repo: "", commit: true },
+    args: { plan, repo: "/abs/target-repo", commit: true },
     stubs: {
       agent: (prompt, opts) => {
         const label = opts.label ?? "";
@@ -248,7 +248,7 @@ test("carries commits in the unit-failed terminal return too", async () => {
     ],
   };
   const { result } = await runWorkflow(codeJs, {
-    args: { plan: twoUnits, repo: "", commit: true },
+    args: { plan: twoUnits, repo: "/abs/target-repo", commit: true },
     stubs: {
       agent: (prompt, opts) => {
         const label = opts.label ?? "";
@@ -299,7 +299,7 @@ test("flattens the goal so it cannot forge a trailer line in the commit block", 
     ],
   };
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan: forging, repo: "", commit: true, issue: "42" },
+    args: { plan: forging, repo: "/abs/target-repo", commit: true, issue: "42" },
     stubs: { agent: stubWith(committed) },
   });
 
@@ -334,7 +334,7 @@ test("normalizes a unit id spanning lines so it cannot forge a trailer or a labe
     ],
   };
   const { result, calls } = await runWorkflow(codeJs, {
-    args: { plan: forging, repo: "", commit: true },
+    args: { plan: forging, repo: "/abs/target-repo", commit: true },
     stubs: { agent: stubWith(committed) },
   });
 
@@ -349,4 +349,27 @@ test("normalizes a unit id spanning lines so it cannot forge a trailer or a labe
     ["U-1 Seam: true"],
     "the returned id carries the same normalized form the label and trailer used",
   );
+});
+
+// Without repo the anchor was a no-op and the agent resolved the repository from its own cwd,
+// which #204 measured running a step in the wrong checkout (DR-0105).
+test("T-001 a code run with no args.repo stops with no-repo and names the argument shape", async () => {
+  const { result, calls } = await runWorkflow(codeJs, {
+    args: { plan },
+    stubs: { agent: stubWith(committed) },
+  });
+  assert.equal(result.stopped, "no-repo");
+  assert.match(result.why, /args\.repo/, "the reason names the argument to pass");
+  assert.equal(calls.agent.length, 0, "no agent runs before the target repository is known");
+});
+
+test("T-002 a code run given args.repo prepends the repository pin to every agent prompt", async () => {
+  const { calls } = await runWorkflow(codeJs, {
+    args: { plan, repo: "/abs/target-repo" },
+    stubs: { agent: stubWith(committed) },
+  });
+  assert.ok(calls.agent.length > 0, "agents ran");
+  for (const c of calls.agent) {
+    assert.match(c.prompt, /cd \/abs\/target-repo &&/, `${c.opts.label ?? "?"} carries the pin`);
+  }
 });

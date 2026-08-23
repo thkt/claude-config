@@ -67,7 +67,7 @@ test("propagates a given model to the 4 Red / Green calls and their retries whil
   const { calls } = await runWorkflow(codeJs, {
     // A model distinct from Verify's fixed sonnet, so the assertions below can
     // tell input.model propagation apart from the fixed value.
-    args: { plan, repo: "", model: "haiku" },
+    args: { plan, repo: "/abs/target-repo", model: "haiku" },
     stubs: { agent: retryingAgentStub },
   });
 
@@ -89,7 +89,7 @@ test("propagates a given model to the 4 Red / Green calls and their retries whil
 
 test("runs to completion with the default sonnet and effort high on Red / Green when no model is given", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
-    args: { plan, repo: "" },
+    args: { plan, repo: "/abs/target-repo" },
     stubs: { agent: happyAgentStub },
   });
 
@@ -116,7 +116,7 @@ test("only a unit with seam: true carries the inner-layer stub ban and the wirin
 
   const promptsFor = async (seam) => {
     const { calls } = await runWorkflow(codeJs, {
-      args: { plan: seamPlan(seam), repo: "" },
+      args: { plan: seamPlan(seam), repo: "/abs/target-repo" },
       stubs: { agent: happyAgentStub },
     });
     return calls.agent
@@ -140,16 +140,16 @@ test("only a unit with seam: true carries the inner-layer stub ban and the wirin
 test("the direct impl, Red, and Green prompts carry the advisor ban and the anomaly routing while Verify does not", async () => {
   const directStub = (prompt, opts) => {
     const label = opts.label ?? "";
-      if (label.startsWith("impl:")) return { green: true, notes: "" };
+    if (label.startsWith("impl:")) return { green: true, notes: "" };
     if (label === "verify") return { tests_pass: true, gates_pass: true, output_tail: "" };
     throw new Error(`unexpected label: ${label}`);
   };
   const { calls: tddCalls } = await runWorkflow(codeJs, {
-    args: { plan, repo: "" },
+    args: { plan, repo: "/abs/target-repo" },
     stubs: { agent: happyAgentStub },
   });
   const { calls: directCalls } = await runWorkflow(codeJs, {
-    args: { plan: noTestPlan, repo: "" },
+    args: { plan: noTestPlan, repo: "/abs/target-repo" },
     stubs: { agent: directStub },
   });
 
@@ -169,12 +169,12 @@ test("the direct impl, Red, and Green prompts carry the advisor ban and the anom
 test("a unit with no tests skips Red / Green, completes in one direct impl step, and propagates model and effort", async () => {
   const directStub = (prompt, opts) => {
     const label = opts.label ?? "";
-      if (label.startsWith("impl:")) return { green: true, notes: "" };
+    if (label.startsWith("impl:")) return { green: true, notes: "" };
     if (label === "verify") return { tests_pass: true, gates_pass: true, output_tail: "" };
     throw new Error(`unexpected label: ${label}`);
   };
   const { result, calls } = await runWorkflow(codeJs, {
-    args: { plan: noTestPlan, repo: "", model: "haiku" },
+    args: { plan: noTestPlan, repo: "/abs/target-repo", model: "haiku" },
     stubs: { agent: directStub },
   });
 
@@ -193,12 +193,12 @@ test("a unit with no tests skips Red / Green, completes in one direct impl step,
 test("fails closed with stopped: unit-failed when the direct implementation fails twice", async () => {
   const failingStub = (prompt, opts) => {
     const label = opts.label ?? "";
-      if (label.startsWith("impl2:")) return { green: false, notes: "still red" };
+    if (label.startsWith("impl2:")) return { green: false, notes: "still red" };
     if (label.startsWith("impl:")) return { green: false, notes: "suite failed" };
     throw new Error(`unexpected label: ${label}`);
   };
   const { result, calls } = await runWorkflow(codeJs, {
-    args: { plan: noTestPlan, repo: "" },
+    args: { plan: noTestPlan, repo: "/abs/target-repo" },
     stubs: { agent: failingStub },
   });
   assert.equal(result.stopped, "unit-failed", "not green after the retry means unit-failed");
@@ -252,7 +252,7 @@ test("reports tests+gates when any unit of the plan carries a test scenario", as
         test_command: "echo test",
         units: [unitOf("U-1", []), unitOf("U-2", [{ id: "T-001", name: "rejects zero" }])],
       },
-      repo: "",
+      repo: "/abs/target-repo",
     },
     stubs: { agent: verificationStub },
   });
@@ -264,7 +264,7 @@ test("reports gates-only when no unit of the plan carries a test scenario", asyn
   const { result } = await runWorkflow(codeJs, {
     args: {
       plan: { test_command: "echo test", units: [unitOf("U-1", []), unitOf("U-2", [])] },
-      repo: "",
+      repo: "/abs/target-repo",
     },
     stubs: { agent: verificationStub },
   });

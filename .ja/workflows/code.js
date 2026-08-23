@@ -36,10 +36,14 @@ if (!plan || !Array.isArray(plan.units) || !plan.units.length) {
 }
 
 const repo = typeof input.repo === "string" ? input.repo : "";
+if (!repo) {
+  return {
+    stopped: "no-repo",
+    why: `対象リポジトリを args.repo に絶対パスで渡す: Workflow({name: "code", args: {plan, repo: "/abs/path"}})。`,
+  };
+}
 const anchor = (p) =>
-  repo
-    ? `すべての git / ファイル / ビルドコマンドを ${repo} のリポジトリから実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`
-    : p;
+  `すべての git / ファイル / ビルドコマンドを ${repo} のリポジトリから実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`;
 
 // コミットを opt-in にするのは、単独起動の呼び出し元が diff 基準を HEAD から外していない
 // ため。HEAD が動くと呼び出し元の検証が無言で空を見る。

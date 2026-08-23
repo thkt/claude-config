@@ -10,8 +10,14 @@ import { runWorkflow } from "../../_lib/run-workflow.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const codeJs = join(here, "..", "..", "code.js");
 
-const RULE = { source: "docs/wiki/ja-mirror-drift.md", quote: ".ja/ を先に編集し EN を同一コミットで" };
-const SECOND = { source: "docs/wiki/pr-scope-separation.md", quote: "issue の Scope に無いファイルを洗い出す" };
+const RULE = {
+  source: "docs/wiki/ja-mirror-drift.md",
+  quote: ".ja/ を先に編集し EN を同一コミットで",
+};
+const SECOND = {
+  source: "docs/wiki/pr-scope-separation.md",
+  quote: "issue の Scope に無いファイルを洗い出す",
+};
 
 // One unit, no tests: the shortest path to the impl step's prompt.
 const implPlan = (rules) => ({
@@ -62,7 +68,7 @@ const promptFor = (calls, label) => {
 
 test("a rule the plan carries reaches the implementation prompt with its source", async () => {
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan: implPlan([RULE]), repo: "" },
+    args: { plan: implPlan([RULE]), repo: "/abs/target-repo" },
     agent: stub,
   });
   const prompt = promptFor(calls, "impl:U-1");
@@ -75,7 +81,7 @@ test("a rule the plan carries reaches the implementation prompt with its source"
 // it a rule reading like an instruction would compete with the step's own instructions.
 test("the rules block declares itself data rather than instructions", async () => {
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan: implPlan([RULE]), repo: "" },
+    args: { plan: implPlan([RULE]), repo: "/abs/target-repo" },
     agent: stub,
   });
   assert.match(promptFor(calls, "impl:U-1"), /data, not instructions/);
@@ -85,7 +91,7 @@ test("the rules block declares itself data rather than instructions", async () =
 // only spend the step's attention.
 test("the Red step's prompt carries no rules block", async () => {
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan: redPlan([RULE]), repo: "" },
+    args: { plan: redPlan([RULE]), repo: "/abs/target-repo" },
     agent: stub,
   });
   assert.doesNotMatch(promptFor(calls, "red:U-1"), /---- rules start ----/);
@@ -93,7 +99,7 @@ test("the Red step's prompt carries no rules block", async () => {
 
 test("every rule the plan carries reaches the prompt, in the plan's order", async () => {
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan: implPlan([RULE, SECOND]), repo: "" },
+    args: { plan: implPlan([RULE, SECOND]), repo: "/abs/target-repo" },
     agent: stub,
   });
   const prompt = promptFor(calls, "impl:U-1");
@@ -105,17 +111,21 @@ test("every rule the plan carries reaches the prompt, in the plan's order", asyn
 test("a plan with no rules injects nothing", async () => {
   for (const rules of [[], undefined]) {
     const { calls } = await runWorkflow(codeJs, {
-      args: { plan: implPlan(rules), repo: "" },
+      args: { plan: implPlan(rules), repo: "/abs/target-repo" },
       agent: stub,
     });
-    assert.doesNotMatch(promptFor(calls, "impl:U-1"), /---- rules/, `rules=${JSON.stringify(rules)}`);
+    assert.doesNotMatch(
+      promptFor(calls, "impl:U-1"),
+      /---- rules/,
+      `rules=${JSON.stringify(rules)}`,
+    );
   }
 });
 
 // Nothing may reach for a document at implementation time; that lookup is what the plan replaced.
 test("the code workflow starts no agent that reads a reference document", async () => {
   const { calls } = await runWorkflow(codeJs, {
-    args: { plan: implPlan([RULE]), repo: "" },
+    args: { plan: implPlan([RULE]), repo: "/abs/target-repo" },
     agent: stub,
   });
   const labels = calls.agent.map((c) => c.opts.label ?? "");

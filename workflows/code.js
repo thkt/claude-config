@@ -34,10 +34,14 @@ if (!plan || !Array.isArray(plan.units) || !plan.units.length) {
   };
 }
 const repo = typeof input.repo === "string" ? input.repo : "";
+if (!repo) {
+  return {
+    stopped: "no-repo",
+    why: `Pass the target repository as args.repo (absolute path): Workflow({name: "code", args: {plan, repo: "/abs/path"}}).`,
+  };
+}
 const anchor = (p) =>
-  repo
-    ? `Run every git, file, and build command from the repository at ${repo} (begin each shell command with \`cd ${repo} && \`).\n\n${p}`
-    : p;
+  `Run every git, file, and build command from the repository at ${repo} (begin each shell command with \`cd ${repo} && \`).\n\n${p}`;
 
 // Commits are opt-in because a standalone caller has not moved its diff base off
 // HEAD. Once HEAD moves, that caller's verification silently sees an empty diff.
