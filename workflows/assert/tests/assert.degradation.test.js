@@ -576,3 +576,36 @@ for (const [label, workflowStub] of [
     );
   });
 }
+
+// The two Evidence stages run codex with -C ${worktree_path}. Anchoring them to the target
+// repository put two different working directories in one prompt (#462).
+const promptOf = (calls, label) => {
+  const call = calls.agent.find((c) => c.opts && c.opts.label === label);
+  return (call && call.prompt) || "";
+};
+
+for (const label of ["test-exec", "adversarial"]) {
+  test(`T-020 the ${label} prompt is pinned to the worktree, not to the repository`, async () => {
+    const { calls } = await runWorkflow(assertJs, {
+      args: { repo: "/abs/target" },
+      stubs: { agent: makeAgent({ ran: true, tests: [] }), workflow: healthyAudit },
+    });
+    const prompt = promptOf(calls, label);
+    assert.ok(prompt.length > 0, `the ${label} agent ran`);
+    assert.match(prompt, /cd \/tmp\/assert-wt &&/, "the pin names the worktree");
+    assert.doesNotMatch(
+      prompt,
+      /cd \/abs\/target &&/,
+      "the pin does not name the target repository",
+    );
+  });
+}
+
+// Every other stage keeps the repository pin, so the change is scoped to the worktree pair.
+test("T-021 the bootstrap prompt keeps the repository pin", async () => {
+  const { calls } = await runWorkflow(assertJs, {
+    args: { repo: "/abs/target" },
+    stubs: { agent: makeAgent({ ran: true, tests: [] }), workflow: healthyAudit },
+  });
+  assert.match(promptOf(calls, "bootstrap"), /cd \/abs\/target &&/);
+});

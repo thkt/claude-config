@@ -293,6 +293,10 @@ if (boot.mode === "none") {
 const envFail = !boot.worktree_ok || boot.install === "fail";
 const buildCol = envFail ? "skipped" : boot.build;
 const dynamicOk = !envFail && buildCol !== "fail";
+// The two Evidence stages below work in the isolated worktree, so anchor would name a second
+// place. dynamicOk gates them on worktree_ok, so the path is always set where this is used.
+const inWorktree = (p) =>
+  `Run every git / file / build command from the worktree at ${boot.worktree_path} (start each shell command with \`cd ${boot.worktree_path} && \`).\n\n${p}`;
 log(
   `Bootstrap: mode=${boot.mode} files=${boot.scope_files.length} build=${buildCol}` +
     (dynamicOk ? "" : ` (dynamic verification skipped: ${boot.reason || "env fail"})`),
@@ -392,17 +396,17 @@ try {
   phase("Evidence");
   const fileList = boot.scope_files.join("\n");
   const testRunRaw =
-    `You handle the test run stage of assert. Inside the worktree ${boot.worktree_path}, detect the project's test command and run it exactly once via \`timeout 600 codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} "Run the project test command. Report: (1) test exit code and last 50 lines of stderr if non-zero, (2) test summary (total/passed/failed)." </dev/null\`. ` +
+    `You handle the test run stage of assert. Detect the project's test command and run it exactly once via \`timeout 600 codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} "Run the project test command. Report: (1) test exit code and last 50 lines of stderr if non-zero, (2) test summary (total/passed/failed)." </dev/null\`. ` +
     `The build already ran in bootstrap; do not rerun it. If no test runner is found, outcome: no-runner; on timeout or any other inability to run, outcome: skipped with the reason in notes. Do not fix anything.`;
   const adversarialRaw =
-    `You handle the adversarial testing stage of assert. Inside the worktree ${boot.worktree_path}, run \`timeout 600 codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} --full-auto "<prompt>" </dev/null\`. Use the following English text verbatim as <prompt>, with the target list filled into Target files.\n` +
+    `You handle the adversarial testing stage of assert. Run \`timeout 600 codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} --full-auto "<prompt>" </dev/null\`. Use the following English text verbatim as <prompt>, with the target list filled into Target files.\n` +
     `---\n` +
     `You are an adversarial tester. Your goal is to find bugs by writing tests that the original developer likely missed.\n\nTarget files:\n${fileList}\n\n` +
     `Instructions:\n1. Read each target file and understand its behavior\n2. Generate edge-case tests targeting:\n   - Boundary values (empty, zero, max, off-by-one)\n   - Error paths (invalid input, null/nil equivalents, failure modes)\n   - Input validation gaps (special characters, injection, overflow)\n   - State transitions (concurrent access, race conditions if applicable)\n   - Implicit assumptions (hardcoded limits, timezone, locale)\n3. Write tests using the project's existing test framework and naming convention\n4. Place tests following the project's test directory and file-naming convention\n5. Run the tests\n6. Report results in this exact format:\n\nADVERSARIAL_RESULTS_START\ntest_name: <name>\ntarget: <file:line being tested>\nassertion: <what the test asserts>\nresult: PASS | FAIL\nfailure_detail: <error message if FAIL>\n---\n(repeat for each test)\nADVERSARIAL_RESULTS_END\n` +
     `---\n` +
     `Structure the ADVERSARIAL_RESULTS block of the output into tests. On timeout or inability to run, set ran: false with the reason in notes. Do not touch anything outside the worktree.`;
-  const testRunPrompt = anchor(testRunRaw);
-  const adversarialPrompt = anchor(adversarialRaw);
+  const testRunPrompt = inWorktree(testRunRaw);
+  const adversarialPrompt = inWorktree(adversarialRaw);
   const testRunP = dynamicOk
     ? agent(testRunPrompt, {
         agentType: "general-purpose",
