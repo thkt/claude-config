@@ -33,11 +33,6 @@ def run_hook(
     escaped: bool = False,
     path: str | None = None,
 ) -> str:
-    """The hook's stdout, after confirming it ran.
-
-    A hook that dies before writing anything returns an empty string, which every
-    "is not a deny" assertion accepts.
-    """
     payload = json.dumps(
         {
             "tool_name": "Bash",

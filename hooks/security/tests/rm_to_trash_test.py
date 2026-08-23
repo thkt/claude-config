@@ -20,11 +20,6 @@ import rm_to_trash  # noqa: E402
 
 
 def run_hook(command: str) -> str:
-    """The hook's stdout, after confirming it ran.
-
-    A hook that dies before writing anything returns an empty string, which every
-    "is not a deny" assertion accepts.
-    """
     payload = {"tool_name": "Bash", "tool_input": {"command": command}}
     return hook_harness.run(HOOK, payload)
 
