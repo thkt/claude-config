@@ -40,7 +40,7 @@ LLM01 は信頼できないコンテンツを LLM に渡すアプリを対象と
 
 ## 報告
 
-重大度は finding-schema.md の 4 段から `low` を外した critical/high/medium を使う。security の finding に「気付いたら直す」段は無く、報告した時点で対処を要求する。出力の形は finding-schema.md が定めるので、ここは重大度の当て方だけを持つ。独立した脆弱性はそれぞれ個別の finding として報告する。1 つのファイルに別個の問題が 2 つある場合 (例: path traversal と別の prompt injection)、一方を他方の注記に畳み込まず、両方を別々の finding として列挙する。
+重大度は finding-schema.md の 4 段から `low` を外した critical/high/medium を使う。security の finding に「気付いたら直す」段は無く、報告した時点で対処を要求する。独立した脆弱性はそれぞれ個別の finding として報告する。1 つのファイルに別個の問題が 2 つある場合 (例: path traversal と別の prompt injection)、一方を他方の注記に畳み込まず、両方を別々の finding として列挙する。
 
 | シグナル         | 重大度   | 必須出力                          |
 | ---------------- | -------- | --------------------------------- |

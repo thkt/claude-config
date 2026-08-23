@@ -23,7 +23,7 @@ The manual counterpart of build's Branch stage. Both assemble the name by the sa
 
 ## Branch Naming
 
-Assemble the name and read the type per ${CLAUDE_SKILL_DIR}/references/branch-naming.md. build's Branch phase reads the same rules.
+Assemble the name and read the type per ${CLAUDE_SKILL_DIR}/references/branch-naming.md.
 
 ## Error Handling
 

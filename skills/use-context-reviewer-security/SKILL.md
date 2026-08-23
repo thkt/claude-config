@@ -40,7 +40,7 @@ LLM01 covers apps that pass untrusted content to an LLM. The sink is the prompt 
 
 ## Reporting
 
-Severity runs critical / high / medium, finding-schema.md's four levels minus `low`. A security finding carries no fix-it-if-you-notice level; reporting one asks for action. finding-schema.md settles the output's shape, so what stays here is how severity is assigned. Report each independent vulnerability as its own finding. When one file holds two distinct issues (e.g. a path traversal and a separate prompt injection), list both as separate findings rather than folding one into a note on the other.
+Severity runs critical / high / medium, finding-schema.md's four levels minus `low`. A security finding carries no fix-it-if-you-notice level; reporting one asks for action. Report each independent vulnerability as its own finding. When one file holds two distinct issues (e.g. a path traversal and a separate prompt injection), list both as separate findings rather than folding one into a note on the other.
 
 | Signal              | Severity | Required output                      |
 | ------------------- | -------- | ------------------------------------ |

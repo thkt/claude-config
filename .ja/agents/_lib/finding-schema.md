@@ -1,6 +1,6 @@
 # Canonical Finding Schema
 
-audit sub-reviewer 全員に必要な base field。Leader (Medium tier) または Integrator (Large tier) が統合時にドメイン特化拡張を正規化する。
+audit sub-reviewer 全員に必要な base field。
 
 ## Base Fields (必須)
 
