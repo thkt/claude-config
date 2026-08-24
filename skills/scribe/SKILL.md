@@ -37,7 +37,7 @@ The patterns worth picking up are procedures that recur as a routine or a conven
 
 ## Phase 3: Extraction
 
-1. Read `docs/wiki/*.md` to grasp the existing pages
+1. Read `docs/wiki/*.md` to grasp the existing pages. A page carrying `kind: structure` is not a pattern, so a coinciding name stays `existing: "none"`
 2. Read every candidate line in `docs/wiki/_candidates.md`, both sections, and put each one into the array as `{name, evidence, existing: "candidate"}`. This is the only route by which a line the cap carried over comes back
 3. Read each in-scope PR/issue including comments via `gh pr view <number> --comments`/`gh issue view <number> --comments`
 4. Read each in-scope research file in full with Read. Do not narrow by section name
@@ -63,6 +63,7 @@ Before creating, promoting, or updating a page, cross-check each pattern against
 | Check                                                         | What to settle when it fails                                                 |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | Does the convention/procedure still hold in the current code? | Drop it. On an existing page, the wording that marks it as no longer holding |
+| Does a structure page match the current implementation?       | The wording that matches the current code. Do not drop it                    |
 | Is it already mechanically enforced by lint / hook / CI?      | Drop it                                                                      |
 | Do the referenced paths/commands still exist?                 | The relink target among the current paths/commands                           |
 
