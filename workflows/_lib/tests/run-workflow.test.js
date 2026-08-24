@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PRODUCTION_GLOBALS, SCRIPT_ERROR_KEYS, readMeta, runWorkflow } from "../run-workflow.js";
+import { extractBracedBody } from "./_brace.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 // Discovery (rules/conventions/WORKFLOWS.md § Naming and file placement) reads workflows/ flat,
@@ -32,27 +33,9 @@ const withScript = async (source, run) => {
 // T-001 checks readMeta against each script's own source rather than against expected strings
 // copied into the test, so its assertions extract meta a second, independent way (mirrors
 // workflows/audit/tests/audit.routing.test.js's extractBracedBody / parseRoutingLikeConst
-// pattern). The marker differs from that reference (`export const meta = {` vs. `const NAME =
-// {`) because meta, unlike ROUTING/FOCUS, is the script's one exported constant.
-const extractBracedBody = (source, name) => {
-  const marker = `export const ${name} = {`;
-  const idx = source.indexOf(marker);
-  if (idx === -1) return null;
-  const braceStart = source.indexOf("{", idx);
-  let depth = 0;
-  let end = -1;
-  for (let i = braceStart; i < source.length; i++) {
-    if (source[i] === "{") depth++;
-    else if (source[i] === "}") {
-      depth--;
-      if (depth === 0) {
-        end = i + 1;
-        break;
-      }
-    }
-  }
-  return source.slice(braceStart + 1, end - 1);
-};
+// pattern, shared with meta-contract.test.js via ./_brace.js). The marker differs from that
+// reference (`export const meta = {` vs. `const NAME = {`) because meta, unlike ROUTING/FOCUS,
+// is the script's one exported constant.
 
 // A single-character escape sequence's meaning when a JS engine evaluates the literal (ECMA-262
 // SingleEscapeCharacter, https://tc39.es/ecma262/#prod-SingleEscapeCharacter). Any other escaped
@@ -93,7 +76,7 @@ const extractStringField = (body, key) => {
 const extractPhaseTitles = (body) => [...body.matchAll(/title:\s*"([^"]*)"/g)].map((m) => m[1]);
 
 const extractMeta = (source) => {
-  const body = extractBracedBody(source, "meta");
+  const body = extractBracedBody(source, "export const meta = {");
   return {
     name: extractStringField(body, "name"),
     description: extractStringField(body, "description"),

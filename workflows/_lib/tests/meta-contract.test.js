@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readMeta } from "../run-workflow.js";
+import { extractBracedBody } from "./_brace.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -18,32 +19,11 @@ const TREES = [
   { label: "ja", path: join(here, "..", "..", "..", ".ja", "workflows", "audit.js") },
 ];
 
-// Mirrors workflows/audit/tests/audit.routing.test.js's extractBracedBody: finds the const's
-// opening brace and walks depth to its match, with no eval-like evaluation of the source.
-const extractBracedBody = (source, name) => {
-  const marker = `const ${name} = {`;
-  const idx = source.indexOf(marker);
-  if (idx === -1) return null;
-  const braceStart = source.indexOf("{", idx);
-  let depth = 0;
-  let end = -1;
-  for (let i = braceStart; i < source.length; i++) {
-    if (source[i] === "{") depth++;
-    else if (source[i] === "}") {
-      depth--;
-      if (depth === 0) {
-        end = i + 1;
-        break;
-      }
-    }
-  }
-  return source.slice(braceStart + 1, end - 1);
-};
-// Mirrors the same file's parseRoutingLikeConst, narrowed to the keys alone (FOCUS's values are
-// reviewer-name arrays that whenToUse's prose never restates, so only the key set is relevant
-// here).
+// Mirrors workflows/audit/tests/audit.routing.test.js's parseRoutingLikeConst, narrowed to the
+// keys alone (FOCUS's values are reviewer-name arrays that whenToUse's prose never restates, so
+// only the key set is relevant here).
 const focusKeys = (source) => {
-  const body = extractBracedBody(source, "FOCUS");
+  const body = extractBracedBody(source, "const FOCUS = {");
   if (body === null) return null;
   const rowPattern = /(?:"([^"]+)"|(\w+))\s*:\s*(\[[^\]]*\]|null)/g;
   const keys = [];
