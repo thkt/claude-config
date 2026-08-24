@@ -11,8 +11,19 @@ Labels, expectations, or hints in the dispatch prompt contaminate Recall (found 
 3. Fix the comparison criteria before dispatch. Do not move them afterwards
 4. Pick each case's verdict from the table below and record the run as an array of `{file, verdict}` in `<skill>/test/results/YYYY-MM-DD-*.json`
 5. Run `python3 skills/_lib/review_score.py <skill>/test/expected.json <results> [previous-results]`. Do not count the metrics by hand
+6. Run `python3 skills/_lib/harness_hash.py <skill>` and write the printed `definition_sha256` and `corpus_sha256` as top-level keys of the record
 
 The sequential naming and the paired structure still let an agent guess it is looking at a test set. Going fully blind would mean embedding the cases in realistic scaffolding; removing label leakage comes first.
+
+## Record freshness
+
+A record names, by hash, which reviewer and which corpus the run measured. The gate reads the last record by name, so a second run on one date takes a name that sorts after the run it supersedes. A record written before the definition or the corpus moved did not measure the reviewer the repository ships now. Hashes rather than dates, because CI checks out shallow and cannot read `git log` dates. `skills/_lib/tests/harness_hash_test.py` matches the newest record's hashes against the current content and fails a skill with no record as unmeasured.
+
+| Key                 | Covers                                          |
+| ------------------- | ----------------------------------------------- |
+| `definition_sha256` | `agents/reviewers/reviewer-<name>.md`           |
+| `skill_sha256`      | `<skill>/SKILL.md`                              |
+| `corpus_sha256`     | `<skill>/test/cases/**` and `expected.json`     |
 
 ## Verdict set
 
