@@ -1,7 +1,5 @@
-// Without separating notes from evidence, the agent reads ctx's "check each claim against the
-// tool result" as an instruction to enumerate the evidence into one stretch of prose. The PR
-// body renders an anomaly with its newlines collapsed onto one line, leaving the reader unable
-// to find where the conclusion ends.
+// Not one prose field: the PR body collapses an anomaly's newlines onto one line, so a notes
+// that enumerates what was checked leaves the reader unable to find where the conclusion ends.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";

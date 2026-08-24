@@ -23,7 +23,7 @@ CORPUS_PARTS = ("cases", "expected.json")
 
 def _digest(pairs: list[tuple[str, bytes]]) -> str:
     h = hashlib.sha256()
-    # Sorted, so the digest does not carry the order the filesystem walk happened to return.
+    # Not the walk order: the same corpus would digest differently between machines.
     for name, content in sorted(pairs):
         h.update(name.encode("utf-8"))
         h.update(b"\0")

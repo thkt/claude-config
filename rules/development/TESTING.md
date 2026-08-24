@@ -107,7 +107,7 @@ One shape of such a net is banning a common English word across a whole document
 
 ## When a tier 1 run fires
 
-The reviewer accuracy measurement does not run in CI. A person runs it, and what CI checks is how fresh the record is. Hashes rather than dates, because CI checks out shallow and cannot read `git log` dates. A skill with no record at all counts as unmeasured, and the call is whether to run it or retire the corpus with it.
+The reviewer accuracy measurement does not run in CI. A person runs it, and what CI checks is how fresh the record is. A skill with no record at all counts as unmeasured, and the call is whether to run it or retire the corpus with it.
 
 | Element  | Content                                                                                     |
 | -------- | ------------------------------------------------------------------------------------------- |

@@ -131,8 +131,8 @@ def score(
         diff = {}
         for key, value in metrics.items():
             baseline = before.get(key)
-            # 過去のログは指標を散文で書いていた ("75% (9/12) - ...")。引き算はそこで落ち、
-            # 比較が 1 つ取れないだけで今回の数字ごと失われる。
+            # `baseline is None` で済ませないのは、過去のログが指標を散文で書いており、
+            # 引き算がそこで採点ごと落としていたため。
             if (
                 value is None
                 or not isinstance(baseline, (int, float))

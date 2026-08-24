@@ -23,7 +23,7 @@ CORPUS_PARTS = ("cases", "expected.json")
 
 def _digest(pairs: list[tuple[str, bytes]]) -> str:
     h = hashlib.sha256()
-    # sorted にするのは、ファイル走査が返した順をダイジェストに持ち込まないため。
+    # 走査順のままにしないのは、同じ corpus が機械ごとに別のダイジェストになるため。
     for name, content in sorted(pairs):
         h.update(name.encode("utf-8"))
         h.update(b"\0")

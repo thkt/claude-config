@@ -102,8 +102,6 @@ class Cli(unittest.TestCase):
 
 
 def newest_record(skill: str) -> Path | None:
-    # Two runs on one date sort by the rest of the name, which is what review-harness.md asks a
-    # same-day rerun to be named for.
     results = harness_hash.test_dir(skill) / "results"
     found = sorted(results.glob("*.json")) if results.is_dir() else []
     return found[-1] if found else None

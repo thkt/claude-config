@@ -1471,8 +1471,7 @@ test("T-004 build.js and its .ja mirror return stopped only from the stop helper
     assert.ok(stopReasons(source).size > 0, `${path} routes its stops through stop("...")`);
   }
 
-  // Not build.js: T-006, T-007 and the no-row gate test already run these three lines, and
-  // matching the source there would pin how the code is spelled. No run reaches the mirror.
+  // Not build.js: T-006 and T-007 already run these lines. No run reaches the mirror.
   const mirror = await readFile(jaBuildJs, "utf8");
   for (const line of [
     /recordable = true;/,

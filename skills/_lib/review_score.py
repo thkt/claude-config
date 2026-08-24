@@ -131,8 +131,8 @@ def score(
         diff = {}
         for key, value in metrics.items():
             baseline = before.get(key)
-            # Earlier logs wrote a metric as prose ("75% (9/12) - ..."). Subtracting one takes the
-            # whole scoring down, which loses this run's numbers over a missing comparison.
+            # Not `baseline is None`: earlier logs wrote a metric as prose, and subtracting one
+            # took the whole scoring down.
             if (
                 value is None
                 or not isinstance(baseline, (int, float))
