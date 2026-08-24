@@ -1,0 +1,40 @@
+{
+  "run_date": "2026-06-04",
+  "skill": "use-context-reviewer-security",
+  "agent": "reviewer-security",
+  "model": "opus-4-8",
+  "invocation": "Task tool, direct subagent. BLIND + one-paragraph scope instruction: 'OWASP LLM Top 10 (e.g. LLM01 Prompt Injection) is in scope'. Same /tmp neutral-name dir as 2026-06-04-blind-baseline. No per-file answers, no labels. Purpose: disentangle capability from scope policy for the LLM01 1/4 result.",
+  "probe_question": "Is blind LLM01 1/4 a scope-policy decline or a capability gap?",
+  "probe_answer": "SCOPE POLICY. Capability exists: with only a general in-scope instruction, case-15 went miss -> full hit (A03/LLM01 high, exact line, raw-concat vector, case-14-pattern fix) and case-19 captured its primary finding (role-to-system-prompt injection). No FP cost: case-14/16 (mitigated safe poles) stayed no-finding, with delimiter-breakout noted as caveat-not-finding.",
+  "llm01_slice": [
+    { "file": "cases/vuln/prompt-injection-rag.ts (case-15)", "blind": "miss (declared out of scope)", "probe": "A03/LLM01 high :6", "match": "hit" },
+    { "file": "cases/hard-vuln/prompt-injection-system-spoof.ts (case-19)", "blind": "miss", "probe": "A03/LLM01 medium :9 (role interpolation) + docs-concat as secondary note, not an independent finding", "match": "partial - 1 of min_findings 2; severity medium below expected high (reviewer reasoned role provenance not visible in fragment)" },
+    { "file": "cases/vuln/prompt-injection-doc-trailer.ts (case-17)", "blind": "A01 path traversal only", "probe": "A01 high (path traversal) + LLM01 as secondary note", "match": "partial - expected prompt-injection vuln still not an independent finding" },
+    { "file": "cases/hard-vuln/prompt-injection-exfiltration.ts (case-18)", "blind": "A10 high hit", "probe": "A10 high hit, sharper (named all 3 injectable channels: history, docs, question)", "match": "hit" },
+    { "file": "cases/safe/prompt-injection-isolated.ts (case-14)", "blind": "pass", "probe": "pass (breakout caveat, no finding)", "match": "pass" },
+    { "file": "cases/hard-safe/prompt-injection-explainer.ts (case-16)", "blind": "pass", "probe": "pass (same)", "match": "pass" }
+  ],
+  "remaining_gaps_after_scope_fix": [
+    "Reporting granularity: multi-finding files (case-19 min_findings 2, case-17 dual-vuln) collapse the second vulnerability into a 'secondary' note instead of an independent finding",
+    "Severity calibration: case-19 medium vs expected high (provenance-conditional reasoning)"
+  ],
+  "non_llm_deltas_vs_blind_run": [
+    "case-05: A05 medium -> A02 medium (category now matches expected A02; explicitly worked through exclusion rules to justify reporting despite placeholder value)",
+    "case-07: A03 medium -> A03 high (now meets severity_min; landed on 'concretely bypassable when driver honors backslash escapes')",
+    "middleware cookie: high -> critical; analytics-route: critical -> high (both still hits)",
+    "All other non-LLM results unchanged. FP 0/8 maintained."
+  ],
+  "new_observations": [
+    "Run-to-run severity variance is real on the same model+file (case-07 medium<->high, middleware high<->critical). The scope instruction cannot explain non-LLM deltas. Relevant to the postponed N=3 variance check (2026-05-08 memo): variance exists at the severity level even if hit/miss is stable.",
+    "Structural test-set leakage: the agent inferred 'calibration intent' from the case-NN naming plus safe/unsafe pole pairing (e.g. flagged case-05 and case-14/16 as poles). Positive/negative labels did NOT leak, but 'this is a test set' did. FP 0/8 may be partly fortified by the agent deliberately avoiding the 'false-positive trap' it inferred. Future protocol hardening: split safe/vuln poles across runs or embed cases in realistic app scaffolding.",
+    "Agent consulted its advisor in both runs (visible in output preamble) - consistent conditions, and the advisor pushed case-05 toward reporting (correctly applying exclusion-rule literalism)."
+  ],
+  "scoring_vs_expected": {
+    "llm01_expected_vuln_capture": "2 hit + 2 partial of 4 (blind: 1 of 4)",
+    "fp_rate": "0% (0/8)",
+    "non_llm01": "8/8 file-level, strict severity now 7/8 (case-05 medium remains below severity_min; case-07 resolved)"
+  },
+  "decision_input": "SKILL.md scope decision can now be made on capability facts: declaring LLM01 in scope costs no FP and recovers most detection. Remaining work if adopted: reporting granularity for multi-vuln files (prompt or SKILL.md instruction: 'report each independent vulnerability as its own finding'), severity guidance for provenance-conditional cases, fixture realism fixes (fake key value; doc-trailer split).",
+  "fp_monitor_caveat": "The 0 FP is measured against only 2 deliberately-mitigated LLM examples (case-14/16). Real audits contain many benign user-input->prompt flows the test set cannot see. Treat 'no FP cost' as a watch-item after the scope change, not a settled fact - watch for over-flagging of ordinary prompt construction. Expand safe LLM poles before trusting the FP figure.",
+  "post_fix_verification_required": "Probe proved capability via an inline 'LLM01 in scope' dispatch line. The shipped fix is a SKILL.md scope edit (different path). A neutral blind re-run (no LLM01 hint, like 2026-06-04-blind) is required to confirm the SKILL.md edit alone surfaces case-15/19, that the rewritten doc-trailer still triggers, and that no regression/new FP appears. Until then the fix is applied-but-unverified."
+}

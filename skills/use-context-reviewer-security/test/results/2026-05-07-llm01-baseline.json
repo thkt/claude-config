@@ -1,0 +1,77 @@
+{
+  "run_date": "2026-05-07",
+  "skill": "use-context-reviewer-security",
+  "agent": "reviewer-security",
+  "model": "opus-4-7",
+  "invocation": "Task tool, direct subagent (not via /audit orchestrator)",
+  "scope": "LLM01 Indirect Prompt Injection variants (4 vuln + 2 safe), Issue #24",
+  "metrics": {
+    "recall": "100% (4/4)",
+    "fp_rate": "0% (0/2)",
+    "total_findings": 5,
+    "critical": 1,
+    "high": 4
+  },
+  "results": [
+    {
+      "file": "cases/vuln/prompt-injection-rag.ts",
+      "expected": "detected",
+      "actual": "detected",
+      "match": true,
+      "category": "A03",
+      "severity": "High",
+      "note": "RAG docs.join concat into prompt, no delimiter / no system data-only directive"
+    },
+    {
+      "file": "cases/vuln/prompt-injection-doc-trailer.ts",
+      "expected": "detected",
+      "actual": "detected",
+      "match": true,
+      "category": "A03",
+      "severity": "High",
+      "note": "External file content interpolated, trailer-injection vector named explicitly"
+    },
+    {
+      "file": "cases/hard-vuln/prompt-injection-exfiltration.ts",
+      "expected": "detected",
+      "actual": "detected",
+      "match": true,
+      "category": "A03 + A10",
+      "severity": "Critical",
+      "note": "Reviewer surfaced combined LLM injection + SSRF via fetch_url tool exposure (cloud metadata 169.254.169.254 named in threat model)"
+    },
+    {
+      "file": "cases/hard-vuln/prompt-injection-system-spoof.ts",
+      "expected": "detected",
+      "expected_min_findings": 2,
+      "actual": "detected",
+      "actual_findings": 2,
+      "match": true,
+      "category": "A03",
+      "severity": "High",
+      "notes": [
+        "role-arg spoofing: caller-controlled string interpolated into system message",
+        "RAG indirect injection: docs.join into user message without delimiters"
+      ]
+    },
+    {
+      "file": "cases/safe/prompt-injection-isolated.ts",
+      "expected": "no_finding",
+      "actual": "no_finding",
+      "match": true
+    },
+    {
+      "file": "cases/hard-safe/prompt-injection-explainer.ts",
+      "expected": "no_finding",
+      "actual": "no_finding",
+      "match": true
+    }
+  ],
+  "observations": [
+    "reviewer-security has no LLM01-specific reference docs (verified by ugrep over skills/use-context-reviewer-security/), yet generalized A03 Injection detection captured all 4 vuln cases. LLM01 reference 追加は enhancement 候補だが now-or-never ではない.",
+    "File 4 (prompt-injection-system-spoof.ts) returned 2 distinct findings: role-arg spoofing via system-message interpolation + RAG indirect injection. expected.json min_findings updated to 2 to match middleware.ts cross-file pattern.",
+    "File 3 (prompt-injection-exfiltration.ts) was correctly tagged as combined A03 + A10. The reviewer named cloud metadata exfiltration (169.254.169.254) and conversation-history leakage as concrete impacts. This shows the agent integrates tool-exposure context into the threat model, not just pattern matching.",
+    "Both safe cases (delimited block + system 'never follow instructions' directive) were correctly classified as no_finding. The hard-safe educational tool that pastes user snippets into <snippet> tags was not over-flagged."
+  ],
+  "next_action": "Issue #24 Acceptance Criteria を満たすため close できる。LLM01 reference docs 追加 / agent prompt 改修は不要 (検出能力既に十分)。今回の Issue scope 外として、enhancement バックログに「reviewer-security に LLM-specific reference docs 追加」を low priority で残すか別途判断。"
+}

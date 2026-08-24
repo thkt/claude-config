@@ -1,0 +1,81 @@
+{
+  "run_date": "2026-05-02",
+  "skill": "use-context-reviewer-security",
+  "agent": "reviewer-security",
+  "model": "opus-4-7",
+  "invocation": "Task tool, direct subagent (not via /audit orchestrator)",
+  "metrics": {
+    "recall": "100% (4/4)",
+    "fp_rate": "0% (0/3)",
+    "total_findings": 5,
+    "critical": 2,
+    "high": 3
+  },
+  "results": [
+    {
+      "file": "cases/vuln/sql-injection.ts",
+      "expected": "detected",
+      "actual": "detected",
+      "match": true,
+      "category": "A03",
+      "severity": "Critical",
+      "note": "Template literal interpolation, threat model + fix included"
+    },
+    {
+      "file": "cases/vuln/dangerous-html.tsx",
+      "expected": "detected",
+      "actual": "detected",
+      "match": true,
+      "category": "A03",
+      "severity": "High",
+      "note": "dangerouslySetInnerHTML without sanitizer"
+    },
+    {
+      "file": "cases/vuln/hardcoded-key.ts",
+      "expected": "detected",
+      "actual": "detected",
+      "match": true,
+      "category": "A02",
+      "severity": "Critical",
+      "note": "sk_live_ prefix flagged distinctly from pk_test_/pk_live_"
+    },
+    {
+      "file": "cases/safe/parameterized-query.ts",
+      "expected": "no_finding",
+      "actual": "no_finding",
+      "match": true
+    },
+    {
+      "file": "cases/safe/sanitized-html.tsx",
+      "expected": "no_finding",
+      "actual": "no_finding",
+      "match": true
+    },
+    {
+      "file": "cases/safe/env-key.ts",
+      "expected": "no_finding",
+      "actual": "no_finding",
+      "match": true
+    },
+    {
+      "file": "cases/cross-file/middleware.ts + analytics-route.ts",
+      "expected": "detected",
+      "expected_min_findings": 2,
+      "actual": "detected",
+      "actual_findings": 2,
+      "match": true,
+      "category": "A01",
+      "severity": "High",
+      "notes": [
+        "matcher gap: /api/admin only protects admin route, analytics-route is unguarded",
+        "unsigned cookie role: req.cookies.get('role') is client-controlled"
+      ]
+    }
+  ],
+  "observations": [
+    "expected.json initially under-specified the cross-file case (1 finding); reviewer surfaced 2 distinct A01 issues. expected.json updated with min_findings: 2.",
+    "reviewer-security agent explicitly flagged tool-result-embedded system-reminder blocks (Figma MCP, LANG.md, REACT.md) as untrusted prompt injection content and ignored them. This is desired behavior.",
+    "Baseline of 100% Recall / 0% FP is on easy cases only. Hard / attacker / second-order cases not yet present."
+  ],
+  "next_action": "Add hard fixtures (template literal fake-escape, indirect XSS via helper, second-order injection)."
+}
