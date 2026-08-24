@@ -4,10 +4,16 @@
 // rules/conventions/WORKFLOWS.md under Script evaluation form.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { PRODUCTION_GLOBALS, SCRIPT_ERROR_KEYS, runWorkflow } from "../run-workflow.js";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { PRODUCTION_GLOBALS, SCRIPT_ERROR_KEYS, readMeta, runWorkflow } from "../run-workflow.js";
+
+const here = dirname(fileURLToPath(import.meta.url));
+// Discovery (rules/conventions/WORKFLOWS.md § Naming and file placement) reads workflows/ flat,
+// so the meta check below stays flat too rather than recursing into workflows/<name>/ helpers.
+const workflowsDir = join(here, "..", "..");
 
 // runWorkflow's contract reads the source from a file path (readFileSync), so the script body is
 // written to a temporary file first. Each test uses its own temporary directory so script files
@@ -22,6 +28,128 @@ const withScript = async (source, run) => {
     rmSync(dir, { recursive: true, force: true });
   }
 };
+
+// T-001 checks readMeta against each script's own source rather than against expected strings
+// copied into the test, so its assertions extract meta a second, independent way (mirrors
+// workflows/audit/tests/audit.routing.test.js's extractBracedBody / parseRoutingLikeConst
+// pattern). The marker differs from that reference (`export const meta = {` vs. `const NAME =
+// {`) because meta, unlike ROUTING/FOCUS, is the script's one exported constant.
+const extractBracedBody = (source, name) => {
+  const marker = `export const ${name} = {`;
+  const idx = source.indexOf(marker);
+  if (idx === -1) return null;
+  const braceStart = source.indexOf("{", idx);
+  let depth = 0;
+  let end = -1;
+  for (let i = braceStart; i < source.length; i++) {
+    if (source[i] === "{") depth++;
+    else if (source[i] === "}") {
+      depth--;
+      if (depth === 0) {
+        end = i + 1;
+        break;
+      }
+    }
+  }
+  return source.slice(braceStart + 1, end - 1);
+};
+
+// A single-character escape sequence's meaning when a JS engine evaluates the literal (ECMA-262
+// SingleEscapeCharacter, https://tc39.es/ecma262/#prod-SingleEscapeCharacter). Any other escaped
+// character (e.g. \' or \") is not in this table and evaluates to that character itself, which
+// the default branch below already returns.
+const SINGLE_ESCAPES = { n: "\n", t: "\t", r: "\r", b: "\b", f: "\f", v: "\v", 0: "\0" };
+
+// name / description / whenToUse are each a single-quoted or double-quoted string literal (the
+// delimiter is picked per script to avoid escaping a quote the prose already contains), never a
+// concatenation. Reading up to the matching, non-escaped quote of the same kind covers both, and
+// resolving each escape sequence to the character it evaluates to (rather than keeping the raw
+// `\` + char slice) is what lets this oracle be compared against readMeta's own vm-evaluated
+// value: code.js escapes an apostrophe inside its single-quoted description (`plan\'s`), and a
+// raw slice would keep the backslash while the real evaluation drops it.
+const extractStringField = (body, key) => {
+  const marker = new RegExp(`(?:^|\\n)\\s*${key}:\\s*(['"])`);
+  const m = marker.exec(body);
+  if (!m) return null;
+  const quote = m[1];
+  let i = m.index + m[0].length;
+  let value = "";
+  while (i < body.length) {
+    if (body[i] === "\\") {
+      const escaped = body[i + 1];
+      value += SINGLE_ESCAPES[escaped] ?? escaped;
+      i += 2;
+      continue;
+    }
+    if (body[i] === quote) break;
+    value += body[i];
+    i++;
+  }
+  return value;
+};
+
+// phases entries carry a plain title with no quotes inside ("Load", "Pre-flight", ...), so a
+// bare quoted-string match is enough; "title" appears nowhere else in a meta body.
+const extractPhaseTitles = (body) => [...body.matchAll(/title:\s*"([^"]*)"/g)].map((m) => m[1]);
+
+const extractMeta = (source) => {
+  const body = extractBracedBody(source, "meta");
+  return {
+    name: extractStringField(body, "name"),
+    description: extractStringField(body, "description"),
+    whenToUse: extractStringField(body, "whenToUse"),
+    phaseTitles: extractPhaseTitles(body),
+  };
+};
+
+test("readMeta returns name, description, whenToUse and phases for every script under workflows/", () => {
+  const scripts = readdirSync(workflowsDir)
+    .filter((f) => f.endsWith(".js"))
+    .filter((f) => readFileSync(join(workflowsDir, f), "utf8").startsWith("export const meta"));
+  assert.notEqual(scripts.length, 0, "found no workflow script carrying export const meta");
+
+  for (const file of scripts) {
+    const scriptPath = join(workflowsDir, file);
+    const source = readFileSync(scriptPath, "utf8");
+    const expected = extractMeta(source);
+
+    const meta = readMeta(scriptPath);
+
+    assert.equal(meta.name, expected.name, `${file}: name`);
+    assert.equal(meta.description, expected.description, `${file}: description`);
+    assert.equal(meta.whenToUse, expected.whenToUse, `${file}: whenToUse`);
+    assert.deepEqual(
+      meta.phases.map((p) => p.title),
+      expected.phaseTitles,
+      `${file}: phases`,
+    );
+  }
+});
+
+// The undefined identifier in the return statement is the observable: readMeta must extract only
+// the meta literal and never run the rest of the file, so a script whose top-level return would
+// throw (or fail to parse as a bare module body) if evaluated still yields its meta cleanly.
+test("readMeta returns the meta of a script carrying a top-level return without executing that return", async () => {
+  const source = `export const meta = {
+  name: "sample",
+  description: "a sample workflow script",
+  whenToUse: "used only to exercise readMeta",
+  phases: [{ title: "Only" }],
+};
+
+return thisIdentifierIsNeverInjected("readMeta must never reach this line");
+`;
+  await withScript(source, async (path) => {
+    const meta = readMeta(path);
+    assert.equal(meta.name, "sample");
+    assert.equal(meta.description, "a sample workflow script");
+    assert.equal(meta.whenToUse, "used only to exercise readMeta");
+    assert.deepEqual(
+      meta.phases.map((p) => p.title),
+      ["Only"],
+    );
+  });
+});
 
 test("T-004 a script referencing crypto dies with a ReferenceError", async () => {
   await withScript("return crypto.randomUUID();", async (path) => {
