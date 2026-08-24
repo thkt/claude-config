@@ -1,0 +1,63 @@
+{
+  "run_date": "2026-06-04",
+  "skill": "use-context-reviewer-security",
+  "agent": "reviewer-security",
+  "model": "opus-4-8",
+  "purpose": "Verify the session's fixes and disambiguate the SKILL.md-vs-dispatch-wording confound via a 2x2 (SKILL.md state x dispatch wording). Three of four cells run; the fourth is unnecessary for the conclusion.",
+  "two_by_two": {
+    "old_skill_md__a01_a10_dispatch": "LLM01 1/4 (results/2026-06-04-blind-baseline.json)",
+    "fixed_skill_md__neutral_dispatch": "LLM01 4/4 (this file, first rerun)",
+    "fixed_skill_md__a01_a10_dispatch": "LLM01 4/4 (this file, second rerun - the previously untested cell)",
+    "old_skill_md__neutral_dispatch": "not run - not needed; the other three cells already isolate the cause"
+  },
+  "confound_resolution": "Clean attribution rests on case-15 and case-19: both went miss->hit with ONLY SKILL.md changed (fixtures unchanged, same model, 'A01-A10' dispatch held constant). Two independent cases flipping on the single variable prove SKILL.md is load-bearing. The aggregate 4/4 is NOT four clean flips: case-18 was ALREADY a baseline hit (caught as A10), so hit->hit not a flip; case-17's fixture ALSO changed (path-traversal -> getLatestComment), so its improvement is fixture+SKILL.md jointly. Separately, holding SKILL.md fixed: 'A01-A10' dispatch 4/4 == neutral dispatch 4/4, so dispatch wording is irrelevant. Net: the SKILL.md LLM01 edit is the load-bearing change (proven by case-15/19) and is ROBUST to a constraining 'A01-A10' / 'OWASP Top 10' dispatch a real caller (e.g. /audit) would use.",
+  "invocation": "Task tool, direct subagent, BLIND, clean /tmp/review-rerun-20260604/src. First rerun: neutral dispatch ('SKILL.md の検出パターン'). Second rerun: 'A01-A10' dispatch ('SKILL.md の OWASP A01-A10 検出パターン', identical wording to the blind baseline). No 'LLM01' / 'prompt injection' word in either dispatch.",
+  "verification_checklist": {
+    "1_llm01_fix_is_the_cause": "PASS - 2x2 isolates SKILL.md as the load-bearing change; 1/4 -> 4/4 attributable to the SKILL.md edit, not dispatch wording.",
+    "2_robust_to_production_dispatch": "PASS - LLM01 4/4 even under the constraining 'A01-A10' dispatch a caller like /audit might use.",
+    "3_doc_trailer_still_triggers": "PASS - case-17 (rewritten getLatestComment().body) detected SEC.LLM01 high in BOTH reruns; agent reclassified it away from the defended case-14/16 cluster correctly.",
+    "4_no_regression_no_new_fp": "PASS - all 8 safe poles no_finding in both reruns (FP 0/8); all non-LLM vuln hits retained."
+  },
+  "llm01_slice_across_runs": [
+    {
+      "file": "case-15 (rag)",
+      "blind": "miss",
+      "rerun_neutral": "LLM01 high",
+      "rerun_a01a10": "LLM01 high"
+    },
+    {
+      "file": "case-17 (doc-trailer, rewritten)",
+      "blind": "A01 path-traversal only (old fixture)",
+      "rerun_neutral": "LLM01 high",
+      "rerun_a01a10": "LLM01 high"
+    },
+    {
+      "file": "case-18 (exfiltration)",
+      "blind": "A10 high (1)",
+      "rerun_neutral": "A10 + LLM01 (2)",
+      "rerun_a01a10": "A10 + LLM01 (2)"
+    },
+    {
+      "file": "case-19 (system-spoof)",
+      "blind": "miss (0/2)",
+      "rerun_neutral": "2/2 full",
+      "rerun_a01a10": "2/2 full"
+    }
+  ],
+  "metrics_a01a10_rerun": {
+    "vuln_detection_file_level": "12/12",
+    "fp_rate": "0% (0/8 safe poles)",
+    "llm01_detection": "4/4",
+    "min_findings_2_cases": "case-19 2/2, cross-file 2/2",
+    "total_findings": 17,
+    "critical": 2,
+    "high": 12,
+    "medium": 1
+  },
+  "residual_items": [
+    "case-05 (hardcoded-key): A05 medium in both reruns. expected category A02; severity matches (medium, fixed this session). A05-vs-A02 is a hardcoded-secret classification ambiguity. Candidate: align expected to A05 or accept either.",
+    "case-07 (fake-escape): A03 medium/medium/high across blind/rerun-neutral/rerun-a01a10. This IS run-to-run severity jitter (same file, same model, severity moved). hit/miss stable. Reinforces: runner judging spec must not gate on exact severity.",
+    "middleware/analytics severity also jittered (high+high vs high+critical across reruns). Same conclusion: gate on hit/miss and category, not severity level."
+  ],
+  "verdict": "FIX FULLY VERIFIED. The 2x2 disambiguates the confound: the SKILL.md LLM01 edit (not dispatch wording) drove LLM01 1/4 -> 4/4, and the fix is robust to a constraining 'A01-A10' dispatch a real caller would use. doc-trailer rewrite triggers, granularity instruction yields multi-findings on case-18/19, hardcoded-key severity aligned, FP 0/8, no non-LLM regression. Fix-completion criterion met: root causes resolved AND observed through the production path. Remaining work is enhancement (A05/A07/A09 coverage, attacker-level cases, auto-runner) and minor expected-value tuning (case-05 category, case-07 severity), plus an ongoing FP-monitor for LLM01 in-scope against realistic benign prompt flows."
+}

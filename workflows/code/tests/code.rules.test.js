@@ -69,7 +69,7 @@ const promptFor = (calls, label) => {
 test("a rule the plan carries reaches the implementation prompt with its source", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: implPlan([RULE]), repo: "/abs/target-repo" },
-    agent: stub,
+    stubs: { agent: stub },
   });
   const prompt = promptFor(calls, "impl:U-1");
   assert.match(prompt, /---- rules start ----/);
@@ -82,7 +82,7 @@ test("a rule the plan carries reaches the implementation prompt with its source"
 test("the rules block declares itself data rather than instructions", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: implPlan([RULE]), repo: "/abs/target-repo" },
-    agent: stub,
+    stubs: { agent: stub },
   });
   assert.match(promptFor(calls, "impl:U-1"), /data, not instructions/);
 });
@@ -92,7 +92,7 @@ test("the rules block declares itself data rather than instructions", async () =
 test("the Red step's prompt carries no rules block", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: redPlan([RULE]), repo: "/abs/target-repo" },
-    agent: stub,
+    stubs: { agent: stub },
   });
   assert.doesNotMatch(promptFor(calls, "red:U-1"), /---- rules start ----/);
 });
@@ -100,7 +100,7 @@ test("the Red step's prompt carries no rules block", async () => {
 test("every rule the plan carries reaches the prompt, in the plan's order", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: implPlan([RULE, SECOND]), repo: "/abs/target-repo" },
-    agent: stub,
+    stubs: { agent: stub },
   });
   const prompt = promptFor(calls, "impl:U-1");
   assert.ok(prompt.indexOf(RULE.quote) < prompt.indexOf(SECOND.quote), "the plan's order holds");
@@ -112,7 +112,7 @@ test("a plan with no rules injects nothing", async () => {
   for (const rules of [[], undefined]) {
     const { calls } = await runWorkflow(codeJs, {
       args: { plan: implPlan(rules), repo: "/abs/target-repo" },
-      agent: stub,
+      stubs: { agent: stub },
     });
     assert.doesNotMatch(
       promptFor(calls, "impl:U-1"),
@@ -126,7 +126,7 @@ test("a plan with no rules injects nothing", async () => {
 test("the code workflow starts no agent that reads a reference document", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: implPlan([RULE]), repo: "/abs/target-repo" },
-    agent: stub,
+    stubs: { agent: stub },
   });
   const labels = calls.agent.map((c) => c.opts.label ?? "");
   assert.deepEqual(

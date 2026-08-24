@@ -1,0 +1,89 @@
+{
+  "run_date": "2026-05-02",
+  "skill": "use-context-reviewer-security",
+  "agent": "reviewer-security",
+  "model": "opus-4-7",
+  "invocation": "Task tool, direct subagent (not via /audit orchestrator)",
+  "scope": "hard-vuln + hard-safe",
+  "metrics": {
+    "recall": "100% (4/4)",
+    "fp_rate": "0% (0/3)",
+    "total_findings": 4,
+    "critical": 0,
+    "high": 4
+  },
+  "results": [
+    {
+      "file": "cases/hard-vuln/fake-escape.ts",
+      "expected": "detected",
+      "actual": "detected",
+      "match": true,
+      "category": "A03",
+      "severity": "High",
+      "note": "Backslash injection / LIKE wildcard / DBMS-specific escape failure 等を threat model に列挙"
+    },
+    {
+      "file": "cases/hard-vuln/indirect-xss.tsx",
+      "expected": "detected",
+      "actual": "detected",
+      "match": true,
+      "category": "A03",
+      "severity": "High",
+      "note": "renderHTML helper 経由の taint を sink まで追跡"
+    },
+    {
+      "file": "cases/hard-vuln/ssrf.ts",
+      "expected": "detected",
+      "actual": "detected",
+      "match": true,
+      "category": "A10",
+      "severity": "High",
+      "note": "169.254.169.254 (AWS IMDS) / localhost:6379 / file:// を具体ベクターとして列挙"
+    },
+    {
+      "file": "cases/hard-vuln/second-order-injection.ts",
+      "expected": "detected",
+      "actual": "detected",
+      "match": true,
+      "category": "A03",
+      "severity": "High",
+      "note": "createUser (parameterized) → listUserOrders (取り出した name を identifier に template literal 展開) を関数境界越えで追跡。'retrieved data as taint just like fresh input' と明示"
+    },
+    {
+      "file": "cases/hard-safe/parameterized-like.ts",
+      "expected": "no_finding",
+      "actual": "no_finding",
+      "match": true,
+      "note": "LIKE wildcard 問題はセキュリティ findings ではなく UX 問題として正しく除外"
+    },
+    {
+      "file": "cases/hard-safe/wrapped-sanitize.tsx",
+      "expected": "no_finding",
+      "actual": "no_finding",
+      "match": true,
+      "note": "helper safeRender 経由でも DOMPurify が境界に居るため A03 taint chain 完結"
+    },
+    {
+      "file": "cases/hard-safe/allowlist-fetch.ts",
+      "expected": "no_finding",
+      "actual": "no_finding",
+      "match": true,
+      "note": "SKILL.md の SSRF 除外ルール 'path-only control is excluded' に準拠した no-finding 判定"
+    }
+  ],
+  "observations": [
+    "hard でも 100% 連続は reviewer-security の検出力が想定より高いことを示すと同時に、現 hard の難度が低い signal でもある。",
+    "second-order injection の関数境界越え taint 追跡が機能している。これは sabakan の attacker/02 と同等難度。",
+    "SKILL.md の除外ルール (path-only SSRF / LIKE wildcard など) に正しく沿った no-finding 判定が出ている。"
+  ],
+  "coverage_gaps": {
+    "categories_covered": ["A01", "A02", "A03", "A10"],
+    "categories_missing": ["A04", "A05", "A06", "A07", "A08", "A09"],
+    "case_difficulty_gap": "現状 hard までで attacker-level / 6-file deep-chain / framework-bypass は未投入"
+  },
+  "next_action": [
+    "A05 misconfig (CORS '*')、A07 JWT alg混乱、A09 PII logging 等のカテゴリ拡張",
+    "attacker-level cases (中継変数経由、3ファイル以上の連鎖、framework middleware bypass)",
+    "ハーネス自動 runner (現在は手動 Task → 結果照合)"
+  ]
+}

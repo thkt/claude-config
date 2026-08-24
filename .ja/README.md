@@ -8,7 +8,7 @@ Claude AI のためのカスタムコマンド、開発原則、ワークフロ�
 
 このリポジトリは Claude AI のパーソナル設定を含み、以下を提供する。
 
-- 体系的な開発ワークフローのためのカスタムスラッシュコマンド (28 skills)
+- 体系的な開発ワークフローのためのカスタムスラッシュコマンド (27 skills)
 - コードレビュー、生成、分析のための専門 AI エージェント (28 agents)
 - AI 動作のコア原則と開発のベストプラクティス
 - 品質パイプラインフック (guardrails, formatter, gates) と未配線の reviews コマンド
@@ -24,7 +24,7 @@ Claude AI のためのカスタムコマンド、開発原則、ワークフロ�
 │   ├── core/             # AI 動作のコア原則
 │   ├── conventions/      # ドキュメント規約
 │   └── development/      # 開発パターン・方法論
-├── skills/               # スキルベースのナレッジモジュール (28 skills)
+├── skills/               # スキルベースのナレッジモジュール (27 skills)
 ├── agents/               # 専門 AI エージェント (28 agents)
 │   ├── critics/          # 発見事項への反論 (devils-advocate)
 │   ├── enhancers/        # コード改善・簡素化
@@ -229,6 +229,7 @@ Slack 読み込み: `scout fetch <slack-url>` で任意の Slack メッセージ
 ### コアドキュメント
 
 - [Design Philosophy](./docs/DESIGN.md). 設計思想・意図
+- [SPEC](./docs/SPEC.md). hook, skill, agent, workflow の実行契約
 - [Commands Reference (English)](../docs/COMMANDS.md)
 - [Commands Reference (Japanese)](./docs/COMMANDS.md)
 - [Configuration Guide](../CLAUDE.md)
