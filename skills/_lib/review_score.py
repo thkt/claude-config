@@ -131,7 +131,16 @@ def score(
         diff = {}
         for key, value in metrics.items():
             baseline = before.get(key)
-            diff[key] = None if value is None or baseline is None else round(value - baseline, 3)
+            # Not `baseline is None`: earlier logs wrote a metric as prose, and subtracting one
+            # took the whole scoring down.
+            if (
+                value is None
+                or not isinstance(baseline, (int, float))
+                or isinstance(baseline, bool)
+            ):
+                diff[key] = None
+            else:
+                diff[key] = round(value - baseline, 3)
 
     return {
         "counts": counts,

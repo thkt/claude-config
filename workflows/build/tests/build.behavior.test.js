@@ -1377,6 +1377,11 @@ test("T-007 a stop inside code carries the nested reason and the start row's run
     new RegExp(`"run_id":"${RECORDED_RUN_ID}"`),
     "the stop row carries the run_id the start row minted",
   );
+  assert.match(
+    stopRow,
+    /"branch":"feat\/sample-branch"/,
+    "a stop after Branch names the branch the run cut, not an empty string",
+  );
 });
 
 // The gates above anchor have no repository to run the recorder in, and neither is a
@@ -1464,14 +1469,16 @@ test("T-004 build.js and its .ja mirror return stopped only from the stop helper
     );
     assert.match(source, /stopped:\s*reason/, `${path}'s single stopped return is the helper's`);
     assert.ok(stopReasons(source).size > 0, `${path} routes its stops through stop("...")`);
-    // The behavior cases run build.js alone, so a mirror dropping one of these stays green.
-    for (const line of [
-      /recordable = true;/,
-      /await recordRun\("started"\);/,
-      /recordedBranch = branch;/,
-    ])
-      assert.match(source, line, `${path} carries ${line.source}`);
   }
+
+  // Not build.js: T-006 and T-007 already run these lines. No run reaches the mirror.
+  const mirror = await readFile(jaBuildJs, "utf8");
+  for (const line of [
+    /recordable = true;/,
+    /await recordRun\("started"\);/,
+    /recordedBranch = branch;/,
+  ])
+    assert.match(mirror, line, `${jaBuildJs} carries ${line.source}`);
 });
 
 // T-005: a stop value with no table entry would be counted as not plan-caused by default, and a
@@ -1507,7 +1514,7 @@ test("the plan-quality table marks exactly the six stops a plan can cause", asyn
   );
 });
 
-test("the snapshot of the stopped value set matches 14 values exactly and holds no remnant of the audit route", async () => {
+test("the snapshot of the stopped value set matches 14 values exactly", async () => {
   const source = await readFile(buildJs, "utf8");
   const stopped = new Set(Object.keys(planQualityTable(source)));
   assert.deepEqual(
@@ -1530,12 +1537,23 @@ test("the snapshot of the stopped value set matches 14 values exactly and holds 
     ],
     "the stopped literal set matches 14 values exactly: no-plan for handing a plan-less issue back, invalid-base for a base that is not a branch name, and the two stop values of autonomous plan generation are gone",
   );
-  const explore = source.match(/agentType:\s*"Explore"/g) || [];
-  assert.equal(explore.length, 0, 'agentType: "Explore" appears zero times');
-  // regression guard: no remnant of the audit fan-out or the fix loop.
-  assert.ok(!source.includes('sibling("audit"'), "no call to the audit workflow remains");
-  assert.ok(!source.includes("MAX_FIX_ROUNDS"), "no fix-then-re-audit loop remains");
-  assert.ok(!source.includes("reaudited"), "no reaudited flag remains");
+});
+
+// Not a grep for the retired identifiers: only re-typing the same names could fail one.
+test("a finished run nests the code workflow alone and starts no Explore agent", async () => {
+  const { calls } = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+
+  // Not a Set: a fix-then-re-audit loop returning to code collapses into one entry.
+  assert.deepEqual(
+    calls.workflow.map((c) => c.name),
+    ["code"],
+    "an audit fan-out adds another name here, and a re-run loop adds another entry",
+  );
+  assert.deepEqual(
+    calls.agent.filter((c) => c.opts?.agentType === "Explore").map((c) => c.opts.label ?? ""),
+    [],
+    "no agent runs as Explore",
+  );
 });
 
 // build files nothing; it surfaces an out-of-scope candidate in the return value's

@@ -1,7 +1,7 @@
 export const meta = {
   name: "audit",
   description:
-    'audit の fan-out を決定論的に行う workflow。ファイルの routing (glob 表) は script 内で完結するため、reviewer の選択が drift しない。git I/O と各 reviewer / critic は agent として走る。pipeline は reviewer -> challenge -> verify -> integrate で、reviewer -> aggregate ではない。単体でも、build から workflow("audit") 経由の入れ子でも呼べる。',
+    'audit の fan-out を決定論的に行う workflow。ファイルの routing (glob 表) は script 内で完結するため、reviewer の選択が drift しない。git I/O と各 reviewer / critic は agent として走る。pipeline は reviewer -> challenge -> verify -> integrate で、reviewer -> aggregate ではない。単体でも、assert から workflow("audit") 経由の入れ子でも呼べる。',
   whenToUse:
     "diff に対して adversarial な reviewer 一式を決定論的に発火させ、review を main loop の裁量に任せない。/audit または Workflow({name:'audit'}) で直接起動する。launcher skill は無い。起動前に scope や focus が不明なら、ユーザーに 2 点を確認する。focus (all / security / performance / quality / a11y) と scope (staged を含む HEAD diff、path、別 repo のいずれか)。",
   phases: [

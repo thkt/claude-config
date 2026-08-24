@@ -9,7 +9,7 @@ development principles, and workflow optimizations.
 
 This repository contains personal configurations for Claude AI, including:
 
-- Custom slash commands for systematic development workflows (28 skills)
+- Custom slash commands for systematic development workflows (27 skills)
 - Specialized AI agents for code review, generation, and analysis (28 agents)
 - Core AI operation principles and development best practices
 - Quality pipeline hooks (guardrails, formatter, gates) and the unwired reviews
@@ -26,7 +26,7 @@ This repository contains personal configurations for Claude AI, including:
 │   ├── core/             # Core AI operation principles
 │   ├── conventions/      # Documentation conventions
 │   └── development/      # Development patterns & methodologies
-├── skills/               # Skill-based knowledge modules (28 skills)
+├── skills/               # Skill-based knowledge modules (27 skills)
 ├── agents/               # Specialized AI agents (28 agents)
 │   ├── critics/          # Finding challengers (devils-advocate)
 │   ├── enhancers/        # Code enhancers & simplifiers
@@ -253,6 +253,7 @@ Full details: [PRINCIPLES.md](./rules/PRINCIPLES.md)
 ### Core Documentation
 
 - [Design Philosophy](./docs/DESIGN.md) - **Why this design** (設計思想・意図)
+- [SPEC](./docs/SPEC.md) - Execution contract of hooks, skills, agents, and workflows
 - [Commands Reference (English)](./docs/COMMANDS.md)
 - [Commands Reference (Japanese)](./.ja/docs/COMMANDS.md)
 - [Configuration Guide](./CLAUDE.md)
