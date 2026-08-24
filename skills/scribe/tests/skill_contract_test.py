@@ -214,7 +214,8 @@ class WikiPageFormat(unittest.TestCase):
             for dr in self.origins(page):
                 path = ROOT / "docs" / "decisions" / dr
                 self.assertTrue(path.exists(), f"{page.name}: 由来 names {dr}, which is missing")
-                status = re.search(r'^status:\s*"?([^"\n]+)', path.read_text(encoding="utf-8"), re.M)
+                text = path.read_text(encoding="utf-8")
+                status = re.search(r'^status:\s*"?([^"\n]+)', text, re.M)
                 self.assertIsNotNone(status, f"{dr}: carries no status")
                 head = cast(re.Match[str], status).group(1)
                 self.assertFalse(
