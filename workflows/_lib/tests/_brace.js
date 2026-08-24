@@ -21,3 +21,20 @@ export const extractBracedBody = (source, marker) => {
   }
   return source.slice(braceStart + 1, end - 1);
 };
+
+// The keys and values of a `const <name> = { ... }` table whose every value is a string array or
+// null (audit.js's ROUTING and FOCUS). Read with a regular expression, not eval. Shared so the
+// row pattern has one home: audit.routing.test.js matches ROUTING against agents/reviewers/, and
+// meta-contract.test.js matches FOCUS against audit's whenToUse prose.
+export const parseRoutingLikeConst = (source, name) => {
+  const body = extractBracedBody(source, `const ${name} = {`);
+  if (body === null) return null;
+  const result = {};
+  const rowPattern = /(?:"([^"]+)"|(\w+))\s*:\s*(\[([^\]]*)\]|null)/g;
+  let m;
+  while ((m = rowPattern.exec(body))) {
+    const key = m[1] || m[2];
+    result[key] = m[3] === "null" ? null : [...m[4].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+  }
+  return result;
+};

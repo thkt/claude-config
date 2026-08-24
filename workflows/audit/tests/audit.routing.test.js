@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflow } from "../../_lib/run-workflow.js";
 import { snapshotPayload } from "./_fixtures.js";
+import { parseRoutingLikeConst } from "../../_lib/tests/_brace.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const auditJs = join(here, "..", "..", "audit.js");
@@ -36,40 +37,8 @@ const unassigned = (result, files) => {
 
 // The contents of ROUTING and FOCUS are normally not asserted (see the comment above). But
 // T-012 through T-014 check the consistency among ROUTING, FOCUS, and agents/reviewers/, so
-// this one place extracts both constants from the audit.js source and matches them up. Nothing
-// eval-like is used; the keys and arrays are read with a regular expression. That rests on the
-// premise that a ROUTING / FOCUS value is either a string array or null.
-const extractBracedBody = (source, name) => {
-  const marker = `const ${name} = {`;
-  const idx = source.indexOf(marker);
-  if (idx === -1) return null;
-  const braceStart = source.indexOf("{", idx);
-  let depth = 0;
-  let end = -1;
-  for (let i = braceStart; i < source.length; i++) {
-    if (source[i] === "{") depth++;
-    else if (source[i] === "}") {
-      depth--;
-      if (depth === 0) {
-        end = i + 1;
-        break;
-      }
-    }
-  }
-  return source.slice(braceStart + 1, end - 1);
-};
-const parseRoutingLikeConst = (source, name) => {
-  const body = extractBracedBody(source, name);
-  if (body === null) return null;
-  const result = {};
-  const rowPattern = /(?:"([^"]+)"|(\w+))\s*:\s*(\[([^\]]*)\]|null)/g;
-  let m;
-  while ((m = rowPattern.exec(body))) {
-    const key = m[1] || m[2];
-    result[key] = m[3] === "null" ? null : [...m[4].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
-  }
-  return result;
-};
+// this one place reads both constants out of the audit.js source and matches them up.
+
 // Reviewers defined under agents/reviewers/ that hold no ROUTING row. They run only when a skill
 // calls them directly, so they carry no glob-table row and audit.js needs no such distinction at
 // run time (a name absent from ROUTING simply is not routed). The expectation therefore lives

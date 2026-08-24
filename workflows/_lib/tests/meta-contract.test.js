@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readMeta } from "../run-workflow.js";
-import { extractBracedBody } from "./_brace.js";
+import { parseRoutingLikeConst } from "./_brace.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -19,17 +19,11 @@ const TREES = [
   { label: "ja", path: join(here, "..", "..", "..", ".ja", "workflows", "audit.js") },
 ];
 
-// Mirrors workflows/audit/tests/audit.routing.test.js's parseRoutingLikeConst, narrowed to the
-// keys alone (FOCUS's values are reviewer-name arrays that whenToUse's prose never restates, so
-// only the key set is relevant here).
+// Only the key set matters here: FOCUS's values are reviewer-name arrays that whenToUse's prose
+// never restates.
 const focusKeys = (source) => {
-  const body = extractBracedBody(source, "const FOCUS = {");
-  if (body === null) return null;
-  const rowPattern = /(?:"([^"]+)"|(\w+))\s*:\s*(\[[^\]]*\]|null)/g;
-  const keys = [];
-  let m;
-  while ((m = rowPattern.exec(body))) keys.push(m[1] || m[2]);
-  return keys;
+  const focus = parseRoutingLikeConst(source, "FOCUS");
+  return focus && Object.keys(focus);
 };
 
 // whenToUse lists the valid focus values in prose as "focus (all / security / performance /

@@ -305,7 +305,7 @@ const FOCUS = {
 if (!(focus in FOCUS)) {
   return {
     stopped: "invalid-focus",
-    why: `Focus "${focus}" is not a valid value. Pass one of: ${Object.keys(FOCUS).join(", ")}.`,
+    why: `focus "${focus}" は有効値ではない。次のいずれかを渡す: ${Object.keys(FOCUS).join(", ")}。`,
   };
 }
 
