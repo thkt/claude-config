@@ -30,26 +30,16 @@ const withScript = async (source, run) => {
   }
 };
 
-// T-001 checks readMeta against each script's own source rather than against expected strings
-// copied into the test, so its assertions extract meta a second, independent way (mirrors
-// workflows/audit/tests/audit.routing.test.js's extractBracedBody / parseRoutingLikeConst
-// pattern, shared with meta-contract.test.js via ./_brace.js). The marker differs from that
-// reference (`export const meta = {` vs. `const NAME = {`) because meta, unlike ROUTING/FOCUS,
-// is the script's one exported constant.
+// The oracle below reads meta a second way, so that no expected string is copied into the test
+// and a drift in either extractor shows up as a mismatch.
 
-// A single-character escape sequence's meaning when a JS engine evaluates the literal (ECMA-262
-// SingleEscapeCharacter, https://tc39.es/ecma262/#prod-SingleEscapeCharacter). Any other escaped
-// character (e.g. \' or \") is not in this table and evaluates to that character itself, which
-// the default branch below already returns.
+// ECMA-262 SingleEscapeCharacter (https://tc39.es/ecma262/#prod-SingleEscapeCharacter). Any
+// other escaped character evaluates to itself, which the default branch below returns.
 const SINGLE_ESCAPES = { n: "\n", t: "\t", r: "\r", b: "\b", f: "\f", v: "\v", 0: "\0" };
 
-// name / description / whenToUse are each a single-quoted or double-quoted string literal (the
-// delimiter is picked per script to avoid escaping a quote the prose already contains), never a
-// concatenation. Reading up to the matching, non-escaped quote of the same kind covers both, and
-// resolving each escape sequence to the character it evaluates to (rather than keeping the raw
-// `\` + char slice) is what lets this oracle be compared against readMeta's own vm-evaluated
-// value: code.js escapes an apostrophe inside its single-quoted description (`plan\'s`), and a
-// raw slice would keep the backslash while the real evaluation drops it.
+// Not a raw slice of the source: code.js escapes an apostrophe inside its single-quoted
+// description (`plan\'s`), and keeping the backslash would not match what readMeta's vm
+// evaluation returns.
 const extractStringField = (body, key) => {
   const marker = new RegExp(`(?:^|\\n)\\s*${key}:\\s*(['"])`);
   const m = marker.exec(body);
@@ -109,9 +99,8 @@ test("readMeta returns name, description, whenToUse and phases for every script 
   }
 });
 
-// The undefined identifier in the return statement is the observable: readMeta must extract only
-// the meta literal and never run the rest of the file, so a script whose top-level return would
-// throw (or fail to parse as a bare module body) if evaluated still yields its meta cleanly.
+// The undefined identifier in the return is the observable: reaching it throws, so a clean meta
+// is the only way this passes.
 test("readMeta returns the meta of a script carrying a top-level return without executing that return", async () => {
   const source = `export const meta = {
   name: "sample",

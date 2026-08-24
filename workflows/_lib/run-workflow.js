@@ -145,10 +145,8 @@ const partToString = (part) => {
   }
 };
 
-// Finds the index of the brace matching the one at `start`, skipping over the contents of
-// ', ", and ` string literals so a brace character written inside a string does not perturb
-// the depth count. A backslash inside a literal escapes the next character, so an escaped quote
-// never ends the literal early.
+// Quote-aware, because a brace written inside a string literal need not be balanced and a plain
+// depth count would then close on the wrong one. meta's prose carries such braces.
 const matchBrace = (source, start) => {
   let depth = 0;
   let quote = null;
@@ -175,17 +173,11 @@ const matchBrace = (source, start) => {
   throw new Error(`${start}: unterminated brace`);
 };
 
-// readMeta(scriptPath) -> { name, description, whenToUse, phases, ... }
-// Mirrors checkWorkflowSyntax: reads the source with readFileSync and never imports the module
-// or runs anything past the meta literal, so a script's top-level return (or any code that
-// references injected globals) never executes here. `export const meta = {` marks where the
-// object literal starts; matchBrace finds where it ends, and the literal in between is evaluated
-// in isolation, with nothing before or after it. The plan named `new Function` for that
-// evaluation step; this repo's own guardrails gate hard-blocks every `new Function` / `eval` call
-// site with no per-site opt-out (confirmed empirically: an eslint-disable comment on the call
-// did not lift the block, and the message reads "Do not circumvent this check"). checkWorkflowSyntax
-// right below already solves the identical need (compile a string in isolation, no import, no
-// full-file run) with vm.compileFunction, so that is reused here instead.
+// Not an import of the module: a workflow script's top-level return and its references to
+// injected globals would run, and only the meta literal is wanted here. Not `new Function`
+// either, which the plan named: the guardrails gate blocks every such call site with no
+// per-site opt-out, so this reuses the vm.compileFunction that checkWorkflowSyntax below
+// already compiles isolated strings with.
 export function readMeta(scriptPath) {
   const source = readFileSync(scriptPath, "utf8");
   const marker = "export const meta = {";

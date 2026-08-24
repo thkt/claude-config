@@ -3,7 +3,7 @@ export const meta = {
   description:
     'audit の fan-out を決定論的に行う workflow。ファイルの routing (glob 表) は script 内で完結するため、reviewer の選択が drift しない。git I/O と各 reviewer / critic は agent として走る。pipeline は reviewer -> challenge -> verify -> integrate で、reviewer -> aggregate ではない。単体でも、build から workflow("audit") 経由の入れ子でも呼べる。',
   whenToUse:
-    "diff に対して adversarial な reviewer 一式を決定論的に発火させ、review を main loop の裁量に任せない。/audit または Workflow({name:'audit'}) で直接起動する。launcher skill は無い。起動前に scope や focus が不明なら、ユーザーに 2 点を確認する。focus (all / security / performance / quality / a11y) と scope (staged を含む HEAD diff、path、別 repo のいずれか)。scope に path を渡すとその配下の追跡ファイル、revision を渡すとその diff が対象になる。base (既定 main) は、scope 省略かつ未コミット変更が無いときの比較先。repo だけを渡すと focus=all で、未コミット変更、無ければ main からの branch diff を audit する。",
+    "diff に対して adversarial な reviewer 一式を決定論的に発火させ、review を main loop の裁量に任せない。/audit または Workflow({name:'audit'}) で直接起動する。launcher skill は無い。起動前に scope や focus が不明なら、ユーザーに 2 点を確認する。focus (all / security / performance / quality / a11y) と scope (staged を含む HEAD diff、path、別 repo のいずれか)。",
   phases: [
     { title: "Pre-flight" },
     { title: "Route" },
@@ -299,9 +299,8 @@ const FOCUS = {
   all: null,
 };
 
-// FOCUS 自身のキーにない focus は、Route (を含むどのステージ) が agent を起動する前に拒否する。
-// これは上の no-repo と同じ早期停止の形。FOCUS のキーだけが有効値なので、Object.keys(FOCUS) が
-// そのまま有効値一覧になり、ここで手で複製することはない。
+// 黙って all へ落とさない。落としていた頃は、未知の focus が reviewer 一式を走らせながら、
+// 記録には [focus=<綴り違い>] と残り、起きていない絞り込みを主張していた。
 if (!(focus in FOCUS)) {
   return {
     stopped: "invalid-focus",

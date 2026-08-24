@@ -1,8 +1,6 @@
-// audit's whenToUse is prose read by a human deciding whether to invoke the workflow, not a
-// place to teach the args object's shape (rules/conventions/WORKFLOWS.md). U-002 already pins
-// that an invalid focus value stops the run; this file pins the prose side: the focus values
-// whenToUse lists stay in lockstep with the FOCUS keys audit.js actually branches on, in both
-// the English and the .ja/ tree, and the identifier "args" never leaks into the prose.
+// whenToUse is prose for whoever decides whether to invoke the workflow, not a place to teach
+// the args shape (rules/conventions/WORKFLOWS.md). Its focus enum survives that rule only
+// because a caller cannot recover it at run time, so these tests hold it to audit.js's FOCUS.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -26,10 +24,8 @@ const focusKeys = (source) => {
   return focus && Object.keys(focus);
 };
 
-// whenToUse lists the valid focus values in prose as "focus (all / security / performance /
-// quality / a11y)", identically worded across both trees (the Japanese sentence keeps the
-// English focus tokens as-is). Extracting the parenthesized, slash-separated list here rather
-// than copying its spelling into the test lets T-005 catch either side drifting alone.
+// Not the spelling copied into the test: extracting the list from the prose lets either side
+// drift alone and still be caught.
 const focusValuesInWhenToUse = (whenToUse) => {
   const m = /focus \(([^)]+)\)/.exec(whenToUse);
   if (!m) return null;
