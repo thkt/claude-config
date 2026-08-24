@@ -6,8 +6,10 @@ Run: python3 skills/_lib/tests/harness_hash_test.py
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
@@ -52,16 +54,22 @@ class SkillLookup(unittest.TestCase):
 
     def test_a_record_added_under_results_does_not_move_the_corpus_hash(self) -> None:
         """A hash covering its own records could never be matched: writing one would move it."""
-        skill = HARNESS_SKILLS[0]
-        before = harness_hash.hashes(skill)
-        results = ROOT / "skills" / skill / "test" / "results"
-        results.mkdir(exist_ok=True)
-        probe = results / "0000-00-00-hash-probe.json"
-        probe.write_text("{}", encoding="utf-8")
-        try:
-            self.assertEqual(harness_hash.hashes(skill), before)
-        finally:
-            probe.unlink()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            skill = "use-context-reviewer-sample"
+            (root / "agents" / "reviewers").mkdir(parents=True)
+            (root / "agents" / "reviewers" / "reviewer-sample.md").write_text("def")
+            test = root / "skills" / skill / "test"
+            (test / "cases").mkdir(parents=True)
+            (root / "skills" / skill / "SKILL.md").write_text("body")
+            (test / "cases" / "a.ts").write_text("case")
+            (test / "expected.json").write_text("[]")
+
+            with mock.patch.object(harness_hash, "ROOT", root):
+                before = harness_hash.hashes(skill)
+                (test / "results").mkdir()
+                (test / "results" / "2026-01-01-run.json").write_text("{}")
+                self.assertEqual(harness_hash.hashes(skill), before)
 
     def test_a_skill_with_no_definition_raises(self) -> None:
         with self.assertRaises(FileNotFoundError):
