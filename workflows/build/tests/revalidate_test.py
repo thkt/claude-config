@@ -69,10 +69,18 @@ class RunTest(unittest.TestCase):
         self.assertEqual((v[0]["exists"], v[0]["matches"]), (True, True))
         self.assertEqual((v[1]["exists"], v[1]["matches"]), (False, False))
 
-    def test_directory_is_not_a_file(self) -> None:
+    def test_pattern_less_directory_exists(self) -> None:
+        # Reporting the directory absent stopped build at plan-drift.
         (self.root / "adir").mkdir()
-        v = revalidate.run([{"path": "adir"}], self.root)
-        self.assertEqual((v[0]["exists"], v[0]["matches"]), (False, False))
+        v = revalidate.run([{"path": "adir"}, {"path": "adir/"}], self.root)
+        self.assertEqual((v[0]["exists"], v[0]["matches"]), (True, True))
+        self.assertEqual((v[1]["exists"], v[1]["matches"]), (True, True))
+
+    def test_directory_carrying_a_pattern_does_not_exist(self) -> None:
+        # Not the except OSError path: is_file() settles it before read_bytes() runs.
+        (self.root / "adir").mkdir()
+        v = self.verdicts([{"path": "adir", "pattern": "anything"}])
+        self.assertEqual(v[("adir", "anything")], (False, False))
 
     def test_order_and_count_preserved(self) -> None:
         pre = [
