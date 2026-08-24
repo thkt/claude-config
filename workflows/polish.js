@@ -1,7 +1,7 @@
 export const meta = {
   name: "polish",
   description:
-    'Deterministic Codex review + cleanup. Codex findings always pass through a critic-audit challenge, and the triage (confirmed / disputed / downgraded / needs_context) is decided by the script, so findings are never aggregated as facts and the challenge cannot be skipped. After the fix, critic-audit rejudges each survivor against the post-fix diff as resolved / still_open, and still_open surfaces as reopened in the result. Callable standalone or nested from build via workflow("polish").',
+    'Deterministic Codex review + cleanup. Codex findings always pass through a critic-audit challenge, and the triage (confirmed / disputed / downgraded / needs_context) is decided by the script, so findings are never aggregated as facts and the challenge cannot be skipped. After the fix, critic-audit rejudges each survivor against the post-fix diff as resolved / still_open, and still_open surfaces as reopened in the result. Callable standalone; no workflow nests it.',
   whenToUse:
     "Headless external-lens review of a diff plus AI-slop removal. args is a scope string, or {scope, repo, mode, base}. When scope is omitted, the target is the uncommitted changes, else the diff of commits ahead of the base branch (default main) — the pushed branch diff. mode: full (default) runs review -> fix -> rejudge -> cleanup; review returns the challenged findings without fixing; cleanup runs only simplify + enhancer-code + test validation. For a deep internal-reviewer audit use the audit workflow.",
   phases: [

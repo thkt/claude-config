@@ -1,7 +1,7 @@
 export const meta = {
   name: "audit",
   description:
-    'Deterministic audit fan-out. File routing (glob table) runs in the script, so reviewer selection cannot drift; git I/O and each reviewer / critic run as agents. Pipeline is reviewer -> challenge -> verify -> integrate, not reviewer -> aggregate. Callable standalone or nested from build via workflow("audit").',
+    'Deterministic audit fan-out. File routing (glob table) runs in the script, so reviewer selection cannot drift; git I/O and each reviewer / critic run as agents. Pipeline is reviewer -> challenge -> verify -> integrate, not reviewer -> aggregate. Callable standalone or nested from assert via workflow("audit").',
   whenToUse:
     "Fires the full adversarial reviewer set on a diff deterministically, instead of leaving review to the main loop's discretion. Invoked directly as /audit or Workflow({name:'audit'}); there is no launcher skill. BEFORE invoking, if scope or focus is unclear, ask the user two things: focus (all / security / performance / quality / a11y) and scope (the staged HEAD diff, a path, or another repo). Then pass them as args, e.g. Workflow({name:'audit', args:{focus:'security', scope:'src/'}}). A path scope targets the tracked files under it, a revision scope targets its diff, and base (default main) is the comparison point when scope is omitted and the tree is clean; pass repo alone to audit the uncommitted changes with focus=all, falling back to the branch diff against main. This workflow owns both the clarification handoff and the fan-out.",
   phases: [
