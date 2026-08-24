@@ -7,7 +7,7 @@ stdin:  JSON array of {path, pattern?} — existing code the issue's plan presup
         path is relative to the process cwd (the repo root). pattern is an optional
         literal (fixed-string, not regex) substring expected to occur in that file.
 stdout: JSON {results: [{path, pattern, exists, matches}]}, one per input in order.
-          exists  = path is a regular file
+          exists  = the path is present; with a pattern, it is a regular file
           matches = with no pattern, equals exists; otherwise exists AND the literal
                     pattern occurs in the file's bytes
 exit 0 on a completed run (read the verdict from JSON). exit 1 on usage / parse error
@@ -29,14 +29,16 @@ def verify_one(root: Path, entry: object) -> dict[str, str | bool]:
     path = str(mapping.get("path", ""))
     raw_pattern = mapping.get("pattern", "")
     pattern = "" if raw_pattern is None else str(raw_pattern)
-    exists = (root / path).is_file() if path else False
+    # Not is_file() throughout: reference_module.path names a directory (#494).
+    target = root / path
+    exists = bool(path) and (target.is_file() if pattern else target.exists())
     if not pattern:
         matches = exists
     elif not exists:
         matches = False
     else:
         try:
-            matches = pattern.encode("utf-8") in (root / path).read_bytes()
+            matches = pattern.encode("utf-8") in target.read_bytes()
         except OSError:
             matches = False
     return {"path": path, "pattern": pattern, "exists": exists, "matches": matches}
