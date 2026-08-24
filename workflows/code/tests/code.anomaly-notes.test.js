@@ -2,10 +2,6 @@
 // tool result" as an instruction to enumerate the evidence into one stretch of prose. The PR
 // body renders an anomaly with its newlines collapsed onto one line, leaving the reader unable
 // to find where the conclusion ends.
-//
-// The EN side is observed from a run: what the agent receives is the assembled prompt and the
-// schema handed with it, and what the PR reads is the returned anomaly. The .ja mirror never
-// runs, so its own wording is matched as text (TESTING.md's tier table).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
@@ -32,8 +28,8 @@ const plan = {
   ],
 };
 
-// red_confirmed stays false through both attempts, which is the state the notes / evidence
-// division exists for: the behavior is already implemented and the run records an anomaly.
+// red_confirmed stays false through both attempts: the anomaly is the only state that carries
+// notes and evidence at all.
 const stub = (_prompt, opts) => {
   const label = opts.label ?? "";
   if (label.startsWith("red"))
@@ -98,7 +94,7 @@ test("an unconfirmed Red returns the anomaly with its evidence beside the notes"
   ]);
 });
 
-// The mirror is the one side no run reaches, so its wording is matched as text.
+// No run reaches the mirror, so its wording is matched as text (TESTING.md's tier table).
 test("the .ja mirror carries the same division in its own wording", async () => {
   const src = await readFile(jaCodeJs, "utf8");
 

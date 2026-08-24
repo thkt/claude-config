@@ -1471,9 +1471,8 @@ test("T-004 build.js and its .ja mirror return stopped only from the stop helper
     assert.ok(stopReasons(source).size > 0, `${path} routes its stops through stop("...")`);
   }
 
-  // The behavior cases run build.js alone, so the mirror is the one side a run cannot reach.
-  // On build.js itself these three lines are covered by T-006, T-007 and the no-row gate test,
-  // and matching the source text there would only pin how the code is spelled.
+  // Not build.js: T-006, T-007 and the no-row gate test already run these three lines, and
+  // matching the source there would pin how the code is spelled. No run reaches the mirror.
   const mirror = await readFile(jaBuildJs, "utf8");
   for (const line of [
     /recordable = true;/,
@@ -1541,14 +1540,11 @@ test("the snapshot of the stopped value set matches 14 values exactly", async ()
   );
 });
 
-// The retired audit fan-out and fix loop were guarded by greps for their own identifiers, which
-// only a deliberate re-typing of the same names could fail. A run shows the same thing directly:
-// another nested workflow name is what either one would add.
+// Not a grep for the retired identifiers: only re-typing the same names could fail one.
 test("a finished run nests the code workflow alone and starts no Explore agent", async () => {
   const { calls } = await runWorkflow(buildJs, { args, stubs: makeStubs() });
 
-  // Not a Set: a fix-then-re-audit loop returning to code would collapse into one entry, and
-  // the retired loop is exactly what the removed greps guarded.
+  // Not a Set: a fix-then-re-audit loop returning to code collapses into one entry.
   assert.deepEqual(
     calls.workflow.map((c) => c.name),
     ["code"],

@@ -11,13 +11,13 @@ dispatch prompt にラベル、期待値、ヒントを含めると Recall が�
 3. 照合基準を dispatch 前に固定する。後出しで基準を動かさない
 4. 各ケースの判定を下表の verdict から選び、`{file, verdict}` の配列として `<skill>/test/results/YYYY-MM-DD-*.json` に記録する
 5. `python3 skills/_lib/review_score.py <skill>/test/expected.json <results> [previous-results]` を実行する。指標を自分で数えない
-6. `python3 skills/_lib/harness_hash.py <skill>` を実行し、印字された `definition_sha256` と `corpus_sha256` を記録ファイルの直下キーとして書く
+6. `python3 skills/_lib/harness_hash.py <skill>` を実行し、印字された 3 つのキーを記録ファイルの直下キーとして書く
 
 連番命名とペア構造から、agent が「テスト集合」と推測しうる状態は残っている。完全な blind には現実的な scaffolding への埋め込みが要るが、ラベル漏洩の除去を優先する。
 
 ## 記録の鮮度
 
-記録は、その実行がどの reviewer とどの corpus を測ったかをハッシュで名乗る。ゲートが読むのは名前順で最後の記録なので、同じ日に 2 回走らせるなら、後の実行が後ろに並ぶ名前を付ける。定義か corpus が変わった後の記録は、いま出荷している reviewer を測っていない。日付でなくハッシュにするのは、CI の checkout が浅く `git log` の日付を引けないためである。`skills/_lib/tests/harness_hash_test.py` が最新の記録のハッシュを現在の内容と突き合わせ、記録の無い skill を未計測として落とす。
+記録は、その実行が何を測ったかをハッシュで名乗る。`skills/_lib/tests/harness_hash_test.py` が最新の記録のハッシュを現在の内容と突き合わせ、記録の無い skill を未計測として落とす。日付でなくハッシュにするのは、CI の checkout が浅く `git log` の日付を引けないためである。ゲートが読むのは名前順で最後の記録なので、同じ日に 2 回走らせるなら、後の実行が後ろに並ぶ名前を付ける。
 
 | キー                | 対象                                        |
 | ------------------- | ------------------------------------------- |

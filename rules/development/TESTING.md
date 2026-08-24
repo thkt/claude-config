@@ -87,7 +87,7 @@ A test's value is decided by what has to break for it to fail. The kind of targe
 | 2    | Two artifacts agreeing on a value         | A change made on one side only                     | A change made on both at once   |
 | 3    | Sections, order, and words in one document| A section going missing, an order reversed         | A broken structure, a reversed meaning |
 
-The writer does not pick the tier; the target does. A document with no runner has no tier 1, and a document with no counterpart has no tier 2.
+A document with no runner has no tier 1, and a document with no counterpart has no tier 2.
 
 | Target                                     | Highest tier reachable | Reason                                                       |
 | ------------------------------------------ | ---------------------- | ------------------------------------------------------------ |
@@ -98,7 +98,7 @@ The writer does not pick the tier; the target does. A document with no runner ha
 | Any other skill body                       | 2                      | Running it depends on an LLM and is non-deterministic. Matching against a counterpart is the ceiling |
 | `rules/` and `docs/`                       | 3                      | They have no runner                                          |
 
-Dropping below the reachable tier leaves the test unable to state what it guards in one sentence. A constraint reaching past the tier does the same damage. One shape of such a net is banning a common English word across a whole document to keep a retired notation from returning. A harmless sentence then fails the suite, so target the retired notation's own sequence instead.
+One shape of such a net is banning a common English word across a whole document to keep a retired notation from returning. A harmless sentence then fails the suite, so target the retired notation's own sequence instead.
 
 | Prohibited                                                          | Write instead                                    |
 | ------------------------------------------------------------------- | ------------------------------------------------ |
@@ -111,9 +111,9 @@ The reviewer accuracy measurement does not run in CI. A person runs it, and what
 
 | Element  | Content                                                                                     |
 | -------- | ------------------------------------------------------------------------------------------- |
-| Trigger  | The reviewer definition or its corpus changed                                               |
+| Trigger  | The reviewer definition, the skill body, or the corpus changed                              |
 | Run      | Follow the blind procedure in `skills/_lib/review-harness.md` and add one record under `test/results/` |
-| Gate     | The newest record carries the content hashes of the definition and the corpus, and they match the current ones |
+| Gate     | The newest record carries the content hashes of those three, and they match the current ones |
 | Scope    | Every reviewer skill that has a corpus                                                      |
 
 ## Whether the test swings at nothing

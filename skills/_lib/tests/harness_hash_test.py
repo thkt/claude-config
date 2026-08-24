@@ -17,8 +17,7 @@ import harness_hash  # noqa: E402
 
 SCRIPT = HERE.parent / "harness_hash.py"
 
-# Derived rather than listed, following review_score_test.py: a harness added later is covered
-# without anyone remembering to name it here.
+# Derived rather than listed: a harness added later would otherwise wait for someone to name it.
 HARNESS_SKILLS = sorted(p.parents[1].name for p in ROOT.glob("skills/*/test/expected.json"))
 
 
@@ -95,24 +94,15 @@ class Cli(unittest.TestCase):
 
 
 def newest_record(skill: str) -> Path | None:
-    """The record the gate reads.
-
-    Names are date-prefixed, so the last name is the last run. Two runs on one date fall back to
-    the rest of the name, which is why review-harness.md asks a same-day rerun to be named so it
-    sorts after the run it supersedes.
-    """
-    results = ROOT / "skills" / skill / "test" / "results"
+    # Two runs on one date sort by the rest of the name, which is what review-harness.md asks a
+    # same-day rerun to be named for.
+    results = harness_hash.test_dir(skill) / "results"
     found = sorted(results.glob("*.json")) if results.is_dir() else []
     return found[-1] if found else None
 
 
 class Freshness(unittest.TestCase):
-    """The gate `rules/development/TESTING.md` § When a tier 1 run fires defines.
-
-    A record whose hashes differ from the current ones measured an older reviewer, and a skill
-    with no record measured nothing. Either way the accuracy figures on hand do not describe
-    what the repository ships now.
-    """
+    """The gate `rules/development/TESTING.md` § When a tier 1 run fires defines."""
 
     def test_every_harness_skill_has_a_record_of_a_run(self) -> None:
         missing = [s for s in HARNESS_SKILLS if newest_record(s) is None]
