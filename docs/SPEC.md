@@ -288,12 +288,11 @@ The OUTCOME statement about moving quality assurance off LLM discretion and onto
 
 ### Nesting
 
-A workflow can nest another one level deep. That is how a routing table is reused instead of copied.
+A workflow can nest another one level deep. That is how a routing table is reused instead of copied. The meta of `audit` and of `polish` says build nests it, but `build.js` calls neither. Heavy assurance is started by a person against the draft PR.
 
 | Caller     | Nested workflow  | Purpose                                    |
 | ---------- | ---------------- | ------------------------------------------ |
 | `build`    | `code`           | TDD implementation per unit                |
-| `build`    | `audit`, `polish`| Static review of the diff                  |
 | `assert`   | `audit`          | Collection of static evidence              |
 
 ## Quality gates
