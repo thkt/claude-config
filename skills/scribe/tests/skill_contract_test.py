@@ -178,6 +178,27 @@ class WikiPageFormat(unittest.TestCase):
             for glob in cast(list[object], value):
                 self.assertIsInstance(glob, str, f"{page.name}: each glob is a string")
 
+    def test_a_page_carries_only_the_sections_of_its_kind(self) -> None:
+        """Both kinds reach a plan through the same finder, and think copies a step line from one
+        and a content sentence from the other. A page carrying both leaves that undecidable."""
+        for page in self.pages():
+            text = page.read_text(encoding="utf-8")
+            structure = "\nkind: structure\n" in text.split("---", 2)[1]
+            headings = [ln for ln in text.split("\n") if ln.startswith("## ")]
+            if structure:
+                self.assertEqual(
+                    headings,
+                    ["## 内容", "## 境界", "## 契約", "## 要求", "## 参照コード", "## 由来"],
+                    f"{page.name}: a structure page carries the six in order",
+                )
+            else:
+                self.assertIn("## 定型手順", headings, f"{page.name}: a rule page carries 定型手順")
+                self.assertEqual(
+                    [h for h in headings if h in ("## 境界", "## 契約", "## 要求")],
+                    [],
+                    f"{page.name}: a rule page carries none of the structure sections",
+                )
+
     def test_the_template_shows_the_globs_frontmatter(self) -> None:
         """A page written from a skeleton without it would carry no globs at all."""
         for lang in LANGS:

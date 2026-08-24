@@ -83,7 +83,8 @@ Look for the source down the table below and take the first that answers. Extern
 | Source                            | How it is copied                                                                                                                                                                     |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | An existing shape in the codebase | path + public symbol, under the same stable-anchor rules as Preconditions. The cited path and symbol also go into `### Preconditions`                                                |
-| A docs/wiki page                  | Copy the matching 定型手順 line verbatim; where no step line fits, copy the 内容 sentence. A page carries no public symbol, so it goes into `### Preconditions` as a path-only line |
+| A docs/wiki rule page             | Copy the matching 定型手順 line verbatim; where no step line fits, copy the 内容 sentence. A page carries no public symbol, so it goes into `### Preconditions` as a path-only line |
+| A docs/wiki structure page (`kind: structure`) | Copy the matching 境界 / 契約 / 要求 rows verbatim. It carries no 定型手順, so do not fall back to the 内容 sentence. It goes into `### Preconditions` as a path-only line |
 | The official docs                 | A deep link into the pinned version                                                                                                                                                  |
 
 ## Output
