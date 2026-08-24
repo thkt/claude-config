@@ -131,7 +131,16 @@ def score(
         diff = {}
         for key, value in metrics.items():
             baseline = before.get(key)
-            diff[key] = None if value is None or baseline is None else round(value - baseline, 3)
+            # 過去のログは指標を散文で書いていた ("75% (9/12) - ...")。引き算はそこで落ち、
+            # 比較が 1 つ取れないだけで今回の数字ごと失われる。
+            if (
+                value is None
+                or not isinstance(baseline, (int, float))
+                or isinstance(baseline, bool)
+            ):
+                diff[key] = None
+            else:
+                diff[key] = round(value - baseline, 3)
 
     return {
         "counts": counts,

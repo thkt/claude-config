@@ -83,6 +83,16 @@ class Scoring(unittest.TestCase):
         self.assertEqual(report["byCategory"]["A03"]["recall_strict"], 0.5)
         self.assertEqual(report["byCategory"]["LLM01"]["recall_strict"], 0.0)
 
+    def test_a_previous_metric_written_as_prose_leaves_that_diff_empty(self) -> None:
+        """Subtracting prose raised, which lost this run's numbers over a missing comparison."""
+        report = score(
+            [flagged("v1")],
+            [{"file": "v1", "verdict": "hit"}],
+            {"metrics": {"recall_strict": "58% (7/12)"}},
+        )
+        self.assertEqual(report["metrics"]["recall_strict"], 1.0)
+        self.assertIsNone(report["diff"]["recall_strict"])
+
     def test_the_diff_against_a_previous_run_is_taken_per_metric(self) -> None:
         previous: Previous = {"metrics": {"recall_strict": 0.5, "fp_rate": 0.0}}
         report = score(
