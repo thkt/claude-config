@@ -37,7 +37,7 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 
 ## Phase 3: 抽出
 
-1. `docs/wiki/*.md` を読み、既存ページを把握する。frontmatter に `kind: structure` を持つページは構造の記述で、共通項ではない。名前が一致しても `existing: "page"` にせず、`none` として新しいページを立てる
+1. `docs/wiki/*.md` を読み、既存ページを把握する。`kind: structure` を持つページは共通項ではないので、名前が一致しても `existing: "none"` のままにする
 2. `docs/wiki/_candidates.md` の候補行を両方の節から全て読み、1 行ごとに `{name, evidence, existing: "candidate"}` として配列へ入れる。上限で持ち越した行が戻る経路はここだけ
 3. スコープの各 PR/issue を `gh pr view <番号> --comments`/`gh issue view <番号> --comments` で本文/コメントまで読む
 4. スコープの各 research ファイルを Read で全文読む。セクション名で絞らない
@@ -63,7 +63,7 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 | 確認                                                | 不成立のときに決める内容                             |
 | --------------------------------------------------- | ---------------------------------------------------- |
 | 規約 / 手順が現在の実装でも成立するか               | 落とす。既存ページの項目なら不成立と書き直す文面     |
-| 構造ページの境界 / 契約 / 要求が現在の実装と一致するか | 現行コードに合わせて書き直す文面。落とさない         |
+| 構造ページの記述が現在の実装と一致するか           | 現行コードに合わせて書き直す文面。落とさない         |
 | lint / hook / CI ですでに機械的に強制されていないか | 落とす                                               |
 | 参照するパス / コマンドが現存するか                 | 現行のパス / コマンドへの張り替え先                  |
 

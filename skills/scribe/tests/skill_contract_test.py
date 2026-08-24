@@ -179,8 +179,7 @@ class WikiPageFormat(unittest.TestCase):
                 self.assertIsInstance(glob, str, f"{page.name}: each glob is a string")
 
     def test_a_page_carries_only_the_sections_of_its_kind(self) -> None:
-        """Both kinds reach a plan through the same finder, and think copies a step line from one
-        and a content sentence from the other. A page carrying both leaves that undecidable."""
+        """A page carrying both kinds' sections leaves think's citation form undecidable."""
         for page in self.pages():
             text = page.read_text(encoding="utf-8")
             structure = "\nkind: structure\n" in text.split("---", 2)[1]
@@ -194,8 +193,8 @@ class WikiPageFormat(unittest.TestCase):
             else:
                 self.assertIn("## 定型手順", headings, f"{page.name}: a rule page carries 定型手順")
                 self.assertEqual(
-                    [h for h in headings if h in ("## 境界", "## 契約", "## 要求")],
-                    [],
+                    set(headings) & {"## 境界", "## 契約", "## 要求"},
+                    set(),
                     f"{page.name}: a rule page carries none of the structure sections",
                 )
 
