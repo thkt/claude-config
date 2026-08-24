@@ -7,7 +7,7 @@ stdin:  {path, pattern?} の JSON 配列。issue の plan が前提とする既�
         path は process cwd (repo root) からの相対。pattern は任意で、その
         ファイルに含まれるはずの literal (fixed-string、regex ではない) 部分文字列。
 stdout: JSON {results: [{path, pattern, exists, matches}]}、入力順に 1 件ずつ。
-          exists  = path が通常ファイル
+          exists  = path が実在する。pattern 有りなら通常ファイルであること
           matches = pattern 無しなら exists と同じ。pattern 有りなら exists かつ
                     その literal pattern がファイルの bytes に出現する
 完了時は exit 0 (verdict は JSON から読む)。usage / parse error 時は exit 1。
@@ -29,14 +29,16 @@ def verify_one(root: Path, entry: object) -> dict[str, str | bool]:
     path = str(mapping.get("path", ""))
     raw_pattern = mapping.get("pattern", "")
     pattern = "" if raw_pattern is None else str(raw_pattern)
-    exists = (root / path).is_file() if path else False
+    # 一律 is_file() にはしない。reference_module.path はディレクトリを指す。
+    target = root / path
+    exists = bool(path) and (target.is_file() if pattern else target.exists())
     if not pattern:
         matches = exists
     elif not exists:
         matches = False
     else:
         try:
-            matches = pattern.encode("utf-8") in (root / path).read_bytes()
+            matches = pattern.encode("utf-8") in target.read_bytes()
         except OSError:
             matches = False
     return {"path": path, "pattern": pattern, "exists": exists, "matches": matches}
