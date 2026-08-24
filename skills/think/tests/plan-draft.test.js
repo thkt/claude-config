@@ -51,7 +51,12 @@ test("the plan template defines the skeleton (id notation, implementation order,
       assert.match(doc, /cap is the line count shown in the skeleton/, "en: the line-count rule");
       assert.match(doc, /splitting/i, "en: an overflow is resolved by splitting");
     }
-    assert.ok(!/given/i.test(doc), `${lang}: no given/when/then long form remains`);
+    // The retired form is the three-part sequence, not the word: a sentence using "given"
+    // in ordinary prose failed this before the net was narrowed.
+    assert.ok(
+      !/given[\s\S]{0,120}when[\s\S]{0,120}then/i.test(doc),
+      `${lang}: no given/when/then long form remains`,
+    );
     assert.ok(!doc.includes("depends_on"), `${lang}: no depends_on remains`);
     assert.match(doc, /test_command/, `${lang}: where test_command goes`);
     assert.match(doc, /^## Backlog candidates/m, `${lang}: ## Backlog candidates`);
