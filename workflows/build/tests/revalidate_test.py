@@ -70,7 +70,7 @@ class RunTest(unittest.TestCase):
         self.assertEqual((v[1]["exists"], v[1]["matches"]), (False, False))
 
     def test_pattern_less_directory_exists(self) -> None:
-        # #494: reporting the directory absent stopped build at plan-drift.
+        # Reporting the directory absent stopped build at plan-drift.
         (self.root / "adir").mkdir()
         v = revalidate.run([{"path": "adir"}, {"path": "adir/"}], self.root)
         self.assertEqual((v[0]["exists"], v[0]["matches"]), (True, True))

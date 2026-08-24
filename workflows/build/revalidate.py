@@ -29,7 +29,7 @@ def verify_one(root: Path, entry: object) -> dict[str, str | bool]:
     path = str(mapping.get("path", ""))
     raw_pattern = mapping.get("pattern", "")
     pattern = "" if raw_pattern is None else str(raw_pattern)
-    # Not is_file() throughout: reference_module.path names a directory (#494).
+    # Not is_file() throughout: reference_module.path names a directory.
     target = root / path
     exists = bool(path) and (target.is_file() if pattern else target.exists())
     if not pattern:
