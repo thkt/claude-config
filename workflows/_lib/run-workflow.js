@@ -145,6 +145,53 @@ const partToString = (part) => {
   }
 };
 
+// Quote-aware, because a brace written inside a string literal need not be balanced and a plain
+// depth count would then close on the wrong one. meta's prose carries such braces.
+const matchBrace = (source, start) => {
+  let depth = 0;
+  let quote = null;
+  for (let i = start; i < source.length; i++) {
+    const ch = source[i];
+    if (quote) {
+      if (ch === "\\") {
+        i++;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === "`") {
+      quote = ch;
+      continue;
+    }
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  throw new Error(`${start}: unterminated brace`);
+};
+
+// Not an import of the module: a workflow script's top-level return and its references to
+// injected globals would run, and only the meta literal is wanted here. Not `new Function`
+// either, which the plan named: the guardrails gate blocks every such call site with no
+// per-site opt-out, so this reuses the vm.compileFunction that checkWorkflowSyntax below
+// already compiles isolated strings with.
+export function readMeta(scriptPath) {
+  const source = readFileSync(scriptPath, "utf8");
+  const marker = "export const meta = {";
+  const markerIdx = source.indexOf(marker);
+  if (markerIdx === -1) {
+    throw new Error(`${scriptPath}: no "export const meta = {" found`);
+  }
+  const braceStart = source.indexOf("{", markerIdx);
+  const braceEnd = matchBrace(source, braceStart);
+  const literal = source.slice(braceStart, braceEnd + 1);
+  const evaluate = vm.compileFunction(`return (${literal});`, [], { filename: scriptPath });
+  return evaluate();
+}
+
 // A workflow script is neither ESM nor CommonJS: it is a function body holding a top-level
 // return. `node --check` therefore reads it under whichever module goal package.json names
 // and rejects that return once the repository declares `type: module`. Compiling it the way

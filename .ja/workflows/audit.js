@@ -3,7 +3,7 @@ export const meta = {
   description:
     'audit の fan-out を決定論的に行う workflow。ファイルの routing (glob 表) は script 内で完結するため、reviewer の選択が drift しない。git I/O と各 reviewer / critic は agent として走る。pipeline は reviewer -> challenge -> verify -> integrate で、reviewer -> aggregate ではない。単体でも、assert から workflow("audit") 経由の入れ子でも呼べる。',
   whenToUse:
-    "diff に対して adversarial な reviewer 一式を決定論的に発火させ、review を main loop の裁量に任せない。/audit または Workflow({name:'audit'}) で直接起動する。launcher skill は無い。起動前に scope や focus が不明なら、ユーザーに 2 点を確認する。focus (all / security / performance / quality / a11y) と scope (staged を含む HEAD diff、path、別 repo のいずれか)。確認結果は args で渡す。例 Workflow({name:'audit', args:{focus:'security', scope:'src/'}})。scope に path を渡すとその配下の追跡ファイル、revision を渡すとその diff が対象になる。base (既定 main) は、scope 省略かつ未コミット変更が無いときの比較先。repo だけを渡すと focus=all で、未コミット変更、無ければ main からの branch diff を audit する。clarification の受け渡しも fan-out も、この workflow が一手に引き受ける。",
+    "diff に対して adversarial な reviewer 一式を決定論的に発火させ、review を main loop の裁量に任せない。/audit または Workflow({name:'audit'}) で直接起動する。launcher skill は無い。起動前に scope や focus が不明なら、ユーザーに 2 点を確認する。focus (all / security / performance / quality / a11y) と scope (staged を含む HEAD diff、path、別 repo のいずれか)。",
   phases: [
     { title: "Pre-flight" },
     { title: "Route" },
@@ -298,6 +298,15 @@ const FOCUS = {
   a11y: ["accessibility", "progressive"],
   all: null,
 };
+
+// 黙って all へ落とさない。落としていた頃は、未知の focus が reviewer 一式を走らせながら、
+// 記録には [focus=<綴り違い>] と残り、起きていない絞り込みを主張していた。
+if (!(focus in FOCUS)) {
+  return {
+    stopped: "invalid-focus",
+    why: `focus "${focus}" は有効値ではない。次のいずれかを渡す: ${Object.keys(FOCUS).join(", ")}。`,
+  };
+}
 
 const ext = (p) => {
   const base = p.slice(p.lastIndexOf("/") + 1);

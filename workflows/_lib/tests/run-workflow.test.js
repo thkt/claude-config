@@ -4,10 +4,17 @@
 // rules/conventions/WORKFLOWS.md under Script evaluation form.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { PRODUCTION_GLOBALS, SCRIPT_ERROR_KEYS, runWorkflow } from "../run-workflow.js";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { PRODUCTION_GLOBALS, SCRIPT_ERROR_KEYS, readMeta, runWorkflow } from "../run-workflow.js";
+import { extractBracedBody } from "./_brace.js";
+
+const here = dirname(fileURLToPath(import.meta.url));
+// Discovery (rules/conventions/WORKFLOWS.md § Naming and file placement) reads workflows/ flat,
+// so the meta check below stays flat too rather than recursing into workflows/<name>/ helpers.
+const workflowsDir = join(here, "..", "..");
 
 // runWorkflow's contract reads the source from a file path (readFileSync), so the script body is
 // written to a temporary file first. Each test uses its own temporary directory so script files
@@ -22,6 +29,99 @@ const withScript = async (source, run) => {
     rmSync(dir, { recursive: true, force: true });
   }
 };
+
+// The oracle below reads meta a second way, so that no expected string is copied into the test
+// and a drift in either extractor shows up as a mismatch.
+
+// ECMA-262 SingleEscapeCharacter (https://tc39.es/ecma262/#prod-SingleEscapeCharacter). Any
+// other escaped character evaluates to itself, which the default branch below returns.
+const SINGLE_ESCAPES = { n: "\n", t: "\t", r: "\r", b: "\b", f: "\f", v: "\v", 0: "\0" };
+
+// Not a raw slice of the source: code.js escapes an apostrophe inside its single-quoted
+// description (`plan\'s`), and keeping the backslash would not match what readMeta's vm
+// evaluation returns.
+const extractStringField = (body, key) => {
+  const marker = new RegExp(`(?:^|\\n)\\s*${key}:\\s*(['"])`);
+  const m = marker.exec(body);
+  if (!m) return null;
+  const quote = m[1];
+  let i = m.index + m[0].length;
+  let value = "";
+  while (i < body.length) {
+    if (body[i] === "\\") {
+      const escaped = body[i + 1];
+      value += SINGLE_ESCAPES[escaped] ?? escaped;
+      i += 2;
+      continue;
+    }
+    if (body[i] === quote) break;
+    value += body[i];
+    i++;
+  }
+  return value;
+};
+
+// phases entries carry a plain title with no quotes inside ("Load", "Pre-flight", ...), so a
+// bare quoted-string match is enough; "title" appears nowhere else in a meta body.
+const extractPhaseTitles = (body) => [...body.matchAll(/title:\s*"([^"]*)"/g)].map((m) => m[1]);
+
+const extractMeta = (source) => {
+  const body = extractBracedBody(source, "export const meta = {");
+  return {
+    name: extractStringField(body, "name"),
+    description: extractStringField(body, "description"),
+    whenToUse: extractStringField(body, "whenToUse"),
+    phaseTitles: extractPhaseTitles(body),
+  };
+};
+
+test("readMeta returns name, description, whenToUse and phases for every script under workflows/", () => {
+  const scripts = readdirSync(workflowsDir)
+    .filter((f) => f.endsWith(".js"))
+    .filter((f) => readFileSync(join(workflowsDir, f), "utf8").startsWith("export const meta"));
+  assert.notEqual(scripts.length, 0, "found no workflow script carrying export const meta");
+
+  for (const file of scripts) {
+    const scriptPath = join(workflowsDir, file);
+    const source = readFileSync(scriptPath, "utf8");
+    const expected = extractMeta(source);
+
+    const meta = readMeta(scriptPath);
+
+    assert.equal(meta.name, expected.name, `${file}: name`);
+    assert.equal(meta.description, expected.description, `${file}: description`);
+    assert.equal(meta.whenToUse, expected.whenToUse, `${file}: whenToUse`);
+    assert.deepEqual(
+      meta.phases.map((p) => p.title),
+      expected.phaseTitles,
+      `${file}: phases`,
+    );
+  }
+});
+
+// The undefined identifier in the return is the observable: reaching it throws, so a clean meta
+// is the only way this passes.
+test("readMeta returns the meta of a script carrying a top-level return without executing that return", async () => {
+  const source = `export const meta = {
+  name: "sample",
+  description: "a sample workflow script",
+  whenToUse: "used only to exercise readMeta",
+  phases: [{ title: "Only" }],
+};
+
+return thisIdentifierIsNeverInjected("readMeta must never reach this line");
+`;
+  await withScript(source, async (path) => {
+    const meta = readMeta(path);
+    assert.equal(meta.name, "sample");
+    assert.equal(meta.description, "a sample workflow script");
+    assert.equal(meta.whenToUse, "used only to exercise readMeta");
+    assert.deepEqual(
+      meta.phases.map((p) => p.title),
+      ["Only"],
+    );
+  });
+});
 
 test("T-004 a script referencing crypto dies with a ReferenceError", async () => {
   await withScript("return crypto.randomUUID();", async (path) => {
