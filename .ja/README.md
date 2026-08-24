@@ -229,6 +229,7 @@ Slack 読み込み: `scout fetch <slack-url>` で任意の Slack メッセージ
 ### コアドキュメント
 
 - [Design Philosophy](./docs/DESIGN.md). 設計思想・意図
+- [SPEC](./docs/SPEC.md). hook, skill, agent, workflow の実行契約
 - [Commands Reference (English)](../docs/COMMANDS.md)
 - [Commands Reference (Japanese)](./docs/COMMANDS.md)
 - [Configuration Guide](../CLAUDE.md)

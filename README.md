@@ -253,6 +253,7 @@ Full details: [PRINCIPLES.md](./rules/PRINCIPLES.md)
 ### Core Documentation
 
 - [Design Philosophy](./docs/DESIGN.md) - **Why this design** (設計思想・意図)
+- [SPEC](./docs/SPEC.md) - Execution contract of hooks, skills, agents, and workflows
 - [Commands Reference (English)](./docs/COMMANDS.md)
 - [Commands Reference (Japanese)](./.ja/docs/COMMANDS.md)
 - [Configuration Guide](./CLAUDE.md)
