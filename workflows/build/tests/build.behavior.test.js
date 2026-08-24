@@ -1547,10 +1547,12 @@ test("the snapshot of the stopped value set matches 14 values exactly", async ()
 test("a finished run nests the code workflow alone and starts no Explore agent", async () => {
   const { calls } = await runWorkflow(buildJs, { args, stubs: makeStubs() });
 
+  // Not a Set: a fix-then-re-audit loop returning to code would collapse into one entry, and
+  // the retired loop is exactly what the removed greps guarded.
   assert.deepEqual(
-    [...new Set(calls.workflow.map((c) => c.name))],
+    calls.workflow.map((c) => c.name),
     ["code"],
-    "an audit fan-out or a fix-then-re-audit loop would put another name here",
+    "an audit fan-out adds another name here, and a re-run loop adds another entry",
   );
   assert.deepEqual(
     calls.agent.filter((c) => c.opts?.agentType === "Explore").map((c) => c.opts.label ?? ""),
