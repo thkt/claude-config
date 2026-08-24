@@ -299,6 +299,16 @@ const FOCUS = {
   all: null,
 };
 
+// FOCUS 自身のキーにない focus は、Route (を含むどのステージ) が agent を起動する前に拒否する。
+// これは上の no-repo と同じ早期停止の形。FOCUS のキーだけが有効値なので、Object.keys(FOCUS) が
+// そのまま有効値一覧になり、ここで手で複製することはない。
+if (!(focus in FOCUS)) {
+  return {
+    stopped: "invalid-focus",
+    why: `Focus "${focus}" is not a valid value. Pass one of: ${Object.keys(FOCUS).join(", ")}.`,
+  };
+}
+
 const ext = (p) => {
   const base = p.slice(p.lastIndexOf("/") + 1);
   const dot = base.lastIndexOf(".");

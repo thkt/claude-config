@@ -307,6 +307,17 @@ const FOCUS = {
   all: null,
 };
 
+// A focus outside FOCUS's own keys is rejected before Route (or any other stage) spawns an
+// agent, the same early-stop shape no-repo uses above. Object.keys(FOCUS) is the valid-value
+// list because FOCUS's keys are the only accepted values; nothing here duplicates that set by
+// hand.
+if (!(focus in FOCUS)) {
+  return {
+    stopped: "invalid-focus",
+    why: `Focus "${focus}" is not a valid value. Pass one of: ${Object.keys(FOCUS).join(", ")}.`,
+  };
+}
+
 const ext = (p) => {
   const base = p.slice(p.lastIndexOf("/") + 1);
   const dot = base.lastIndexOf(".");
