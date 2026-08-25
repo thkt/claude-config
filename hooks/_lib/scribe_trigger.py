@@ -9,6 +9,7 @@ them down.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import time
@@ -19,6 +20,10 @@ import command_scan
 
 # A gh invocation, injected so tests hand over canned stdout instead of a live gh process.
 GhRunner = Callable[[Sequence[str]], str]
+
+# A hook starts with PATH cut down, so a bare `gh` raises FileNotFoundError before any gate
+# runs. The absolute path is the same shape hooks/lifecycle/recall_index.py takes for recall.
+DEFAULT_GH = Path("/opt/homebrew/bin/gh")
 
 # The interval a stamp counts as recent, in the shape hooks/lifecycle/recall_index.py's
 # WINDOW_MINUTES takes. A nudge costs the user's attention, not just gh's rate limit, so the
@@ -43,13 +48,13 @@ def find(command: str) -> Path | None:
     return None
 
 
-def _default_runner(directory: Path) -> GhRunner:
+def _default_runner(directory: Path, gh: Path) -> GhRunner:
     """gh runs with the pull's directory as cwd, so it reads the repository off that
     checkout's git remote rather than off wherever the hook process started."""
 
     def run(args: Sequence[str]) -> str:
         result = subprocess.run(
-            ["gh", *args],
+            [str(gh), *args],
             cwd=directory,
             capture_output=True,
             text=True,
@@ -127,6 +132,7 @@ def should_prompt(
     *,
     stamp: Path | None = None,
     runner: GhRunner | None = None,
+    gh: Path | None = None,
 ) -> bool:
     """The cooldown comes before the gh calls because a pull runs far more often than a merge
     lands: most pulls inside one window have nothing new to find, and asking GitHub each time
@@ -136,10 +142,18 @@ def should_prompt(
     stamp_path = stamp or _default_stamp()
     if _recently_stamped(stamp_path):
         return False
-    call = runner or _default_runner(directory)
-    if _unmerged_scribe_pr_exists(call):
+    binary = gh or Path(os.environ.get("CLAUDE_GH_BIN") or DEFAULT_GH)
+    if runner is None and not (binary.is_file() and os.access(binary, os.X_OK)):
         return False
-    if not _has_new_input(_last_scribe_merge(call), call):
+    call = runner or _default_runner(directory, binary)
+    try:
+        if _unmerged_scribe_pr_exists(call):
+            return False
+        if not _has_new_input(_last_scribe_merge(call), call):
+            return False
+    except (OSError, subprocess.CalledProcessError, json.JSONDecodeError):
+        # Auth expiry, a network drop, or a gh output shape this does not parse. None of them
+        # say a backlog is waiting, and a hook that raises here reports an error on a plain pull.
         return False
     _touch(stamp_path)
     return True

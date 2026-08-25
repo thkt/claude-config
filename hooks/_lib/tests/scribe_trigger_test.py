@@ -3,6 +3,7 @@
 Run: python3 hooks/_lib/tests/scribe_trigger_test.py
 """
 
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -54,6 +55,31 @@ class _QueueRunner:
 def _with_wiki(directory: Path) -> Path:
     (directory / "docs" / "wiki").mkdir(parents=True)
     return directory
+
+
+class TestGhBinary(unittest.TestCase):
+    def test_gh_が_path_に無い環境でも例外を投げない(self) -> None:
+        """hook は PATH を /usr/bin へ切り詰められて起動しうる。gh が見つからず例外が出ると
+        additionalContext も stamp も出ないまま、何も起きなかったのと同じ姿になる"""
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = _with_wiki(Path(tmp))
+            stamp = Path(tmp) / "cache" / "last"
+            missing = Path(tmp) / "no-such-gh"
+            self.assertFalse(
+                scribe_trigger.should_prompt(directory, stamp=stamp, gh=missing),
+                "gh が無いときは促さない",
+            )
+
+    def test_gh_が_非ゼロで終わるときも例外を投げない(self) -> None:
+        """認証切れやネットワーク断で gh は非ゼロを返す。促さないだけで済ませる"""
+
+        def failing(args: Sequence[str]) -> str:
+            raise subprocess.CalledProcessError(4, ["gh", *args])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = _with_wiki(Path(tmp))
+            stamp = Path(tmp) / "cache" / "last"
+            self.assertFalse(scribe_trigger.should_prompt(directory, stamp=stamp, runner=failing))
 
 
 class TestShouldPrompt(unittest.TestCase):
