@@ -55,7 +55,7 @@ Routing rules for a new decision. Rules 1-4 come from DR-0067 and are restated h
 
 Neither the 根拠 2 threshold nor a page cap applies to a `kind: structure` page. The glob-group axis is what bounds the count: a repository has as many groups as it has distinct contract sets, which is single digits here (`workflows/**`, `skills/**`, `hooks/**`, `rules/**`). `find_wiki_rule.py` surfaces only the pages whose globs match the files at hand, so an added page costs the planner nothing on work it does not touch.
 
-Rules 5-8 apply to any repository carrying a `docs/wiki/`, not to this harness alone. `find_wiki_rule.py` ships inside `skills/scribe/` and is global, while `docs/wiki/` and `docs/decisions/` are per-repository. That is the split DR-0067 already drew for DRs.
+Rules 5-8 apply to any repository carrying a `docs/wiki/`, not to this harness alone. They live in this DR alone. `docs/wiki/README.md` states how to operate the wiki and stops there, because a README naming `docs/decisions/` would carry this harness's decision log into every repository that copies the format. `find_wiki_rule.py` ships inside `skills/scribe/` and is global, while `docs/wiki/` and `docs/decisions/` are per-repository. That is the split DR-0067 already drew for DRs.
 
 The six sections of a structure page (内容, 境界, 契約, 要求, 参照コード, 由来) stay as they are. They carry the concerns arc42's Building Block View carries, and the four corrections `5e359fc7` made were all content accuracy inside 境界/契約/要求, never the format failing to hold what had to be said.
 
@@ -77,7 +77,7 @@ The exclusion in `skills/scribe/SKILL.md` Phase 3 step 5 stays: "Design decision
 
 - A wiki page added or edited after this DR carries `由来` whenever rule 6's test returns Yes. The pages that predate it are backfilled through the Transition Plan, not through this check.
 - No wiki page's `由来` names a DR whose status is `superseded by DR-NNNN`, `deprecated`, or `rejected`. Only this half of rule 7 is mechanical. Relinking to the successor satisfies it while the page body still states the superseded shape, which is the state the Reassessment Triggers below name as the signal to reopen this decision. The body half rests on the reviewer, so a PR that relinks states what it checked in the body.
-- `docs/wiki/README.md` states rules 5-8 alongside the domain it already states, so a reader picks the artifact without reading this DR.
+- `docs/wiki/README.md` carries the page format and the `由来` gate while naming neither this DR nor `docs/decisions/`, so a repository can take the wiki format without taking this harness's decision log.
 - A change that removes a `由来` line says why the counterfactual test now returns No. Check 2 cannot see a link that was deleted rather than left stale, so this is the only thing standing between rule 6 and the incentive to delete.
 
 ## Pros and Cons of the Options
@@ -126,7 +126,7 @@ Related: DR-0005 (documentation role separation), DR-0103 (reference rules carri
 
 ### Transition Plan
 
-1. State in `docs/wiki/README.md` how the wiki relates to the other three artifacts, and add the structure-page clause of rule 6 so the section list stays consistent with `skills/scribe/tests/skill_contract_test.py`. Name this DR as where rules 5-8 live rather than copying them: `find_wiki_rule.py` holds `README.md` in `NOT_A_RULE`, so a full copy would be a derived copy that no router ever delivers.
+1. Keep `docs/wiki/README.md` to operating the wiki: the page kinds, the `由来` gate including its structure-page clause, and how pages grow. It names neither this DR nor `docs/decisions/`, so the format transfers to a repository that keeps its decisions elsewhere or keeps none. The boundary and rules 5-8 live here, in this DR, and nowhere else.
 2. Move the DR-0073 reference in `docs/wiki/ja-mirror-drift.md` from 参照コード to 由来. The page's premise is that `.ja/` is canonical, so DR-0073's supersession would force a rewrite and the counterfactual test returns Yes. This is the one page besides `workflow-structure.md` known to owe a `由来` link.
 3. Fix the `_candidates.md` starvation. The candidate rows never reach `skills/scribe/scripts/triage.py`, so 12 rows have been pending since 2026-07-19 across 5 scribe runs while rows with fewer pieces of evidence were promoted past them.
 4. Fix #474 (scribe Phase 4 rejections drop candidate rows without producing a page).
