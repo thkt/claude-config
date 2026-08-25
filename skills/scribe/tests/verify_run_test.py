@@ -105,8 +105,7 @@ def _run_verify(
 
 class VerifyRun(unittest.TestCase):
     def test_新規作成のページは昇格待ちから行を減らさない(self) -> None:
-        """create は候補行を経ずにページになるので、ページ数だけ引くと 1 行余分に減った
-        ことにされ、正しく走った run が拒まれる"""
+        """ページを 1 枚新しく起こした run は、失敗した run ではない"""
         with tempfile.TemporaryDirectory() as tmp:
             start = [f"item{i}" for i in range(5)]
             repo = _init_worktree(Path(tmp), start)
