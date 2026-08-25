@@ -34,10 +34,12 @@ def _git(repo: Path, *args: str) -> None:
     )
 
 
-def _candidates(waiting: list[str]) -> str:
-    """A store file carrying only the 昇格待ち section verify_run.py has to count."""
+def _candidates(waiting: list[str], rejected: list[str] | None = None) -> str:
     rows = [f"- {n}" for n in waiting]
-    return "\n".join(["# candidates", "", "## 昇格待ち", "", *rows, "", "## 単発", ""])
+    dropped = [f"- {n}" for n in rejected or []]
+    return "\n".join(
+        ["# candidates", "", "## 昇格待ち", "", *rows, "", "## 単発", "", "## 棄却", "", *dropped]
+    )
 
 
 def _init_worktree(root: Path, start_waiting: list[str]) -> Path:
@@ -94,6 +96,28 @@ def _run_verify(
 
 
 class VerifyRun(unittest.TestCase):
+    def test_a_row_phase_4_moved_to_棄却_counts_against_the_remaining_rows(self) -> None:
+        """Phase 4 drops a row into 棄却 without a page, so counting pages alone reads the store
+        as one row short and refuses a run that did nothing wrong."""
+        with tempfile.TemporaryDirectory() as tmp:
+            start = [f"item{i}" for i in range(5)]
+            repo = _init_worktree(Path(tmp), start)
+            base = _base(repo)
+            wiki = repo / "docs" / "wiki"
+            for n in ["item0", "item1"]:
+                _ = (wiki / f"{n}.md").write_text(f"# {n}\n", encoding="utf-8")
+            _ = (wiki / "_candidates.md").write_text(
+                _candidates(["item3", "item4"], rejected=["item2"]), encoding="utf-8"
+            )
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): item0, item1 を追加/更新")
+
+            proc = _run_verify(repo, start_count=5, expected_commits=1, base=base)
+
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        report = cast(dict[str, object], json.loads(proc.stdout))
+        self.assertEqual(report["ok"], True)
+
     def test_commit_count_and_expected_value_match_and_remaining_rows_also_match_ok_true_exit_0(
         self,
     ) -> None:
