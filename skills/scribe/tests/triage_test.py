@@ -6,6 +6,7 @@ Run: python3 skills/scribe/tests/triage_test.py
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from typing import Literal, cast
@@ -14,7 +15,7 @@ HERE = Path(__file__).resolve().parent
 SCRIPT = HERE.parent / "scripts" / "triage.py"
 sys.path.insert(0, str(SCRIPT.parent))
 
-from triage import Pattern, triage  # noqa: E402
+from triage import Pattern, Triaged, triage  # noqa: E402
 
 # The same three values triage branches on. A plain str here widens the literal and the helper
 # stops building the shape the function accepts.
@@ -54,16 +55,133 @@ class Triage(unittest.TestCase):
         self.assertEqual(len(report["pages"]), 3)
         self.assertEqual(len(report["candidates"]), 2)
 
-    def test_the_cli_takes_the_array_on_argv_and_returns_the_three_groups(self) -> None:
+    def test_the_cli_takes_the_array_and_the_store_and_returns_the_three_groups(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "_candidates.md"
+            _ = path.write_text("# candidates\n\n## 昇格待ち\n\n## 単発\n", encoding="utf-8")
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPT), json.dumps([pattern("a", 2)]), str(path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        self.assertEqual(proc.returncode, 0)
+        report = cast(dict[str, object], json.loads(proc.stdout))
+        self.assertEqual(sorted(report), ["candidates", "deferred", "pages"])
+
+    def test_the_cli_stops_when_the_store_path_is_missing(self) -> None:
+        """An optional path would put the carried-over rows back at the caller's discretion,
+        which is the shape #504 came from."""
         proc = subprocess.run(
             [sys.executable, str(SCRIPT), json.dumps([pattern("a", 2)])],
             capture_output=True,
             text=True,
             check=False,
         )
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn("candidates-file", proc.stderr)
+
+    def test_a_store_that_does_not_exist_yet_reads_as_no_rows(self) -> None:
+        """Phase 1 creates the store inside Phase 6's worktree, so the first run has none."""
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    json.dumps([pattern("a", 2)]),
+                    str(Path(tmp) / "_candidates.md"),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
         self.assertEqual(proc.returncode, 0)
-        report = cast(dict[str, object], json.loads(proc.stdout))
-        self.assertEqual(sorted(report), ["candidates", "deferred", "pages"])
+        report = cast(dict[str, list[Triaged]], json.loads(proc.stdout))
+        self.assertEqual([p["name"] for p in report["pages"]], ["a"])
+
+
+# The store lines the fixtures below stand for. Content stays Japanese because the store this
+# repository keeps is Japanese, and the parse has to survive that.
+STARVED = "hook のコマンド判定は shlex による位置の解析で行う"
+WAITING = "テンプレートは validator が要求するフィールドを載せる"
+ONE_OFF = "user rule の paths frontmatter は originalCwd 相対で評価される"
+SHARED = "linter の false positive は理由コメント付き disable で抑止する"
+
+
+def store(waiting: list[str], one_off: list[str]) -> str:
+    """A store file carrying the two headings the skill writes into."""
+    return "\n".join(["# candidates", "", "## 昇格待ち", "", *waiting, "", "## 単発", "", *one_off])
+
+
+def run_cli(patterns: list[Pattern], text: str) -> dict[str, list[Triaged]]:
+    """Run the CLI with the freshly extracted array and a store written to a temporary file.
+
+    The store path is passed on argv rather than the array being pre-merged here, because the
+    manual merge is exactly what #504 showed no run performs.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "_candidates.md"
+        _ = path.write_text(text, encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPT), json.dumps(patterns), str(path)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+    assert proc.returncode == 0, proc.stderr
+    return cast(dict[str, list[Triaged]], json.loads(proc.stdout))
+
+
+class StoreMerge(unittest.TestCase):
+    """The script reads the store itself (#504).
+
+    Decision table for where a pattern comes from. The Triage class above already covers the
+    fresh-only row, so the two rows the store introduces are the ones tested here:
+
+    | in the store | in the fresh array | expected                                               |
+    | ------------ | ------------------ | ------------------------------------------------------ |
+    | yes          | no                 | enters triage as a candidate and sorts by its evidence |
+    | no           | yes                | enters triage as before                                |
+    | yes          | yes                | folds into one row whose evidence is the union         |
+
+    Perspectives: Combination (the merge), Boundary (the two-evidence bar and the three-page cap),
+    Hazard (a store row starved by the cap while thinner patterns take the pages).
+    """
+
+    def test_a_store_row_outranks_thinner_fresh_patterns_for_the_page_cap(self) -> None:
+        """#504 itself: a row backed seven times sat in 昇格待ち for five runs while patterns
+        backed four times took every page. The row reaches the cap only when the script reads
+        the store, since nothing else puts it back into the sort."""
+        report = run_cli(
+            [pattern("a", 4), pattern("b", 4), pattern("c", 4)],
+            store([f"- {STARVED} #349 #350 #351 #352 #353 #354 (research)"], []),
+        )
+        self.assertEqual(report["pages"][0]["name"], STARVED)
+        self.assertEqual(report["pages"][0]["count"], 7)
+        self.assertEqual(len(report["pages"]), 3)
+        self.assertEqual(len(report["deferred"]), 1)
+
+    def test_both_headings_are_read_and_the_evidence_is_cut_off_the_name(self) -> None:
+        """A parse taking 昇格待ち alone drops the 単発 row that a second sighting would promote.
+        Evidence left on the name makes the page file name carry issue numbers."""
+        report = run_cli([], store([f"- {WAITING} #330 (research)"], [f"- {ONE_OFF} #59"]))
+        self.assertEqual(
+            [(p["name"], p["count"], p["action"]) for p in report["pages"]],
+            [(WAITING, 2, "promote")],
+        )
+        self.assertEqual(report["pages"][0]["evidence"], ["#330", "(research)"])
+        self.assertEqual([(c["name"], c["count"]) for c in report["candidates"]], [(ONE_OFF, 1)])
+
+    def test_a_name_held_by_both_sides_folds_into_one_row_with_the_evidence_united(self) -> None:
+        """Two rows under one name split the same pattern's evidence, and the store would gain a
+        second line for a page it already has. A repeated piece of evidence is counted once."""
+        fresh: Pattern = {"name": SHARED, "evidence": ["#168", "#390"], "existing": "none"}
+        report = run_cli([fresh], store([f"- {SHARED} #167 #168"], []))
+        rows = report["pages"] + report["candidates"] + report["deferred"]
+        self.assertEqual([r["name"] for r in rows], [SHARED])
+        self.assertEqual(sorted(rows[0]["evidence"]), ["#167", "#168", "#390"])
+        self.assertEqual(rows[0]["count"], 3)
 
 
 if __name__ == "__main__":

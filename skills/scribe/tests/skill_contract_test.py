@@ -3,7 +3,9 @@
 Run: python3 skills/scribe/tests/skill_contract_test.py
 """
 
+import json
 import re
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -14,6 +16,8 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE.parent / "scripts"))
 
 from triage import triage  # noqa: E402
+
+TRIAGE = HERE.parent / "scripts" / "triage.py"
 
 LANGS = ["ja", "en"]
 
@@ -58,22 +62,41 @@ class SkillContract(unittest.TestCase):
         for line in lines:
             self.assertRegex(line, r"^- \S.*?(?: (?:#\d+|\(research\)))+$", line)
 
-    def test_a_carried_over_candidate_returns_to_the_array_and_promotes(self) -> None:
-        """Nothing else re-reads the store, so a line the cap deferred never reaches a page again
-        unless Phase 3 puts it back. The array step and the run condition both have to say so."""
-        reads_back = {
-            "ja": "`docs/wiki/_candidates.md` の候補行を両方の節から全て読み",
-            "en": "Read every candidate line in `docs/wiki/_candidates.md`, both sections",
-        }
-        runs_anyway = {"ja": "0 件でも", "en": "Even with PRs, issues, and research all empty"}
+    def test_the_call_the_skill_writes_hands_triage_the_store(self) -> None:
+        """A line the cap deferred reaches a page again only if the store is in the ranking.
+        The skill's call and the script's arity are the two halves; either alone reads green
+        while the store sits out, which is what #504 was."""
         for lang in LANGS:
             doc = skill(lang)
             phase3 = doc[doc.index("## Phase 3") : doc.index("## Phase 4")]
-            self.assertIn(reads_back[lang], phase3, f"{lang}: Phase 3 reads the store back")
-            phase2 = doc[doc.index("## Phase 2") : doc.index("## Phase 3")]
-            self.assertIn(runs_anyway[lang], phase2, f"{lang}: Phase 2 runs on the store alone")
+            self.assertIn(
+                "triage.py '<", phase3, f"{lang}: Phase 3 names the triage call"
+            )
+            call = phase3[phase3.index("triage.py '<") :]
+            call = call[: call.index("`")]
+            self.assertIn(
+                "docs/wiki/_candidates.md",
+                call,
+                f"{lang}: the call hands triage the store",
+            )
+        proc = subprocess.run(
+            [sys.executable, str(TRIAGE), json.dumps([])],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 2, "the script refuses the call without the store")
         report = triage([{"name": "carried", "evidence": ["#1", "#2"], "existing": "candidate"}])
         self.assertEqual(report["pages"][0]["action"], "promote")
+
+    def test_phase_2_goes_on_when_only_the_store_holds_anything(self) -> None:
+        """With the scope empty and the store full, stopping at Phase 2 would strand every
+        carried-over row."""
+        runs_anyway = {"ja": "0 件でも", "en": "Even with PRs, issues, and research all empty"}
+        for lang in LANGS:
+            doc = skill(lang)
+            phase2 = doc[doc.index("## Phase 2") : doc.index("## Phase 3")]
+            self.assertIn(runs_anyway[lang], phase2, f"{lang}: Phase 2 runs on the store alone")
 
     def test_the_store_template_carries_both_sections_the_skill_writes_into(self) -> None:
         """Phase 3 sorts candidates and deferred into two named sections. A skeleton missing one
