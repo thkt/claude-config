@@ -287,6 +287,15 @@ class SkillContract(unittest.TestCase):
             _git(repo, "init", "-q")
             _git(repo, "add", "-A")
             _git(repo, "commit", "-q", "-m", "chore: seed candidates")
+            _ = (wiki / "an-earlier-page.md").write_text("# earlier\n", encoding="utf-8")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): an-earlier-page を追加/更新")
+            base = subprocess.run(
+                ["git", "-C", str(repo), "rev-parse", "HEAD"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
 
             remaining = list(names)
             for commit_items in commits:
@@ -299,7 +308,7 @@ class SkillContract(unittest.TestCase):
                 _git(repo, "commit", "-q", "-m", f"docs(wiki): {', '.join(committed)} を追加/更新")
 
             def verify(expected_commits: int) -> tuple[int, dict[str, object]]:
-                proc = _run_verify(repo, len(names), expected_commits)
+                proc = _run_verify(repo, len(names), expected_commits, base)
                 return proc.returncode, cast(dict[str, object], json.loads(proc.stdout))
 
             code, matched = verify(len(commits))
