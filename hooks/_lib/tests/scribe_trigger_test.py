@@ -6,6 +6,7 @@ Run: python3 hooks/_lib/tests/scribe_trigger_test.py
 import sys
 import tempfile
 import unittest
+from collections.abc import Sequence
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -50,6 +51,26 @@ class TestFind(unittest.TestCase):
         self.assertEqual(trigger.directory, Path("owner/name"))
 
 
+class _QueueRunner:
+    """Fake gh runner: hands back one canned stdout per call, in call order.
+
+    Popping from an exhausted queue raises, which is what catches an implementation
+    that keeps calling gh after the decision is already settled (T-008's contract:
+    stop at the first gh call once an unmerged scribe PR is found).
+    """
+
+    def __init__(self, responses: list[str]) -> None:
+        self._responses = list(responses)
+
+    def __call__(self, args: Sequence[str]) -> str:
+        return self._responses.pop(0)
+
+
+def _trigger_with_wiki(directory: Path) -> scribe_trigger.Trigger:
+    (directory / "docs" / "wiki").mkdir(parents=True)
+    return scribe_trigger.Trigger("pr", directory)
+
+
 class TestShouldPrompt(unittest.TestCase):
     def test_対象に_docs_wiki_が無いとき_促さないと決まる(self) -> None:
         """対象に `docs/wiki/` が無いとき、促さないと決まる"""
@@ -57,6 +78,45 @@ class TestShouldPrompt(unittest.TestCase):
             trigger = scribe_trigger.find(f"cd {tmp}; gh pr merge 1")
             assert trigger is not None
             self.assertFalse(scribe_trigger.should_prompt(trigger))
+
+    def test_未マージ_scribe_pr_が_1_件以上あるとき促さない(self) -> None:
+        """未マージ scribe PR が 1 件以上あるとき促さない"""
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            trigger = _trigger_with_wiki(directory)
+            stamp = directory / "cache" / "claude-scribe_trigger.last"
+            runner = _QueueRunner(['[{"number": 1}]'])
+            self.assertFalse(scribe_trigger.should_prompt(trigger, stamp=stamp, runner=runner))
+
+    def test_cursor_以降の入力が_0_件のとき促さない(self) -> None:
+        """cursor 以降の入力が 0 件のとき促さない"""
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            trigger = _trigger_with_wiki(directory)
+            stamp = directory / "cache" / "claude-scribe_trigger.last"
+            runner = _QueueRunner(["[]", "2026-01-01T00:00:00Z", "[]"])
+            self.assertFalse(scribe_trigger.should_prompt(trigger, stamp=stamp, runner=runner))
+
+    def test_stamp_が_cooldown_内にあるとき促さない(self) -> None:
+        """stamp が cooldown 内にあるとき促さない"""
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            trigger = _trigger_with_wiki(directory)
+            stamp = directory / "cache" / "claude-scribe_trigger.last"
+            stamp.parent.mkdir(parents=True)
+            stamp.touch()
+            runner = _QueueRunner(["[]", "2026-01-01T00:00:00Z", '[{"number": 5}]'])
+            self.assertFalse(scribe_trigger.should_prompt(trigger, stamp=stamp, runner=runner))
+
+    def test_未マージ_0_件_入力_1_件以上_stamp_が_cooldown_外のとき促す(self) -> None:
+        """未マージ 0 件、入力 1 件以上、stamp が cooldown 外のとき促す"""
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            trigger = _trigger_with_wiki(directory)
+            stamp = directory / "cache" / "claude-scribe_trigger.last"
+            runner = _QueueRunner(["[]", "2026-01-01T00:00:00Z", '[{"number": 5}]'])
+            self.assertTrue(scribe_trigger.should_prompt(trigger, stamp=stamp, runner=runner))
+            self.assertTrue(stamp.is_file(), "促した後は stamp が更新されているはず")
 
 
 if __name__ == "__main__":
