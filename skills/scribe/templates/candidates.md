@@ -1,6 +1,6 @@
 # Candidate store template
 
-In Phase 1, when `docs/wiki/_candidates.md` does not exist,/scribe writes out the content below verbatim. Nothing is substituted. Keep all three sections even while empty. `triage.py` reads 昇格待ち and 単発, Phase 3 step 7 writes into both, and Phase 4 step 5 moves into 棄却, so a missing section leaves a line with nowhere to sit.
+In Phase 1, when `docs/wiki/_candidates.md` does not exist,/scribe writes out the content below verbatim. Nothing is substituted. Keep all three sections even while empty. A missing section leaves a line with nowhere to sit.
 
 ## Template
 

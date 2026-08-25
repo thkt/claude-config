@@ -97,11 +97,9 @@ class SkillContract(unittest.TestCase):
         self.assertEqual(report["pages"][0]["action"], "promote")
 
     def test_phase_4_moves_the_candidate_line_of_an_item_it_drops(self) -> None:
-        """An item Phase 4 drops still holds two or more pieces of evidence, and Phase 3 step 7
-        prepared the deletion of its candidate line, so the line vanishes without ever reaching a
-        page. Both trees have to carry the instruction, so deleting it from one tree alone fails
-        here."""
-        # Stems, so that 移す / 移し and move / moves read the same to the match.
+        """Phase 3 step 7 prepared the deletion of the candidate line, so an item Phase 4 drops
+        loses its line without reaching a page."""
+        # Stems, so 移す and 移し both match.
         moves = {"ja": "移", "en": "move"}
         for lang in LANGS:
             steps = phase_4_steps_naming_the_store(lang)
@@ -110,8 +108,7 @@ class SkillContract(unittest.TestCase):
 
     def test_the_line_phase_4_moves_carries_why_it_was_dropped(self) -> None:
         """The 棄却 section is outside what read_store ranks, so a line landing there without a
-        reason leaves no way to tell a dropped item from one nobody looked at. Both trees have to
-        carry the instruction, so deleting it from one tree alone fails here."""
+        reason leaves no way to tell a dropped item from one nobody looked at."""
         reason = {"ja": "理由", "en": "reason"}
         for lang in LANGS:
             steps = phase_4_steps_naming_the_store(lang)
