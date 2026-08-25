@@ -4,6 +4,7 @@ Run: python3 skills/scribe/tests/skill_contract_test.py
 """
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -19,6 +20,7 @@ sys.path.insert(0, str(HERE.parent / "scripts"))
 from triage import triage  # noqa: E402
 
 TRIAGE = HERE.parent / "scripts" / "triage.py"
+VERIFY_RUN = HERE.parent / "scripts" / "verify_run.py"
 
 LANGS = ["ja", "en"]
 
@@ -215,6 +217,129 @@ class SkillContract(unittest.TestCase):
         for lang in LANGS:
             think = at(lang, "skills", "think", "SKILL.md").read_text(encoding="utf-8")
             self.assertIn("find_wiki_rule.py", think, f"{lang}: think runs the finder")
+
+    def phase_6(self, lang: str) -> str:
+        doc = skill(lang)
+        return doc[doc.index("## Phase 6") :]
+
+    def test_phase_6_commits_each_element_of_commits(self) -> None:
+        """T-008 両ツリーの Phase 6 が commits の各要素をコミットする手順を持つ"""
+        commit_verb = {"ja": "コミット", "en": "commit"}
+        for lang in LANGS:
+            phase6 = self.phase_6(lang)
+            self.assertIn("commits", phase6, f"{lang}: Phase 6 names triage.py's commits field")
+            steps = [line for line in phase6.split("\n") if re.match(r"^\d+\. ", line)]
+            self.assertTrue(
+                any("commits" in step and commit_verb[lang] in step for step in steps),
+                f"{lang}: a step commits each element of commits",
+            )
+
+    def test_phase_6_places_pr_creation_right_after_the_first_commit(self) -> None:
+        """T-009 両ツリーの Phase 6 が PR 作成を 1 コミット目の直後に置く"""
+        first_commit = {"ja": "1 コミット目", "en": "first commit"}
+        second_commit = {"ja": "2 コミット目", "en": "second commit"}
+        for lang in LANGS:
+            phase6 = self.phase_6(lang)
+            self.assertIn(first_commit[lang], phase6, f"{lang}: Phase 6 names the first commit")
+            self.assertIn("gh pr create", phase6, f"{lang}: Phase 6 creates the PR")
+            start = phase6.index(first_commit[lang])
+            end = phase6.index("gh pr create")
+            self.assertLess(start, end, f"{lang}: PR creation follows the first commit")
+            between = phase6[start:end]
+            self.assertNotIn(
+                second_commit[lang],
+                between,
+                f"{lang}: no later commit sits between the first commit and PR creation",
+            )
+
+    def test_phase_6_runs_verify_run_before_pr_creation(self) -> None:
+        """T-010 両ツリーの Phase 6 が `verify_run.py` を PR 作成前に通す手順を持つ"""
+        for lang in LANGS:
+            phase6 = self.phase_6(lang)
+            self.assertIn("verify_run.py", phase6, f"{lang}: Phase 6 runs verify_run.py")
+            self.assertIn("gh pr create", phase6, f"{lang}: Phase 6 creates the PR")
+            self.assertLess(
+                phase6.index("verify_run.py"),
+                phase6.index("gh pr create"),
+                f"{lang}: verify_run.py runs before PR creation",
+            )
+
+    def test_triage_commits_length_fed_to_verify_run_is_ok_true_and_a_one_off_shift_is_false(
+        self,
+    ) -> None:
+        """T-011 `triage.py` が返す commits の要素数を `verify_run.py` へ渡すと ok が true になり、
+        1 本ずらすと false になる。この接続自体は U-001/U-002 が済ませているので、この境界テスト
+        単体は現状で通る"""
+        names = [f"item{i}" for i in range(7)]
+        patterns = [
+            {"name": n, "evidence": ["#1", "#2"], "existing": "candidate"} for n in names
+        ]
+        report = triage(patterns)
+        commits = report["commits"]
+        self.assertTrue(commits, "triage splits 7 qualifying patterns into 2+ commits")
+
+        def store(waiting: list[str]) -> str:
+            rows = "".join(f"- {n} #1 #2\n" for n in waiting)
+            return f"# candidates\n\n## 昇格待ち\n\n{rows}\n## 単発\n\n## 棄却\n"
+
+        env = {
+            **os.environ,
+            "GIT_AUTHOR_NAME": "scribe-test",
+            "GIT_AUTHOR_EMAIL": "scribe-test@example.com",
+            "GIT_COMMITTER_NAME": "scribe-test",
+            "GIT_COMMITTER_EMAIL": "scribe-test@example.com",
+        }
+
+        def git(repo: Path, *args: str) -> None:
+            _ = subprocess.run(
+                ["git", "-C", str(repo), *args],
+                check=True,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "worktree"
+            wiki = repo / "docs" / "wiki"
+            wiki.mkdir(parents=True)
+            _ = (wiki / "_candidates.md").write_text(store(names), encoding="utf-8")
+            git(repo, "init", "-q")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "chore: seed candidates")
+
+            remaining = list(names)
+            for commit_items in commits:
+                committed = [cast(str, item["name"]) for item in commit_items]
+                for n in committed:
+                    _ = (wiki / f"{n}.md").write_text(f"# {n}\n", encoding="utf-8")
+                remaining = [n for n in remaining if n not in committed]
+                _ = (wiki / "_candidates.md").write_text(store(remaining), encoding="utf-8")
+                git(repo, "add", "-A")
+                git(repo, "commit", "-q", "-m", f"docs(wiki): {', '.join(committed)} を追加/更新")
+
+            def verify(expected_commits: int) -> tuple[int, dict[str, object]]:
+                proc = subprocess.run(
+                    [
+                        sys.executable,
+                        str(VERIFY_RUN),
+                        str(repo),
+                        str(len(names)),
+                        str(expected_commits),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                return proc.returncode, cast(dict[str, object], json.loads(proc.stdout))
+
+            code, matched = verify(len(commits))
+            self.assertEqual(code, 0)
+            self.assertEqual(matched["ok"], True)
+
+            code, shifted = verify(len(commits) + 1)
+            self.assertEqual(code, 1)
+            self.assertEqual(shifted["ok"], False)
 
 
 class WikiPageFormat(unittest.TestCase):

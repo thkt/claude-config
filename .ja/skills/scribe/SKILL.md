@@ -11,14 +11,14 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 
 ## 不変条件
 
-| 条件          | 内容                                                                                                               |
-| ------------- | ------------------------------------------------------------------------------------------------------------------ |
-| PR 経由       | デフォルトブランチへ直接コミット / プッシュしない                                                                  |
-| 進捗の記録    | cursor は最後にマージされた scribe PR の mergedAt。research ファイルはその mergedAt と mtime を比べる              |
-| 閾値の所在    | ページにするか候補に置くかの判定は `scripts/triage.py` が持ち、この skill は判定しない                             |
-| 事実のみ      | PR / issue と research ファイルに書かれた事実、および現在のコードで確認できた事実のみ書く。推測で埋めない          |
-| research は引かない | `.claude/workspace/research/` のファイルパスを `docs/wiki/` 配下に書かない。workspace は追跡外で、wiki を読む人が辿れない |
-| worktree 隔離 | 編集 / commit は隔離 worktree 内で行い、ユーザーの作業ツリーを動かさない。worktree を作るのは Phase 6 なので、書き込む Phase は Phase 6 だけ |
+| 条件                | 内容                                                                                                                                         |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| PR 経由             | デフォルトブランチへ直接コミット / プッシュしない                                                                                            |
+| 進捗の記録          | cursor は最後にマージされた scribe PR の mergedAt。research ファイルはその mergedAt と mtime を比べる                                        |
+| 閾値の所在          | ページにするか候補に置くかの判定は `scripts/triage.py` が持ち、この skill は判定しない                                                       |
+| 事実のみ            | PR / issue と research ファイルに書かれた事実、および現在のコードで確認できた事実のみ書く。推測で埋めない                                    |
+| research は引かない | `.claude/workspace/research/` のファイルパスを `docs/wiki/` 配下に書かない。workspace は追跡外で、wiki を読む人が辿れない                    |
+| worktree 隔離       | 編集 / commit は隔離 worktree 内で行い、ユーザーの作業ツリーを動かさない。worktree を作るのは Phase 6 なので、書き込む Phase は Phase 6 だけ |
 
 ## Phase 1: 前提確認とオンボーディング
 
@@ -45,11 +45,11 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 6. その配列を `python3 ${CLAUDE_SKILL_DIR}/scripts/triage.py '<共通項の JSON 配列>' docs/wiki/_candidates.md` に渡す。script が `_candidates.md` の両方の節から候補行を読んで配列へ混ぜ、閾値 2 件と 1 回あたりのページ上限を当て、`pages` (新規/昇格/更新)、`candidates`、`deferred` (今回は見送り) に分ける。閾値と上限を自分で判定しない
 7. `docs/wiki/_candidates.md` を書き換える形を用意する。`candidates` は「単発」節へ、`deferred` は「昇格待ち」節へ置き、`pages` になった共通項の行は消す。行は `- <内容 1 行> <根拠>` の形にし、根拠は `#番号` と `(research)` をスペース区切りで並べる。既に行があれば根拠だけを足す。書き込みは Phase 6 の worktree 内で行う
 
-| フィールド | 値                                                                            |
-| ---------- | ------------------------------------------------------------------------------- |
+| フィールド | 値                                                                                                            |
+| ---------- | ------------------------------------------------------------------------------------------------------------- |
 | `name`     | 共通項の同一性を決めるキー。候補行から来たものは行の本文がそのまま入る。ページのファイル名は Phase 6 で決める |
-| `evidence` | 根拠の配列。PR/issue 由来は `#番号`、research 由来は `(research)`              |
-| `existing` | 既存ページにあれば `page`、`_candidates.md` にあれば `candidate`、無ければ `none` |
+| `evidence` | 根拠の配列。PR/issue 由来は `#番号`、research 由来は `(research)`                                             |
+| `existing` | 既存ページにあれば `page`、`_candidates.md` にあれば `candidate`、無ければ `none`                             |
 
 ## Phase 4: 最新コードとの突き合わせ
 
@@ -61,12 +61,12 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 4. 壊れていた参照は現行コードを読み直す。決める内容は下表による
 5. 落とした項目が `_candidates.md` に行を持つとき、その行を「棄却」節へ移し、次の行に落とした理由をインデントして書く。Phase 3 手順 7 が用意した削除より優先する
 
-| 確認                                                | 不成立のときに決める内容                             |
-| --------------------------------------------------- | ---------------------------------------------------- |
-| 規約 / 手順が現在の実装でも成立するか               | 落とす。既存ページの項目なら不成立と書き直す文面     |
-| 構造ページの記述が現在の実装と一致するか           | 現行コードに合わせて書き直す文面。落とさない         |
-| lint / hook / CI ですでに機械的に強制されていないか | 落とす                                               |
-| 参照するパス / コマンドが現存するか                 | 現行のパス / コマンドへの張り替え先                  |
+| 確認                                                | 不成立のときに決める内容                         |
+| --------------------------------------------------- | ------------------------------------------------ |
+| 規約 / 手順が現在の実装でも成立するか               | 落とす。既存ページの項目なら不成立と書き直す文面 |
+| 構造ページの記述が現在の実装と一致するか            | 現行コードに合わせて書き直す文面。落とさない     |
+| lint / hook / CI ですでに機械的に強制されていないか | 落とす                                           |
+| 参照するパス / コマンドが現存するか                 | 現行のパス / コマンドへの張り替え先              |
 
 ## Phase 5: 由来リンクの判定
 
@@ -76,11 +76,13 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 
 ## Phase 6: PR 作成
 
-扱うページは Phase 3 の `pages` に限り、`deferred` は PR 本文に残しとして明記する。参照修理と由来修理は上限の外なので、`pages` が 0 件でも実施する。候補への追記だけでも PR を作り、変更が何も無いときだけ作らない。
+扱うページは Phase 3 の `pages` に限り、`deferred` は PR 本文に残しとして明記する。参照修理と由来修理は上限の外なので、`pages` が 0 件でも実施する。候補への追記だけでも PR を作り、変更が何も無いときだけ作らない。triage.py が返す `commits` の要素ごとに 1 コミットとし、1 コミット目の直後に PR を作って以降は同じブランチへ push で足す。最後に `verify_run.py` を通し、失敗したらどの手順であっても worktree とローカルブランチを残さない。
 
 1. `git fetch origin <デフォルトブランチ>` の後、`origin/<デフォルトブランチ>` から隔離 worktree とブランチ `scribe/<yyyymmdd-HHMMSS>` を作る
 2. worktree 内で Phase 3-5 が決めた内容を書き込む。ページは ${CLAUDE_SKILL_DIR}/templates/page.md の骨格に従い、候補行は Phase 3 手順 7 の形で `_candidates.md` へ、参照修理と由来修理は Phase 4-5 が決めた張り替え先で書く
-3. メッセージ `docs(wiki): <共通項名, ...> を追加/更新` でコミットする
-4. push して `gh pr create --base <デフォルトブランチ>` を実行する。タイトル `[scribe] <共通項名, ...> を追加/更新`、ラベル scribe
-5. 本文には追加/昇格/更新したページ、候補への追記、参照修理/由来修理したページ、読んだ PR/issue の範囲と research の件数、検証で落とした項目、打ち切った残しを書く
-6. worktree を削除する
+3. `commits` の要素を先頭から順にコミットする。1 コミット目は自分が含むページに加え `_candidates.md` の更新と参照修理・由来修理も `git add` し、残りの要素は自分が含むページだけを `git add` する。要素ごとにメッセージ `docs(wiki): <要素内の共通項名, ...> を追加/更新` で 1 要素 1 コミットする
+4. 1 コミット目の直後に push して `gh pr create --base <デフォルトブランチ>` を実行する。タイトル `[scribe] <共通項名, ...> を追加/更新`、ラベル scribe。本文には追加/昇格/更新したページ、候補への追記、参照修理/由来修理したページ、読んだ PR/issue の範囲と research の件数、検証で落とした項目、打ち切った残しを書く
+5. 残りの要素は手順 3 でコミットするたびに同じブランチへ push で足す
+6. 全コミットを push し終えたら `python3 ${CLAUDE_SKILL_DIR}/scripts/verify_run.py <worktree> <start-count> <expected-commits>` を実行する。`<start-count>` は書き込み前の昇格待ち行数、`<expected-commits>` は `commits` の要素数とし、`ok` が true であることを確認する
+7. worktree を削除する
+8. いずれかの手順が失敗したら `git worktree remove --force <worktree>` と `git branch -D scribe/<yyyymmdd-HHMMSS>` を実行し、worktree とローカルブランチを残さない
