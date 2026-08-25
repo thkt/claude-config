@@ -83,8 +83,7 @@ def triage(patterns: list[Pattern]) -> Report:
         )
     ]
 
-    # Each commit takes PAGE_CAP pages; a run stops at COMMIT_CAP commits. Deferred now carries
-    # what the commit cap left behind, not what the page cap left behind.
+    # deferred now carries what the commit cap left behind, not what the page cap did.
     commits = [promoted[i : i + PAGE_CAP] for i in range(0, len(promoted), PAGE_CAP)][:COMMIT_CAP]
     pages = [page for commit in commits for page in commit]
 

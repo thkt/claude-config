@@ -203,8 +203,8 @@ class StoreMerge(unittest.TestCase):
 
 
 class Commits(unittest.TestCase):
-    """The unit moves from per-run to per-commit (#508-ish follow-up to #504): pages promoted in
-    one run now split into PAGE_CAP-sized commits, capped at COMMIT_CAP commits per run."""
+    """PAGE_CAP moved from per-run to per-commit, so a run's promoted pages split into
+    PAGE_CAP-sized commits and stop at COMMIT_CAP of them."""
 
     def test_t001_nine_promoted_rows_split_into_three_commits_of_three(self) -> None:
         """T-001 昇格待ちが 9 行のとき commits が 3 要素になり、各要素が 3 ページを持つ"""

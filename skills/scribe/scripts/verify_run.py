@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Usage: verify_run.py <worktree> <start-count> <expected-commits>
 
-Reads docs/wiki/_candidates.md and the branch's own commits in <worktree>, and checks that a
-scribe run did what Phase 6 claims: the number of `docs(wiki):` commits matches
-<expected-commits>, and the 昇格待ち rows left over match <start-count> minus the pages those
-commits added.
+Phase 6 runs this before pushing, so a run that committed fewer elements than triage handed it
+never reaches a PR.
 
 stdout: JSON { ok, mismatches: [{field, expected, actual}] }
 exit: 0 when ok, 1 otherwise
@@ -16,12 +14,10 @@ import sys
 from pathlib import Path
 from typing import TypedDict
 
-# Phase 6 always commits a run's pages with this fixed prefix (see skills/scribe/SKILL.md Phase 6
-# step 3). Counting commits carrying it is how a run's own commits are told apart from whatever
-# history the worktree's branch point already carries.
+# Counting by prefix, not by range: the worktree's branch point already carries history, and a
+# count from HEAD alone would fold it into this run's total.
 COMMIT_PREFIX = "docs(wiki):"
 
-# Files a page commit can add under docs/wiki that are not themselves a page.
 NOT_A_PAGE = {"_candidates.md", "README.md"}
 
 WIKI_DIR = "docs/wiki"
@@ -49,8 +45,6 @@ def _git(repo: Path, *args: str) -> str:
 
 
 def run_commits(repo: Path) -> list[str]:
-    """Hashes, oldest first, of commits reachable from HEAD whose subject carries the Phase 6
-    commit prefix."""
     out = _git(repo, "log", "--reverse", "--format=%H\x1f%s")
     hashes: list[str] = []
     for line in out.splitlines():
@@ -63,7 +57,6 @@ def run_commits(repo: Path) -> list[str]:
 
 
 def pages_added(repo: Path, commit_hash: str) -> int:
-    """How many docs/wiki/*.md page files this commit added."""
     out = _git(
         repo, "diff-tree", "--no-commit-id", "--name-status", "-r", commit_hash, "--", WIKI_DIR
     )
@@ -79,7 +72,6 @@ def pages_added(repo: Path, commit_hash: str) -> int:
 
 
 def remaining_rows(repo: Path) -> int:
-    """The 昇格待ち row count docs/wiki/_candidates.md carries right now."""
     path = repo / WIKI_DIR / "_candidates.md"
     if not path.is_file():
         return 0
