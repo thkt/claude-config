@@ -156,6 +156,11 @@ class TestScribePrompt(unittest.TestCase):
         stdout = self.run_hook(f"cd {directory}; git pull", interrupted=True)
         self.assertEqual(stdout, "")
 
+    def test_the_hook_file_is_executable(self) -> None:
+        """settings.json runs the path directly, so a hook without the bit never starts and
+        the miss shows up as nothing happening rather than as an error."""
+        self.assertTrue(os.access(HOOK, os.X_OK), f"{HOOK} に実行権限が無い")
+
     def test_settings_json_registers_hook_under_posttooluse_bash(self) -> None:
         """T-015 `settings.json` の `PostToolUse` の `Bash` matcher にこの hook が載っている
 
