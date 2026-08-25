@@ -97,8 +97,7 @@ def _run_verify(
 
 class VerifyRun(unittest.TestCase):
     def test_a_row_phase_4_moved_to_棄却_counts_against_the_remaining_rows(self) -> None:
-        """Phase 4 drops a row into 棄却 without a page, so counting pages alone reads the store
-        as one row short and refuses a run that did nothing wrong."""
+        """A run that dropped an item is not a run that went wrong."""
         with tempfile.TemporaryDirectory() as tmp:
             start = [f"item{i}" for i in range(5)]
             repo = _init_worktree(Path(tmp), start)
