@@ -41,8 +41,8 @@ def _candidates(waiting: list[str]) -> str:
 
 
 def _init_worktree(root: Path, start_waiting: list[str]) -> Path:
-    """A worktree at the state a run starts from. The baseline carries a `docs(wiki):` commit of
-    its own, because every branch point in this repository already holds earlier scribe runs."""
+    """The baseline carries a `docs(wiki):` commit of its own, because every branch point in
+    this repository already holds earlier scribe runs."""
     repo = root / "worktree"
     wiki = repo / "docs" / "wiki"
     wiki.mkdir(parents=True)
@@ -57,7 +57,6 @@ def _init_worktree(root: Path, start_waiting: list[str]) -> Path:
 
 
 def _base(repo: Path) -> str:
-    """The branch point a run starts from, which is the baseline's tip."""
     proc = subprocess.run(
         ["git", "-C", str(repo), "rev-parse", "HEAD"],
         check=True,

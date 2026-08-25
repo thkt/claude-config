@@ -14,8 +14,8 @@ import sys
 from pathlib import Path
 from typing import TypedDict
 
-# The prefix alone does not separate this run: every branch point in this repository already
-# carries earlier scribe commits wearing it, so the range is what draws the line.
+# Every branch point already carries earlier scribe commits wearing this prefix, so the prefix
+# alone does not separate one run from the history behind it.
 COMMIT_PREFIX = "docs(wiki):"
 
 NOT_A_PAGE = {"_candidates.md", "README.md"}
