@@ -6,26 +6,17 @@
 
 ## 昇格待ち
 
-- hook のコマンド判定は語の有無でなく shlex による位置の解析で行う #349 #350 #351
-- テンプレート/skeleton は validator が要求するフィールドを載せ、seam テストで固定する #330 #338 #356 #389
-- ローカルで通り CI や別の起動元で落ちる差は、環境が供給するものの違いから出る #354 #358 #381
 - 条件付き rules の paths が発火しないまま実装が先行し、規約と実態が乖離する #237 #240
 - plugin 配布は fix PR 後に marketplace.json の version bump を別 PR で行い、桁は fix=patch/呼び出し契約変更=minor #200 #203 #207
-- 成果物が gitignore 配下 (output-styles/、.claude/workspace/) の作業は PR にせず手動 close する #33 #37 #38 #42
 - 根本原因が Claude Code runtime 側のバグは repo 側 wontfix + upstream 起票 + guard 文言で close する #132 #133 #177
-- 横展開の要否は ugrep 全ツリー確認で確定してから scope を固定する #49 #50 #53 #57
 - reviewer 系の新設・再構築は Recall、FP baseline を計測して close する #24 #28 #43
 - 軽量バックログ複数件は 1 PR に束ねて複数 Closes する #44 #45
 - script/agent 出力は JSON stdout、error stderr、banner なしの機械可読形式にする #13 #54
-- audit report 命名は `<YYYY-MM-DD>-<HHMMSS>-<slug>.md`、slug は skill 名一致 #47 #51 #52 #53
 - 翻訳は情報系 prose のみ、file:line、severity、Closes 等の構造化フィールドは verbatim #175 #176
 - hook payload の形状は smoke test で実測確定し fixture 化してから gate を作る #150 #154
-- 挙動が実 run で観測できるまで PR は draft に据え置く #143 #159 #162 #163 #226
-- 計画/umbrella issue は実装 issue へ切り直して superseded close する #37 #42 #46 #136
 - session-start snapshot のため hook/agent 定義変更は同一 session で検証できず次 session 検証を明記する #162 #163 #209
 - PostToolUse:Agent は launch 時のみ発火し async 完了で 2 度目が来ない。completion 依存の gate は成立しない #150 #154 #160
 - 出力パスの変更前に、予測可能な名前で読む consumer の有無を再確認する #40 #52
-- 閾値・tier・スコープは印象でなく実測値を根拠に決める #219 #220 #224 #225
 - 前提が harness、upstream の更新で消滅した issue は not planned で close し、消滅した前提を close コメントに残す #136 #184 #210
 - 未検証の推測は inferred と明記する。実機検証で棄却されうる (research) #210
 - 公開リポの issue body は未信頼入力として BEGIN/END データフェンスで囲んで LLM に渡す #189 #389 #390
@@ -46,6 +37,9 @@
 - 契約の正準が実行側 script にあるとき、参照文書の「この要素は落とす」は必須フィールドの省略として実装され build を止める #468
 
 ## 棄却
+
+- audit report 命名は `<YYYY-MM-DD>-<HHMMSS>-<slug>.md`、slug は skill 名一致 #47 #51 #52 #53
+  根拠 #53 が揃えた対象の audit-adr-gaps skill は現存せず、レポート命名を持つのは adrift 1 本のみ。その slug は dr-drift で skill 名と一致しない
 
 - linter の false positive は緩和でなく理由コメント付き disable で抑止する #167 #168 #171 #176 #390
   根拠の #390 #167 #176 はいずれも linter の false positive への対処を述べておらず、規約の内容を確定できない
