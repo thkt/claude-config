@@ -40,7 +40,8 @@ def find(command: str) -> Path | None:
     directory = Path.cwd()
     for tokens in command_scan.commands(command):
         if tokens[0] == "cd" and len(tokens) > 1:
-            directory = directory / tokens[1]
+            # `cd ~/.claude` is what the shell expands, not a directory named `~`.
+            directory = directory / Path(tokens[1]).expanduser()
             continue
         if command_scan.starts_with(tokens, ["git", "pull"]):
             return directory

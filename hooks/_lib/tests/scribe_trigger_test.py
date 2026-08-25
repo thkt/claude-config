@@ -32,6 +32,11 @@ class TestFind(unittest.TestCase):
         """`git push` は取り込む動作ではないので何も返らない"""
         self.assertIsNone(scribe_trigger.find("git push origin main"))
 
+    def test_cd_チルダ_は_ホーム_へ展開される(self) -> None:
+        """`cd ~/.claude && git pull` は実際に打たれる形。展開しないと存在しない
+        `<cwd>/~/.claude` を指し、docs/wiki の判定が必ず外れる"""
+        self.assertEqual(scribe_trigger.find("cd ~/.claude && git pull"), Path.home() / ".claude")
+
     def test_cd_path_to_repo_git_pull_は_cd_先を対象にする(self) -> None:
         """`cd /path/to/repo; git pull` は cd 先を対象にする"""
         self.assertEqual(scribe_trigger.find("cd /path/to/repo; git pull"), Path("/path/to/repo"))
