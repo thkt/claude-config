@@ -24,10 +24,8 @@ PAGE_CAP = 3
 
 ACTION = {"page": "update", "candidate": "promote", "none": "create"}
 
-# The two headings Phase 3 sorts the store into. A row under either one is a carried-over pattern.
 STORE_SECTIONS = ("## 昇格待ち", "## 単発")
 
-# Evidence as a store line writes it: `#123` from a PR or issue, `(research)` from a research file.
 EVIDENCE = re.compile(r"#\d+|\(research\)")
 
 
@@ -82,10 +80,7 @@ def triage(patterns: list[Pattern]) -> dict[str, list[Triaged]]:
 
 
 def read_store(path: Path) -> list[Pattern]:
-    """The carried-over rows, or an empty list when the store does not exist yet.
-
-    A row's name is its line with the evidence cut off, which is the form Phase 3 writes.
-    """
+    """Phase 1 creates the store inside Phase 6's worktree, so the first run has none."""
     if not path.is_file():
         return []
     rows: list[Pattern] = []
@@ -105,8 +100,8 @@ def read_store(path: Path) -> list[Pattern]:
 
 
 def merge(store: list[Pattern], fresh: list[Pattern]) -> list[Pattern]:
-    """Store rows first, so a fresh pattern tying on evidence count does not displace one that
-    has already waited a run."""
+    """Fresh first would let a pattern tying on evidence count displace one that already waited
+    a run, since sorted is stable."""
     merged: list[Pattern] = []
     index: dict[str, int] = {}
     for p in [*store, *fresh]:

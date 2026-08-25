@@ -41,12 +41,13 @@ The patterns worth picking up are procedures that recur as a routine or a conven
 2. Read each in-scope PR/issue including comments via `gh pr view <number> --comments`/`gh issue view <number> --comments`
 3. Read each in-scope research file in full with Read. Do not narrow by section name
 4. Add what you read to the array, grouped per pattern. Add only the evidence when the pattern is in the array already. Design decisions and their history belong to `docs/decisions/` and are out of scope
-5. Pass that array to `python3 ${CLAUDE_SKILL_DIR}/scripts/triage.py '<JSON array of patterns>' docs/wiki/_candidates.md`. The script reads the candidate lines from both sections of `_candidates.md` into the array, then applies the two-evidence threshold and the per-run page cap, splitting the result into `pages` (create/promote/update), `candidates`, and `deferred` (left for a later run). Do not put the candidate lines into the array yourself, and do not judge the threshold or the cap either
-6. Prepare how `docs/wiki/_candidates.md` changes. `candidates` go under the 単発 section and `deferred` under the 昇格待ち section, and the line of a pattern that became a page is removed. A line takes the form `- <one-line content> <evidence>`, with `#number` and `(research)` listed space-separated. When the line is already there, add only the evidence. The write happens inside Phase 6's worktree
+5. Read `docs/wiki/_candidates.md`. When a pattern in the array points at the same thing as an existing candidate line, use that line's body verbatim as the `name`
+6. Pass that array to `python3 ${CLAUDE_SKILL_DIR}/scripts/triage.py '<JSON array of patterns>' docs/wiki/_candidates.md`. The script reads the candidate lines from both sections of `_candidates.md` into the array, then applies the two-evidence threshold and the per-run page cap, splitting the result into `pages` (create/promote/update), `candidates`, and `deferred` (left for a later run). Do not judge the threshold or the cap yourself
+7. Prepare how `docs/wiki/_candidates.md` changes. `candidates` go under the 単発 section and `deferred` under the 昇格待ち section, and the line of a pattern that became a page is removed. A line takes the form `- <one-line content> <evidence>`, with `#number` and `(research)` listed space-separated. When the line is already there, add only the evidence. The write happens inside Phase 6's worktree
 
 | Field      | Value                                                                                      |
 | ---------- | ------------------------------------------------------------------------------------------ |
-| `name`     | The pattern's name. It becomes the kebab-case file name once the pattern reaches a page    |
+| `name`     | The key deciding whether two patterns are the same. One from a candidate line carries that line's body verbatim |
 | `evidence` | The array of evidence. `#number` from a PR/issue, `(research)` from a research file        |
 | `existing` | `page` when it sits on an existing page, `candidate` when in `_candidates.md`, else `none` |
 
