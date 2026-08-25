@@ -134,9 +134,9 @@ def should_prompt(
     runner: GhRunner | None = None,
     gh: Path | None = None,
 ) -> bool:
-    """The cooldown comes before the gh calls because a pull runs far more often than a merge
-    lands: most pulls inside one window have nothing new to find, and asking GitHub each time
-    would spend a round trip to learn that."""
+    """Only a nudge stamps the cooldown, so a pull that finds nothing leaves the next pull free
+    to ask GitHub again. Stamping on every evaluation would buy those round trips at the cost of
+    swallowing a merge that lands minutes into the window."""
     if not (directory / "docs" / "wiki").is_dir():
         return False
     stamp_path = stamp or _default_stamp()
