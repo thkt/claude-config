@@ -35,18 +35,23 @@ def field(container: object, key: str) -> object:
     return mapping.get(key) if mapping is not None else None
 
 
-def notify(message: str) -> None:
-    """Report from a PostToolUse hook on both channels.
+def notify(message: str, *, hook_event_name: str = "PostToolUse") -> None:
+    """Report on both channels: systemMessage reaches the human and additionalContext reaches
+    the agent, so a hook that only picks one leaves the other side unable to act on what it
+    found.
 
-    systemMessage reaches the human and additionalContext reaches the agent, so a hook that
-    only picks one leaves the other side unable to act on what it found.
+    hook_event_name defaults to PostToolUse, this module's first caller. The docs hooks
+    reference requires hookSpecificOutput.hookEventName to name the event actually firing
+    (https://code.claude.com/docs/en/hooks#json-output, "It requires a hookEventName field set
+    to the event name."), so a hook of a different kind, such as a PreToolUse advisory, must
+    pass its own.
     """
     print(
         json.dumps(
             {
                 "systemMessage": message,
                 "hookSpecificOutput": {
-                    "hookEventName": "PostToolUse",
+                    "hookEventName": hook_event_name,
                     "additionalContext": message,
                 },
             },
