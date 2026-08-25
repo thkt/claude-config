@@ -133,9 +133,7 @@ class TestScribePrompt(unittest.TestCase):
         """T-012 促すと決まったとき `hookSpecificOutput.additionalContext` に `/scribe` を含む本文が出る"""
         directory = self.root / "target-prompt"
         (directory / "docs" / "wiki").mkdir(parents=True)
-        stdout = self.run_hook(
-            f"cd {directory}; gh pr merge 1 --merge", gh_responses=PROMPTING_GH_RESPONSES
-        )
+        stdout = self.run_hook(f"cd {directory}; git pull", gh_responses=PROMPTING_GH_RESPONSES)
         payload = json.loads(stdout)
         context = payload["hookSpecificOutput"]["additionalContext"]
         self.assertIn("/scribe", context)
@@ -146,7 +144,7 @@ class TestScribePrompt(unittest.TestCase):
         # ever calls gh (hooks/_lib/scribe_trigger.py's should_prompt docstring).
         directory = self.root / "target-no-wiki"
         directory.mkdir()
-        stdout = self.run_hook(f"cd {directory}; gh issue close 3")
+        stdout = self.run_hook(f"cd {directory}; git pull")
         self.assertEqual(stdout, "")
 
     def test_failed_tool_response_does_not_prompt(self) -> None:
@@ -155,7 +153,7 @@ class TestScribePrompt(unittest.TestCase):
         # this fixture is the tool_response check itself, not should_prompt's own gates.
         directory = self.root / "target-interrupted"
         (directory / "docs" / "wiki").mkdir(parents=True)
-        stdout = self.run_hook(f"cd {directory}; gh pr merge 1 --merge", interrupted=True)
+        stdout = self.run_hook(f"cd {directory}; git pull", interrupted=True)
         self.assertEqual(stdout, "")
 
     def test_settings_json_registers_hook_under_posttooluse_bash(self) -> None:

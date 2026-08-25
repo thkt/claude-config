@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PostToolUse hook: nudge toward /scribe when a gh pr merge / gh issue close just completed.
+"""PostToolUse hook: nudge toward /scribe when a git pull just brought down new work.
 
 The Bash tool_response carries no exit code
 (https://code.claude.com/docs/en/hooks#posttooluse-decision-control), so `interrupted` is the
@@ -30,17 +30,17 @@ def main() -> None:
     if not isinstance(command, str) or not command:
         return
     try:
-        trigger = scribe_trigger.find(command)
+        directory = scribe_trigger.find(command)
     except ValueError:
         # command_scan raises on a line shlex cannot close, and letting it out would report a
         # hook error on an ordinary command.
         return
-    if trigger is None:
+    if directory is None:
         return
-    if not scribe_trigger.should_prompt(trigger):
+    if not scribe_trigger.should_prompt(directory):
         return
     message = (
-        "scribe_prompt: 直近の merge / close で docs/wiki/ 未反映の入力が増えた。"
+        "scribe_prompt: 直近の pull で docs/wiki/ 未反映の入力が増えた。"
         "/scribe を実行して知見を抽出する。"
     )
     notify(message)
