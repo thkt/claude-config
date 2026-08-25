@@ -339,6 +339,59 @@ class WikiPageFormat(unittest.TestCase):
         section = re.split(r"\n## ", body[1], maxsplit=1)[0]
         return re.findall(r"docs/decisions/([0-9]{4}-[a-z0-9-]+\.md)", section)
 
+    def frontmatter_lines(self, page: Path) -> list[str]:
+        """The lines between the opening and closing `---` delimiters. Scanning to the closing
+        delimiter, rather than assuming a fixed position, is what lets `scenes` sit ahead of or
+        behind `globs` without either line falling out of view."""
+        lines = page.read_text(encoding="utf-8").split("\n")
+        for i, line in enumerate(lines[1:], start=1):
+            if line == "---":
+                return lines[1:i]
+        return []
+
+    def test_every_wiki_page_declares_a_scenes_key_in_its_frontmatter(self) -> None:
+        """T-005: A page with no scenes key cannot be told apart from one whose scene axis is
+        empty on purpose, and a --scene query would have no explicit signal to read."""
+        for page in self.pages():
+            lines = self.frontmatter_lines(page)
+            self.assertTrue(
+                any(line.startswith("scenes:") for line in lines),
+                f"{page.name}: scenes is declared",
+            )
+
+    def test_every_declared_scene_value_belongs_to_the_scenes_constant_imported_from_find_wiki_rule(
+        self,
+    ) -> None:
+        """T-006: A scene value that only one page spells stays undetected until a --scene query
+        for the misspelling silently returns nothing. Importing SCENES here, rather than
+        restating the list, is what keeps this test and find_wiki_rule.py's own validation from
+        drifting to two different closed sets."""
+        from find_wiki_rule import SCENES, read_scenes  # noqa: E402
+
+        for page in self.pages():
+            for scene in read_scenes(page):
+                self.assertIn(scene, SCENES, f"{page.name}: {scene!r} is not in SCENES")
+
+    def test_querying_this_repositorys_wiki_with_scene_issue_close_returns_exactly_the_five_issue_close_pages(
+        self,
+    ) -> None:
+        """T-007: The five pages whose content is the decision to close an issue a given way."""
+        from find_wiki_rule import find  # noqa: E402
+
+        report = find(str(ROOT / "docs" / "wiki"), "issue-close", [], scene="issue-close")
+        self.assertEqual(
+            sorted(cast(list[str], report["scenes"])),
+            sorted(
+                [
+                    "incident-driven-deferral.md",
+                    "premise-collapse-not-planned.md",
+                    "runtime-bug-wontfix.md",
+                    "umbrella-issue-recut.md",
+                    "untracked-output-manual-close.md",
+                ]
+            ),
+        )
+
     def test_every_rule_page_declares_the_files_it_bears_on(self) -> None:
         """A page with no globs key cannot be told apart from one that bears on no file, and the
         consumer would have to guess which it is."""
@@ -403,6 +456,15 @@ class WikiPageFormat(unittest.TestCase):
                 encoding="utf-8"
             )
             self.assertIn("globs:", template, f"{lang}: the skeleton carries globs")
+
+    def test_the_page_template_carries_the_scenes_frontmatter_line(self) -> None:
+        """T-008: A page written from a skeleton without it would carry no scenes at all,
+        the same gap `test_the_template_shows_the_globs_frontmatter` guards for globs."""
+        for lang in LANGS:
+            template = at(lang, "skills", "scribe", "templates", "page.md").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("scenes:", template, f"{lang}: the skeleton carries scenes")
 
 
 if __name__ == "__main__":

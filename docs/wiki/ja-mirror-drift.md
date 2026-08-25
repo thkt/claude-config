@@ -1,5 +1,6 @@
 ---
 globs: ["**/.ja/**/*"]
+scenes: []
 ---
 
 # ja-mirror 同期漏れ (drift)

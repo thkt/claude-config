@@ -1,5 +1,6 @@
 ---
 globs: ["**/skills/**/*"]
+scenes: []
 kind: structure
 ---
 

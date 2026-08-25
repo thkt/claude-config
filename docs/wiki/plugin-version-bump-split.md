@@ -1,5 +1,6 @@
 ---
 globs: ["**/.claude-plugin/marketplace.json"]
+scenes: []
 ---
 
 # plugin の version bump は fix と別の PR にする

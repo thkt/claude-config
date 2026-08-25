@@ -1,5 +1,6 @@
 ---
 globs: []
+scenes: []
 ---
 
 # skill/agent の retire・rename 手順

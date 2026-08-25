@@ -1,5 +1,6 @@
 ---
 globs: ["**/workflows/**/*.js"]
+scenes: []
 ---
 
 # テスト harness と本番の食い違い

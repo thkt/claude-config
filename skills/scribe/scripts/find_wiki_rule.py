@@ -20,6 +20,11 @@ from typing import TypedDict, cast
 # README indexes the directory and _candidates holds rows below the threshold. Neither is a rule.
 NOT_A_RULE = {"README.md", "_candidates.md"}
 
+# The closed set of values a page's frontmatter `scenes` may declare. Importing this in the
+# wiki-page contract test, rather than restating the list there, keeps that test and this
+# module from drifting to two different closed sets.
+SCENES = ["issue-close"]
+
 # The same subset workflows/code.js's globToRegExp accepts: `**/` crosses directories, `*` stops
 # at one. Keeping the two in step is what glob-parity guards; widening one side alone would make
 # a page reach an implementation the other side never routes to.

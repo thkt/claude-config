@@ -1,5 +1,6 @@
 ---
 globs: []
+scenes: ["issue-close"]
 ---
 
 # 計画 issue は実装 issue へ切り直して close する

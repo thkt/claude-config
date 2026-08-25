@@ -20,6 +20,10 @@ from typing import TypedDict, cast
 # README はディレクトリの索引、_candidates は閾値未満の行の置き場。どちらも決まりごとではない。
 NOT_A_RULE = {"README.md", "_candidates.md"}
 
+# ページの frontmatter `scenes` が宣言してよい値の閉集合。ここではなく wiki ページ契約テスト
+# 側でこの一覧を書き直すと、そちらとこのモジュールが別々の閉集合へ drift する。
+SCENES = ["issue-close"]
+
 # workflows/code.js の globToRegExp が受ける部分集合と同じ。`**/` はディレクトリを跨ぎ、`*` は
 # 1 階層で止まる。片側だけ広げると、ページが届く実装と routing の届く実装が食い違う。
 _SEGMENT = re.compile(r"(\*\*/|\*)")

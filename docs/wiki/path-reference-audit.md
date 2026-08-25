@@ -1,5 +1,6 @@
 ---
 globs: ["**/skills/**/*.md", "**/agents/**/*.md", "**/rules/**/*.md"]
+scenes: []
 ---
 
 # パス参照の棚卸し

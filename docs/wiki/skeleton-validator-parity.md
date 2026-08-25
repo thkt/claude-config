@@ -1,5 +1,6 @@
 ---
 globs: ["**/skills/**/templates/*.md", "**/skills/**/scripts/validate-*.py"]
+scenes: []
 ---
 
 # 骨格は validator が要求するフィールドを載せる

@@ -1,5 +1,6 @@
 ---
 globs: ["**/agents/reviewers/**", "**/agents/critics/**"]
+scenes: []
 ---
 
 # reviewer の新設と再構築は Recall と FP を測ってから閉じる
