@@ -59,6 +59,7 @@ Before creating, promoting, or updating a page, cross-check each pattern against
 2. Settle the globs of the implementation files the rule bears on. Only a rule that arrives during implementation carries globs; one confined to filing or PR practice carries an empty array
 3. Sweep the reference code of every page under `docs/wiki/*.md`, existing pages unrelated to this run's scope included. Mechanically verify that the file exists and that the symbol name greps within it
 4. For a broken reference, reread the current code. The table below settles what to write
+5. When a dropped item holds a line in `_candidates.md`, move that line into the 棄却 section and write the reason it was dropped on the next line, indented. This takes priority over the removal Phase 3 step 7 prepared
 
 | Check                                                         | What to settle when it fails                                                 |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
