@@ -5,7 +5,7 @@ Phase 6 runs this before pushing, so a run that committed fewer elements than tr
 never reaches a PR.
 
 stdout: JSON { ok, mismatches: [{field, expected, actual}] }
-exit: 0 when ok, 1 otherwise
+exit: 0 when ok, 1 when not, 2 when an argument is missing
 """
 
 import json
@@ -91,11 +91,23 @@ def _store(repo: Path) -> str:
     return path.read_text(encoding="utf-8") if path.is_file() else ""
 
 
+def _store_at(repo: Path, rev: str) -> str:
+    """Absent reads as no rows, the same as _store: SKILL.md Phase 1 step 3 writes the store
+    inside Phase 6's worktree when the repository has none, so the first run has nothing at the
+    branch point and letting git's exit 128 out would replace the verdict with a traceback."""
+    proc = subprocess.run(
+        ["git", "-C", str(repo), "show", f"{rev}:{WIKI_DIR}/_candidates.md"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return proc.stdout if proc.returncode == 0 else ""
+
+
 def rejected_added(repo: Path, base: str) -> int:
     """Phase 4 moves a dropped item's row into 棄却 without producing a page, so a row can leave
     昇格待ち with no page to account for it."""
-    before = _git(repo, "show", f"{base}:{WIKI_DIR}/_candidates.md")
-    return section_rows(_store(repo), REJECTED) - section_rows(before, REJECTED)
+    return section_rows(_store(repo), REJECTED) - section_rows(_store_at(repo, base), REJECTED)
 
 
 def verify(repo: Path, start_count: int, expected_commits: int, base: str, created: int) -> Report:
@@ -122,11 +134,17 @@ def verify(repo: Path, start_count: int, expected_commits: int, base: str, creat
 
 
 def main() -> None:
+    if len(sys.argv) < 6:
+        print(
+            "usage: verify_run.py <worktree> <start-count> <expected-commits> <base> <created>",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     repo = Path(sys.argv[1])
     start_count = int(sys.argv[2])
     expected_commits = int(sys.argv[3])
     base = sys.argv[4]
-    created = int(sys.argv[5]) if len(sys.argv) > 5 else 0
+    created = int(sys.argv[5])
     report = verify(repo, start_count, expected_commits, base, created)
     print(json.dumps(report, ensure_ascii=False))
     sys.exit(0 if report["ok"] else 1)

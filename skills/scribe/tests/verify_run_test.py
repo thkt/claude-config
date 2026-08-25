@@ -221,5 +221,58 @@ class VerifyRun(unittest.TestCase):
         self.assertEqual(row_mismatches[0]["actual"], 1)
 
 
+class FirstRun(unittest.TestCase):
+    """SKILL.md Phase 1 step 3 writes the store inside Phase 6's worktree when the repository
+    has none, so on that run the store is absent at the branch point and present at HEAD."""
+
+    def _repo_without_store(self, root: Path) -> Path:
+        repo = root / "worktree"
+        wiki = repo / "docs" / "wiki"
+        wiki.mkdir(parents=True)
+        _ = (wiki / "an-earlier-page.md").write_text("# earlier\n", encoding="utf-8")
+        _git(repo, "init", "-q")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "docs(wiki): an-earlier-page を追加/更新")
+        return repo
+
+    def test_store_が_base_に_無い_run_も_verdict_を_返す(self) -> None:
+        """Phase 4 は 棄却 へ動かす行が無いので、起こしたページ 1 枚と行 0 件で釣り合う"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo_without_store(Path(tmp))
+            base = _base(repo)
+            wiki = repo / "docs" / "wiki"
+            _ = (wiki / "brand-new.md").write_text("# brand-new\n", encoding="utf-8")
+            _ = (wiki / "_candidates.md").write_text(_candidates([]), encoding="utf-8")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): brand-new を追加/更新")
+
+            proc = _run_verify(repo, start_count=0, expected_commits=1, base=base, created=1)
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        report = cast(dict[str, object], json.loads(proc.stdout))
+        self.assertEqual(report["ok"], True)
+
+    def test_store_が_base_に_無くても_行数_のずれ_は_見逃さない(self) -> None:
+        """不在を 0 行として読むので、余った行はそのまま remaining の差として出る"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo_without_store(Path(tmp))
+            base = _base(repo)
+            wiki = repo / "docs" / "wiki"
+            _ = (wiki / "brand-new.md").write_text("# brand-new\n", encoding="utf-8")
+            _ = (wiki / "_candidates.md").write_text(_candidates(["leftover"]), encoding="utf-8")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): brand-new を追加/更新")
+
+            proc = _run_verify(repo, start_count=0, expected_commits=1, base=base, created=1)
+
+        self.assertEqual(proc.returncode, 1, proc.stdout)
+        report = cast(dict[str, object], json.loads(proc.stdout))
+        mismatches = cast(list[dict[str, object]], report["mismatches"])
+        row_mismatches = [m for m in mismatches if m.get("field") == "remaining"]
+        self.assertEqual(len(row_mismatches), 1)
+        self.assertEqual(row_mismatches[0]["expected"], 0)
+        self.assertEqual(row_mismatches[0]["actual"], 1)
+
+
 if __name__ == "__main__":
     _ = unittest.main(verbosity=2)
