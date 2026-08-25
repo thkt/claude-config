@@ -158,6 +158,14 @@ class WikiPageFormat(unittest.TestCase):
             if p.name not in {"README.md", "_candidates.md"}
         )
 
+    def origins(self, page: Path) -> list[str]:
+        """The DR filenames a page's 由来 section names, empty when it carries no section."""
+        body = page.read_text(encoding="utf-8").split("\n## 由来\n", 1)
+        if len(body) == 1:
+            return []
+        section = re.split(r"\n## ", body[1], maxsplit=1)[0]
+        return re.findall(r"docs/decisions/([0-9]{4}-[a-z0-9-]+\.md)", section)
+
     def test_every_rule_page_declares_the_files_it_bears_on(self) -> None:
         """A page with no globs key cannot be told apart from one that bears on no file, and the
         consumer would have to guess which it is."""
@@ -196,6 +204,23 @@ class WikiPageFormat(unittest.TestCase):
                     set(headings) & {"## 境界", "## 契約", "## 要求"},
                     set(),
                     f"{page.name}: a rule page carries none of the structure sections",
+                )
+
+    def test_no_page_traces_its_由来_to_a_retired_dr(self) -> None:
+        """A page whose 由来 names a retired DR states a shape the successor already replaced,
+        and think copies that shape into a plan verbatim."""
+        retired = ("superseded by", "deprecated", "rejected")
+        for page in self.pages():
+            for dr in self.origins(page):
+                path = ROOT / "docs" / "decisions" / dr
+                self.assertTrue(path.exists(), f"{page.name}: 由来 names {dr}, which is missing")
+                text = path.read_text(encoding="utf-8")
+                status = re.search(r'^status:\s*"?([^"\n]+)', text, re.M)
+                self.assertIsNotNone(status, f"{dr}: carries no status")
+                head = cast(re.Match[str], status).group(1)
+                self.assertFalse(
+                    head.startswith(retired),
+                    f"{page.name}: 由来 names {dr}, whose status is {head!r}",
                 )
 
     def test_the_template_shows_the_globs_frontmatter(self) -> None:

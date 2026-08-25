@@ -21,10 +21,13 @@ globs: ["**/.ja/**/*"]
 ## 参照コード
 
 - `rules/conventions/MIRROR.md` の Canonical side and mirroring (canonical の向きと、形の決め方)
-- `docs/decisions/0073-adopt-ja-as-canonical-source-for-mirror.md` (JA canonical と同一コミット規律を決めた DR)
 - `hooks/_lib/mirror_prose.py` の `check_english` と `is_english_target` (英語側に残った日本語 prose を拾う)
 - `hooks/edit/mirror_prose_guard.py` (編集のたびに 1 ファイルを見る PostToolUse hook)
 - `hooks/_lib/tests/mirror_prose_test.py` (hook が見ていない間に入った分をリポジトリ全域で走査する)
+
+## 由来
+
+- `docs/decisions/0073-adopt-ja-as-canonical-source-for-mirror.md`
 
 ## 根拠
 
