@@ -14,7 +14,7 @@
 - script/agent 出力は JSON stdout、error stderr、banner なしの機械可読形式にする #13 #54
 - 翻訳は情報系 prose のみ、file:line、severity、Closes 等の構造化フィールドは verbatim #175 #176
 - hook payload の形状は smoke test で実測確定し fixture 化してから gate を作る #150 #154
-- session-start snapshot のため hook/agent 定義変更は同一 session で検証できず次 session 検証を明記する #162 #163 #209
+- session-start snapshot のため hook/agent 定義変更は同一 session で検証できず次 session 検証を明記する #162 #163 #209 #505
 - PostToolUse:Agent は launch 時のみ発火し async 完了で 2 度目が来ない。completion 依存の gate は成立しない #150 #154 #160
 - 出力パスの変更前に、予測可能な名前で読む consumer の有無を再確認する #40 #52
 - 前提が harness、upstream の更新で消滅した issue は not planned で close し、消滅した前提を close コメントに残す #136 #184 #210
