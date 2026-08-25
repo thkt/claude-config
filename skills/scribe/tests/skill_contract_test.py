@@ -17,6 +17,7 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE.parent / "scripts"))
 
 from triage import triage  # noqa: E402
+from verify_run_test import _git, _run_verify  # noqa: E402
 
 TRIAGE = HERE.parent / "scripts" / "triage.py"
 
@@ -215,6 +216,99 @@ class SkillContract(unittest.TestCase):
         for lang in LANGS:
             think = at(lang, "skills", "think", "SKILL.md").read_text(encoding="utf-8")
             self.assertIn("find_wiki_rule.py", think, f"{lang}: think runs the finder")
+
+    def phase_6(self, lang: str) -> str:
+        doc = skill(lang)
+        return doc[doc.index("## Phase 6") :]
+
+    def phase_6_steps(self, lang: str) -> str:
+        """The numbered steps alone. The opening prose names the same commands in a different
+        order, so scanning the whole Phase reads an order the steps do not carry."""
+        lines = self.phase_6(lang).split("\n")
+        return "\n".join(line for line in lines if re.match(r"^\d+\. ", line))
+
+    def test_phase_6_commits_each_element_of_commits(self) -> None:
+        """T-008 両ツリーの Phase 6 が commits の各要素をコミットする手順を持つ"""
+        commit_verb = {"ja": "コミット", "en": "commit"}
+        for lang in LANGS:
+            phase6 = self.phase_6(lang)
+            self.assertIn("commits", phase6, f"{lang}: Phase 6 names triage.py's commits field")
+            steps = [line for line in phase6.split("\n") if re.match(r"^\d+\. ", line)]
+            self.assertTrue(
+                any("commits" in step and commit_verb[lang] in step for step in steps),
+                f"{lang}: a step commits each element of commits",
+            )
+
+    def test_phase_6_lists_per_commit_pages_in_the_pr_body(self) -> None:
+        """T-009 両ツリーの Phase 6 が、PR 本文へコミットごとに動かしたページを並べる手順を持つ"""
+        per_commit = {"ja": "コミットごと", "en": "per commit"}
+        for lang in LANGS:
+            steps = self.phase_6_steps(lang)
+            body_step = next(line for line in steps.split("\n") if "gh pr create" in line)
+            self.assertIn(
+                per_commit[lang],
+                body_step,
+                f"{lang}: the PR body groups the pages per commit",
+            )
+
+    def test_phase_6_runs_verify_run_before_pr_creation(self) -> None:
+        """T-010 両ツリーの Phase 6 が `verify_run.py` を PR 作成前に通す手順を持つ"""
+        for lang in LANGS:
+            steps = self.phase_6_steps(lang)
+            self.assertIn("verify_run.py", steps, f"{lang}: a numbered step runs verify_run.py")
+            self.assertIn("gh pr create", steps, f"{lang}: a numbered step creates the PR")
+            self.assertLess(
+                steps.index("verify_run.py"),
+                steps.index("gh pr create"),
+                f"{lang}: verify_run.py runs before PR creation",
+            )
+
+    def test_triage_commits_length_fed_to_verify_run_is_ok_true_and_a_one_off_shift_is_false(
+        self,
+    ) -> None:
+        """T-011 `triage.py` が返す commits の要素数を `verify_run.py` へ渡すと ok が true になり、
+        1 本ずらすと false になる。この接続自体は U-001/U-002 が済ませているので、この境界テスト
+        単体は現状で通る"""
+        names = [f"item{i}" for i in range(7)]
+        patterns = [{"name": n, "evidence": ["#1", "#2"], "existing": "candidate"} for n in names]
+        report = triage(patterns)
+        commits = report["commits"]
+        self.assertTrue(commits, "triage splits 7 qualifying patterns into 2+ commits")
+
+        def store(waiting: list[str]) -> str:
+            rows = "".join(f"- {n} #1 #2\n" for n in waiting)
+            return f"# candidates\n\n## 昇格待ち\n\n{rows}\n## 単発\n\n## 棄却\n"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "worktree"
+            wiki = repo / "docs" / "wiki"
+            wiki.mkdir(parents=True)
+            _ = (wiki / "_candidates.md").write_text(store(names), encoding="utf-8")
+            _git(repo, "init", "-q")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "chore: seed candidates")
+
+            remaining = list(names)
+            for commit_items in commits:
+                committed = [cast(str, item["name"]) for item in commit_items]
+                for n in committed:
+                    _ = (wiki / f"{n}.md").write_text(f"# {n}\n", encoding="utf-8")
+                remaining = [n for n in remaining if n not in committed]
+                _ = (wiki / "_candidates.md").write_text(store(remaining), encoding="utf-8")
+                _git(repo, "add", "-A")
+                _git(repo, "commit", "-q", "-m", f"docs(wiki): {', '.join(committed)} を追加/更新")
+
+            def verify(expected_commits: int) -> tuple[int, dict[str, object]]:
+                proc = _run_verify(repo, len(names), expected_commits)
+                return proc.returncode, cast(dict[str, object], json.loads(proc.stdout))
+
+            code, matched = verify(len(commits))
+            self.assertEqual(code, 0)
+            self.assertEqual(matched["ok"], True)
+
+            code, shifted = verify(len(commits) + 1)
+            self.assertEqual(code, 1)
+            self.assertEqual(shifted["ok"], False)
 
 
 class WikiPageFormat(unittest.TestCase):

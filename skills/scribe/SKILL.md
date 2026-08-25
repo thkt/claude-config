@@ -45,11 +45,11 @@ The patterns worth picking up are procedures that recur as a routine or a conven
 6. Pass that array to `python3 ${CLAUDE_SKILL_DIR}/scripts/triage.py '<JSON array of patterns>' docs/wiki/_candidates.md`. The script reads the candidate lines from both sections of `_candidates.md` into the array, then applies the two-evidence threshold and the per-run page cap, splitting the result into `pages` (create/promote/update), `candidates`, and `deferred` (left for a later run). Do not judge the threshold or the cap yourself
 7. Prepare how `docs/wiki/_candidates.md` changes. `candidates` go under the 単発 section and `deferred` under the 昇格待ち section, and the line of a pattern that became a page is removed. A line takes the form `- <one-line content> <evidence>`, with `#number` and `(research)` listed space-separated. When the line is already there, add only the evidence. The write happens inside Phase 6's worktree
 
-| Field      | Value                                                                                      |
-| ---------- | ------------------------------------------------------------------------------------------ |
+| Field      | Value                                                                                                           |
+| ---------- | --------------------------------------------------------------------------------------------------------------- |
 | `name`     | The key deciding whether two patterns are the same. One from a candidate line carries that line's body verbatim |
-| `evidence` | The array of evidence. `#number` from a PR/issue, `(research)` from a research file        |
-| `existing` | `page` when it sits on an existing page, `candidate` when in `_candidates.md`, else `none` |
+| `evidence` | The array of evidence. `#number` from a PR/issue, `(research)` from a research file                             |
+| `existing` | `page` when it sits on an existing page, `candidate` when in `_candidates.md`, else `none`                      |
 
 ## Phase 4: Cross-check against the latest code
 
@@ -80,7 +80,8 @@ Move only the pages in Phase 3's `pages`, and state `deferred` in the PR body as
 
 1. After `git fetch origin <default branch>`, create an isolated worktree and branch `scribe/<yyyymmdd-HHMMSS>` from `origin/<default branch>`
 2. Write what Phase 3-5 settled, inside the worktree. Pages follow the skeleton in ${CLAUDE_SKILL_DIR}/templates/page.md, candidate lines go to `_candidates.md` in Phase 3 step 7's form, and the reference and 由来 repairs use the relink targets Phase 4-5 settled
-3. Commit with the message `docs(wiki): <pattern names, ...> を追加/更新`
-4. Push and run `gh pr create --base <default branch>`. Title `[scribe] <pattern names, ...> を追加/更新`, label scribe
-5. In the body, write the added/promoted/updated pages, candidate additions, reference-repaired/由来-repaired pages, the range of PRs/issues read and the count of research files read, the items dropped by verification, and any leftovers
+3. Commit the elements of `commits` in order, one at a time. The first commit also `git add`s the `_candidates.md` update and the reference/由来 repairs alongside its own pages, and the rest of the elements `git add` only their own pages. Commit each element separately with the message `docs(wiki): <that element's pattern names, ...> を追加/更新`
+4. Run `python3 ${CLAUDE_SKILL_DIR}/scripts/verify_run.py <worktree> <start-count> <expected-commits>`. `<start-count>` is the 昇格待ち row count before the write, `<expected-commits>` is the element count of `commits`, and confirm `ok` comes back true. On false, do not go on to step 5
+5. Push and run `gh pr create --base <default branch>`. Title `[scribe] <pattern names, ...> を追加/更新`, label scribe. In the body, list the added/promoted/updated pages grouped per commit, then the candidate additions, the reference-repaired/由来-repaired pages, the range of PRs/issues read and the count of research files read, the items dropped by verification, and any leftovers
 6. Remove the worktree
+7. When step 4 returns false, leave the worktree in place so the write can be redone. When step 5 or later fails, run `git worktree remove --force <worktree>` and `git branch -D scribe/<yyyymmdd-HHMMSS>` so neither the worktree nor the local branch is left behind
