@@ -27,9 +27,9 @@
 - 走らなかった検査と 0 件だった検査は、数でなく status で分けて出す #390
 - 集計の分類から外れた値は静かに落ちるので、値の集合を validator で閉じる #389
 - 契約の正準が実行側 script にあるとき、参照文書の「この要素は落とす」は必須フィールドの省略として実装され build を止める #468
-
 - ツールの許可は settings.json、skill frontmatter、agent frontmatter の 3 面にあり、1 面だけ足しても届かない (research)
 - 追跡外ファイルを追跡下へ移すとき、未マージのまま別ブランチへ checkout すると実体が消える #521
+
 ## 棄却
 
 - audit report 命名は `<YYYY-MM-DD>-<HHMMSS>-<slug>.md`、slug は skill 名一致 #47 #51 #52 #53
