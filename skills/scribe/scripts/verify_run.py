@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Usage: verify_run.py <worktree> <start-count> <expected-commits>
+"""Usage: verify_run.py <worktree> <start-count> <expected-commits> <base>
 
 Phase 6 runs this before pushing, so a run that committed fewer elements than triage handed it
 never reaches a PR.
@@ -14,8 +14,8 @@ import sys
 from pathlib import Path
 from typing import TypedDict
 
-# Counting by prefix, not by range: the worktree's branch point already carries history, and a
-# count from HEAD alone would fold it into this run's total.
+# Every branch point already carries earlier scribe commits wearing this prefix, so the prefix
+# alone does not separate one run from the history behind it.
 COMMIT_PREFIX = "docs(wiki):"
 
 NOT_A_PAGE = {"_candidates.md", "README.md"}
@@ -44,8 +44,8 @@ def _git(repo: Path, *args: str) -> str:
     return proc.stdout
 
 
-def run_commits(repo: Path) -> list[str]:
-    out = _git(repo, "log", "--reverse", "--format=%H\x1f%s")
+def run_commits(repo: Path, base: str) -> list[str]:
+    out = _git(repo, "log", "--reverse", "--format=%H\x1f%s", f"{base}..HEAD")
     hashes: list[str] = []
     for line in out.splitlines():
         if not line:
@@ -86,8 +86,8 @@ def remaining_rows(repo: Path) -> int:
     return count
 
 
-def verify(repo: Path, start_count: int, expected_commits: int) -> Report:
-    commits = run_commits(repo)
+def verify(repo: Path, start_count: int, expected_commits: int, base: str) -> Report:
+    commits = run_commits(repo, base)
     actual_commits = len(commits)
     committed_pages = sum(pages_added(repo, c) for c in commits)
     expected_remaining = start_count - committed_pages
@@ -110,7 +110,8 @@ def main() -> None:
     repo = Path(sys.argv[1])
     start_count = int(sys.argv[2])
     expected_commits = int(sys.argv[3])
-    report = verify(repo, start_count, expected_commits)
+    base = sys.argv[4]
+    report = verify(repo, start_count, expected_commits, base)
     print(json.dumps(report, ensure_ascii=False))
     sys.exit(0 if report["ok"] else 1)
 

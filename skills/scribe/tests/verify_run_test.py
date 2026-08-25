@@ -41,9 +41,8 @@ def _candidates(waiting: list[str]) -> str:
 
 
 def _init_worktree(root: Path, start_waiting: list[str]) -> Path:
-    """A worktree at the state a run starts from: docs/wiki/_candidates.md seeded with the
-    昇格待ち rows the run begins with, committed as a baseline that is not itself a run commit.
-    """
+    """The baseline carries a `docs(wiki):` commit of its own, because every branch point in
+    this repository already holds earlier scribe runs."""
     repo = root / "worktree"
     wiki = repo / "docs" / "wiki"
     wiki.mkdir(parents=True)
@@ -51,7 +50,20 @@ def _init_worktree(root: Path, start_waiting: list[str]) -> Path:
     _git(repo, "init", "-q")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-q", "-m", "chore: seed candidates")
+    _ = (wiki / "an-earlier-page.md").write_text("# earlier\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "docs(wiki): an-earlier-page を追加/更新")
     return repo
+
+
+def _base(repo: Path) -> str:
+    proc = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return proc.stdout.strip()
 
 
 def _commit_pages(repo: Path, still_waiting: list[str], names: list[str]) -> list[str]:
@@ -71,10 +83,10 @@ def _commit_pages(repo: Path, still_waiting: list[str], names: list[str]) -> lis
 
 
 def _run_verify(
-    repo: Path, start_count: int, expected_commits: int
+    repo: Path, start_count: int, expected_commits: int, base: str
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, str(SCRIPT), str(repo), str(start_count), str(expected_commits)],
+        [sys.executable, str(SCRIPT), str(repo), str(start_count), str(expected_commits), base],
         capture_output=True,
         text=True,
         check=False,
@@ -89,10 +101,11 @@ class VerifyRun(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             start = [f"item{i}" for i in range(5)]
             repo = _init_worktree(Path(tmp), start)
+            base = _base(repo)
             left = _commit_pages(repo, start, ["item0", "item1", "item2"])
             _commit_pages(repo, left, ["item3", "item4"])
 
-            proc = _run_verify(repo, start_count=5, expected_commits=2)
+            proc = _run_verify(repo, start_count=5, expected_commits=2, base=base)
 
         self.assertEqual(proc.returncode, 0, proc.stderr)
         report = cast(dict[str, object], json.loads(proc.stdout))
@@ -107,12 +120,13 @@ class VerifyRun(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             start = [f"item{i}" for i in range(5)]
             repo = _init_worktree(Path(tmp), start)
+            base = _base(repo)
             left = _commit_pages(repo, start, ["item0", "item1", "item2"])
             _commit_pages(repo, left, ["item3", "item4"])
 
             # 2 commits actually ran, but the caller expected 3 (one short of what triage.py
             # planned) — the mismatch this scenario exists to catch.
-            proc = _run_verify(repo, start_count=5, expected_commits=3)
+            proc = _run_verify(repo, start_count=5, expected_commits=3, base=base)
 
         self.assertEqual(proc.returncode, 1, proc.stderr)
         report = cast(dict[str, object], json.loads(proc.stdout))
@@ -131,6 +145,7 @@ class VerifyRun(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             start = [f"item{i}" for i in range(5)]
             repo = _init_worktree(Path(tmp), start)
+            base = _base(repo)
             _commit_pages(repo, start, ["item0", "item1", "item2"])
 
             # Bug under test: this commit writes both item3 and item4 as pages, but its
@@ -143,7 +158,7 @@ class VerifyRun(unittest.TestCase):
             _git(repo, "commit", "-q", "-m", "docs(wiki): item3, item4 を追加/更新")
 
             # 2 commits ran, matching what was expected — only the row count is wrong here.
-            proc = _run_verify(repo, start_count=5, expected_commits=2)
+            proc = _run_verify(repo, start_count=5, expected_commits=2, base=base)
 
         self.assertEqual(proc.returncode, 1, proc.stderr)
         report = cast(dict[str, object], json.loads(proc.stdout))
