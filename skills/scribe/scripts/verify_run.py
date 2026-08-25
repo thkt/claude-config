@@ -105,8 +105,8 @@ def _store_at(repo: Path, rev: str) -> str:
 
 
 def rejected_added(repo: Path, base: str) -> int:
-    """Phase 4 moves a dropped item's row into 棄却 without producing a page, so a row can leave
-    昇格待ち with no page to account for it."""
+    """Phase 4 moves a dropped item's row into `棄却` without producing a page, so a row can
+    leave `昇格待ち` with no page to account for it."""
     return section_rows(_store(repo), REJECTED) - section_rows(_store_at(repo, base), REJECTED)
 
 
