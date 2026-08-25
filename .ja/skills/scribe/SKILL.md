@@ -38,16 +38,16 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 ## Phase 3: 抽出
 
 1. `docs/wiki/*.md` を読み、既存ページを把握する。`kind: structure` を持つページは共通項ではないので、名前が一致しても `existing: "none"` のままにする
-2. `docs/wiki/_candidates.md` の候補行を両方の節から全て読み、1 行ごとに `{name, evidence, existing: "candidate"}` として配列へ入れる。上限で持ち越した行が戻る経路はここだけ
-3. スコープの各 PR/issue を `gh pr view <番号> --comments`/`gh issue view <番号> --comments` で本文/コメントまで読む
-4. スコープの各 research ファイルを Read で全文読む。セクション名で絞らない
-5. 読んだ内容を共通項ごとにまとめ、配列へ足す。同じ共通項が配列にあれば根拠だけを足す。設計判断とその経緯は `docs/decisions/` の領分なので対象外
-6. その配列を `python3 ${CLAUDE_SKILL_DIR}/scripts/triage.py '<共通項の JSON 配列>'` に渡す。script が閾値 2 件と 1 回あたりのページ上限を当て、`pages` (新規/昇格/更新)、`candidates`、`deferred` (今回は見送り) に分ける。閾値と上限を自分で判定しない
+2. スコープの各 PR/issue を `gh pr view <番号> --comments`/`gh issue view <番号> --comments` で本文/コメントまで読む
+3. スコープの各 research ファイルを Read で全文読む。セクション名で絞らない
+4. 読んだ内容を共通項ごとにまとめ、配列へ足す。同じ共通項が配列にあれば根拠だけを足す。設計判断とその経緯は `docs/decisions/` の領分なので対象外
+5. `docs/wiki/_candidates.md` を読み、配列の共通項が既存の候補行と同じものを指すなら、その行の本文をそのまま `name` に使う
+6. その配列を `python3 ${CLAUDE_SKILL_DIR}/scripts/triage.py '<共通項の JSON 配列>' docs/wiki/_candidates.md` に渡す。script が `_candidates.md` の両方の節から候補行を読んで配列へ混ぜ、閾値 2 件と 1 回あたりのページ上限を当て、`pages` (新規/昇格/更新)、`candidates`、`deferred` (今回は見送り) に分ける。閾値と上限を自分で判定しない
 7. `docs/wiki/_candidates.md` を書き換える形を用意する。`candidates` は「単発」節へ、`deferred` は「昇格待ち」節へ置き、`pages` になった共通項の行は消す。行は `- <内容 1 行> <根拠>` の形にし、根拠は `#番号` と `(research)` をスペース区切りで並べる。既に行があれば根拠だけを足す。書き込みは Phase 6 の worktree 内で行う
 
 | フィールド | 値                                                                            |
 | ---------- | ------------------------------------------------------------------------------- |
-| `name`     | 共通項の名前。ページ化されると kebab-case のファイル名になる                  |
+| `name`     | 共通項の同一性を決めるキー。候補行から来たものは行の本文がそのまま入る。ページのファイル名は Phase 6 で決める |
 | `evidence` | 根拠の配列。PR/issue 由来は `#番号`、research 由来は `(research)`              |
 | `existing` | 既存ページにあれば `page`、`_candidates.md` にあれば `candidate`、無ければ `none` |
 

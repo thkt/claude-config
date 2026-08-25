@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""Usage: triage.py '<JSON array of patterns>'
+"""Usage: triage.py '<JSON array of patterns>' <candidates-file>
 
-Each element is {name, evidence: [str], existing: "page"|"candidate"|"none"}.
+Each element is {name, evidence: [str], existing: "page"|"candidate"|"none"}. The array carries
+what this run extracted; the candidate store is read here rather than passed in, so a run cannot
+leave the carried-over rows out of the ranking.
 
 stdout: JSON { pages, candidates, deferred }
-exit: 0, or 2 when the argument is missing
+exit: 0, or 2 when an argument is missing
 """
 
 import json
+import re
 import sys
+from pathlib import Path
 from typing import Literal, TypedDict, cast
 
 # A pattern with fewer than two pieces of evidence does not become a page. One piece cannot show
@@ -19,6 +23,10 @@ EVIDENCE_THRESHOLD = 2
 PAGE_CAP = 3
 
 ACTION = {"page": "update", "candidate": "promote", "none": "create"}
+
+STORE_SECTIONS = ("## 昇格待ち", "## 単発")
+
+EVIDENCE = re.compile(r"#\d+|\(research\)")
 
 
 class Pattern(TypedDict, total=False):
@@ -71,12 +79,50 @@ def triage(patterns: list[Pattern]) -> dict[str, list[Triaged]]:
     }
 
 
+def read_store(path: Path) -> list[Pattern]:
+    """Phase 1 creates the store inside Phase 6's worktree, so the first run has none."""
+    if not path.is_file():
+        return []
+    rows: list[Pattern] = []
+    inside = False
+    for line in path.read_text(encoding="utf-8").split("\n"):
+        if line.startswith("## "):
+            inside = any(line.startswith(s) for s in STORE_SECTIONS)
+            continue
+        if not inside or not line.startswith("- "):
+            continue
+        body = line[2:]
+        evidence = EVIDENCE.findall(body)
+        name = EVIDENCE.sub("", body).strip()
+        if name:
+            rows.append({"name": name, "evidence": evidence, "existing": "candidate"})
+    return rows
+
+
+def merge(store: list[Pattern], fresh: list[Pattern]) -> list[Pattern]:
+    """Fresh first would let a pattern tying on evidence count displace one that already waited
+    a run, since sorted is stable."""
+    merged: list[Pattern] = []
+    index: dict[str, int] = {}
+    for p in [*store, *fresh]:
+        name = p.get("name", "")
+        at = index.get(name)
+        if at is None:
+            index[name] = len(merged)
+            merged.append({**p, "evidence": list(p.get("evidence") or [])})
+            continue
+        seen = merged[at]["evidence"]
+        seen.extend(e for e in (p.get("evidence") or []) if e not in seen)
+    return merged
+
+
 def main() -> None:
-    if len(sys.argv) < 2:
-        print("usage: triage.py '<JSON array of patterns>'", file=sys.stderr)
+    if len(sys.argv) < 3:
+        print("usage: triage.py '<JSON array of patterns>' <candidates-file>", file=sys.stderr)
         sys.exit(2)
-    patterns = cast(list[Pattern], json.loads(sys.argv[1]))
-    print(json.dumps(triage(patterns), ensure_ascii=False))
+    fresh = cast(list[Pattern], json.loads(sys.argv[1]))
+    rows = merge(read_store(Path(sys.argv[2])), fresh)
+    print(json.dumps(triage(rows), ensure_ascii=False))
     sys.exit(0)
 
 
