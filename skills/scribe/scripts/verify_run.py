@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Usage: verify_run.py <worktree> <start-count> <expected-commits> <base>
+"""Usage: verify_run.py <worktree> <start-count> <expected-commits> <base> <created>
 
 Phase 6 runs this before pushing, so a run that committed fewer elements than triage handed it
 never reaches a PR.
@@ -98,11 +98,14 @@ def rejected_added(repo: Path, base: str) -> int:
     return section_rows(_store(repo), REJECTED) - section_rows(before, REJECTED)
 
 
-def verify(repo: Path, start_count: int, expected_commits: int, base: str) -> Report:
+def verify(repo: Path, start_count: int, expected_commits: int, base: str, created: int) -> Report:
     commits = run_commits(repo, base)
     actual_commits = len(commits)
     committed_pages = sum(pages_added(repo, c) for c in commits)
-    expected_remaining = start_count - committed_pages - rejected_added(repo, base)
+    # A created page never held a candidate row, so counting it against the store would read
+    # one row too many as gone.
+    promoted = committed_pages - created
+    expected_remaining = start_count - promoted - rejected_added(repo, base)
     actual_remaining = section_rows(_store(repo), WAITING)
 
     mismatches: list[Mismatch] = []
@@ -123,7 +126,8 @@ def main() -> None:
     start_count = int(sys.argv[2])
     expected_commits = int(sys.argv[3])
     base = sys.argv[4]
-    report = verify(repo, start_count, expected_commits, base)
+    created = int(sys.argv[5]) if len(sys.argv) > 5 else 0
+    report = verify(repo, start_count, expected_commits, base, created)
     print(json.dumps(report, ensure_ascii=False))
     sys.exit(0 if report["ok"] else 1)
 

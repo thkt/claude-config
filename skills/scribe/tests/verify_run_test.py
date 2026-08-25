@@ -85,10 +85,18 @@ def _commit_pages(repo: Path, still_waiting: list[str], names: list[str]) -> lis
 
 
 def _run_verify(
-    repo: Path, start_count: int, expected_commits: int, base: str
+    repo: Path, start_count: int, expected_commits: int, base: str, created: int = 0
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, str(SCRIPT), str(repo), str(start_count), str(expected_commits), base],
+        [
+            sys.executable,
+            str(SCRIPT),
+            str(repo),
+            str(start_count),
+            str(expected_commits),
+            base,
+            str(created),
+        ],
         capture_output=True,
         text=True,
         check=False,
@@ -96,6 +104,27 @@ def _run_verify(
 
 
 class VerifyRun(unittest.TestCase):
+    def test_新規作成のページは昇格待ちから行を減らさない(self) -> None:
+        """create は候補行を経ずにページになるので、ページ数だけ引くと 1 行余分に減った
+        ことにされ、正しく走った run が拒まれる"""
+        with tempfile.TemporaryDirectory() as tmp:
+            start = [f"item{i}" for i in range(5)]
+            repo = _init_worktree(Path(tmp), start)
+            base = _base(repo)
+            wiki = repo / "docs" / "wiki"
+            for n in ["item0", "item1", "brand-new"]:
+                _ = (wiki / f"{n}.md").write_text(f"# {n}\n", encoding="utf-8")
+            _ = (wiki / "_candidates.md").write_text(
+                _candidates(["item2", "item3", "item4"]), encoding="utf-8"
+            )
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): item0, item1, brand-new を追加/更新")
+
+            proc = _run_verify(repo, start_count=5, expected_commits=1, base=base, created=1)
+
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        self.assertEqual(json.loads(proc.stdout)["ok"], True)
+
     def test_a_row_phase_4_moved_to_棄却_counts_against_the_remaining_rows(self) -> None:
         """A run that dropped an item is not a run that went wrong."""
         with tempfile.TemporaryDirectory() as tmp:
