@@ -22,6 +22,9 @@ NOT_A_PAGE = {"_candidates.md", "README.md"}
 
 WIKI_DIR = "docs/wiki"
 
+WAITING = "## 昇格待ち"
+REJECTED = "## 棄却"
+
 
 class Mismatch(TypedDict):
     field: str
@@ -71,27 +74,36 @@ def pages_added(repo: Path, commit_hash: str) -> int:
     return count
 
 
-def remaining_rows(repo: Path) -> int:
-    path = repo / WIKI_DIR / "_candidates.md"
-    if not path.is_file():
-        return 0
+def section_rows(text: str, heading: str) -> int:
     inside = False
     count = 0
-    for line in path.read_text(encoding="utf-8").split("\n"):
+    for line in text.split("\n"):
         if line.startswith("## "):
-            inside = line.startswith("## 昇格待ち")
+            inside = line.startswith(heading)
             continue
         if inside and line.startswith("- "):
             count += 1
     return count
 
 
+def _store(repo: Path) -> str:
+    path = repo / WIKI_DIR / "_candidates.md"
+    return path.read_text(encoding="utf-8") if path.is_file() else ""
+
+
+def rejected_added(repo: Path, base: str) -> int:
+    """Phase 4 moves a dropped item's row into 棄却 without producing a page, so a row can leave
+    昇格待ち with no page to account for it."""
+    before = _git(repo, "show", f"{base}:{WIKI_DIR}/_candidates.md")
+    return section_rows(_store(repo), REJECTED) - section_rows(before, REJECTED)
+
+
 def verify(repo: Path, start_count: int, expected_commits: int, base: str) -> Report:
     commits = run_commits(repo, base)
     actual_commits = len(commits)
     committed_pages = sum(pages_added(repo, c) for c in commits)
-    expected_remaining = start_count - committed_pages
-    actual_remaining = remaining_rows(repo)
+    expected_remaining = start_count - committed_pages - rejected_added(repo, base)
+    actual_remaining = section_rows(_store(repo), WAITING)
 
     mismatches: list[Mismatch] = []
     if actual_commits != expected_commits:
