@@ -6,20 +6,12 @@
 
 ## 昇格待ち
 
-- 条件付き rules の paths が発火しないまま実装が先行し、規約と実態が乖離する #237 #240
-- plugin 配布は fix PR 後に marketplace.json の version bump を別 PR で行い、桁は fix=patch/呼び出し契約変更=minor #200 #203 #207
-- 根本原因が Claude Code runtime 側のバグは repo 側 wontfix + upstream 起票 + guard 文言で close する #132 #133 #177
-- reviewer 系の新設・再構築は Recall、FP baseline を計測して close する #24 #28 #43
 - 軽量バックログ複数件は 1 PR に束ねて複数 Closes する #44 #45
 - script/agent 出力は JSON stdout、error stderr、banner なしの機械可読形式にする #13 #54
 - 翻訳は情報系 prose のみ、file:line、severity、Closes 等の構造化フィールドは verbatim #175 #176
 - hook payload の形状は smoke test で実測確定し fixture 化してから gate を作る #150 #154
-- session-start snapshot のため hook/agent 定義変更は同一 session で検証できず次 session 検証を明記する #162 #163 #209 #505
-- PostToolUse:Agent は launch 時のみ発火し async 完了で 2 度目が来ない。completion 依存の gate は成立しない #150 #154 #160
 - 出力パスの変更前に、予測可能な名前で読む consumer の有無を再確認する #40 #52
-- 前提が harness、upstream の更新で消滅した issue は not planned で close し、消滅した前提を close コメントに残す #136 #184 #210
 - 未検証の推測は inferred と明記する。実機検証で棄却されうる (research) #210
-- 公開リポの issue body は未信頼入力として BEGIN/END データフェンスで囲んで LLM に渡す #189 #389 #390
 
 ## 単発
 
@@ -35,6 +27,8 @@
 - 走らなかった検査と 0 件だった検査は、数でなく status で分けて出す #390
 - 集計の分類から外れた値は静かに落ちるので、値の集合を validator で閉じる #389
 - 契約の正準が実行側 script にあるとき、参照文書の「この要素は落とす」は必須フィールドの省略として実装され build を止める #468
+- ツールの許可は settings.json、skill frontmatter、agent frontmatter の 3 面にあり、1 面だけ足しても届かない (research)
+- 追跡外ファイルを追跡下へ移すとき、未マージのまま別ブランチへ checkout すると実体が消える #521
 
 ## 棄却
 
