@@ -43,7 +43,7 @@ The patterns worth picking up are procedures that recur as a routine or a conven
 4. Add what you read to the array, grouped per pattern. Add only the evidence when the pattern is in the array already. Design decisions and their history belong to `docs/decisions/` and are out of scope
 5. Read `docs/wiki/_candidates.md`. When a pattern in the array points at the same thing as an existing candidate line, use that line's body verbatim as the `name`
 6. Pass that array to `python3 ${CLAUDE_SKILL_DIR}/scripts/triage.py '<JSON array of patterns>' docs/wiki/_candidates.md`. The script reads the candidate lines from both sections of `_candidates.md` into the array, then applies the two-evidence threshold and the per-run page cap, splitting the result into `pages` (create/promote/update), `candidates`, and `deferred` (left for a later run). Do not judge the threshold or the cap yourself
-7. Prepare how `docs/wiki/_candidates.md` changes. `candidates` go under the 単発 section and `deferred` under the 昇格待ち section, and the line of a pattern that became a page is removed. A line takes the form `- <one-line content> <evidence>`, with `#number` and `(research)` listed space-separated. When the line is already there, add only the evidence. The write happens inside Phase 6's worktree
+7. Prepare how `docs/wiki/_candidates.md` changes. `candidates` go under the 単発 section and `deferred` under the 昇格待ち section, and the line of a pattern that became a page is removed. Lines under the 棄却 section are left alone. A line takes the form `- <one-line content> <evidence>`, with `#number` and `(research)` listed space-separated. When the line is already there, add only the evidence. The write happens inside Phase 6's worktree
 
 | Field      | Value                                                                                      |
 | ---------- | ------------------------------------------------------------------------------------------ |
@@ -59,6 +59,7 @@ Before creating, promoting, or updating a page, cross-check each pattern against
 2. Settle the globs of the implementation files the rule bears on. Only a rule that arrives during implementation carries globs; one confined to filing or PR practice carries an empty array
 3. Sweep the reference code of every page under `docs/wiki/*.md`, existing pages unrelated to this run's scope included. Mechanically verify that the file exists and that the symbol name greps within it
 4. For a broken reference, reread the current code. The table below settles what to write
+5. When a dropped item holds a line in `_candidates.md`, move that line into the 棄却 section and write the reason it was dropped on the next line, indented. This takes priority over the removal Phase 3 step 7 prepared
 
 | Check                                                         | What to settle when it fails                                                 |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |

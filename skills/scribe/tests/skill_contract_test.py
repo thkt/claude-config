@@ -7,6 +7,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from typing import cast
@@ -26,7 +27,7 @@ CANDIDATES = ROOT / "docs" / "wiki" / "_candidates.md"
 
 # The two headings Phase 3 sorts into. Both stay even while empty, or a carried-over line has
 # nowhere to land.
-SECTIONS = ("## 昇格待ち", "## 単発")
+SECTIONS = ("## 昇格待ち", "## 単発", "## 棄却")
 
 
 def at(lang: str, *parts: str) -> Path:
@@ -35,6 +36,14 @@ def at(lang: str, *parts: str) -> Path:
 
 def skill(lang: str) -> str:
     return at(lang, "skills", "scribe", "SKILL.md").read_text(encoding="utf-8")
+
+
+def phase_4_steps_naming_the_store(lang: str) -> str:
+    """Every Phase 4 step naming the store, joined. Empty when no Phase 4 step names it."""
+    doc = skill(lang)
+    phase4 = doc[doc.index("## Phase 4") : doc.index("## Phase 5")]
+    steps = [line for line in phase4.split("\n") if re.match(r"^\d+\. ", line)]
+    return "\n".join(step for step in steps if "_candidates.md" in step)
 
 
 class SkillContract(unittest.TestCase):
@@ -87,6 +96,48 @@ class SkillContract(unittest.TestCase):
         report = triage([{"name": "carried", "evidence": ["#1", "#2"], "existing": "candidate"}])
         self.assertEqual(report["pages"][0]["action"], "promote")
 
+    def test_phase_4_moves_the_candidate_line_of_an_item_it_drops(self) -> None:
+        """An item Phase 4 drops still holds two or more pieces of evidence, and Phase 3 step 7
+        prepared the deletion of its candidate line, so the line vanishes without ever reaching a
+        page. Both trees have to carry the instruction, so deleting it from one tree alone fails
+        here."""
+        # Stems, so that 移す / 移し and move / moves read the same to the match.
+        moves = {"ja": "移", "en": "move"}
+        for lang in LANGS:
+            steps = phase_4_steps_naming_the_store(lang)
+            self.assertIn("_candidates.md", steps, f"{lang}: a Phase 4 step names the store")
+            self.assertIn(moves[lang], steps, f"{lang}: that step moves the line")
+
+    def test_the_line_phase_4_moves_carries_why_it_was_dropped(self) -> None:
+        """The 棄却 section is outside what read_store ranks, so a line landing there without a
+        reason leaves no way to tell a dropped item from one nobody looked at. Both trees have to
+        carry the instruction, so deleting it from one tree alone fails here."""
+        reason = {"ja": "理由", "en": "reason"}
+        for lang in LANGS:
+            steps = phase_4_steps_naming_the_store(lang)
+            self.assertIn("棄却", steps, f"{lang}: the step names the 棄却 section")
+            self.assertIn(reason[lang], steps, f"{lang}: the step writes the reason down")
+
+    def test_read_store_leaves_the_棄却_section_out_of_the_ranking(self) -> None:
+        """A dropped item ranked again takes a page slot every run and loses it every run, since
+        the reasons on record are all cases the code will not turn back into a fit."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "_candidates.md"
+            _ = path.write_text(
+                "# candidates\n\n## 昇格待ち\n\n- kept #1 #2\n\n"
+                "## 単発\n\n## 棄却\n\n- dropped #3 #4 #5\n  すでに lint が強制する\n",
+                encoding="utf-8",
+            )
+            proc = subprocess.run(
+                [sys.executable, str(TRIAGE), json.dumps([]), str(path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        self.assertEqual(proc.returncode, 0)
+        report = cast(dict[str, list[dict[str, object]]], json.loads(proc.stdout))
+        self.assertEqual([p["name"] for p in report["pages"]], ["kept"])
+
     def test_phase_2_goes_on_when_only_the_store_holds_anything(self) -> None:
         """With the scope empty and the store full, stopping at Phase 2 would strand every
         carried-over row."""
@@ -96,9 +147,10 @@ class SkillContract(unittest.TestCase):
             phase2 = doc[doc.index("## Phase 2") : doc.index("## Phase 3")]
             self.assertIn(runs_anyway[lang], phase2, f"{lang}: Phase 2 runs on the store alone")
 
-    def test_the_store_template_carries_both_sections_the_skill_writes_into(self) -> None:
-        """Phase 3 sorts candidates and deferred into two named sections. A skeleton missing one
-        leaves the run writing into a heading that is not there."""
+    def test_the_store_template_carries_every_section_the_skill_writes_into(self) -> None:
+        """Phase 3 sorts candidates and deferred into two named sections and Phase 4 moves what it
+        drops into a third. A skeleton missing one leaves the run writing into a heading that is
+        not there."""
         for lang in LANGS:
             template = at(lang, "skills", "scribe", "templates", "candidates.md").read_text(
                 encoding="utf-8"
