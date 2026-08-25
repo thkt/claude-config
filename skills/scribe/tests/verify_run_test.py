@@ -36,7 +36,8 @@ def _git(repo: Path, *args: str) -> None:
 
 def _candidates(waiting: list[str]) -> str:
     """A store file carrying only the 昇格待ち section verify_run.py has to count."""
-    return "\n".join(["# candidates", "", "## 昇格待ち", "", *(f"- {n}" for n in waiting), "", "## 単発", ""])
+    rows = [f"- {n}" for n in waiting]
+    return "\n".join(["# candidates", "", "## 昇格待ち", "", *rows, "", "## 単発", ""])
 
 
 def _init_worktree(root: Path, start_waiting: list[str]) -> Path:
@@ -69,7 +70,9 @@ def _commit_pages(repo: Path, still_waiting: list[str], names: list[str]) -> lis
     return left
 
 
-def _run_verify(repo: Path, start_count: int, expected_commits: int) -> subprocess.CompletedProcess[str]:
+def _run_verify(
+    repo: Path, start_count: int, expected_commits: int
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(SCRIPT), str(repo), str(start_count), str(expected_commits)],
         capture_output=True,
@@ -120,7 +123,7 @@ class VerifyRun(unittest.TestCase):
         self.assertEqual(commit_mismatches[0]["expected"], 3)
         self.assertEqual(commit_mismatches[0]["actual"], 2)
 
-    def test_remaining_rows_differ_from_the_computed_value_ok_false_exit_1_mismatches_names_the_row_diff(
+    def test_remaining_rows_off_the_computed_value_is_ok_false_exit_1_naming_the_row_diff(
         self,
     ) -> None:
         """T-007 残り行数が計算値と違うとき ok が false で exit 1 になり mismatches が

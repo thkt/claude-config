@@ -76,13 +76,12 @@ In addition, inspect the 由来 links of every page, including existing pages. V
 
 ## Phase 6: PR creation
 
-Move only the pages in Phase 3's `pages`, and state `deferred` in the PR body as what was left. Reference repairs and 由来 repairs sit outside the cap, so run them even when `pages` is empty. Create a PR even for candidate-only additions, and skip the PR only when there is no change at all. Commit one element of triage.py's `commits` at a time, create the PR right after the first commit, and add the rest by pushing to the same branch. Finally run `verify_run.py`, and on failure at any step leave neither the worktree nor the local branch behind.
+Move only the pages in Phase 3's `pages`, and state `deferred` in the PR body as what was left. Reference repairs and 由来 repairs sit outside the cap, so run them even when `pages` is empty. Create a PR even for candidate-only additions, and skip the PR only when there is no change at all. Commit one element of triage.py's `commits` at a time, and create the PR after every element is committed and `verify_run.py` has passed.
 
 1. After `git fetch origin <default branch>`, create an isolated worktree and branch `scribe/<yyyymmdd-HHMMSS>` from `origin/<default branch>`
 2. Write what Phase 3-5 settled, inside the worktree. Pages follow the skeleton in ${CLAUDE_SKILL_DIR}/templates/page.md, candidate lines go to `_candidates.md` in Phase 3 step 7's form, and the reference and 由来 repairs use the relink targets Phase 4-5 settled
 3. Commit the elements of `commits` in order, one at a time. The first commit also `git add`s the `_candidates.md` update and the reference/由来 repairs alongside its own pages, and the rest of the elements `git add` only their own pages. Commit each element separately with the message `docs(wiki): <that element's pattern names, ...> を追加/更新`
-4. Right after the first commit, push and run `gh pr create --base <default branch>`. Title `[scribe] <pattern names, ...> を追加/更新`, label scribe. In the body, write the added/promoted/updated pages, candidate additions, reference-repaired/由来-repaired pages, the range of PRs/issues read and the count of research files read, the items dropped by verification, and any leftovers
-5. Push the remaining elements to the same branch each time step 3 commits one
-6. Once every commit is pushed, run `python3 ${CLAUDE_SKILL_DIR}/scripts/verify_run.py <worktree> <start-count> <expected-commits>`. `<start-count>` is the 昇格待ち row count before the write, `<expected-commits>` is the element count of `commits`, and confirm `ok` comes back true
-7. Remove the worktree
-8. If any step fails, run `git worktree remove --force <worktree>` and `git branch -D scribe/<yyyymmdd-HHMMSS>` so neither the worktree nor the local branch is left behind
+4. Run `python3 ${CLAUDE_SKILL_DIR}/scripts/verify_run.py <worktree> <start-count> <expected-commits>`. `<start-count>` is the 昇格待ち row count before the write, `<expected-commits>` is the element count of `commits`, and confirm `ok` comes back true. On false, neither push nor create the PR
+5. Push and run `gh pr create --base <default branch>`. Title `[scribe] <pattern names, ...> を追加/更新`, label scribe. In the body, list the added/promoted/updated pages grouped per commit, then the candidate additions, the reference-repaired/由来-repaired pages, the range of PRs/issues read and the count of research files read, the items dropped by verification, and any leftovers
+6. Remove the worktree
+7. When step 4 returns false, leave the worktree in place so the write can be redone. When step 5 or later fails, run `git worktree remove --force <worktree>` and `git branch -D scribe/<yyyymmdd-HHMMSS>` so neither the worktree nor the local branch is left behind

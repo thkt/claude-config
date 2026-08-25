@@ -221,6 +221,12 @@ class SkillContract(unittest.TestCase):
         doc = skill(lang)
         return doc[doc.index("## Phase 6") :]
 
+    def phase_6_steps(self, lang: str) -> str:
+        """The numbered steps alone. The opening prose names the same commands in a different
+        order, so scanning the whole Phase reads an order the steps do not carry."""
+        lines = self.phase_6(lang).split("\n")
+        return "\n".join(line for line in lines if re.match(r"^\d+\. ", line))
+
     def test_phase_6_commits_each_element_of_commits(self) -> None:
         """T-008 両ツリーの Phase 6 が commits の各要素をコミットする手順を持つ"""
         commit_verb = {"ja": "コミット", "en": "commit"}
@@ -233,33 +239,27 @@ class SkillContract(unittest.TestCase):
                 f"{lang}: a step commits each element of commits",
             )
 
-    def test_phase_6_places_pr_creation_right_after_the_first_commit(self) -> None:
-        """T-009 両ツリーの Phase 6 が PR 作成を 1 コミット目の直後に置く"""
-        first_commit = {"ja": "1 コミット目", "en": "first commit"}
-        second_commit = {"ja": "2 コミット目", "en": "second commit"}
+    def test_phase_6_lists_per_commit_pages_in_the_pr_body(self) -> None:
+        """T-009 両ツリーの Phase 6 が、PR 本文へコミットごとに動かしたページを並べる手順を持つ"""
+        per_commit = {"ja": "コミットごと", "en": "per commit"}
         for lang in LANGS:
-            phase6 = self.phase_6(lang)
-            self.assertIn(first_commit[lang], phase6, f"{lang}: Phase 6 names the first commit")
-            self.assertIn("gh pr create", phase6, f"{lang}: Phase 6 creates the PR")
-            start = phase6.index(first_commit[lang])
-            end = phase6.index("gh pr create")
-            self.assertLess(start, end, f"{lang}: PR creation follows the first commit")
-            between = phase6[start:end]
-            self.assertNotIn(
-                second_commit[lang],
-                between,
-                f"{lang}: no later commit sits between the first commit and PR creation",
+            steps = self.phase_6_steps(lang)
+            body_step = next(line for line in steps.split("\n") if "gh pr create" in line)
+            self.assertIn(
+                per_commit[lang],
+                body_step,
+                f"{lang}: the PR body groups the pages per commit",
             )
 
     def test_phase_6_runs_verify_run_before_pr_creation(self) -> None:
         """T-010 両ツリーの Phase 6 が `verify_run.py` を PR 作成前に通す手順を持つ"""
         for lang in LANGS:
-            phase6 = self.phase_6(lang)
-            self.assertIn("verify_run.py", phase6, f"{lang}: Phase 6 runs verify_run.py")
-            self.assertIn("gh pr create", phase6, f"{lang}: Phase 6 creates the PR")
+            steps = self.phase_6_steps(lang)
+            self.assertIn("verify_run.py", steps, f"{lang}: a numbered step runs verify_run.py")
+            self.assertIn("gh pr create", steps, f"{lang}: a numbered step creates the PR")
             self.assertLess(
-                phase6.index("verify_run.py"),
-                phase6.index("gh pr create"),
+                steps.index("verify_run.py"),
+                steps.index("gh pr create"),
                 f"{lang}: verify_run.py runs before PR creation",
             )
 
@@ -270,9 +270,7 @@ class SkillContract(unittest.TestCase):
         1 本ずらすと false になる。この接続自体は U-001/U-002 が済ませているので、この境界テスト
         単体は現状で通る"""
         names = [f"item{i}" for i in range(7)]
-        patterns = [
-            {"name": n, "evidence": ["#1", "#2"], "existing": "candidate"} for n in names
-        ]
+        patterns = [{"name": n, "evidence": ["#1", "#2"], "existing": "candidate"} for n in names]
         report = triage(patterns)
         commits = report["commits"]
         self.assertTrue(commits, "triage splits 7 qualifying patterns into 2+ commits")

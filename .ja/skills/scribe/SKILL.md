@@ -76,13 +76,12 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 
 ## Phase 6: PR 作成
 
-扱うページは Phase 3 の `pages` に限り、`deferred` は PR 本文に残しとして明記する。参照修理と由来修理は上限の外なので、`pages` が 0 件でも実施する。候補への追記だけでも PR を作り、変更が何も無いときだけ作らない。triage.py が返す `commits` の要素ごとに 1 コミットとし、1 コミット目の直後に PR を作って以降は同じブランチへ push で足す。最後に `verify_run.py` を通し、失敗したらどの手順であっても worktree とローカルブランチを残さない。
+扱うページは Phase 3 の `pages` に限り、`deferred` は PR 本文に残しとして明記する。参照修理と由来修理は上限の外なので、`pages` が 0 件でも実施する。候補への追記だけでも PR を作り、変更が何も無いときだけ作らない。triage.py が返す `commits` の要素ごとに 1 コミットとし、全要素をコミットして `verify_run.py` を通してから PR を作る。
 
 1. `git fetch origin <デフォルトブランチ>` の後、`origin/<デフォルトブランチ>` から隔離 worktree とブランチ `scribe/<yyyymmdd-HHMMSS>` を作る
 2. worktree 内で Phase 3-5 が決めた内容を書き込む。ページは ${CLAUDE_SKILL_DIR}/templates/page.md の骨格に従い、候補行は Phase 3 手順 7 の形で `_candidates.md` へ、参照修理と由来修理は Phase 4-5 が決めた張り替え先で書く
 3. `commits` の要素を先頭から順にコミットする。1 コミット目は自分が含むページに加え `_candidates.md` の更新と参照修理・由来修理も `git add` し、残りの要素は自分が含むページだけを `git add` する。要素ごとにメッセージ `docs(wiki): <要素内の共通項名, ...> を追加/更新` で 1 要素 1 コミットする
-4. 1 コミット目の直後に push して `gh pr create --base <デフォルトブランチ>` を実行する。タイトル `[scribe] <共通項名, ...> を追加/更新`、ラベル scribe。本文には追加/昇格/更新したページ、候補への追記、参照修理/由来修理したページ、読んだ PR/issue の範囲と research の件数、検証で落とした項目、打ち切った残しを書く
-5. 残りの要素は手順 3 でコミットするたびに同じブランチへ push で足す
-6. 全コミットを push し終えたら `python3 ${CLAUDE_SKILL_DIR}/scripts/verify_run.py <worktree> <start-count> <expected-commits>` を実行する。`<start-count>` は書き込み前の昇格待ち行数、`<expected-commits>` は `commits` の要素数とし、`ok` が true であることを確認する
-7. worktree を削除する
-8. いずれかの手順が失敗したら `git worktree remove --force <worktree>` と `git branch -D scribe/<yyyymmdd-HHMMSS>` を実行し、worktree とローカルブランチを残さない
+4. `python3 ${CLAUDE_SKILL_DIR}/scripts/verify_run.py <worktree> <start-count> <expected-commits>` を実行する。`<start-count>` は書き込み前の昇格待ち行数、`<expected-commits>` は `commits` の要素数とし、`ok` が true であることを確認する。false のときは push せず PR も作らない
+5. push して `gh pr create --base <デフォルトブランチ>` を実行する。タイトル `[scribe] <共通項名, ...> を追加/更新`、ラベル scribe。本文には追加/昇格/更新したページをコミットごとに分けて並べ、候補への追記、参照修理/由来修理したページ、読んだ PR/issue の範囲と research の件数、検証で落とした項目、打ち切った残しを書く
+6. worktree を削除する
+7. 手順 4 が false を返したときは worktree を残す。書き込みをやり直せる状態にしておく。手順 5 以降が失敗したときは `git worktree remove --force <worktree>` と `git branch -D scribe/<yyyymmdd-HHMMSS>` を実行し、worktree とローカルブランチを残さない

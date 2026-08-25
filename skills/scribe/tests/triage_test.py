@@ -224,7 +224,8 @@ class Commits(unittest.TestCase):
     def test_t003_the_output_keys_include_commits_and_pages_equals_commits_flattened(
         self,
     ) -> None:
-        """T-003 出力のキーが commits を含めた 4 つになり、pages が commits を平らにしたものと一致する"""
+        """T-003 出力のキーが commits を含めた 4 つになり、pages が commits を
+        平らにしたものと一致する"""
         report = triage([pattern("a", 2), pattern("b", 1), pattern("c", 3)])
         self.assertEqual(sorted(report), ["candidates", "commits", "deferred", "pages"])
         flattened = [item for commit in report["commits"] for item in commit]
