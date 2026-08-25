@@ -5,7 +5,7 @@ Each element is {name, evidence: [str], existing: "page"|"candidate"|"none"}. Th
 what this run extracted; the candidate store is read here rather than passed in, so a run cannot
 leave the carried-over rows out of the ranking.
 
-stdout: JSON { pages, candidates, deferred }
+stdout: JSON { pages, candidates, deferred, commits }
 exit: 0, or 2 when an argument is missing
 """
 
@@ -19,8 +19,12 @@ from typing import Literal, TypedDict, cast
 # recurrence, and pageifying it turns a one-off circumstance into a convention.
 EVIDENCE_THRESHOLD = 2
 
-# How many pages one PR moves. Candidate appends and reference repairs are not counted.
+# How many pages one commit moves. Candidate appends and reference repairs are not counted.
 PAGE_CAP = 3
+
+# How many commits one run moves. Provisional: revisit once the first multi-commit PR's merge
+# time is measured.
+COMMIT_CAP = 3
 
 ACTION = {"page": "update", "candidate": "promote", "none": "create"}
 
@@ -46,6 +50,13 @@ class Triaged(Row):
     action: str
 
 
+class Report(TypedDict):
+    pages: list[Triaged]
+    candidates: list[Triaged]
+    deferred: list[Triaged]
+    commits: list[list[Triaged]]
+
+
 def _row(pattern: Pattern) -> Row:
     evidence = pattern.get("evidence") or []
     return {
@@ -56,7 +67,7 @@ def _row(pattern: Pattern) -> Row:
     }
 
 
-def triage(patterns: list[Pattern]) -> dict[str, list[Triaged]]:
+def triage(patterns: list[Pattern]) -> Report:
     rows = [_row(p) for p in patterns]
 
     candidates: list[Triaged] = [
@@ -72,10 +83,16 @@ def triage(patterns: list[Pattern]) -> dict[str, list[Triaged]]:
         )
     ]
 
+    # Each commit takes PAGE_CAP pages; a run stops at COMMIT_CAP commits. Deferred now carries
+    # what the commit cap left behind, not what the page cap left behind.
+    commits = [promoted[i : i + PAGE_CAP] for i in range(0, len(promoted), PAGE_CAP)][:COMMIT_CAP]
+    pages = [page for commit in commits for page in commit]
+
     return {
-        "pages": promoted[:PAGE_CAP],
+        "pages": pages,
         "candidates": candidates,
-        "deferred": promoted[PAGE_CAP:],
+        "deferred": promoted[len(pages) :],
+        "commits": commits,
     }
 
 

@@ -42,9 +42,24 @@ class Triage(unittest.TestCase):
         self.assertEqual([p["action"] for p in report["pages"]], ["update", "promote"])
 
     def test_pages_past_the_cap_are_deferred_thinnest_evidence_first(self) -> None:
-        """A run moving every qualifying pattern outgrows what one PR can be reviewed for."""
-        report = triage([pattern("a", 2), pattern("b", 5), pattern("c", 3), pattern("d", 4)])
-        self.assertEqual([p["name"] for p in report["pages"]], ["b", "d", "c"])
+        """A run moving every qualifying pattern outgrows what COMMIT_CAP commits can hold."""
+        patterns = [
+            pattern("a", 2),
+            pattern("b", 5),
+            pattern("c", 3),
+            pattern("d", 4),
+            pattern("e", 6),
+            pattern("f", 7),
+            pattern("g", 8),
+            pattern("h", 9),
+            pattern("i", 10),
+            pattern("j", 11),
+        ]
+        report = triage(patterns)
+        self.assertEqual(
+            [p["name"] for p in report["pages"]],
+            ["j", "i", "h", "g", "f", "e", "b", "d", "c"],
+        )
         self.assertEqual([p["name"] for p in report["deferred"]], ["a"])
 
     def test_candidates_do_not_consume_the_page_cap(self) -> None:
@@ -55,7 +70,7 @@ class Triage(unittest.TestCase):
         self.assertEqual(len(report["pages"]), 3)
         self.assertEqual(len(report["candidates"]), 2)
 
-    def test_the_cli_takes_the_array_and_the_store_and_returns_the_three_groups(self) -> None:
+    def test_the_cli_takes_the_array_and_the_store_and_returns_the_four_groups(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "_candidates.md"
             _ = path.write_text("# candidates\n\n## 昇格待ち\n\n## 単発\n", encoding="utf-8")
@@ -67,7 +82,7 @@ class Triage(unittest.TestCase):
             )
         self.assertEqual(proc.returncode, 0)
         report = cast(dict[str, object], json.loads(proc.stdout))
-        self.assertEqual(sorted(report), ["candidates", "deferred", "pages"])
+        self.assertEqual(sorted(report), ["candidates", "commits", "deferred", "pages"])
 
     def test_the_cli_stops_when_the_store_path_is_missing(self) -> None:
         """An optional path would put the carried-over rows back at the caller's discretion,
@@ -152,15 +167,18 @@ class StoreMerge(unittest.TestCase):
     def test_a_store_row_outranks_thinner_fresh_patterns_for_the_page_cap(self) -> None:
         """#504 itself: a row backed seven times sat in 昇格待ち for five runs while patterns
         backed four times took every page. The row reaches the cap only when the script reads
-        the store, since nothing else puts it back into the sort."""
+        the store, since nothing else puts it back into the sort. Nine same-count fresh patterns
+        push the total past COMMIT_CAP * PAGE_CAP so the cap still binds and the thinnest-tied
+        row (the last one in input order) is what gets deferred."""
+        fresh = [pattern(chr(ord("a") + i), 4) for i in range(9)]
         report = run_cli(
-            [pattern("a", 4), pattern("b", 4), pattern("c", 4)],
+            fresh,
             store([f"- {STARVED} #349 #350 #351 #352 #353 #354 (research)"], []),
         )
         self.assertEqual(report["pages"][0]["name"], STARVED)
         self.assertEqual(report["pages"][0]["count"], 7)
-        self.assertEqual(len(report["pages"]), 3)
-        self.assertEqual(len(report["deferred"]), 1)
+        self.assertEqual(len(report["pages"]), 9)
+        self.assertEqual([p["name"] for p in report["deferred"]], ["i"])
 
     def test_both_headings_are_read_and_the_evidence_is_cut_off_the_name(self) -> None:
         """A parse taking 昇格待ち alone drops the 単発 row that a second sighting would promote.
@@ -182,6 +200,41 @@ class StoreMerge(unittest.TestCase):
         self.assertEqual([r["name"] for r in rows], [SHARED])
         self.assertEqual(sorted(rows[0]["evidence"]), ["#167", "#168", "#390"])
         self.assertEqual(rows[0]["count"], 3)
+
+
+class Commits(unittest.TestCase):
+    """The unit moves from per-run to per-commit (#508-ish follow-up to #504): pages promoted in
+    one run now split into PAGE_CAP-sized commits, capped at COMMIT_CAP commits per run."""
+
+    def test_t001_nine_promoted_rows_split_into_three_commits_of_three(self) -> None:
+        """T-001 昇格待ちが 9 行のとき commits が 3 要素になり、各要素が 3 ページを持つ"""
+        patterns = [pattern(f"p{i}", 2) for i in range(9)]
+        report = triage(patterns)
+        self.assertEqual(len(report["commits"]), 3)
+        for commit in report["commits"]:
+            self.assertEqual(len(commit), 3)
+
+    def test_t002_ten_or_more_promoted_rows_cap_commits_at_three_and_defer_the_rest(self) -> None:
+        """T-002 昇格待ちが 10 行以上のとき commits が 3 要素で止まり、超過分が deferred に入る"""
+        patterns = [pattern(f"p{i}", 2) for i in range(10)]
+        report = triage(patterns)
+        self.assertEqual(len(report["commits"]), 3)
+        self.assertEqual([p["name"] for p in report["deferred"]], ["p9"])
+
+    def test_t003_the_output_keys_include_commits_and_pages_equals_commits_flattened(
+        self,
+    ) -> None:
+        """T-003 出力のキーが commits を含めた 4 つになり、pages が commits を平らにしたものと一致する"""
+        report = triage([pattern("a", 2), pattern("b", 1), pattern("c", 3)])
+        self.assertEqual(sorted(report), ["candidates", "commits", "deferred", "pages"])
+        flattened = [item for commit in report["commits"] for item in commit]
+        self.assertEqual(report["pages"], flattened)
+
+    def test_t004_two_promoted_rows_form_one_commit_of_two(self) -> None:
+        """T-004 昇格待ちが 2 行のとき commits が 1 要素になり、その要素が 2 ページを持つ"""
+        report = triage([pattern("a", 2), pattern("b", 2)])
+        self.assertEqual(len(report["commits"]), 1)
+        self.assertEqual(len(report["commits"][0]), 2)
 
 
 if __name__ == "__main__":
