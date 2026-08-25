@@ -8,11 +8,11 @@ AI 開発ハーネスの品質保証を LLM の裁量から決定論的な層へ
 
 - AI agent は、harness が定めた品質ゲート (hook / workflow / reviewer) を裁量で迂回できない状態で開発作業を行う
 - 人間 (thkt) は、AI 成果物の検証を hook と workflow の決定論的な層に委ね、自身は判断が必要な残余のみをレビューする
-- harness は、同じリポジトリへ向けた自動起動が複数の起動元から重なっても、成果物を壊さず、重複した提案を残さない
+- harness は、同じリポジトリへ向けた更新が複数の作業者から重なっても、成果物を壊さず、重複した提案を残さない
 
 ## Non-goals
 
-- チーム他メンバーへの配布や汎用 plugin marketplace 公開を第一目的にしない。個人 harness 最適化が主
+- harness 自体を他メンバーのマシンへ配布することは目指さない。汎用 plugin marketplace への公開もしない
 - Claude Code 本体機能の再実装はしない
 
 ## Constraints
