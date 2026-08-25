@@ -59,8 +59,7 @@ def _with_wiki(directory: Path) -> Path:
 
 class TestGhBinary(unittest.TestCase):
     def test_gh_が_path_に無い環境でも例外を投げない(self) -> None:
-        """hook は PATH を /usr/bin へ切り詰められて起動しうる。gh が見つからず例外が出ると
-        additionalContext も stamp も出ないまま、何も起きなかったのと同じ姿になる"""
+        """gh が見つからず例外が出ると、何も起きなかったのと見分けが付かない"""
         with tempfile.TemporaryDirectory() as tmp:
             directory = _with_wiki(Path(tmp))
             stamp = Path(tmp) / "cache" / "last"

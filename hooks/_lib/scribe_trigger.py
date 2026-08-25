@@ -21,8 +21,7 @@ import command_scan
 # A gh invocation, injected so tests hand over canned stdout instead of a live gh process.
 GhRunner = Callable[[Sequence[str]], str]
 
-# A hook starts with PATH cut down, so a bare `gh` raises FileNotFoundError before any gate
-# runs. The absolute path is the same shape hooks/lifecycle/recall_index.py takes for recall.
+# A hook starts with PATH cut down, so a bare `gh` raises FileNotFoundError before any gate runs.
 DEFAULT_GH = Path("/opt/homebrew/bin/gh")
 
 # The interval a stamp counts as recent, in the shape hooks/lifecycle/recall_index.py's
@@ -152,8 +151,8 @@ def should_prompt(
         if not _has_new_input(_last_scribe_merge(call), call):
             return False
     except (OSError, subprocess.CalledProcessError, json.JSONDecodeError):
-        # Auth expiry, a network drop, or a gh output shape this does not parse. None of them
-        # say a backlog is waiting, and a hook that raises here reports an error on a plain pull.
+        # None of these say a backlog is waiting, and raising here would report a hook error
+        # on a plain pull.
         return False
     _touch(stamp_path)
     return True

@@ -75,8 +75,7 @@ class TestScribePrompt(unittest.TestCase):
 
     def gh_stub_dir(self, responses: list[str]) -> tuple[Path, dict[str, str]]:
         """A directory holding the fake `gh`, plus the env vars it reads its queue from.
-        `CLAUDE_GH_BIN` points the hook at this stub: scribe_trigger resolves gh by absolute
-        path, since a hook starts with PATH cut down and a bare name would not resolve."""
+        `CLAUDE_GH_BIN` is the injection point, since scribe_trigger resolves gh by path."""
         stub_dir = self.root / "gh-stub"
         stub_dir.mkdir()
         stub = stub_dir / "gh"
