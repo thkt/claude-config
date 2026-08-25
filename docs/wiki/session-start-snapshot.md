@@ -1,5 +1,5 @@
 ---
-globs: ["**/hooks/**", "**/agents/**", "**/settings.json"]
+globs: ["**/hooks/**/*", "**/agents/**/*", "**/settings.json"]
 ---
 
 # hook と agent の定義変更は次の session で検証する

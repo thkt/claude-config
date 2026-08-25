@@ -1,5 +1,5 @@
 ---
-globs: ["**/hooks/**"]
+globs: ["**/hooks/**/*"]
 ---
 
 # PostToolUse:Agent は launch 時にしか発火しない
