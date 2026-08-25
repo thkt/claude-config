@@ -159,7 +159,13 @@ class TestScribePrompt(unittest.TestCase):
         self.assertEqual(stdout, "")
 
     def test_settings_json_registers_hook_under_posttooluse_bash(self) -> None:
-        """T-015 `settings.json` の `PostToolUse` の `Bash` matcher にこの hook が載っている"""
+        """T-015 `settings.json` の `PostToolUse` の `Bash` matcher にこの hook が載っている
+
+        `.gitignore` が `/settings.json` を持つので CI のチェックアウトには無い。配線が
+        効くのは各自の手元だけなので、そこでだけ検査する。
+        """
+        if not SETTINGS.is_file():
+            self.skipTest("settings.json は追跡外で、このチェックアウトには無い")
         settings = json.loads(SETTINGS.read_text(encoding="utf-8"))
         bash_entries = [
             entry for entry in settings["hooks"]["PostToolUse"] if entry.get("matcher") == "Bash"
