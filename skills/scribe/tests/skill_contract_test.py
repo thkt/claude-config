@@ -69,9 +69,7 @@ class SkillContract(unittest.TestCase):
         for lang in LANGS:
             doc = skill(lang)
             phase3 = doc[doc.index("## Phase 3") : doc.index("## Phase 4")]
-            self.assertIn(
-                "triage.py '<", phase3, f"{lang}: Phase 3 names the triage call"
-            )
+            self.assertIn("triage.py '<", phase3, f"{lang}: Phase 3 names the triage call")
             call = phase3[phase3.index("triage.py '<") :]
             call = call[: call.index("`")]
             self.assertIn(
