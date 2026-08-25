@@ -17,14 +17,13 @@ it would point the user at work that never happened.
 # `X | None` at import time. Deferred annotations keep this module loadable there.
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
 
 import scribe_trigger
-from hook_payload import field, parse
+from hook_payload import field, notify, parse
 
 
 def _tool_response_failed(payload: dict[str, object]) -> bool:
@@ -38,7 +37,12 @@ def main() -> None:
     command = field(field(payload, "tool_input"), "command")
     if not isinstance(command, str) or not command:
         return
-    trigger = scribe_trigger.find(command)
+    try:
+        trigger = scribe_trigger.find(command)
+    except ValueError:
+        # command_scan raises on a line shlex cannot close. A hook that lets it out exits 1
+        # with a traceback, which Claude Code reports as a hook error on an ordinary command.
+        return
     if trigger is None:
         return
     if not scribe_trigger.should_prompt(trigger):
@@ -47,18 +51,7 @@ def main() -> None:
         "scribe_prompt: 直近の merge / close で docs/wiki/ 未反映の入力が増えた。"
         "/scribe を実行して知見を抽出する。"
     )
-    print(
-        json.dumps(
-            {
-                "systemMessage": message,
-                "hookSpecificOutput": {
-                    "hookEventName": "PostToolUse",
-                    "additionalContext": message,
-                },
-            },
-            ensure_ascii=False,
-        )
-    )
+    notify(message)
 
 
 if __name__ == "__main__":

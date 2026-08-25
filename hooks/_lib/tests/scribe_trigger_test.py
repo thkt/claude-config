@@ -43,12 +43,10 @@ class TestFind(unittest.TestCase):
         assert trigger is not None
         self.assertEqual(trigger.directory, Path("/path/to/repo"))
 
-    def test_gh_issue_close_2_repo_owner_name_は_repo_の値を対象にする(self) -> None:
-        """`gh issue close 2 --repo owner/name` は `--repo` の値を対象にする"""
-        trigger = scribe_trigger.find("gh issue close 2 --repo owner/name")
-        assert trigger is not None
-        self.assertEqual(trigger.kind, "issue")
-        self.assertEqual(trigger.directory, Path("owner/name"))
+    def test_repo_フラグ付きのトリガーは対象外になる(self) -> None:
+        """`--repo owner/name` はこのセッションが作業するリポジトリを指さないので対象外になる"""
+        self.assertIsNone(scribe_trigger.find("gh issue close 2 --repo owner/name"))
+        self.assertIsNone(scribe_trigger.find("gh pr merge 1 --repo owner/name --merge"))
 
 
 class _QueueRunner:
@@ -62,7 +60,7 @@ class _QueueRunner:
     def __init__(self, responses: list[str]) -> None:
         self._responses = list(responses)
 
-    def __call__(self, args: Sequence[str]) -> str:
+    def __call__(self, args: Sequence[str]) -> str:  # noqa: ARG002
         return self._responses.pop(0)
 
 
@@ -89,13 +87,22 @@ class TestShouldPrompt(unittest.TestCase):
             self.assertFalse(scribe_trigger.should_prompt(trigger, stamp=stamp, runner=runner))
 
     def test_cursor_以降の入力が_0_件のとき促さない(self) -> None:
-        """cursor 以降の入力が 0 件のとき促さない"""
+        """両方の kind が 0 件のとき促さない。片方だけ見て止まると、もう片方に溜まった入力を落とす"""
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp)
             trigger = _trigger_with_wiki(directory)
             stamp = directory / "cache" / "claude-scribe_trigger.last"
-            runner = _QueueRunner(["[]", "2026-01-01T00:00:00Z", "[]"])
+            runner = _QueueRunner(["[]", "2026-01-01T00:00:00Z", "[]", "[]"])
             self.assertFalse(scribe_trigger.should_prompt(trigger, stamp=stamp, runner=runner))
+
+    def test_トリガーと違う_kind_に入力があれば促す(self) -> None:
+        """merge が契機でも、cursor 以降に closed issue が 1 件でもあれば入力はある"""
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            trigger = _trigger_with_wiki(directory)
+            stamp = directory / "cache" / "claude-scribe_trigger.last"
+            runner = _QueueRunner(["[]", "2026-01-01T00:00:00Z", "[]", '[{"number": 1}]'])
+            self.assertTrue(scribe_trigger.should_prompt(trigger, stamp=stamp, runner=runner))
 
     def test_stamp_が_cooldown_内にあるとき促さない(self) -> None:
         """stamp が cooldown 内にあるとき促さない"""

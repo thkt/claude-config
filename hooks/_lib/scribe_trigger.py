@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 import time
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -44,9 +45,10 @@ def find(command: str) -> Trigger | None:
     """The scribe trigger a command line runs, or None when it runs none.
 
     `directory` follows every cd ahead of the trigger, since `cd a && cd b` lands in a/b and
-    the repository scribe should run in is the one the trigger command runs in. A `--repo` on
-    the trigger itself overrides that: gh resolves `--repo owner/name` regardless of cwd, so
-    the trigger command's own flag outranks any cd that came before it.
+    the repository scribe should run in is the one the trigger command runs in.
+
+    A `--repo owner/name` names a repository other than the one this session works in, so its
+    backlog is not what a nudge here would send anyone to. Such a trigger returns None.
     """
     directory = Path.cwd()
     for tokens in command_scan.commands(command):
@@ -55,8 +57,9 @@ def find(command: str) -> Trigger | None:
             continue
         for kind, prefix in CLOSERS:
             if command_scan.starts_with(tokens, prefix):
-                repo = command_scan.flag_value(tokens, "--repo")
-                return Trigger(kind, Path(repo) if repo else directory)
+                if command_scan.flag_value(tokens, "--repo"):
+                    return None
+                return Trigger(kind, directory)
     return None
 
 
@@ -92,11 +95,13 @@ def _recently_stamped(stamp: Path) -> bool:
 
 
 def _touch(stamp: Path) -> None:
+    """A stamp that fails to write silently turns the cooldown off, which is the shape DR-0097
+    was removed for. Report it instead."""
     try:
         stamp.parent.mkdir(parents=True, exist_ok=True)
         stamp.touch()
-    except OSError:
-        pass
+    except OSError as exc:
+        print(f"scribe_trigger: cooldown stamp not written ({exc})", file=sys.stderr)
 
 
 def _unmerged_scribe_pr_exists(call: GhRunner) -> bool:
@@ -127,20 +132,25 @@ def _last_scribe_merge(call: GhRunner) -> str:
     ).strip()
 
 
-def _new_input_count(trigger: Trigger, cursor: str, call: GhRunner) -> int:
-    """skills/scribe/SKILL.md Phase 2 steps 2-3, narrowed to the trigger's own kind: the hook
-    fires once per completed `gh pr merge`/`gh issue close`, so checking only that kind's
-    backlog keeps this to the one gh call cooldown gating can afford. The kind this trigger did
-    not touch gets picked up the next time a command of that kind fires.
+def _has_new_input(trigger: Trigger, cursor: str, call: GhRunner) -> bool:
+    """skills/scribe/SKILL.md Phase 2 steps 2-3. Both kinds count toward the backlog, so a
+    merge that lands while three issues sit unread still has input waiting.
+
+    The trigger's own kind goes first and returns on the first hit, which spends one gh call
+    on the common case rather than two.
     """
-    if trigger.kind == "pr":
-        search = f"-label:scribe merged:>{cursor}" if cursor else "-label:scribe"
-        args = ["pr", "list", "--state", "merged", "--search", search, "--json", "number"]
-    else:
-        args = ["issue", "list", "--state", "closed", "--json", "number"]
-        if cursor:
-            args += ["--search", f"closed:>{cursor}"]
-    return len(json.loads(call(args)))
+    order: tuple[Kind, ...] = ("pr", "issue") if trigger.kind == "pr" else ("issue", "pr")
+    for kind in order:
+        if kind == "pr":
+            search = f"-label:scribe merged:>{cursor}" if cursor else "-label:scribe"
+            args = ["pr", "list", "--state", "merged", "--search", search, "--json", "number"]
+        else:
+            args = ["issue", "list", "--state", "closed", "--json", "number"]
+            if cursor:
+                args += ["--search", f"closed:>{cursor}"]
+        if len(json.loads(call(args))) >= 1:
+            return True
+    return False
 
 
 def should_prompt(
@@ -164,7 +174,7 @@ def should_prompt(
     if _unmerged_scribe_pr_exists(call):
         return False
     cursor = _last_scribe_merge(call)
-    if _new_input_count(trigger, cursor, call) < 1:
+    if not _has_new_input(trigger, cursor, call):
         return False
     stamp_path = stamp or _default_stamp()
     if _recently_stamped(stamp_path):

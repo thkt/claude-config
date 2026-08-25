@@ -35,6 +35,26 @@ def field(container: object, key: str) -> object:
     return mapping.get(key) if mapping is not None else None
 
 
+def notify(message: str) -> None:
+    """Report from a PostToolUse hook on both channels.
+
+    systemMessage reaches the human and additionalContext reaches the agent, so a hook that
+    only picks one leaves the other side unable to act on what it found.
+    """
+    print(
+        json.dumps(
+            {
+                "systemMessage": message,
+                "hookSpecificOutput": {
+                    "hookEventName": "PostToolUse",
+                    "additionalContext": message,
+                },
+            },
+            ensure_ascii=False,
+        )
+    )
+
+
 def deny(reason: str) -> None:
     """Refuse the call, naming what has to change before it can run.
 
