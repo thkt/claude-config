@@ -1,9 +1,7 @@
 """The scribe trigger a command line runs, if any.
 
-scribe reads its scope from merged PRs and closed issues (skills/scribe/SKILL.md), so the
-command that starts a scribe run is a `gh pr merge` or a `gh issue close`. Read from where each
-token sits, the same way hooks/_lib/gh_filing.py finds a filing: a `gh issue close` sitting
-inside a quoted argument or a loop body is not itself a command the line runs.
+scribe reads its scope from merged PRs and closed issues (skills/scribe/SKILL.md), so a
+`gh pr merge` or a `gh issue close` is what grows its input.
 """
 
 from __future__ import annotations
@@ -64,11 +62,8 @@ def find(command: str) -> Trigger | None:
 
 
 def _default_runner(directory: Path) -> GhRunner:
-    """gh scoped to the trigger's own directory, the way `find`'s `--repo` handling and
-    `cd`-following already resolve it: a local checkout runs with that cwd so gh infers the
-    repository from its git remote, and a `--repo owner/name` value works the same way gh
-    itself accepts a relative path only when one exists at that name under cwd.
-    """
+    """gh runs with the trigger's directory as cwd, so it reads the repository off that
+    checkout's git remote rather than off wherever the hook process started."""
 
     def run(args: Sequence[str]) -> str:
         result = subprocess.run(
@@ -159,15 +154,8 @@ def should_prompt(
     stamp: Path | None = None,
     runner: GhRunner | None = None,
 ) -> bool:
-    """Whether a completed trigger is worth nudging the user toward a scribe run.
-
-    scribe extracts its patterns into docs/wiki/ (skills/scribe/SKILL.md), so a target that
-    holds no docs/wiki/ at all is not set up to receive that output yet. Past that, three gates
-    hold: an unmerged scribe PR already covers the backlog, nothing new has landed since the
-    last scribe merge, and a stamp from a recent nudge is still within its cooldown. Each gate
-    that closes returns before the gh call the next one would spend, so a decision that stops
-    early never pays for an answer it no longer needs.
-    """
+    """Each gate returns before the gh call the next one would spend, so the order is what
+    keeps the common case to a single call."""
     if not (trigger.directory / "docs" / "wiki").is_dir():
         return False
     call = runner or _default_runner(trigger.directory)
