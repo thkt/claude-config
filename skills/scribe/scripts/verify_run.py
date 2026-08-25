@@ -25,6 +25,8 @@ WIKI_DIR = "docs/wiki"
 WAITING = "## 昇格待ち"
 REJECTED = "## 棄却"
 
+USAGE = "usage: verify_run.py <worktree> <start-count> <expected-commits> <base> <created>"
+
 
 class Mismatch(TypedDict):
     field: str
@@ -94,14 +96,16 @@ def _store(repo: Path) -> str:
 def _store_at(repo: Path, rev: str) -> str:
     """Absent reads as no rows, the same as _store: SKILL.md Phase 1 step 3 writes the store
     inside Phase 6's worktree when the repository has none, so the first run has nothing at the
-    branch point and letting git's exit 128 out would replace the verdict with a traceback."""
-    proc = subprocess.run(
-        ["git", "-C", str(repo), "show", f"{rev}:{WIKI_DIR}/_candidates.md"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    return proc.stdout if proc.returncode == 0 else ""
+    branch point.
+
+    Not a non-zero exit from `git show`: that answers absent and unreadable with the same
+    status, and reading an unreadable rev as no rows computes a verdict from a store nobody
+    read. `ls-tree` separates the two, printing nothing for an absent path while still failing
+    on a rev it cannot resolve.
+    """
+    if not _git(repo, "ls-tree", "--name-only", rev, f"{WIKI_DIR}/_candidates.md").strip():
+        return ""
+    return _git(repo, "show", f"{rev}:{WIKI_DIR}/_candidates.md")
 
 
 def rejected_added(repo: Path, base: str) -> int:
@@ -135,16 +139,17 @@ def verify(repo: Path, start_count: int, expected_commits: int, base: str, creat
 
 def main() -> None:
     if len(sys.argv) < 6:
-        print(
-            "usage: verify_run.py <worktree> <start-count> <expected-commits> <base> <created>",
-            file=sys.stderr,
-        )
+        print(USAGE, file=sys.stderr)
         sys.exit(2)
     repo = Path(sys.argv[1])
-    start_count = int(sys.argv[2])
-    expected_commits = int(sys.argv[3])
     base = sys.argv[4]
-    created = int(sys.argv[5])
+    # Not a bare int(): its ValueError exits 1, the code reserved for a run whose verification
+    # did not pass, so a caller reading the status takes a malformed count for a failed run.
+    try:
+        start_count, expected_commits, created = (int(sys.argv[i]) for i in (2, 3, 5))
+    except ValueError as exc:
+        print(f"{USAGE}\n{exc}", file=sys.stderr)
+        sys.exit(2)
     report = verify(repo, start_count, expected_commits, base, created)
     print(json.dumps(report, ensure_ascii=False))
     sys.exit(0 if report["ok"] else 1)

@@ -25,6 +25,8 @@ WIKI_DIR = "docs/wiki"
 WAITING = "## 昇格待ち"
 REJECTED = "## 棄却"
 
+USAGE = "usage: verify_run.py <worktree> <start-count> <expected-commits> <base> <created>"
+
 
 class Mismatch(TypedDict):
     field: str
@@ -94,14 +96,15 @@ def _store(repo: Path) -> str:
 def _store_at(repo: Path, rev: str) -> str:
     """不在は _store と同じく 0 行として読む。SKILL.md Phase 1 step 3 が、蓄積の無い
     リポジトリでは Phase 6 の worktree 内で作ると定めているので、初回 run は分岐点に
-    何も持たない。git の exit 128 をそのまま外へ出すと、verdict が traceback に置き換わる。"""
-    proc = subprocess.run(
-        ["git", "-C", str(repo), "show", f"{rev}:{WIKI_DIR}/_candidates.md"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    return proc.stdout if proc.returncode == 0 else ""
+    何も持たない。
+
+    `git show` の非ゼロ終了は見ない。不在と読めないとを同じ status で返すので、読めない
+    rev まで 0 行として通すと、誰も読んでいない store から verdict が出る。ls-tree は
+    不在のとき何も出さずに 0 で終わり、解決できない rev では落ちるので、この 2 つを分ける。
+    """
+    if not _git(repo, "ls-tree", "--name-only", rev, f"{WIKI_DIR}/_candidates.md").strip():
+        return ""
+    return _git(repo, "show", f"{rev}:{WIKI_DIR}/_candidates.md")
 
 
 def rejected_added(repo: Path, base: str) -> int:
@@ -135,16 +138,17 @@ def verify(repo: Path, start_count: int, expected_commits: int, base: str, creat
 
 def main() -> None:
     if len(sys.argv) < 6:
-        print(
-            "usage: verify_run.py <worktree> <start-count> <expected-commits> <base> <created>",
-            file=sys.stderr,
-        )
+        print(USAGE, file=sys.stderr)
         sys.exit(2)
     repo = Path(sys.argv[1])
-    start_count = int(sys.argv[2])
-    expected_commits = int(sys.argv[3])
     base = sys.argv[4]
-    created = int(sys.argv[5])
+    # 素の int() にはしない。ValueError は exit 1 になり、それは検証が通らなかった run に
+    # 予約されたコードなので、呼び出し側が壊れた数値を失敗した run として読む。
+    try:
+        start_count, expected_commits, created = (int(sys.argv[i]) for i in (2, 3, 5))
+    except ValueError as exc:
+        print(f"{USAGE}\n{exc}", file=sys.stderr)
+        sys.exit(2)
     report = verify(repo, start_count, expected_commits, base, created)
     print(json.dumps(report, ensure_ascii=False))
     sys.exit(0 if report["ok"] else 1)
