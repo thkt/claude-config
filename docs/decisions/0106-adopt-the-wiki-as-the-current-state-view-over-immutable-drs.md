@@ -33,29 +33,24 @@ Where does the current-state view live, and what keeps it from becoming a second
 
 Chosen option: "Add the wiki as a fourth artifact with a stated domain and DR backlinks", because the current-state view needs a living document while DRs are immutable by DR-0067, and the wiki already demonstrates the shape on `workflow-structure.md`.
 
-Artifact responsibilities, replacing the DR-0067 table:
+The four responsibilities and the eight routing rules live in `rules/conventions/DOCUMENTS.md`, which auto-attaches on `CLAUDE.md`, `docs/decisions/**`, `docs/wiki/**`, and `rules/**`. Rule 1 of that file sends the rule itself to RULES and its rationale to a DR, so this DR holds the rationale and the alternatives while the table and the rules sit where a writer already has them open. Rules 1-4 come from DR-0067 unchanged. Rules 5-8 are what this decision adds:
 
-| Artifact    | Domain                                                                                                                                     | Lifecycle                      | Reader's question                  |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ | ---------------------------------- |
-| RULES       | Language and domain directives, always applied                                                                                             | Living document                | What must I obey?                  |
-| DR          | Decisions: rationale + alternatives considered                                                                                             | Immutable + scope tag          | Why this shape? May I overturn it? |
-| CLAUDE.md   | Project-specific current state and WHY                                                                                                     | Living document                | What is this project?              |
-| `docs/wiki` | Implementer-facing current state: repeated procedures and recurring failures (共通項), module boundaries and contracts (`kind: structure`) | Living + `由来` backlink to DR | How do I do this today?            |
+- The wiki states the present shape a decision produced, and names the deciding record in `由来` rather than restating its rationale
+- The `由来` link is gated by the counterfactual test: were that record replaced, would this page need rewriting?
+- A replaced record obliges a rewrite of the pages naming it, in the same change unit, body included
+- 共通項 pages come from past PRs and issues; a `kind: structure` page covers one glob-able contract group
 
-Routing rules for a new decision. Rules 1-4 come from DR-0067 and are restated here so this DR stands on its own; rules 5-8 are new.
+Three points those rules compress, kept here because they carry the reasoning:
 
-1. The rule itself goes to RULES. The rationale for choosing that rule goes to a DR.
-2. A DR declares `scope:` in YAML frontmatter (`scope: [a, b]`), or as a `- Scope: [a, b]` bullet for a DR in bullet-list format.
-3. When a same-scope cluster spans repositories and is still open, write a RULES entry (or a meta DR) carrying the common directive, and cross-link it from the source DRs. The source DRs stay in place as the historical rationale, which keeps DR immutability intact.
-4. Project-specific state belongs in CLAUDE.md. State that generalizes across projects is promoted to a DR or to RULES.
-5. The wiki states the present shape a decision produced. It does not restate the DR's rationale or its alternatives; the `由来` section names the DR that decided it.
-6. A wiki page names a DR in `由来` when the counterfactual test holds: were that DR superseded, would this page need rewriting? Only Yes adds the link. A 共通項 page whose content no DR decides omits the section, and so does one that would survive its DR's supersession unchanged. A `kind: structure` page keeps the heading either way, empty when no link passes the test, because `docs/wiki/README.md` fixes its six sections and `skills/scribe/tests/skill_contract_test.py` asserts that list by exact match. This is the gate `skills/scribe/SKILL.md` Phase 5 already applies; this DR raises it from a scribe-internal step to a rule the wiki is read by.
-7. When a DR moves to `superseded by DR-NNNN`, `deprecated`, or `rejected`, the wiki pages naming it in `由来` are rewritten. Phase 5 already inspects every page's links on each scribe run and settles the relink target. This rule adds the obligation on the other side: the change unit that flips the DR status carries the wiki edit, rather than leaving the wiki wrong until the next scribe run. The body is owned by whoever flips the status. They read the page and settle whether its wording still holds, because Confirmation check 2 sees the link alone.
-8. 共通項 pages are extracted by `/scribe` from merged PRs and closed issues. A `kind: structure` page covers one glob-able contract group: the files that share one set of boundaries and contracts, which is the unit `globs` already expresses and `find_wiki_rule.py` already routes on. `workflow-structure.md` holds 7 files under `**/workflows/**/*.js` for that reason, not because "workflow" names a module. A group is raised when an implementer cannot find how the work is done there. The page is generated from the DRs that decided the group's shape plus the current code, then reviewed by a human, rather than hand-authored.
+Rule 6's gate is the one `skills/scribe/SKILL.md` Phase 5 already applies; this DR raises it from a scribe-internal step to a rule the wiki is read by. A 共通項 page omits the section when no record decides its content. A `kind: structure` page keeps the heading either way, empty when no link passes the test, because `skills/scribe/tests/skill_contract_test.py` asserts its six sections by exact match.
+
+Rule 7's body half is owned by whoever replaces the record. Phase 5 already inspects every page's links on each scribe run, but that leaves the wiki wrong until the next run, and Confirmation check 2 below sees the link alone.
+
+Rule 8's unit is the files sharing one set of boundaries and contracts, which is what `globs` already expresses and `find_wiki_rule.py` already routes on. `workflow-structure.md` holds 7 files under `**/workflows/**/*.js` for that reason, not because "workflow" names a module. A group is raised when an implementer cannot find how the work is done there, and the page is generated from the records and the current code, then reviewed by a human.
 
 Neither the 根拠 2 threshold nor a page cap applies to a `kind: structure` page. The glob-group axis is what bounds the count: a repository has as many groups as it has distinct contract sets, which is single digits here (`workflows/**`, `skills/**`, `hooks/**`, `rules/**`). `find_wiki_rule.py` surfaces only the pages whose globs match the files at hand, so an added page costs the planner nothing on work it does not touch.
 
-Rules 5-8 apply to any repository carrying a `docs/wiki/`, not to this harness alone. They live in this DR alone. `docs/wiki/README.md` states how to operate the wiki and stops there, because a README naming `docs/decisions/` would carry this harness's decision log into every repository that copies the format. `find_wiki_rule.py` ships inside `skills/scribe/` and is global, while `docs/wiki/` and `docs/decisions/` are per-repository. That is the split DR-0067 already drew for DRs.
+Rules 5-8 apply to any repository carrying a `docs/wiki/`, not to this harness alone. `docs/wiki/README.md` states how to operate the wiki and stops there, naming neither this DR nor `docs/decisions/`, so the format transfers to a repository that keeps its decisions elsewhere. `find_wiki_rule.py` ships inside `skills/scribe/` and is global, while `docs/wiki/` and `docs/decisions/` are per-repository. That is the split DR-0067 already drew for DRs.
 
 The six sections of a structure page (内容, 境界, 契約, 要求, 参照コード, 由来) stay as they are. They carry the concerns arc42's Building Block View carries, and the four corrections `5e359fc7` made were all content accuracy inside 境界/契約/要求, never the format failing to hold what had to be said.
 
@@ -77,6 +72,7 @@ The exclusion in `skills/scribe/SKILL.md` Phase 3 step 5 stays: "Design decision
 
 - A wiki page added or edited after this DR carries `由来` whenever rule 6's test returns Yes. The pages that predate it are backfilled through the Transition Plan, not through this check.
 - No wiki page's `由来` names a DR whose status is `superseded by DR-NNNN`, `deprecated`, or `rejected`. Only this half of rule 7 is mechanical. Relinking to the successor satisfies it while the page body still states the superseded shape, which is the state the Reassessment Triggers below name as the signal to reopen this decision. The body half rests on the reviewer, so a PR that relinks states what it checked in the body.
+- `rules/conventions/DOCUMENTS.md` carries the four responsibilities and the eight rules, and its `paths:` attaches it while someone writes into any of the four. Reading the boundary does not require opening this DR.
 - `docs/wiki/README.md` carries the page format and the `由来` gate while naming neither this DR nor `docs/decisions/`, so a repository can take the wiki format without taking this harness's decision log.
 - A change that removes a `由来` line says why the counterfactual test now returns No. Check 2 cannot see a link that was deleted rather than left stale, so this is the only thing standing between rule 6 and the incentive to delete.
 
@@ -114,7 +110,7 @@ DR-0067's rules 1-4 carry over as written, but two of them do not run today and 
 
 Related: DR-0005 (documentation role separation), DR-0103 (reference rules carried in the plan).
 
-`/challenge` verdict: NO-GO at the time of the review, since resolved. Both critic passes returned `weakened` rather than `needs_revision`, so the approach stands; what blocked adoption was rule 7's same-change-unit timing and the authorship of `kind: structure` pages. Rule 7's body is now owned by whoever flips the DR status, and rule 8 keys page creation on the glob-able contract group rather than on the DR count. Transition Plan steps 1, 2, and 5 landed in the same change unit as this DR, which is what closed it. Steps 3, 4, and 6 stay open, tracked as #504, #474, and #501.
+`/challenge` verdict: NO-GO at the time of the review, since resolved. Both critic passes returned `weakened` rather than `needs_revision`, so the approach stands; what blocked adoption was rule 7's same-change-unit timing and the authorship of `kind: structure` pages. Rule 7's body is now owned by whoever flips the DR status, and rule 8 keys page creation on the glob-able contract group rather than on the DR count. Transition Plan steps 1, 2, 3, and 6 landed in the same change unit as this DR, which is what closed it. Steps 4, 5, and 7 stay open, tracked as #504, #474, and #501.
 
 ### Before / After
 
@@ -126,12 +122,13 @@ Related: DR-0005 (documentation role separation), DR-0103 (reference rules carri
 
 ### Transition Plan
 
-1. Keep `docs/wiki/README.md` to operating the wiki: the page kinds, the `由来` gate including its structure-page clause, and how pages grow. It names neither this DR nor `docs/decisions/`, so the format transfers to a repository that keeps its decisions elsewhere or keeps none. The boundary and rules 5-8 live here, in this DR, and nowhere else.
-2. Move the DR-0073 reference in `docs/wiki/ja-mirror-drift.md` from 参照コード to 由来. The page's premise is that `.ja/` is canonical, so DR-0073's supersession would force a rewrite and the counterfactual test returns Yes. This is the one page besides `workflow-structure.md` known to owe a `由来` link.
-3. Fix the `_candidates.md` starvation. The candidate rows never reach `skills/scribe/scripts/triage.py`, so 12 rows have been pending since 2026-07-19 across 5 scribe runs while rows with fewer pieces of evidence were promoted past them.
-4. Fix #474 (scribe Phase 4 rejections drop candidate rows without producing a page).
-5. Add the rule 7 link check to `skills/scribe/tests/` as an assertion over the `由来` lists and the DR frontmatter. It covers the link, not the body. It has to live under `skills/`, `agents/`, `hooks/`, or `workflows/`, since that is the find scope for Python tests in `.github/workflows/test.yml`.
-6. Give code drift its own trigger, which rule 7 does not cover, through #501: a CI test that reads each `kind: structure` page's claims and matches them against the implementation. The two triggers are disjoint. A DR retired with no code change fires rule 7 alone, and code moving under a page fires #501 alone.
+1. Write the four responsibilities and the eight routing rules into `rules/conventions/DOCUMENTS.md`, with `paths:` covering `CLAUDE.md`, `docs/decisions/**`, `docs/wiki/**`, and `rules/**` so it attaches while someone is writing into any of the four. `.ja/` is canonical and the English side mirrors in the same commit.
+2. Keep `docs/wiki/README.md` to operating the wiki: the page kinds, the `由来` gate including its structure-page clause, and how pages grow. It names neither this DR nor `docs/decisions/`, so the format transfers to a repository that keeps its decisions elsewhere or keeps none.
+3. Move the DR-0073 reference in `docs/wiki/ja-mirror-drift.md` from 参照コード to 由来. The page's premise is that `.ja/` is canonical, so DR-0073's supersession would force a rewrite and the counterfactual test returns Yes. This is the one page besides `workflow-structure.md` known to owe a `由来` link.
+4. Fix the `_candidates.md` starvation. The candidate rows never reach `skills/scribe/scripts/triage.py`, so 12 rows have been pending since 2026-07-19 across 5 scribe runs while rows with fewer pieces of evidence were promoted past them.
+5. Fix #474 (scribe Phase 4 rejections drop candidate rows without producing a page).
+6. Add the rule 7 link check to `skills/scribe/tests/` as an assertion over the `由来` lists and the DR frontmatter. It covers the link, not the body. It has to live under `skills/`, `agents/`, `hooks/`, or `workflows/`, since that is the find scope for Python tests in `.github/workflows/test.yml`.
+7. Give code drift its own trigger, which rule 7 does not cover, through #501: a CI test that reads each `kind: structure` page's claims and matches them against the implementation. The two triggers are disjoint. A DR retired with no code change fires rule 7 alone, and code moving under a page fires #501 alone.
 
 ### Review Schedule
 
