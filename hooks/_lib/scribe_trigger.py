@@ -31,7 +31,9 @@ def find(command: str) -> Trigger | None:
     """The scribe trigger a command line runs, or None when it runs none.
 
     `directory` follows every cd ahead of the trigger, since `cd a && cd b` lands in a/b and
-    the repository scribe should run in is the one the trigger command runs in.
+    the repository scribe should run in is the one the trigger command runs in. A `--repo` on
+    the trigger itself overrides that: gh resolves `--repo owner/name` regardless of cwd, so
+    the trigger command's own flag outranks any cd that came before it.
     """
     directory = Path.cwd()
     for tokens in command_scan.commands(command):
@@ -40,5 +42,15 @@ def find(command: str) -> Trigger | None:
             continue
         for kind, prefix in CLOSERS:
             if command_scan.starts_with(tokens, prefix):
-                return Trigger(kind, directory)
+                repo = command_scan.flag_value(tokens, "--repo")
+                return Trigger(kind, Path(repo) if repo else directory)
     return None
+
+
+def should_prompt(trigger: Trigger) -> bool:
+    """Whether a completed trigger is worth nudging the user toward a scribe run.
+
+    scribe extracts its patterns into docs/wiki/ (skills/scribe/SKILL.md), so a target that
+    holds no docs/wiki/ at all is not set up to receive that output yet.
+    """
+    return (trigger.directory / "docs" / "wiki").is_dir()
