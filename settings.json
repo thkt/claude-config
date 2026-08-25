@@ -1,0 +1,466 @@
+{
+  "autoMemoryEnabled": false,
+  "cleanupPeriodDays": 9999,
+  "env": {
+    "CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD": "1",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_CODE_NO_FLICKER": "1",
+    "CLAUDE_CODE_TMPDIR": "/tmp/claude",
+    "ENABLE_TOOL_SEARCH": "true"
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "permissions": {
+    "allow": [
+      "Edit(*)",
+      "ExitPlanMode(*)",
+      "LS(*)",
+      "ListMcpResourcesTool(*)",
+      "Read(*)",
+      "ReadMcpResourceTool(*)",
+      "TaskOutput(*)",
+      "TaskStop(*)",
+      "Write(*)",
+      "Bash(gh *)",
+      "Bash(git *)",
+      "Bash(bun *)",
+      "Bash(npm *)",
+      "Bash(pnpm *)",
+      "Bash(yarn *)",
+      "Bash(na *)",
+      "Bash(nci *)",
+      "Bash(ni *)",
+      "Bash(nlx *)",
+      "Bash(nr *)",
+      "Bash(nun *)",
+      "Bash(nup *)",
+      "Bash(go version)",
+      "Bash(gradle -v)",
+      "Bash(java -version)",
+      "Bash(mvn -v)",
+      "Bash(node -v)",
+      "Bash(pip list)",
+      "Bash(pip show *)",
+      "Bash(python --version)",
+      "Bash(docker version)",
+      "Bash(kubectl describe *)",
+      "Bash(kubectl get *)",
+      "Bash(agent-browser *)",
+      "Bash(agy *)",
+      "Bash(bfs *)",
+      "Bash(cargo *)",
+      "Bash(codex review *)",
+      "Bash(recall *)",
+      "Bash(sae get *)",
+      "Bash(sae search *)",
+      "Bash(sae status *)",
+      "Bash(scout *)",
+      "Bash(ugrep *)",
+      "Bash(xr *)",
+      "Bash(yq *)"
+    ],
+    "deny": [
+      "Bash(git stash clear:*)",
+      "Bash(git stash drop:*)",
+      "Bash(*--exec-path*)",
+      "Bash(*--no-verify*)",
+      "Bash(*--receive-pack*)",
+      "Bash(*--upload-pack*)",
+      "Bash(curl:*)",
+      "Bash(kill -9:*)",
+      "Bash(sudo:*)",
+      "Bash(wget:*)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(~/.ssh/id_rsa)",
+      "Read(~/.ssh/id_ed25519)",
+      "Read(**/*token*.db)",
+      "Read(**/.token*)",
+      "Read(**/*_token*)",
+      "Read(**/token.json)",
+      "Read(**/*.key)",
+      "Read(**/*.pem)",
+      "Read(**/*_key)",
+      "Read(~/.aws/**)",
+      "Read(~/.kube/**)",
+      "Read(~/.zshenv)",
+      "Read(**/*credentials*)",
+      "Read(**/*secret*)",
+      "Read(**/secrets/**)",
+      "Edit(.env*)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)",
+      "Edit(**/secrets/**)",
+      "Edit(~/.zshrc)",
+      "Edit(~/.zshenv)",
+      "Edit(~/.bashrc)",
+      "Edit(~/.bash_profile)",
+      "Edit(~/.zprofile)",
+      "Edit(~/.gitconfig)",
+      "Edit(~/.gnupg/**)",
+      "Edit(~/.aws/**)",
+      "Edit(~/.kube/**)",
+      "Edit(~/Library/LaunchAgents/**)",
+      "NotebookEdit"
+    ],
+    "ask": [
+      "Bash(git branch -D *)",
+      "Bash(git restore:*)",
+      "Bash(git rm:*)",
+      "Bash(git -c *)",
+      "Bash(git checkout -- *)",
+      "Bash(git clean:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset:*)",
+      "Edit(~/.claude/settings.json)",
+      "Edit(~/.claude/hooks/**)",
+      "Edit(~/.claude/rules/**)",
+      "Edit(//**/.claude/agent-memory/**)",
+      "Edit(//**/.claude/agent-memory-local/**)"
+    ],
+    "defaultMode": "auto"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/edit/rust_post_edit.py",
+            "if": "Write(**/*.rs)",
+            "timeout": 30,
+            "statusMessage": "cargo fmt..."
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/edit/rust_post_edit.py",
+            "if": "Edit(**/*.rs)",
+            "timeout": 30,
+            "statusMessage": "cargo fmt..."
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/edit/textlint_fix.py",
+            "if": "Write(**/*.md)",
+            "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/edit/textlint_fix.py",
+            "if": "Edit(**/*.md)",
+            "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/edit/mirror_prose_guard.py",
+            "if": "Write(**/.ja/**)",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/edit/mirror_prose_guard.py",
+            "if": "Edit(**/.ja/**)",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "~/.cargo/bin/assay",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "formatter",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "gates",
+            "timeout": 120
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "gates changed",
+            "timeout": 120
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/post-bash/scribe_prompt.py",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/integrations/amphetamine_agent_session.py background",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pre-bash/package_manager_rewrite.py",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/security/npm_install_guard.py",
+            "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/security/rm_to_trash.py",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/security/git_sandbox_guard.py",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pre-bash/body_proofread.py",
+            "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pre-bash/issue_body_gate.py",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pre-bash/client_identifier_gate.py",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/edit/rust_pre_edit.py",
+            "if": "Write(**/*.rs)",
+            "timeout": 60,
+            "statusMessage": "clippy..."
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/edit/rust_pre_edit.py",
+            "if": "Edit(**/*.rs)",
+            "timeout": 60,
+            "statusMessage": "clippy..."
+          },
+          {
+            "type": "command",
+            "command": "guardrails",
+            "timeout": 30,
+            "statusMessage": "guardrails..."
+          }
+        ]
+      },
+      {
+        "matcher": "EnterPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"EnterPlanMode is disabled. For planning, use the /think skill instead.\"}}'"
+          }
+        ]
+      },
+      {
+        "matcher": "WebFetch|WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"WebFetch and WebSearch are disabled. Use the scout CLI through Bash instead (Bash(scout *) is already allowed): scout fetch <url> for a page body, scout search <query> for candidate URLs. Run scout --help for every other subcommand and flag.\"}}'"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/lifecycle/recall_index.py",
+            "timeout": 60
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/herdr-agent-state.sh session",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/lifecycle/failure-alert.sh stop",
+            "timeout": 60
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/integrations/amphetamine_agent_session.py release",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/lifecycle/failure-alert.sh fail",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/integrations/amphetamine_agent_session.py acquire",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "~/.local/share/mise/shims/codegraph prompt-hook",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/hooks/lifecycle/statusline.sh",
+    "refreshInterval": 60
+  },
+  "enabledPlugins": {
+    "agent-browser@agent-browser": true,
+    "kagami@kagami": true,
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "html@skills": true
+  },
+  "extraKnownMarketplaces": {
+    "agent-browser": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/vercel-labs/agent-browser.git"
+      }
+    },
+    "delta": {
+      "source": {
+        "source": "github",
+        "repo": "thkt/delta"
+      }
+    },
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    },
+    "skills": {
+      "source": {
+        "source": "github",
+        "repo": "mathbullet/skills"
+      }
+    }
+  },
+  "outputStyle": "Concise",
+  "language": "japanese",
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "filesystem": {
+      "allowWrite": [
+        "~/.Trash",
+        "~/.claude/.git",
+        "~/.claude/workflows"
+      ]
+    },
+    "enableWeakerNetworkIsolation": true,
+    "excludedCommands": [
+      "afplay",
+      "scout"
+    ]
+  },
+  "effortLevel": "high",
+  "advisorModel": "opus",
+  "promptSuggestionEnabled": false,
+  "autoUpdatesChannel": "latest",
+  "plansDirectory": "./.claude/workspace/planning",
+  "showThinkingSummaries": true,
+  "skipWorkflowUsageWarning": true,
+  "theme": "dark",
+  "preferredNotifChannel": "ghostty",
+  "remoteControlAtStartup": true,
+  "inputNeededNotifEnabled": true,
+  "agentPushNotifEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "autoMode": {
+    "environment": [
+      "### Org-wide",
+      "**Organization**: None configured",
+      "**Cloud provider(s)**: None configured",
+      "**Repository visibility**: assume private unless the remote host and repo name indicate otherwise, or a visibility check in the transcript shows public",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: None configured",
+      "**CI/CD deploy targets**: None configured",
+      "**Network posture**: None configured",
+      "**Source control**: The trusted repo and its remote(s) only (no additional orgs configured) — as scoped by the Trusted repo and Repository visibility entries above",
+      "**Trusted internal domains**: None configured",
+      "**Trusted cloud buckets**: None configured",
+      "**Key internal services**: None configured",
+      "**Internal package registry**: None configured",
+      "**Sensitive data locations & audiences**: any file or store holding personal data, confidential business data, credentials, regulated data, or similarly sensitive material; preserve exact handles when known and share only with audiences cleared at the [named+specifics] bar",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries `prod` or `production` as a whole word or name segment (hyphen/underscore/dot-delimited — e.g. matches `prod-db`, not `producer`)",
+      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries `prod` or `production` as a whole word or name segment",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development",
+      "**Trusted repo**: The git repository the agent started in (its working directory), any git worktree or clone of it, and its configured remote(s). When the repo's public/private visibility is given — by the Repository visibility entry or the user's own message — use it to scope what is OK to commit or push there: confidential material is fine in a private repo; in a public one, only that repo's own work is — and content ported, repointed, or first read from outside this session's repo is not its own work, whoever directed the port. Visibility scopes confidential material only: secrets and sensitive data (personal & entrusted) are never cleared into any repo by its visibility (see Definitions).",
+      "**Org-specific CLIs**: None configured"
+    ],
+    "classifyAllShell": true
+  },
+  "disableDeepLinkRegistration": "disable",
+  "voiceEnabled": true
+}
