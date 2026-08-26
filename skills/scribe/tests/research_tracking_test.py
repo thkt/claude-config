@@ -32,6 +32,12 @@ class ResearchTracking(unittest.TestCase):
         target = sorted(research.glob("*.md"))[0]
         self.assertNotEqual(check_ignore(target), 0, f"{target} is still git-ignored")
 
+    def test_a_non_markdown_file_under_research_stays_ignored(self) -> None:
+        """SKILL.md Phase 2 step 4 reads *.md only, so a tracked non-md file would be
+        published without ever being scanned."""
+        target = ROOT / ".claude" / "workspace" / "research" / "scratch.json"
+        self.assertEqual(check_ignore(target), 0, f"{target} is not git-ignored")
+
     def test_git_check_ignore_keeps_ignoring_a_file_under_claude_workspace_planning(
         self,
     ) -> None:
