@@ -32,7 +32,11 @@ FIND_WIKI_RULE = ROOT / "skills" / "scribe" / "scripts" / "find_wiki_rule.py"
 # selects docs/wiki pages by. command_scan.starts_with reads position, not word presence, so
 # `git commit -m "gh issue close 42"` never matches: "gh" sits inside a message argument, not
 # at the position a command name occupies.
-SCENE_COMMANDS: list[tuple[list[str], str]] = [(["gh", "issue", "close"], "issue-close")]
+SCENE_COMMANDS: list[tuple[list[str], str]] = [
+    (["gh", "issue", "create"], "issue-create"),
+    (["gh", "pr", "create"], "pr-create"),
+    (["gh", "issue", "close"], "issue-close"),
+]
 
 
 def find(command: str) -> tuple[Path, str] | None:

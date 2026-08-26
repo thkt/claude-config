@@ -23,7 +23,7 @@ NOT_A_RULE = {"README.md", "_candidates.md"}
 # The closed set of values a page's frontmatter `scenes` may declare. Importing this in the
 # wiki-page contract test, rather than restating the list there, keeps that test and this
 # module from drifting to two different closed sets.
-SCENES = ["issue-close"]
+SCENES = ["plan", "implement", "issue-create", "pr-create", "issue-close"]
 
 # The same subset workflows/code.js's globToRegExp accepts: `**/` crosses directories, `*` stops
 # at one. Keeping the two in step is what glob-parity guards; widening one side alone would make
@@ -123,9 +123,10 @@ def find(wiki_dir: str, slug: str, files: list[str], *, scene: str | None = None
     page_lines = {page: _frontmatter_lines(page) for page in pages}
     page_scenes = {page: _array_from_frontmatter(page_lines[page], "scenes") for page in pages}
 
-    # The set of scenes this wiki_dir actually declares is the closed set a --scene value is
-    # checked against; nothing outside it is a scene the caller could have meant.
-    if scene is not None and not any(scene in s for s in page_scenes.values()):
+    # SCENES is the closed set a --scene value is checked against. Checking against what the
+    # pages happen to declare would make a valid scene with no pages yet an error, which kills
+    # the caller's pre-existing matched flow.
+    if scene is not None and scene not in SCENES:
         raise ValueError(f"unknown scene: {scene!r}")
 
     matched: list[Matched] = []

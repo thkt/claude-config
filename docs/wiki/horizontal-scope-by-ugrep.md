@@ -1,6 +1,6 @@
 ---
 globs: []
-scenes: []
+scenes: ["plan"]
 ---
 
 # 横展開の要否を ugrep 全ツリー確認で確定する

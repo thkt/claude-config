@@ -106,6 +106,17 @@ class SceneAxis(unittest.TestCase):
         result = find(str(directory), "x", [], scene="plan")
         self.assertEqual(result["scenes"], ["plan-rule.md"])
 
+    def test_a_valid_scene_no_page_declares_yet_returns_an_empty_list(self) -> None:
+        """/think passes --scene plan on every run. A wiki whose pages have not adopted the
+        scene yet must answer with empty scenes, not exit 2, or the pre-scene matched flow
+        dies with it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            _ = (Path(tmp) / "some-rule.md").write_text(
+                "---\nglobs: []\nscenes: []\n---\n\n# some-rule\n", encoding="utf-8"
+            )
+            result = find(tmp, "x", [], scene="pr-create")
+        self.assertEqual(result["scenes"], [])
+
     def test_an_unknown_scene_argument_exits_with_status_2(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             proc = subprocess.run(

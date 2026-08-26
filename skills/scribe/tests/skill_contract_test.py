@@ -366,17 +366,17 @@ class WikiPageFormat(unittest.TestCase):
         for the misspelling silently returns nothing. Importing SCENES here, rather than
         restating the list, is what keeps this test and find_wiki_rule.py's own validation from
         drifting to two different closed sets."""
-        from find_wiki_rule import SCENES, read_scenes  # noqa: E402
+        from find_wiki_rule import SCENES, read_scenes
 
         for page in self.pages():
             for scene in read_scenes(page):
                 self.assertIn(scene, SCENES, f"{page.name}: {scene!r} is not in SCENES")
 
-    def test_querying_this_repositorys_wiki_with_scene_issue_close_returns_exactly_the_five_issue_close_pages(
+    def test_scene_issue_close_returns_exactly_the_five_issue_close_pages(
         self,
     ) -> None:
         """T-007: The five pages whose content is the decision to close an issue a given way."""
-        from find_wiki_rule import find  # noqa: E402
+        from find_wiki_rule import find
 
         report = find(str(ROOT / "docs" / "wiki"), "issue-close", [], scene="issue-close")
         self.assertEqual(

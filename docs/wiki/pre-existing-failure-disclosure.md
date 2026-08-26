@@ -1,6 +1,6 @@
 ---
 globs: []
-scenes: []
+scenes: ["pr-create"]
 ---
 
 # 変更起因でないテスト失敗の明示

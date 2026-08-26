@@ -75,9 +75,7 @@ class TestWikiScene(unittest.TestCase):
         wiki = directory / "docs" / "wiki"
         wiki.mkdir(parents=True)
         _ = (wiki / "runtime-bug-wontfix.md").write_text(ISSUE_CLOSE_PAGE, encoding="utf-8")
-        _ = (wiki / "umbrella-issue-recut.md").write_text(
-            SECOND_ISSUE_CLOSE_PAGE, encoding="utf-8"
-        )
+        _ = (wiki / "umbrella-issue-recut.md").write_text(SECOND_ISSUE_CLOSE_PAGE, encoding="utf-8")
         return directory
 
     def run_hook(self, command: str, env: dict[str, str] | None = None) -> tuple[object, str]:
@@ -108,6 +106,26 @@ class TestWikiScene(unittest.TestCase):
             self.assertIn("runtime-bug-wontfix.md", context)
         with self.subTest("names the second issue-close page"):
             self.assertIn("umbrella-issue-recut.md", context)
+
+    def test_a_gh_issue_create_command_yields_the_issue_create_pages(self) -> None:
+        directory = self.with_wiki()
+        wiki = directory / "docs" / "wiki"
+        _ = (wiki / "external-origin-labeling.md").write_text(
+            '---\nglobs: []\nscenes: ["issue-create"]\n---\n\n# origin を残す\n',
+            encoding="utf-8",
+        )
+        out, _stdout = self.run_hook(f"cd {directory} && gh issue create --title t")
+        self.assertIn("external-origin-labeling.md", self.context_of(out))
+
+    def test_a_gh_pr_create_command_yields_the_pr_create_pages(self) -> None:
+        directory = self.with_wiki()
+        wiki = directory / "docs" / "wiki"
+        _ = (wiki / "draft-until-observed.md").write_text(
+            '---\nglobs: []\nscenes: ["pr-create"]\n---\n\n# draft に据え置く\n',
+            encoding="utf-8",
+        )
+        out, _stdout = self.run_hook(f"cd {directory} && gh pr create --title t")
+        self.assertIn("draft-until-observed.md", self.context_of(out))
 
     def test_a_gh_issue_comment_command_yields_no_output(self) -> None:
         """T-010 A gh issue comment command yields no output"""

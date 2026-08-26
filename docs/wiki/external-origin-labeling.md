@@ -1,6 +1,6 @@
 ---
 globs: []
-scenes: []
+scenes: ["issue-create"]
 ---
 
 # 外部発想の issue に origin を残す

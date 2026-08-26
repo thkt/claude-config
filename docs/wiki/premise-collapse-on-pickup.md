@@ -1,6 +1,6 @@
 ---
 globs: []
-scenes: []
+scenes: ["pr-create"]
 ---
 
 # 着手後に崩れた前提の記録

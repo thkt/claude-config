@@ -1,6 +1,6 @@
 ---
 globs: []
-scenes: []
+scenes: ["pr-create"]
 ---
 
 # PR スコープの分離

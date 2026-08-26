@@ -22,7 +22,7 @@ NOT_A_RULE = {"README.md", "_candidates.md"}
 
 # ページの frontmatter `scenes` が宣言してよい値の閉集合。ここではなく wiki ページ契約テスト
 # 側でこの一覧を書き直すと、そちらとこのモジュールが別々の閉集合へ drift する。
-SCENES = ["issue-close"]
+SCENES = ["plan", "implement", "issue-create", "pr-create", "issue-close"]
 
 # workflows/code.js の globToRegExp が受ける部分集合と同じ。`**/` はディレクトリを跨ぎ、`*` は
 # 1 階層で止まる。片側だけ広げると、ページが届く実装と routing の届く実装が食い違う。
@@ -122,9 +122,9 @@ def find(wiki_dir: str, slug: str, files: list[str], *, scene: str | None = None
     page_lines = {page: _frontmatter_lines(page) for page in pages}
     page_scenes = {page: _array_from_frontmatter(page_lines[page], "scenes") for page in pages}
 
-    # この wiki_dir が実際に宣言している scene の集合が、--scene 値を照合する閉集合になる。
-    # その外側は呼び出し側が意図しえた scene ではない。
-    if scene is not None and not any(scene in s for s in page_scenes.values()):
+    # --scene 値を照合する閉集合は SCENES。ページ側が宣言している集合に照合すると、
+    # ページがまだ無い正当な scene がエラーになり、呼び出し側の既存 matched フローを殺す。
+    if scene is not None and scene not in SCENES:
         raise ValueError(f"unknown scene: {scene!r}")
 
     matched: list[Matched] = []
