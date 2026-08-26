@@ -75,14 +75,14 @@ def _frontmatter_lines(page: Path) -> list[str]:
     return []
 
 
-def _read_frontmatter_array(page: Path, key: str) -> list[str]:
-    """frontmatter の `<key>:` 行。ページが持たなければ空リスト。
+def _array_from_frontmatter(lines: list[str], key: str) -> list[str]:
+    """読み込み済みの frontmatter 行から `<key>:` 行を取り出す。無ければ空リスト。
 
     配列でない値も空リストにする。`globs: "**/*"` を素直に回すと 1 文字ずつが glob になり、
     ページが全ファイルに一致したように見える。
     """
     prefix = f"{key}:"
-    for line in _frontmatter_lines(page):
+    for line in lines:
         if line.startswith(prefix):
             try:
                 value = cast(object, json.loads(line[len(prefix) :].strip()))
@@ -92,6 +92,11 @@ def _read_frontmatter_array(page: Path, key: str) -> list[str]:
                 return []
             return [g for g in cast(list[object], value) if isinstance(g, str)]
     return []
+
+
+def _read_frontmatter_array(page: Path, key: str) -> list[str]:
+    """frontmatter の `<key>:` 行。ページが持たなければ空リスト。"""
+    return _array_from_frontmatter(_frontmatter_lines(page), key)
 
 
 def read_globs(page: Path) -> list[str]:
@@ -112,7 +117,10 @@ def find(wiki_dir: str, slug: str, files: list[str], *, scene: str | None = None
     pages = sorted(p for p in Path(wiki_dir).glob("*.md") if p.name not in NOT_A_RULE)
     normalized = [normalize(f) for f in files]
     slug_words = words(slug)
-    page_scenes = {page: read_scenes(page) for page in pages}
+    # 各ページの frontmatter を 1 回だけ読み、そこから両方のキーを取り出す。read_globs と
+    # read_scenes に個別にファイルを読み直させない。
+    page_lines = {page: _frontmatter_lines(page) for page in pages}
+    page_scenes = {page: _array_from_frontmatter(page_lines[page], "scenes") for page in pages}
 
     # この wiki_dir が実際に宣言している scene の集合が、--scene 値を照合する閉集合になる。
     # その外側は呼び出し側が意図しえた scene ではない。
@@ -123,7 +131,7 @@ def find(wiki_dir: str, slug: str, files: list[str], *, scene: str | None = None
     related: list[Related] = []
     scenes: list[str] = []
     for page in pages:
-        globs = read_globs(page)
+        globs = _array_from_frontmatter(page_lines[page], "globs")
         hits = [f for f in normalized if any(glob_to_regexp(normalize(g)).match(f) for g in globs)]
         if hits:
             matched.append({"page": page.name, "globs": globs, "files": hits})
