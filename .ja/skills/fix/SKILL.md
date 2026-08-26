@@ -46,7 +46,7 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 
 ## 決まりごとの参照
 
-修正するファイルが定まったら、着手の前に `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <バグの語> <触るファイル>` を実行する。`matched` のページは今回触るファイルに効く決まりごとなので全て読んでから直す。`/think` を通らないこの経路にも決まりごとが届くようにするための手順で、plan が無いぶん引くのはこの 1 回きりになる。
+修正するファイルが定まったら、着手の前に `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <バグの語> <触るファイル> --scene implement` を実行する。`matched` のページは今回触るファイルに効く決まりごとなので全て読んでから直す。`scenes` のページも読む。`/think` を通らないこの経路にも決まりごとが届くようにするための手順で、plan が無いぶん引くのはこの 1 回きりになる。
 
 ## Obvious
 

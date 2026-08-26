@@ -1,15 +1,9 @@
 #!/usr/bin/env python3
 """PreToolUse hook: name the docs/wiki pages scoped to a gh command about to run.
 
-A page's frontmatter can declare a `scenes` entry (skills/scribe/scripts/find_wiki_rule.py),
-naming a situation such as issuing a `gh issue close` rather than a file glob. This hook is
-where that declaration reaches the agent: it recognises the situation from the command line
-and surfaces the pages find_wiki_rule.py already knows how to select for it.
-
-Advisory. The pages ride back through hook_payload.notify, the same output helper
-scribe_prompt.py uses, so the decision is always allow and the call never stops on this.
-Called with hook_event_name="PreToolUse", since notify's default names the event
-scribe_prompt.py fires on instead of this one.
+Advisory: the decision is always allow, so a missing page never stops the command.
+notify's default hook_event_name names the event scribe_prompt.py fires on, so this
+hook passes its own.
 """
 
 # A hook can run with PATH cut down to /usr/bin, where python3 is old enough to reject
@@ -28,10 +22,9 @@ from hook_payload import field, notify, parse
 ROOT = Path(__file__).resolve().parents[2]
 FIND_WIKI_RULE = ROOT / "skills" / "scribe" / "scripts" / "find_wiki_rule.py"
 
-# The command prefixes this hook recognises, each paired with the scene find_wiki_rule.py
-# selects docs/wiki pages by. command_scan.starts_with reads position, not word presence, so
-# `git commit -m "gh issue close 42"` never matches: "gh" sits inside a message argument, not
-# at the position a command name occupies.
+# command_scan.starts_with reads position, not word presence, so `git commit -m "gh issue
+# close 42"` never matches: "gh" sits inside a message argument, not at the position a
+# command name occupies.
 SCENE_COMMANDS: list[tuple[list[str], str]] = [
     (["gh", "issue", "create"], "issue-create"),
     (["gh", "pr", "create"], "pr-create"),
@@ -40,13 +33,8 @@ SCENE_COMMANDS: list[tuple[list[str], str]] = [
 
 
 def find(command: str) -> tuple[Path, str] | None:
-    """The (repository directory, scene) a gh command names, or None when the line names
-    neither.
-
-    `directory` follows every cd ahead of the command, the way scribe_trigger.find follows a
-    cd ahead of `git pull`: the docs/wiki a scene's pages are read from is the one the command
-    itself runs in, not wherever the hook process started.
-    """
+    """`directory` follows every cd ahead of the command: the docs/wiki a scene's pages are
+    read from is the one the command runs in, not wherever the hook process started."""
     directory = Path.cwd()
     for tokens in command_scan.commands(command):
         if tokens[0] == "cd" and len(tokens) > 1:
@@ -60,13 +48,8 @@ def find(command: str) -> tuple[Path, str] | None:
 
 
 def _scene_pages(directory: Path, scene: str) -> list[str]:
-    """The docs/wiki pages find_wiki_rule.py selects for scene, empty when the repository
-    carries no docs/wiki or none of its pages declare the scene.
-
-    Run as a subprocess rather than imported, the same boundary issue_body_gate.py keeps
-    between hooks/ and skills/*/scripts/: find_wiki_rule.py is that skill's own CLI, and a
-    direct import would read its internals as this hook's API instead.
-    """
+    """Run as a subprocess rather than imported: find_wiki_rule.py is the scribe skill's own
+    CLI, and a direct import would read its internals as this hook's API."""
     wiki_dir = directory / "docs" / "wiki"
     if not wiki_dir.is_dir():
         return []

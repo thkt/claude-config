@@ -4,7 +4,7 @@
 <wiki-dir> の決まりごとページを、そのタスクに対して順位付けする。globs が渡されたファイルに
 一致するページは確実な一致、ファイル名が slug と語を共有するページは弱い一致。
 `--scene` を渡すと、frontmatter の scenes にその値を含むページを追加で列挙する。値は
-<wiki-dir> 内のどれかのページが宣言している scene でなければならず、それ以外は終了コード 2。
+SCENES から選ばなければならず、それ以外は終了コード 2。
 
 stdout: 通常は JSON { matched: [{page, globs, files}], related: [{page, shared}] }
         --scene を渡したときは scenes: [page] も加わる
@@ -61,11 +61,8 @@ def normalize(path: str) -> str:
 
 
 def _frontmatter_lines(page: Path) -> list[str]:
-    """開始と終了の `---` に挟まれた行。frontmatter を持たないページでは空リスト。
-
-    固定の行数ではなく終了デリミタを追うことで、`scenes` を `globs` より前に置いても
-    `globs` が読み取り範囲の外へ押し出されない。
-    """
+    """固定行数でなく閉じデリミタまで辿るので、ページが `scenes` を `globs` より前に
+    置いても `globs` が視界から落ちない。"""
     lines = page.read_text(encoding="utf-8").split("\n")
     if not lines or lines[0] != "---":
         return []
@@ -76,11 +73,8 @@ def _frontmatter_lines(page: Path) -> list[str]:
 
 
 def _array_from_frontmatter(lines: list[str], key: str) -> list[str]:
-    """読み込み済みの frontmatter 行から `<key>:` 行を取り出す。無ければ空リスト。
-
-    配列でない値も空リストにする。`globs: "**/*"` を素直に回すと 1 文字ずつが glob になり、
-    ページが全ファイルに一致したように見える。
-    """
+    """配列でない値も空リストにする。`globs: "**/*"` を素直に回すと 1 文字ずつが glob になり、
+    ページが全ファイルに一致したように見える。"""
     prefix = f"{key}:"
     for line in lines:
         if line.startswith(prefix):
@@ -95,17 +89,14 @@ def _array_from_frontmatter(lines: list[str], key: str) -> list[str]:
 
 
 def _read_frontmatter_array(page: Path, key: str) -> list[str]:
-    """frontmatter の `<key>:` 行。ページが持たなければ空リスト。"""
     return _array_from_frontmatter(_frontmatter_lines(page), key)
 
 
 def read_globs(page: Path) -> list[str]:
-    """frontmatter の globs 行。ページが持たなければ空リスト。"""
     return _read_frontmatter_array(page, "globs")
 
 
 def read_scenes(page: Path) -> list[str]:
-    """frontmatter の scenes 行。`read_globs` と同じ読み方で取り出す。"""
     return _read_frontmatter_array(page, "scenes")
 
 

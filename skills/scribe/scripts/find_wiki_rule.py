@@ -3,8 +3,8 @@
 
 Ranks the rule pages under <wiki-dir> for a task. A page whose globs match one of the given
 files is a hard match; a page whose filename shares a word with the slug is a soft one.
-`--scene` additionally lists pages whose frontmatter `scenes` includes it; the value must be
-one some page in <wiki-dir> declares, or the run exits 2.
+`--scene` additionally lists pages whose frontmatter `scenes` includes it; the value must
+come from SCENES, or the run exits 2.
 
 stdout: JSON { matched: [{page, globs, files}], related: [{page, shared}] } normally,
         plus scenes: [page] when --scene is given
@@ -63,10 +63,8 @@ def normalize(path: str) -> str:
 
 
 def _frontmatter_lines(page: Path) -> list[str]:
-    """The lines between the opening and closing `---` delimiters, or none when the page
-    carries no frontmatter block. Following the delimiter rather than a fixed line count is
-    what lets a page order `scenes` ahead of `globs` without pushing `globs` out of view.
-    """
+    """Following the closing delimiter rather than a fixed line count is what lets a page
+    order `scenes` ahead of `globs` without pushing `globs` out of view."""
     lines = page.read_text(encoding="utf-8").split("\n")
     if not lines or lines[0] != "---":
         return []
@@ -77,11 +75,8 @@ def _frontmatter_lines(page: Path) -> list[str]:
 
 
 def _array_from_frontmatter(lines: list[str], key: str) -> list[str]:
-    """The `<key>:` line among frontmatter lines already read, or an empty list when absent.
-
-    A value that is not an array reads as empty too. Iterating `globs: "**/*"` as written turns
-    each character into a glob, which makes the page look like it matches every file.
-    """
+    """A value that is not an array reads as empty: iterating `globs: "**/*"` as written
+    turns each character into a glob, which makes the page look like it matches every file."""
     prefix = f"{key}:"
     for line in lines:
         if line.startswith(prefix):
@@ -96,17 +91,14 @@ def _array_from_frontmatter(lines: list[str], key: str) -> list[str]:
 
 
 def _read_frontmatter_array(page: Path, key: str) -> list[str]:
-    """The `<key>:` line of the frontmatter, or an empty list when the page carries none."""
     return _array_from_frontmatter(_frontmatter_lines(page), key)
 
 
 def read_globs(page: Path) -> list[str]:
-    """The globs line of the frontmatter, or an empty list when the page carries none."""
     return _read_frontmatter_array(page, "globs")
 
 
 def read_scenes(page: Path) -> list[str]:
-    """The scenes line of the frontmatter, read the same way as `read_globs`."""
     return _read_frontmatter_array(page, "scenes")
 
 
