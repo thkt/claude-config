@@ -112,6 +112,7 @@ This directory contains important decisions about the project.
 | [0104](0104-keep-disposition-out-of-audit-gates.md) | Keep disposition out of audit gates | accepted | 2026-08-21 |
 | [0105](0105-require-argsrepo-in-every-workflow.md) | Require args.repo in every workflow | accepted | 2026-08-23 |
 | [0106](0106-adopt-the-wiki-as-the-current-state-view-over-immutable-drs.md) | Adopt the wiki as the current-state view over immutable DRs | accepted | 2026-08-24 |
+| [0107](0107-track-research-reports-in-git-while-the-rest-of-the-workspace-stays-untracked.md) | Track research reports in git while the rest of the workspace stays untracked | accepted | 2026-08-26 |
 
 ## By Status
 
@@ -209,6 +210,7 @@ This directory contains important decisions about the project.
 - **0104**: Keep disposition out of audit gates
 - **0105**: Require args.repo in every workflow
 - **0106**: Adopt the wiki as the current-state view over immutable DRs
+- **0107**: Track research reports in git while the rest of the workspace stays untracked
 
 ### Deprecated
 
