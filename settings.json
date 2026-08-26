@@ -1,5 +1,4 @@
 {
-  "autoMemoryEnabled": false,
   "cleanupPeriodDays": 9999,
   "env": {
     "CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD": "1",
@@ -248,6 +247,11 @@
             "type": "command",
             "command": "~/.claude/hooks/pre-bash/client_identifier_gate.py",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pre-bash/wiki_scene.py",
+            "timeout": 30
           }
         ]
       },
@@ -409,23 +413,17 @@
     "enabled": true,
     "failIfUnavailable": true,
     "filesystem": {
-      "allowWrite": [
-        "~/.Trash",
-        "~/.claude/.git",
-        "~/.claude/workflows"
-      ]
+      "allowWrite": ["~/.Trash", "~/.claude/.git", "~/.claude/workflows"]
     },
     "enableWeakerNetworkIsolation": true,
-    "excludedCommands": [
-      "afplay",
-      "scout"
-    ]
+    "excludedCommands": ["afplay", "scout"]
   },
   "effortLevel": "high",
   "advisorModel": "opus",
   "promptSuggestionEnabled": false,
   "autoUpdatesChannel": "latest",
   "plansDirectory": "./.claude/workspace/planning",
+  "autoMemoryEnabled": false,
   "showThinkingSummaries": true,
   "skipWorkflowUsageWarning": true,
   "theme": "dark",
@@ -462,5 +460,6 @@
     "classifyAllShell": true
   },
   "disableDeepLinkRegistration": "disable",
-  "voiceEnabled": true
+  "voiceEnabled": true,
+  "model": "claude-fable-5[1m]"
 }
