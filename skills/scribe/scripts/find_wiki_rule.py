@@ -76,14 +76,14 @@ def _frontmatter_lines(page: Path) -> list[str]:
     return []
 
 
-def _read_frontmatter_array(page: Path, key: str) -> list[str]:
-    """The `<key>:` line of the frontmatter, or an empty list when the page carries none.
+def _array_from_frontmatter(lines: list[str], key: str) -> list[str]:
+    """The `<key>:` line among frontmatter lines already read, or an empty list when absent.
 
     A value that is not an array reads as empty too. Iterating `globs: "**/*"` as written turns
     each character into a glob, which makes the page look like it matches every file.
     """
     prefix = f"{key}:"
-    for line in _frontmatter_lines(page):
+    for line in lines:
         if line.startswith(prefix):
             try:
                 value = cast(object, json.loads(line[len(prefix) :].strip()))
@@ -93,6 +93,11 @@ def _read_frontmatter_array(page: Path, key: str) -> list[str]:
                 return []
             return [g for g in cast(list[object], value) if isinstance(g, str)]
     return []
+
+
+def _read_frontmatter_array(page: Path, key: str) -> list[str]:
+    """The `<key>:` line of the frontmatter, or an empty list when the page carries none."""
+    return _array_from_frontmatter(_frontmatter_lines(page), key)
 
 
 def read_globs(page: Path) -> list[str]:
@@ -113,7 +118,10 @@ def find(wiki_dir: str, slug: str, files: list[str], *, scene: str | None = None
     pages = sorted(p for p in Path(wiki_dir).glob("*.md") if p.name not in NOT_A_RULE)
     normalized = [normalize(f) for f in files]
     slug_words = words(slug)
-    page_scenes = {page: read_scenes(page) for page in pages}
+    # Read each page's frontmatter once and derive both keys from it, rather than letting
+    # read_globs and read_scenes each reread the file from disk.
+    page_lines = {page: _frontmatter_lines(page) for page in pages}
+    page_scenes = {page: _array_from_frontmatter(page_lines[page], "scenes") for page in pages}
 
     # The set of scenes this wiki_dir actually declares is the closed set a --scene value is
     # checked against; nothing outside it is a scene the caller could have meant.
@@ -124,7 +132,7 @@ def find(wiki_dir: str, slug: str, files: list[str], *, scene: str | None = None
     related: list[Related] = []
     scenes: list[str] = []
     for page in pages:
-        globs = read_globs(page)
+        globs = _array_from_frontmatter(page_lines[page], "globs")
         hits = [f for f in normalized if any(glob_to_regexp(normalize(g)).match(f) for g in globs)]
         if hits:
             matched.append({"page": page.name, "globs": globs, "files": hits})
