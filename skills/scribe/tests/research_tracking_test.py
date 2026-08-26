@@ -29,8 +29,7 @@ class ResearchTracking(unittest.TestCase):
     ) -> None:
         """T-001 git check-ignore exits nonzero for a markdown file under
         .claude/workspace/research"""
-        research = ROOT / ".claude" / "workspace" / "research"
-        target = sorted(research.glob("*.md"))[0]
+        target = ROOT / ".claude" / "workspace" / "research" / "sample.md"
         self.assertNotEqual(check_ignore(target), 0, f"{target} is still git-ignored")
 
     def test_a_non_markdown_file_under_research_stays_ignored(self) -> None:
@@ -43,8 +42,8 @@ class ResearchTracking(unittest.TestCase):
         self,
     ) -> None:
         """T-002 git check-ignore keeps ignoring a file under .claude/workspace/planning"""
-        planning = ROOT / ".claude" / "workspace" / "planning"
-        target = sorted(planning.glob("*.md"))[0]
+        # check-ignore needs no real file, and the CI checkout carries no planning/ at all.
+        target = ROOT / ".claude" / "workspace" / "planning" / "sample.md"
         self.assertEqual(check_ignore(target), 0, f"{target} is no longer git-ignored")
 
 
