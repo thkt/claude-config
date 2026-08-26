@@ -1,10 +1,5 @@
 """Tests for hooks/_lib/scribe_gate.py.
 
-should_run mirrors hooks/_lib/scribe_trigger.py's should_prompt: gh runs through an
-injected runner, and the decision order is the same (unmerged scribe PR first, then new
-input since the cursor). Unlike should_prompt this gate carries no docs/wiki precondition
-and no cooldown stamp -- it runs once per CI invocation, not once per local `git pull`.
-
 Run: python3 hooks/_lib/tests/scribe_gate_test.py
 """
 
@@ -57,10 +52,8 @@ class TestShouldRun(unittest.TestCase):
         self.assertTrue(scribe_gate.should_run(runner=runner))
 
 
-# A fake `gh` that pops one canned response per invocation, in call order. Copied from
-# hooks/post-bash/tests/scribe_prompt_test.py's GH_STUB: gh is the only external system
-# should_run reaches out to, so this is what stays faked while scribe_gate itself runs for
-# real, invoked the same way (CLAUDE_GH_BIN) that hooks/_lib/scribe_trigger.py resolves gh.
+# Copied from hooks/post-bash/tests/scribe_prompt_test.py's GH_STUB: gh is the only external
+# system should_run reaches, so only it stays faked while scribe_gate runs for real.
 GH_STUB = """#!/usr/bin/env python3
 import os
 import pathlib
@@ -75,7 +68,7 @@ sys.stdout.write(responses[i])
 
 
 class TestCli(unittest.TestCase):
-    def test_run_as_a_script_the_cli_writes_the_should_run_line_into_the_file_github_output_points_at(  # noqa: E501
+    def test_run_as_a_script_the_cli_writes_the_should_run_line_into_the_file_github_output_points_at(
         self,
     ) -> None:
         """T-006: Run as a script, the CLI writes the should_run line into the file

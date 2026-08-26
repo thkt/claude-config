@@ -1,10 +1,7 @@
 """Whether scribe has anything new to read, decided the way should_prompt decides it.
 
-hooks/_lib/scribe_trigger.py's should_prompt answers this for a local `git pull`, gated by a
-docs/wiki precondition and a once-per-workday cooldown stamp. A CI run needs the same decision
-with neither: it fires once per invocation, not once per pull, and the repository it runs in
-always has docs/wiki. This module reuses should_prompt's gh queries (same knowledge, so DRY
-merges rather than duplicates them) and drops the two preconditions that do not apply.
+Unlike should_prompt, no docs/wiki check and no cooldown stamp: a CI run fires once per
+invocation, not once per pull, and the repository it runs in always has docs/wiki.
 """
 
 # python3 on a cut-down PATH can be old enough to reject `X | None` at import time.
@@ -35,9 +32,6 @@ def _default_runner(gh: Path) -> GhRunner:
 
 
 def should_run(*, runner: GhRunner | None = None, gh: Path | None = None) -> bool:
-    """Same decision order as should_prompt: an unmerged scribe PR first, then new input
-    since the last merge. No directory / docs-wiki check and no cooldown stamp -- callers
-    that need those keep using should_prompt instead."""
     binary = gh or Path(os.environ.get("CLAUDE_GH_BIN") or scribe_trigger.DEFAULT_GH)
     call = runner or _default_runner(binary)
     try:

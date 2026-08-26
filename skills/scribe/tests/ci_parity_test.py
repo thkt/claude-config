@@ -33,7 +33,6 @@ def skill_allowed_tools() -> set[str]:
 
 
 def on_block(text: str) -> str:
-    """The indented body directly under the top-level `on:` key."""
     match = re.search(r"^on:\n((?:[ \t].*\n|\n)+)", text, re.MULTILINE)
     assert match is not None, "scribe.yml carries no on: block"
     return match.group(1)
@@ -58,9 +57,7 @@ class ScribeWorkflowParity(unittest.TestCase):
         canonical = skill_allowed_tools()
         match = re.search(r"--allowedTools[= ]\"?([^\"\n]+)\"?", text)
         self.assertIsNotNone(match, "scribe.yml declares --allowedTools in claude_args")
-        declared = {
-            tool.strip() for tool in re.split(r"[,\s]+", match.group(1)) if tool.strip()
-        }
+        declared = {tool.strip() for tool in re.split(r"[,\s]+", match.group(1)) if tool.strip()}
         self.assertEqual(declared, canonical)
 
     def test_scribe_yml_triggers_are_merged_pull_request_close_schedule_and_workflow_dispatch_with_no_issues_trigger(  # noqa: E501

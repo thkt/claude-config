@@ -4,9 +4,9 @@ on:
   pull_request:
     types: [closed]
   schedule:
-    # 03:00 JST daily heartbeat. This is also the only trigger that picks up a closed
-    # issue as new input (see Run scribe's prompt) -- deliberately no issues trigger
-    # here, since a third party writes that body and this job's token can write too.
+    # 03:00 JST daily heartbeat, and the only trigger that picks up a closed issue.
+    # Deliberately no issues trigger: a third party writes that body, and this job's
+    # token can write.
     - cron: "0 18 * * *"
   workflow_dispatch:
 
@@ -46,11 +46,8 @@ jobs:
         uses: anthropics/claude-code-action@1f291e1cfe0f5fc21db2aef19af844591600ade7 # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # docs/configuration.md "Custom Environment Variables" is the documented path
-          # into the Bash(gh:*) calls SKILL.md's Phases make. Read (gh pr/issue list|view),
-          # gh label create, and the final gh pr create all go through this token, so a
-          # scribe PR is one gh pr create away from triggering test.yml under its own
-          # author rather than github-actions[bot].
+          # Every gh call the skill makes runs under this token, so the final
+          # gh pr create triggers test.yml, which a GITHUB_TOKEN author would not.
           settings: |
             {
               "env": {

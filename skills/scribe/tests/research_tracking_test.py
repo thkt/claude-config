@@ -27,7 +27,8 @@ class ResearchTracking(unittest.TestCase):
     def test_git_check_ignore_exits_nonzero_for_a_markdown_file_under_claude_workspace_research(
         self,
     ) -> None:
-        """T-001 git check-ignore exits nonzero for a markdown file under .claude/workspace/research"""
+        """T-001 git check-ignore exits nonzero for a markdown file under
+        .claude/workspace/research"""
         research = ROOT / ".claude" / "workspace" / "research"
         target = sorted(research.glob("*.md"))[0]
         self.assertNotEqual(check_ignore(target), 0, f"{target} is still git-ignored")
