@@ -27,6 +27,9 @@ history/
 /.claude/*
 !/.claude/rules/
 !/.claude/OUTCOME.md
+!/.claude/workspace/
+/.claude/workspace/*
+!/.claude/workspace/research/
 /.credentials.json
 /agent-memory/
 /chrome/

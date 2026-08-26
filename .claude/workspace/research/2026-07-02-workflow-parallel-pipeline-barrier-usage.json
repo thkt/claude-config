@@ -1,0 +1,144 @@
+{
+    "question": "workflows/ \u914d\u4e0b\u306e\u5404 workflow \u30b9\u30af\u30ea\u30d7\u30c8\u3067 parallel() (barrier) \u3068 pipeline() (stage \u9593 barrier \u306a\u3057) \u306f\u3069\u3046\u4f7f\u3044\u5206\u3051\u3089\u308c\u3066\u3044\u308b\u304b\u3002\u3069\u306e parallel() barrier \u304c cross-item \u4f9d\u5b58 (dedup/merge\u3001early-exit\u3001\u4ed6 finding \u53c2\u7167) \u306e\u305f\u3081\u7dad\u6301\u5fc5\u9808\u3067\u3001\u3069\u3053\u304c pipeline \u306b\u7f6e\u63db\u3067\u304d\u308b\u4f59\u5730\u304c\u3042\u308b\u304b\u3001\u5b9f\u969b\u306e\u4f7f\u7528\u7b87\u6240\u3092 file:line \u3067\u6319\u3052\u3066\u6574\u7406\u305b\u3088\u3002",
+    "generated": "2026-07-02",
+    "intent": "Understanding",
+    "domain": "Infrastructure",
+    "prior": [],
+    "outcome_note": ".claude/OUTCOME.md is absent, so no outcome-state or Non-goals alignment can be checked. The scope (inventorying orchestration control-flow use in workflows/*.js and flagging replaceable barriers) is a read-only analysis of internal harness machinery and conflicts with nothing observable.",
+    "findings": [
+        {
+            "priority": "high",
+            "text": "Bottom line confirmed by reading all 15 sites: no parallel() barrier in workflows/ can be converted to pipeline(). The two genuine per-item multi-stage flows already use pipeline() (adrift.js:276, shake.js:219). Every parallel() is one of: (a) a fan-out-then-merge/reconcile/early-exit barrier that needs the whole result set, (b) a heterogeneous 2-3-task join where pipeline() is structurally inapplicable (no homogeneous item list), or (c) a terminal single-stage fan-out where pipeline offers no non-blocking gain.",
+            "source": "grep -rn 'parallel(|pipeline(' workflows/*.js -> 18 lines = 15 calls (2 pipeline + 13 parallel) + 3 comments (assert.js:394, adrift.js:14, audit.js:298); each call site read at source",
+            "verification": "verified"
+        },
+        {
+            "priority": "high",
+            "text": "CORRECTION to prior findings' line numbers in assert.js. Actual source lines: heterogeneous join is assert.js:349 (prior finding said 351), the intent-triage single-stage fan-out is assert.js:421 (prior finding said 417). assert.js:374 (challenge/verify barrier) is correct. All other files' cited lines matched source exactly. Use the corrected lines as the deliverable file:line.",
+            "source": "Read assert.js:349 ([codexRes, audit] = await parallel), assert.js:374 (const [ch, vf] = await parallel), assert.js:421 (const verdicts = await parallel(advFails.map))",
+            "verification": "verified"
+        },
+        {
+            "priority": "high",
+            "text": "Primitive semantics: pipeline(items, ...stages) flows each item through stages independently with no cross-item barrier; terminal aggregation only after it returns. parallel([...]) is a barrier: awaits all, returns an index-aligned array, stalled agents become null and are dropped via .filter(Boolean). Index alignment is a relied-upon hard contract (raw[i] audit.js:427, shakes[i] shake.js:260, reshakes[i] shake.js:356, verdicts[i] assert.js:442, prep[0]/prep.slice(1) build.js:129-130). The runtime definition is NOT in the repo; semantics corroborated by header comments and ADR-0081:67.",
+            "source": "adrift.js:14-16 comment; shake.js:218 comment; docs/decisions/0081-...md:67 (parallel \u306e\u5931\u6557\u9694\u96e2\u30fb\u5165\u529b\u9806\u5e8f\u4fdd\u8a3c); find+xargs for definitions -> exit 1 (none)",
+            "verification": "cross-checked",
+            "next_action": "Treat index-alignment + null-on-stall as a guaranteed runtime contract per ADR-0081:67, not an assumption; do not rely on any concurrency-cap or pipeline-overlap behavior (unverifiable in-repo)."
+        },
+        {
+            "priority": "high",
+            "text": "pipeline() site #1 adrift.js:276 pipeline(targets, extract-stage, review-stage): item=ADR, no ADR-to-ADR dependency. stage-2 (review) depends only on the same ADR's stage-1 (extract). Cross-ADR dedup/priority-merge and summary counts run AFTER the pipeline returns (perAdr.filter at adrift.js:364). Correct use; keep as-is.",
+            "source": "adrift.js:276-364",
+            "verification": "verified"
+        },
+        {
+            "priority": "high",
+            "text": "pipeline() site #2 shake.js:219 pipeline(route.targets, shake-stage, classify+fix-stage): item=test target, independent, no global aggregation across targets. stage-2 classification (verdict at shake.js:279-284) is per-target. Correct use; keep as-is.",
+            "source": "shake.js:219-284",
+            "verification": "verified"
+        },
+        {
+            "priority": "high",
+            "text": "MANDATORY barrier adrift.js:329 parallel(reviewers.map(...)) inside pipeline stage-2: fan-out of routed reviewers over one ADR; results reduced by mergeFindings(alive.map(r=>r.findings)) at adrift.js:359 (alive=reviewed.filter(Boolean) at 352). Barrier required for the per-ADR merge; sits inside pipeline so still non-blocking across ADRs.",
+            "source": "adrift.js:329-359",
+            "verification": "verified"
+        },
+        {
+            "priority": "high",
+            "text": "MANDATORY barrier shake.js:224 parallel([smell, ...shakes]): smell scan parallel to 4 shake dimensions. stage-1 return maps shakes[i] positionally into dimResults (shake.js:259-260) and the classification (shake.js:280-284) reduces over ALL dimResults plus smells.length. Whole-set + positional -> barrier mandatory.",
+            "source": "shake.js:224-284",
+            "verification": "verified"
+        },
+        {
+            "priority": "high",
+            "text": "MANDATORY barrier shake.js:318 parallel([inv, ...reshakes]): invariant check parallel to re-shake of trigger dims. inv.held gates an early-exit `if (!inv || !inv.held) {...continue;}` at shake.js:349 (fix rejected regardless of reshake), and reshakes[i] positionally feeds the residual-flake decision (shake.js:354-358). Early-exit + reduction + positional -> mandatory.",
+            "source": "shake.js:318-358",
+            "verification": "verified"
+        },
+        {
+            "priority": "high",
+            "text": "MANDATORY barrier audit.js:403 parallel(units.map(...)): reviewer-unit fan-out; findings flattened via raw.filter(Boolean).flatMap (audit.js:422), index-aligned per-unit attribution (units.forEach((u,i)=>raw[i]) at audit.js:426-427) and per-unit skip accounting (units.filter((_,i)=>!raw[i]) at audit.js:443-444, keyed by position not reviewer). Downstream Challenge/Verify operate on the merged set -> cannot be per-unit pipelined. Mandatory.",
+            "source": "audit.js:403-450",
+            "verification": "verified"
+        },
+        {
+            "priority": "high",
+            "text": "MANDATORY barrier audit.js:461 parallel([challenged, verified]): two independent passes over the SAME full findingsJson (audit.js:460); comment audit.js:457-459 'Two independent passes over the same findings run concurrently; Integrate reconciles them with a fixed rule'. Both required for reconciliation -> mandatory.",
+            "source": "audit.js:457-461",
+            "verification": "verified"
+        },
+        {
+            "priority": "high",
+            "text": "MANDATORY barrier assert.js:374 parallel([ch, vf]): critic-audit challenger parallel to critic-evidence verifier over the whole codexJson finding set (assert.js:373); both reconciled downstream. Same shape as audit.js:461 -> mandatory.",
+            "source": "assert.js:373-390",
+            "verification": "verified"
+        },
+        {
+            "priority": "high",
+            "text": "MANDATORY barrier challenge.js:96 parallel([attack:internal, attack:outcome]): two critic-design attacks; Verdict agent reconciles both via JSON.stringify(attacks) into one GO/NO-GO (challenge.js:122-128). Mandatory.",
+            "source": "challenge.js:96-128",
+            "verification": "verified"
+        },
+        {
+            "priority": "high",
+            "text": "MANDATORY barrier research.js:262 parallel(sweepTasks).filter(Boolean): domain-sweep fan-out; all sweeps concatenated via sweeps.join('\\n\\n---\\n\\n') into a single Verify agent that dedups/cross-checks across sweeps (research.js:278-284). Whole-set dependency -> mandatory.",
+            "source": "research.js:262-284",
+            "verification": "verified"
+        },
+        {
+            "priority": "high",
+            "text": "MANDATORY barrier build.js:169 parallel([workflow('audit'), workflow('polish',mode:'review')]): both feed the fix loop via toFix = [...criticalHigh(audit), ...polishSurvivors] (build.js:187). Union of both consumed -> mandatory.",
+            "source": "build.js:169-187",
+            "verification": "verified"
+        },
+        {
+            "priority": "medium",
+            "text": "HETEROGENEOUS JOIN (pipeline inapplicable) audit.js:303 parallel([preFlight, route]): comment audit.js:297 'two stages that share no data run concurrently'. preFlight is tests-only (audit.js:304-323) and is read ONLY at writeSnapshot (audit.js:453); route.files gates all downstream Review (audit.js:400+). Not a homogeneous item list, so pipeline() does not apply. Minor over-synchronization: preFlight could be a deferred promise awaited only at Snapshot to let Review start on route alone. Low value: preFlight has a 60s timeout vs reviewers' 8-min budget (audit.js:401-402), so it almost always finishes first. The deferred-await idiom already exists in this repo at assert.js:412-413 (testRunP/adversarialP) and assert.js:349 (bundled thunk overlap).",
+            "source": "audit.js:297-323, 400-402, 453; assert.js:412-413, 342-349",
+            "verification": "verified",
+            "next_action": "Optional only: detach preFlight and await at writeSnapshot; not worth doing absent a measured latency need."
+        },
+        {
+            "priority": "medium",
+            "text": "HETEROGENEOUS JOIN (pipeline inapplicable) assert.js:349 parallel([codex-review->challenge/verify chain thunk, workflow('audit')]): deliberately overlaps the opus critic pair with the audit run (comment assert.js:342-347); results joined by Evidence/Triage downstream (assert.js:395-405). Not a homogeneous item list -> pipeline non-applicable. Keep.",
+            "source": "assert.js:342-405",
+            "verification": "verified"
+        },
+        {
+            "priority": "medium",
+            "text": "HETEROGENEOUS JOIN (pipeline inapplicable) build.js:106 parallel([checkout, explore:patterns, explore:integration]): branch=prep[0], researchDigest=prep.slice(1) (build.js:129-130), both consumed by Think (build.js:134-141); concurrency-safety justified at build.js:104-105 (checkout only moves the branch pointer alongside read-only explores). Not a homogeneous item list -> pipeline non-applicable. Keep.",
+            "source": "build.js:104-141",
+            "verification": "verified"
+        },
+        {
+            "priority": "medium",
+            "text": "SINGLE-STAGE FAN-OUT (pipeline yields no gain) assert.js:421 parallel(advFails.map(triage)): per-failed-test intent triage; each triage is independent (one test, no reference to other findings), post-barrier step is a synchronous forEach reduce into promoted/excluded using verdicts[i] (assert.js:441-449). This is the only barrier lacking a cross-item dependency, BUT it is terminal single-stage fan-out with no stage-B for items to flow into, so pipeline() would not reduce blocking (the downstream Synthesize is the true barrier). Leave as parallel.",
+            "source": "assert.js:419-449",
+            "verification": "verified"
+        },
+        {
+            "priority": "low",
+            "text": "code.js, polish.js, think.js contain zero parallel(/pipeline( calls (polish.js:14 is a comment using the word 'parallel', not a call). They delegate concurrency to nested workflow() calls or run sequentially.",
+            "source": "grep -n 'parallel(|pipeline(' workflows/code.js workflows/polish.js workflows/think.js -> exit 1 (zero call hits); only word mention is polish.js:14 comment",
+            "verification": "verified"
+        }
+    ],
+    "constraints": [
+        "parallel()/pipeline() are workflow-runtime globals injected by the harness; no definition exists anywhere in the .claude tree (find+xargs over *.js/*.mjs/*.ts returned exit 1). Concurrency cap, backpressure, and whether pipeline() actually overlaps item N+1 stage-1 with item N stage-2 are NOT verifiable in-repo. Semantics inferred from header comments + ADR-0081:67 + consistent index-alignment usage.",
+        "parallel() contract per ADR-0081:67 = failure isolation + input-order guarantee only. Stalled agents return null; callers use .filter(Boolean). Index alignment (raw[i] audit.js:427, shakes[i] shake.js:260, reshakes[i] shake.js:356, verdicts[i] assert.js:442, prep[0] build.js:129) is relied upon at multiple sites and is thus a hard contract, not incidental.",
+        "pipeline() requires a homogeneous item list (items, ...stages); structurally inapplicable to the heterogeneous 2-3-task joins at audit.js:303, assert.js:349, build.js:106.",
+        "File:line citations reference the canonical /Users/thkt/.claude/workflows/ tree. .ja/workflows/*.js are a Japanese mirror asserted structurally identical by ADR-0081; line-level parity with .ja was not checked this run.",
+        "ADR-0081:49/:75 report the audit fan-out pilot cost (12 reviewers, ~956k tokens, 22 min for one 292-line file) as a known Bad consequence, but do NOT decompose that total into parallel()-barrier wait vs the serial Challenge->Verify->Integrate tail."
+    ],
+    "unknowns": [
+        "Exact runtime definition of parallel()/pipeline() (max concurrency, backpressure, pipeline internal stage scheduling, error propagation beyond null-return) -- unknown, requires access to the workflow-runtime source outside the .claude repo.",
+        "Whether the audit.js batch-split (BATCH=10, audit.js widening units at ~:381-388) lowers or raises makespan is unknown, requires the invisible concurrency cap: unbounded -> lower latency, capped -> more units contend and makespan can grow. In the ADR pilot's single-file case each reviewer got 1 unit so the split was inert.",
+        "Whether .ja/workflows/*.js line numbers coincide with the canonical EN tree -- unknown, requires a line-level diff; ADR-0081 asserts structural identity but parity was not verified this run.",
+        "Decomposition of the ADR-0081 pilot's 22 min into barrier-wait vs serial-tail -- unknown, requires runtime instrumentation; the pilot reports only the total."
+    ],
+    "disconfirmation": "\"Three zero-result claims were disconfirmation-checked.\\n\\nClaim A: parallel/pipeline have no definition in the repo (harness-injected). Command: `find . -type f \\\\( -name '*.js' -o -name '*.mjs' -o -name '*.ts' \\\\) -not -path '*/projects/*' -not -path '*/node_modules/*' -not -path '*/.git/*' | xargs grep -ln 'function parallel|function pipeline|const parallel|const pipeline|parallel =|pipeline ='`. Raw output: (no file lines) followed by `exit: 1`. A `find|xargs grep` with exit 1 means grep matched in zero files -- confirmed genuine absence, not glob misuse (the earlier `--include=*.js .` form fails under zsh with '(eval):1: no matches found', so the find+xargs form was used to avoid shell glob expansion).\\n\\nClaim B: code.js/polish.js/think.js contain no parallel(/pipeline( CALLS. Command: `grep -n 'parallel(|pipeline(' workflows/code.js workflows/polish.js workflows/think.js`. Raw output: `exit: 1` (zero hits). A follow-up word-level grep `grep -n 'parallel|pipeline' ...` returned exactly one line: `workflows/polish.js:14:// parallel with audit, and cleanup running later after the merged fix pass.` -- a comment, not a call. Confirmed: the word appears only in prose.\\n\\nClaim C: the total call count is 15. Command: `grep -rn 'parallel(|pipeline(' workflows/*.js | wc -l` returned 18. Reading the 18 lines, 3 are comments (assert.js:394 'A rejected thunk becomes null in the parallel() result slot', adrift.js:14 'runs through pipeline() independently', audit.js:298 'Bare phase() races under parallel()'). 18 - 3 = 15 actual calls (2 pipeline: adrift.js:276, shake.js:219; 13 parallel). Confirmed by reading each hit.\"",
+    "weaknesses": [
+        "The claim 'pipeline() requires a homogeneous item list; structurally inapplicable to the heterogeneous 2-3-task joins' (audit.js:303, assert.js:351, build.js:106) overstates a signature inference drawn from only 2 observed pipeline() call shapes into a structural impossibility. Without the harness runtime definition, one could pass a 2-element heterogeneous array as items with identity stages; the evidence supports 'pipeline yields no gain here', not 'structurally inapplicable'. The keep verdict itself is fine, only the impossibility framing is under-grounded.",
+        "The specific claim that pipeline() provides a non-blocking cross-item throughput advantage (adrift.js:14 / shake.js:14 header comments, 'the slowest item does not block the rest') inherits the unread, harness-injected runtime semantics. The barrier-necessity verdicts do NOT depend on this (they were verified by reading what downstream consumes: mergeFindings over the whole set, positional destructure shakes[i]/reshakes[i]/verdicts[i], the shake.js:349 early-exit), but the throughput-benefit half of the pipeline-vs-parallel rationale rests on a code comment plus ADR prose rather than the primitive's implementation."
+    ]
+}
