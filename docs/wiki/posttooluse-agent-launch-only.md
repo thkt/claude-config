@@ -1,5 +1,6 @@
 ---
 globs: ["**/hooks/**/*"]
+scenes: []
 ---
 
 # PostToolUse:Agent は launch 時にしか発火しない

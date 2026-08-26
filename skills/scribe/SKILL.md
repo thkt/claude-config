@@ -56,7 +56,7 @@ The patterns worth picking up are procedures that recur as a routine or a conven
 Before creating, promoting, or updating a page, cross-check each pattern against the current code. What this Phase settles is the content; writing to files happens inside Phase 6's worktree, all at once.
 
 1. For each item that holds, add the current-code location as reference code, written as `path` + symbol name. Write no line numbers
-2. Settle the globs of the implementation files the rule bears on. Only a rule that arrives during implementation carries globs; one confined to filing or PR practice carries an empty array
+2. Settle the globs of the implementation files the rule bears on, and settle its scenes from `find_wiki_rule.py`'s `SCENES` constant. The two are independent judgments: globs name implementation files, scenes name situations, and a rule confined to filing or PR practice carries an empty globs array with whatever scenes hold
 3. Sweep the reference code of every page under `docs/wiki/*.md`, existing pages unrelated to this run's scope included. Mechanically verify that the file exists and that the symbol name greps within it
 4. For a broken reference, reread the current code. The table below settles what to write
 5. When a dropped item holds a line in `_candidates.md`, move that line into the 棄却 section and write the reason it was dropped on the next line, indented. This takes priority over the removal Phase 3 step 7 prepared

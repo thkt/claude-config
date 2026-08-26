@@ -1,5 +1,6 @@
 ---
 globs: ["**/workflows/**/*.js"]
+scenes: []
 kind: structure
 ---
 

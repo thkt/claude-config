@@ -1,5 +1,6 @@
 ---
 globs: ["**/workflows/**/*.js"]
+scenes: []
 ---
 
 # policy 値を behavioral capture テストで固定する

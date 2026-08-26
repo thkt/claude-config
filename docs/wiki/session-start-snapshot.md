@@ -1,5 +1,6 @@
 ---
 globs: ["**/hooks/**/*", "**/agents/**/*", "**/settings.json"]
+scenes: []
 ---
 
 # hook と agent の定義変更は次の session で検証する
