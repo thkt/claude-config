@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
 """ablate skill における、削除候補の DR 突き合わせゲート。
 
-CLI のエントリポイントではない。skills/ablate/SKILL.md はこのモジュールを script として
-呼ぶのでなく、下の定数と `gate` を import して使う (docs/wiki/deterministic-script-judgment.md
-「入力から一意に決まる判定は script に置く」— DR の照合と保留/通過の判定は SKILL.md の散文
-でなく、この script の関数として持つ)。
+DR の照合と保留/通過の判定は、SKILL.md の散文でなくこの script の関数として持つ
+(docs/wiki/deterministic-script-judgment.md)。
 
-このユニット (issue #485 の U-001) は skills/census/SKILL.md Phase 3 の DR 突き合わせに倣う。
-要素パスを支配する DR を引き、その削除候補が verdict.classify の判定をそのまま通してよいか
-判定する。DR の照合はパス文字列の文字通りの検索で、`root` 下の docs/decisions/*.md を対象と
-する — パスを自分自身へ写す機械可読フィールドを持つ DR はまだ無いため、DR 本文をパス文字列で
-grep することが、census Phase 3 の候補-DR 突き合わせがここで還元される機械的な代替になる。
+照合が DR 本文をパス文字列で検索するのは、パスを自分自身へ写す機械可読フィールドを持つ DR
+がまだ無いため。
 """
 
 from __future__ import annotations
@@ -21,21 +16,18 @@ from pathlib import Path
 from verdict import DELETE_CANDIDATE
 
 # 削除候補が、確認記録の無い Reassessment Triggers を持つ DR に紐づくときに、入力の verdict
-# の代わりに返す。verdict.py 自身の定数とは別物: これは dr_gate 独自の結果であり、
-# verdict.classify が返す 3 つのいずれでもない。
+# の代わりに返す。verdict.py へ置かないのは、これが dr_gate 独自の結果であり、
+# verdict.classify が返せる 4 つ目ではないため。
 HELD = "held"
 
-# パス文字列が DR 本文にそのまま現れるとき、その DR がそのパスを支配すると見なす (このモジ
-# ュールの docstring に書いた機械的な代替。パスを自分自身へ写す DR のフィールドはまだ無い)。
-# docs/wiki/path-reference-audit.md: この glob は展開せず Path.glob にそのまま渡し、展開
-# 済みのファイル一覧を手で書き写すことはしない。
+# 展開せず Path.glob にそのまま渡し、展開済みのファイル一覧を手で書き写すことはしない
+# (docs/wiki/path-reference-audit.md)。
 _DR_GLOB = "docs/decisions/*.md"
 
 # このゲートが確認記録を読みに行く節。docs/decisions/*.md には見出しの深さにより "## " と
 # "### " の両方が現れるため、パターンはどちらにもマッチする。
 _TRIGGERS_HEADING = re.compile(r"^#{2,3}\s+Reassessment Triggers\s*$", re.MULTILINE)
 
-# このユニット独自の規約 (機械可読な DR フィールドについてはモジュール docstring を参照):
 # DR ファイル内の "Confirmed unmet: {date}" という行は、誰かが既に Reassessment Triggers
 # を確認し、まだ発火していないと判断したことを表す。
 _CONFIRMED_UNMET = re.compile(r"^Confirmed unmet:", re.MULTILINE)
@@ -43,10 +35,9 @@ _CONFIRMED_UNMET = re.compile(r"^Confirmed unmet:", re.MULTILINE)
 
 def _find_governing_dr(path: str, root: Path) -> tuple[Path, str] | None:
     """`root` 下の _DR_GLOB にマッチするファイルのうち、本文に `path` が現れる最初の
-    ファイルを、その本文テキストと組にして返す。どの DR も言及しないときは None
-    (docs/decisions/ 自体が無いときも glob の結果が空になり、同じく None)。テキストをパス
-    と一緒に返すのは、呼び出し側がその後マッチした DR の本文を読むときに同じファイルを
-    二度開かずに済ませるため。"""
+    ファイルを、その本文テキストと組にして返す。どの DR も言及しないときは None。
+    テキストをパスと一緒に返すのは、呼び出し側が本文を読むときに同じファイルを二度
+    開かずに済ませるため。"""
     for dr_path in sorted(root.glob(_DR_GLOB)):
         text = dr_path.read_text(encoding="utf-8")
         if path in text:
@@ -67,9 +58,8 @@ def _confirmed_unmet(dr_text: str) -> bool:
 
 
 def gate(path: str, verdict: str, root: Path) -> str:
-    """上から読んで最初に当たった行を採る。verdict.py が skills/census/SKILL.md Phase 4
-    Step 1 から写しているのと同じ形。このゲートは削除候補を保留に落とすことしかせず、
-    それ以外の verdict はそのまま通す。
+    """上から読んで最初に当たった行を採る。このゲートは削除候補を保留に落とすことしか
+    せず、それ以外の verdict はそのまま通す。
 
     | 条件                                             | 結果    |
     | ------------------------------------------------ | ------- |

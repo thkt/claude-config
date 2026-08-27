@@ -2,22 +2,12 @@
 
 Run: python3 skills/ablate/tests/dr_gate_test.py
 
-This unit (issue #485 U-001) follows skills/census/SKILL.md Phase 3's DR cross-reference:
-look up the DR that governs a given element path, then decide whether a delete candidate
-traceable to that DR may pass. The judgment takes verdict.classify's output (issue #485's
-"U-003") as its input verdict, so these tests feed dr_gate.gate the same DELETE_CANDIDATE
-label verdict.py itself emits rather than a hand-rolled stand-in string.
+The input verdict is the label verdict.py itself emits, never a hand-rolled stand-in string,
+so a change to verdict.py's constants cannot leave these cases passing on a stale literal.
 
-DR lookup is a literal path search across docs/decisions/*.md under `root` (deterministic,
-matching docs/wiki/deterministic-script-judgment.md: no DR maps a path to itself through any
-machine-readable field yet, so grepping the DR body for the path text is the mechanical
-substitute census Phase 3's candidate-to-DR cross-reference reduces to here).
-
-A "confirmation record" that the Reassessment Triggers were checked and found not yet met is
-this unit's own convention, introduced because no DR in the repository currently carries a
-machine-checkable field for it (issue #485 Scope explicitly excludes rewriting DR bodies):
-a line reading `Confirmed unmet: {date}` inside the DR file. Its absence is exactly the "no
-confirmation record" state T-001 holds on.
+A confirmation record is a line reading `Confirmed unmet: {date}` inside the DR file. It is
+this unit's own convention because no DR in the repository carries a machine-checkable field
+for it, and issue #485's Scope excludes rewriting DR bodies.
 """
 
 import sys

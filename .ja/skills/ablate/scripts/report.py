@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
 """ablate skill のためのレポート組み立て。
 
-CLI のエントリポイントではない。skills/ablate/SKILL.md はこのモジュールを script として
-呼ぶのでなく、下の `build_report` と `write_report` を import して使う
-(docs/wiki/deterministic-script-judgment.md 「入力から一意に決まる判定は script に置く」—
-列挙・アーム一覧・verdict 分類・DR ゲートはすでにそれぞれの script が持っており、このモジュール
-自身の仕事はその 4 つを順に呼んで結果を呼び出し側へ渡すことだけで、それらの定数をここで再導出
-しない。これは verdict.py の `from arms import UNMEASURED` という兄弟 import の形に倣う)。
+CLI のエントリポイントではない。skills/ablate/SKILL.md は script として呼ぶのでなく
+`build_report` と `write_report` を import して使う。このモジュールがまとめる判定はすでに
+それぞれの script が持つ (docs/wiki/deterministic-script-judgment.md「入力から一意に決まる
+判定は script に置く」) ため、それらの定数をここで再導出しない。
 
-呼び出し側の契約: 呼び出し側 (現在は skills/ablate/tests/report_test.py、いずれ
-skills/ablate/SKILL.md) が、このモジュールのディレクトリと skills/_lib を import 前に
-sys.path へ入れる。harness_elements.py と verdict.py がそれぞれのテストから import される
-のと同じ形であり、report.py 自身は sys.path を操作しない。
+このモジュールのディレクトリと skills/_lib を import 前に sys.path へ入れるのは呼び出し側。
+report.py 自身は sys.path を操作しない。
 """
 
 from __future__ import annotations
@@ -43,20 +39,13 @@ def _is_apparatus(path: str) -> bool:
 
 
 def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, Any]:
-    """前段の 3 ユニットを順に呼び、その出力を結線する。
+    """前段の各ユニットの script を順に呼び、その出力を結線する。
 
-    1. harness_elements.enumerate_elements(root) — harness の全母集団と各要素の分類。
-    2. arms.ARMS — この ablation 実行が比較するすべてのアーム。
-    3. observation ごとの verdict.classify(...) — その observation が報告する要素の
-       delete-candidate / needs-human-judgment / unmeasured ラベル。
-    4. observation ごとの dr_gate.gate(...) — 対象パスが、Reassessment Triggers の確認
-       記録を持たない DR に紐づくとき、DELETE_CANDIDATE 判定を差し止める (U-001)。
-       verdict.classify の片側判定の後、結果を write_report へ渡す前に実行するため、差し
-       止められた候補は下の delete_candidates に決して現れない。
+    dr_gate.gate は verdict.classify の片側判定の後、結果が write_report へ渡る前に走る
+    ため、差し止められた候補は下の delete_candidates に決して現れない。
 
-    レポート文字列でなく素の dict (elements / arms / verdicts / delete_candidates) を返す
-    ため、データだけを必要とする呼び出し側 (このユニットのテスト) は write_report の出力から
-    Markdown を読み戻さずに済む。
+    レポート文字列でなく素の dict を返すため、データだけを必要とする呼び出し側は
+    write_report の出力から Markdown を読み戻さずに済む。
     """
     elements = harness_elements.enumerate_elements(root)
 
@@ -108,8 +97,8 @@ def _render(result: dict[str, Any]) -> str:
             ("Arms", str(len(result["arms"]))),
             ("Elements observed", str(len(result["verdicts"]))),
             ("Delete candidates", str(len(result["delete_candidates"]))),
-            # census のレポートが DR で除外した候補に専用の Summary 行を与えるのと同じく、
-            # 別に数える。無いと Verdicts の表を held の文字列で走査しないと件数が分からない。
+            # 別に数える。この行が無いと、Verdicts の表を held の文字列で走査しない限り
+            # 件数が分からない。
             (
                 "Held by a live DR",
                 str(sum(1 for v in result["verdicts"].values() if v == dr_gate.HELD)),

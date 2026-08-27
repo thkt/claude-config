@@ -2,13 +2,8 @@
 
 Run: python3 skills/ablate/tests/report_dr_gate_test.py
 
-This is the seam unit for U-001 (skills/ablate/scripts/dr_gate.py) landing on top of
-U-008's report.py call sequence (harness_elements -> arms -> verdict.classify -> render ->
-write). This unit's contract places dr_gate.gate after verdict.classify's one-sided
-judgment and before the report is written, so these tests exercise the real dr_gate module
-together with the real report module (never a stub) the same way
-skills/ablate/tests/report_test.py's EndToEnd and ApparatusSelfExclusion classes exercise
-harness_elements / arms / verdict directly instead of a hand-rolled stand-in.
+Each case runs the real dr_gate and report modules together, never a stub, so a change to
+either cannot pass here unseen.
 """
 
 import sys
@@ -32,15 +27,11 @@ def _write(root: Path, rel: str, content: str = "# content\n") -> Path:
     return path
 
 
-# A real skills/**/scripts/*.py harness-element path (skills/_lib/harness_elements.py
-# POPULATION_GLOBS), the same string skills/ablate/tests/dr_gate_test.py already uses as
-# its own CANDIDATE_PATH, so the DR body below and this element path agree on both sides
-# of the seam.
+# The same string dr_gate_test.py uses, so both sides of the seam agree on the path.
 CANDIDATE_PATH = "skills/sample/scripts/example.py"
 
-# Governs CANDIDATE_PATH, carries a Reassessment Triggers section, but no confirmation
-# record -- the exact fixture shape skills/ablate/tests/dr_gate_test.py's T-001 holds on,
-# reused here so a delete candidate traceable to this DR is held rather than passed.
+# Governs CANDIDATE_PATH and carries a Reassessment Triggers section with no confirmation
+# record, so a delete candidate traceable to it is held rather than passed.
 DR_UNCONFIRMED = f"""\
 # DR-0001 Sample decision
 
@@ -84,9 +75,8 @@ class PassesThroughTheGateBeforeWriting(unittest.TestCase):
 
             observations = _observations()
 
-            # Sanity: fed directly, verdict.classify's own output is exactly what
-            # dr_gate.gate holds for this fixture, confirming the fixture exercises the
-            # hold path rather than a DR-lookup miss.
+            # Fed directly, so the fixture is shown to exercise the hold path rather than
+            # a DR-lookup miss.
             direct_verdict = verdict.classify(
                 trigger_task="task-a", task_set={"task-a"}, complies=True
             )
@@ -101,9 +91,8 @@ class PassesThroughTheGateBeforeWriting(unittest.TestCase):
                 report_path = report.write_report(root, observations, out_dir=out_dir)
                 content = report_path.read_text(encoding="utf-8")
 
-                # By the time the report file exists on disk, the DR gate must already
-                # have run: the held candidate never reaches the written Delete
-                # Candidates list, and the section reports none instead.
+                # Read off the written file, since a gate that ran after rendering would
+                # still leave the held candidate in this section.
                 delete_candidates_section = content.split("## Delete Candidates")[1]
                 self.assertNotIn(f"- {CANDIDATE_PATH}", delete_candidates_section)
                 self.assertIn("No delete candidates.", delete_candidates_section)
@@ -124,9 +113,8 @@ class HeldCandidateAbsentFromReport(unittest.TestCase):
 
             result = report.build_report(root, observations)
 
-            # verdict.classify's raw, one-sided judgment says DELETE_CANDIDATE on its own
-            # -- the DR gate is what must additionally hold this path back from
-            # delete_candidates, not a change to verdict.classify itself.
+            # verdict.classify says DELETE_CANDIDATE on its own, so what keeps this path
+            # out of delete_candidates is the gate, not a change to verdict.classify.
             direct_verdict = verdict.classify(
                 trigger_task="task-a", task_set={"task-a"}, complies=True
             )
