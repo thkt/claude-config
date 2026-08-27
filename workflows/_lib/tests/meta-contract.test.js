@@ -3,7 +3,7 @@
 // because a caller cannot recover it at run time, so these tests hold it to audit.js's FOCUS.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readMeta } from "../run-workflow.js";
@@ -20,7 +20,7 @@ const workflowTrees = (name) => [
 
 const TREES = workflowTrees("audit");
 
-for (const name of ["audit", "build", "code", "adrift", "assert"]) {
+for (const name of ["audit", "build", "code", "adrift", "assert", "shake"]) {
   test(`${name}'s whenToUse in neither tree contains the identifier args`, () => {
     for (const { label, path } of workflowTrees(name)) {
       const meta = readMeta(path);
@@ -32,6 +32,27 @@ for (const name of ["audit", "build", "code", "adrift", "assert"]) {
     }
   });
 }
+
+// Full-tree sweep, following reference-notation.test.js's readdirSync pattern: every
+// <name>.js directly under workflows/ and its .ja/ mirror, not just the names listed above.
+const WORKFLOW_TREE_DIRS = [
+  { label: "en", dir: join(here, "..", "..") },
+  { label: "ja", dir: join(here, "..", "..", "..", ".ja", "workflows") },
+];
+
+test("no whenToUse under either tree contains the identifier args", () => {
+  for (const { label, dir } of WORKFLOW_TREE_DIRS) {
+    const scripts = readdirSync(dir).filter((name) => name.endsWith(".js"));
+    for (const name of scripts) {
+      const meta = readMeta(join(dir, name));
+      assert.doesNotMatch(
+        meta.whenToUse,
+        /\bargs\b/,
+        `[${label}/${name}] whenToUse names the identifier "args" instead of describing the shape in prose`,
+      );
+    }
+  }
+});
 
 // Only the key set matters here: FOCUS's values are reviewer-name arrays that whenToUse's prose
 // never restates.

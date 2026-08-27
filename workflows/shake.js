@@ -3,7 +3,7 @@ export const meta = {
   description:
     "Deterministic flaky-test detection workflow. Shakes the target tests 10 times per each of 4 dimensions (repeat / order / parallelism / seed) with a static smell scan running alongside, and classifies each target as confirmed-flaky / latent-flaky / stable. The script enforces the run counts and the classification rule, so thinned-out runs and lenient stable verdicts cannot happen. confirmed-flaky targets get a root-cause fix verified by re-shake.",
   whenToUse:
-    "When tests fail intermittently, CI goes red at random, or you want to surface latent flakiness in green tests. Use fix for a single confirmed bug, the audit workflow for static-only review. args is a test path / suite filter string, or {scope, base, repo}. Omitted: test files touched in the working tree and the base branch diff.",
+    "When tests fail intermittently, CI goes red at random, or you want to surface latent flakiness in green tests. Use fix for a single confirmed bug, the audit workflow for static-only review. Identify the target repository (required); omitting it stops early as no-repo. Narrow the target with scope (a test path / suite filter string); when omitted, the target is test files touched in the working tree and the base branch diff (base, default main).",
   phases: [{ title: "Route" }, { title: "Shake" }, { title: "Fix" }],
 };
 
