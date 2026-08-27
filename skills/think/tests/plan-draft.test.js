@@ -42,14 +42,9 @@ const refModuleSection = (doc) => {
   const nextHeading = afterHeading.search(/^##+ /m);
   return nextHeading === -1 ? afterHeading : afterHeading.slice(0, nextHeading);
 };
-// Kept in one const and reused by every assertion that needs it, the same way build.js's
-// idSet centralizes the regex an id extraction runs.
 const REF_MODULE_SHAPE_RE = /^.*reference_module:\s*\{[^}]*\}.*$/m;
 
-// DR-0093's kind carries the reason requirement, not null itself, in both SKILL.md's prose
-// section and pre-write-check.md's numbered item. Shared across both call sites the same way
-// idSet is shared across id extractions, so the "kind other than module requires a reason"
-// wording is checked once rather than duplicated per document.
+// Read by both the SKILL.md prose section and pre-write-check.md's numbered item.
 const REQUIRES_REASON = {
   en: /kind[\s\S]{0,80}(other than module|not module)[\s\S]{0,80}(requires|required)[\s\S]{0,40}reason|reason[\s\S]{0,80}(requires|required)[\s\S]{0,80}kind/i,
   ja: /kind[\s\S]{0,80}module 以外[\s\S]{0,80}理由[\s\S]{0,40}必須|理由[\s\S]{0,80}必須[\s\S]{0,80}kind/,
