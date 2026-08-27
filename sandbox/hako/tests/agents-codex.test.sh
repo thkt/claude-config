@@ -181,7 +181,8 @@ test_the_chain_execs_codex_when_hako_sh_is_given_codex() {
 
   # The codex stub only logs its own argv, not its own command name, so what proves codex
   # (rather than claude, or nothing) actually ran is that its dedicated log file gained a
-  # line at all -- CLAUDE_LOG has no stub writing to it anywhere in this chain.
+  # line at all -- STUB_BIN has no claude stub in this chain, so a run that resolved
+  # claude's command instead would have logged nothing anywhere.
   assert_eq "codex's own log received an invocation" "yes" \
     "$([[ -s "$CODEX_LOG" ]] && echo yes || echo no)"
 }
