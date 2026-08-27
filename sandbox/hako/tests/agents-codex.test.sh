@@ -3,8 +3,8 @@
 # #489 already covers the claude row (sandbox/hako/tests/agents.test.sh) and the full
 # hako.sh -> container -> entrypoint.sh -> init-firewall.sh -> agents.sh chain for claude
 # (sandbox/hako/tests/hako-seam.test.sh). This file exercises the same two shapes for
-# codex: T-001/T-002 mirror agents.test.sh's table-lookup style directly against agents.sh
-# as a subprocess CLI, and T-003 mirrors hako-seam.test.sh's chain style, swapping the
+# codex: T-019/T-020 mirror agents.test.sh's table-lookup style directly against agents.sh
+# as a subprocess CLI, and T-021 mirrors hako-seam.test.sh's chain style, swapping the
 # claude stub for a codex stub so the assertion reads whether codex, not claude, is what
 # finally execs.
 set -euo pipefail
@@ -17,7 +17,7 @@ ENTRYPOINT="$SCRIPT_DIR/../entrypoint.sh"
 AGENT_NAME="codex"
 
 test_codex_resolves_an_exec_command_an_auth_directory_and_an_allowlist() {
-  echo "T-001: codex resolves an exec command, an auth directory, and an allowlist"
+  echo "T-019: codex resolves an exec command, an auth directory, and an allowlist"
   # The exact flags on codex's exec command are an implementation choice the contract does
   # not pin (unlike auth-dir, which it names literally), so this only requires the command
   # to actually name the codex CLI rather than pinning a full string.
@@ -27,7 +27,7 @@ test_codex_resolves_an_exec_command_an_auth_directory_and_an_allowlist() {
 }
 
 test_the_domain_set_entering_ipset_for_codex_differs_from_the_one_for_claude() {
-  echo "T-002: the domain set entering ipset for codex differs from the one for claude"
+  echo "T-020: the domain set entering ipset for codex differs from the one for claude"
   local claude_list codex_list
   # Guarded with `|| true`: a plain assignment's command substitution failing (codex is not
   # yet a known agent name) would otherwise trip `set -e` and abort the whole script before
@@ -35,11 +35,14 @@ test_the_domain_set_entering_ipset_for_codex_differs_from_the_one_for_claude() {
   # its failing call's status explicitly instead of letting it propagate.
   claude_list="$("$AGENTS" allowlist claude 2>/dev/null)" || true
   codex_list="$("$AGENTS" allowlist codex 2>/dev/null)" || true
+  # Checked before the comparison below: a missing codex row leaves codex_list empty, and an
+  # empty list "differs from claude's" too, so the divergence assert alone reports a pass on
+  # the very state it exists to catch (docs/wiki/zero-hit-positive-control.md).
+  assert_contains "codex resolves an allowlist at all" "registry.npmjs.org" "$codex_list"
   # init-firewall.sh (U-002) resolves this exact string into the ipset it builds, so a
   # divergence here is what puts a different domain set into the guest's ipset.
   assert_eq "codex's allowlist differs from claude's" "yes" \
-    "$([[ "$claude_list" != "$codex_list" ]] && echo yes || echo no)"
-  assert_contains "shared domains still resolve for codex" "registry.npmjs.org" "$codex_list"
+    "$([[ -n "$codex_list" && "$claude_list" != "$codex_list" ]] && echo yes || echo no)"
 }
 
 # Template under $TMPDIR: macOS mktemp without a template ignores TMPDIR
@@ -168,7 +171,7 @@ run_chain() {
 }
 
 test_the_chain_execs_codex_when_hako_sh_is_given_codex() {
-  echo "T-003: the chain execs codex when hako.sh is given codex"
+  echo "T-021: the chain execs codex when hako.sh is given codex"
   local status=0
   run_chain || status=$?
   assert_eq "the whole chain exits zero" "0" "$status"
