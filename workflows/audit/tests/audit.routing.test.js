@@ -6,12 +6,37 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflow } from "../../_lib/run-workflow.js";
-import { snapshotPayload } from "./_fixtures.js";
-import { parseRoutingLikeConst } from "../../_lib/tests/_brace.js";
+import { defaultAgentStub, snapshotPayload } from "./_fixtures.js";
+import { extractBracedBody, parseRoutingLikeConst } from "../../_lib/tests/_brace.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const auditJs = join(here, "..", "..", "audit.js");
+const assertJs = join(here, "..", "..", "assert.js");
 const reviewersDir = join(here, "..", "..", "..", "agents", "reviewers");
+
+// Same extraction as parseRoutingLikeConst (extractBracedBody isolates the `const <name> = {`
+// body), with the row pattern swapped for a numeric value: SEVERITY_RANK holds `key: number`,
+// not `key: [...]`. Reused across T-105 and T-107 so neither test copies a severity's spelling
+// or its rank by hand.
+const parseNumericConst = (source, name) => {
+  const body = extractBracedBody(source, `const ${name} = {`);
+  if (body === null) return null;
+  const result = {};
+  const rowPattern = /(?:"([^"]+)"|(\w+))\s*:\s*(-?\d+(?:\.\d+)?)/g;
+  let m;
+  while ((m = rowPattern.exec(body))) {
+    const key = m[1] || m[2];
+    result[key] = Number(m[3]);
+  }
+  return result;
+};
+
+// The findings schema's severity enum, read from audit.js's own FINDINGS_SCHEMA rather than
+// copied into the test as a literal list.
+const parseFindingsSeverityEnum = (source) => {
+  const m = source.match(/severity:\s*\{\s*type:\s*"string",\s*enum:\s*\[([^\]]*)\]/);
+  return m ? [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]) : null;
+};
 
 // No stub is placed past Challenge. Returning undefined on a reviewer label empties findings and
 // drops the run into the early return that still carries assignments.
@@ -357,4 +382,77 @@ test("each key of FOCUS, all included, still routes files to reviewers", async (
       `focus "${key}" still routes the file to at least one reviewer`,
     );
   }
+});
+
+// T-105 through T-107 guard the seam between audit.js and assert.js: both scripts keep their
+// own copy of SEVERITY_RANK (the plan's convention forbids sharing one module across workflow
+// scripts), so nothing at edit time stops the two copies from drifting apart. All three read
+// the tables straight from source text via parseNumericConst / parseFindingsSeverityEnum,
+// never copying a severity's spelling or rank into the test by hand.
+test("the SEVERITY_RANK extracted from audit.js deep-equals the one extracted from assert.js", () => {
+  const auditRank = parseNumericConst(readFileSync(auditJs, "utf8"), "SEVERITY_RANK");
+  const assertRank = parseNumericConst(readFileSync(assertJs, "utf8"), "SEVERITY_RANK");
+
+  assert.ok(auditRank, "SEVERITY_RANK is extractable from audit.js");
+  assert.ok(assertRank, "SEVERITY_RANK is extractable from assert.js");
+  assert.deepEqual(auditRank, assertRank, "audit.js and assert.js rank every severity identically");
+});
+
+test("the snapshot payload carries the findings in the same order as the return value", async () => {
+  const rank = parseNumericConst(readFileSync(auditJs, "utf8"), "SEVERITY_RANK");
+  assert.ok(rank, "SEVERITY_RANK is extractable from audit.js");
+  const severities = Object.keys(rank);
+
+  // One finding per known severity, handed to Integrate in the reverse of rank order, so a
+  // pipeline that forwarded Integrate's order unsorted would already fail the first assertion.
+  const findings = severities.map((severity, i) => ({
+    file: "a.js",
+    line: String(i + 1),
+    severity,
+    summary: `${severity} finding`,
+    source_ids: ["R-1"],
+  }));
+
+  const { result, calls } = await runWorkflow(auditJs, {
+    args: { repo: "/abs/target-repo", focus: "security", skipPreflight: true },
+    stubs: {
+      agent: defaultAgentStub({
+        challenge: { verdicts: [{ id: "R-1", verdict: "confirmed" }] },
+        integrate: { findings: [...findings].reverse() },
+      }),
+    },
+  });
+
+  const expectedOrder = [...severities].sort((a, b) => rank[b] - rank[a]);
+  assert.deepEqual(
+    result.findings.map((f) => f.severity),
+    expectedOrder,
+    "the return value sorts by the SEVERITY_RANK extracted from audit.js's own source",
+  );
+
+  const snap = snapshotPayload(calls);
+  assert.deepEqual(
+    snap.findings.map((f) => f.severity),
+    result.findings.map((f) => f.severity),
+    "the snapshot payload carries the findings in the same order as the return value",
+  );
+});
+
+test("every severity in the audit findings schema enum appears as a key of SEVERITY_RANK", () => {
+  const source = readFileSync(auditJs, "utf8");
+  const enumSeverities = parseFindingsSeverityEnum(source);
+  const rank = parseNumericConst(source, "SEVERITY_RANK");
+
+  assert.ok(
+    enumSeverities && enumSeverities.length,
+    "the findings schema's severity enum is extractable from audit.js",
+  );
+  assert.ok(rank, "SEVERITY_RANK is extractable from audit.js");
+
+  const missing = enumSeverities.filter((s) => !(s in rank));
+  assert.deepEqual(
+    missing,
+    [],
+    `findings schema severities with no SEVERITY_RANK entry: ${missing.join(", ")}`,
+  );
 });
