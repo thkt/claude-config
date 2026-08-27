@@ -42,6 +42,18 @@ A script accepts `args` as either a string or an object. The string is shorthand
 | String options         | Confirm the type with `typeof`, and fall to the default when `trim()` is empty. The `base` naming a diff comparison defaults to `main`                                                                               |
 | A script taking `repo` | Define `anchor(p)` and pass every prompt bound for an agent through it. anchor prepends one sentence asking for `cd <repo> &&`. A stage working somewhere other than the repo takes a separate pin naming that place |
 
+## meta.description and whenToUse content
+
+`meta.description` and `meta.whenToUse` are prose for whoever decides whether to invoke the workflow, not a place to teach the `args` shape. Neither field names the identifier `args` or spells out its object keys; a reader gets those from the "Taking arguments and prompts" table above.
+
+| Target                                                          | Convention                                                                                                                                                             |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `args` shape                                                    | Do not write it into `description` or `whenToUse`. Naming `args` or its keys belongs in code and in this document, not in workflow prose                             |
+| An option `whenToUse` enumerates (audit's focus, polish's mode) | The script's own const (audit.js's `FOCUS`, polish.js's `MODES`) is canonical. A `whenToUse` listing such as "focus (a / b / ...)" or "mode (a / b / ...)" is a derived copy and follows that const's keys |
+| Keeping the copy honest                                         | `workflows/_lib/tests/meta-contract.test.js` checks both: it fails when a `whenToUse` names `args`, and when an enumerated `whenToUse` diverges from its script's const |
+
+A workflow script holds a top-level `return`, so it is neither ESM nor CommonJS and nothing can `import()` it to read `FOCUS` or `MODES` as live values (Script evaluation form). meta-contract.test.js instead reads the script and its `meta` literal as source text, extracts the const's keys and the `whenToUse` listing by parsing rather than by importing, and compares the two extracted sets.
+
 ## Degradation recording
 
 Degradation is a branch that drops or defaults a failed or missing sub-result without recording it at loss granularity in either a structured field or `log()`. Loss granularity is the information that lets a reader reconstruct what / how many / why was lost (count, id, target name, reason).
