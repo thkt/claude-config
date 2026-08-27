@@ -61,11 +61,11 @@ A test_command failure must be attributable to the planned scope alone. On a rep
 
 ### reference_module
 
-A contract can cite a behavior at one call site only, so the implementer hand-rolls the surrounding structure. Record what Phase 2's step 3 noted as `reference_module: { path, files, instances }` without searching again. The structure goes in the plan's reference module section, and every unit refers to it.
+A contract can cite a behavior at one call site only, so the implementer hand-rolls the surrounding structure. Record what Phase 2's step 3 noted as `reference_module: { kind, reason, path, files, instances, conventions }` without searching again. kind is one of module/no-module/new-shape; a kind other than module requires a reason. The structure goes in the plan's reference module section, and every unit refers to it.
 
 1. Make U-001 its structure replication (same directory layout, component names, export names; tests is an empty array) only when the skeleton fits under 4 files. Otherwise split units by layer and let each unit replicate its own slice
 2. State the shared conventions to keep (which shared components it composes, where formatting is written, how state is passed). Deviating is allowed only with a stated reason in the plan
-3. Name the candidates not picked in the prose, along with why kind is not module. A null with no reason is a planning defect
+3. Name the candidates not picked in the prose, along with why kind is not module. A kind with no reason is a planning defect
 4. When instances is 2 or more, say "Nth instance" in the prose, telling the implementer to replicate rather than design
 
 ### preconditions

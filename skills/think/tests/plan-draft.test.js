@@ -29,6 +29,71 @@ const buildJs = () => read(join(root, "workflows", "build.js"));
 const steps = (doc) => doc.split("\n").filter((line) => /^\d+\. /.test(line));
 const phase = (doc, n) => doc.slice(doc.indexOf(`## Phase ${n}`), doc.indexOf(`## Phase ${n + 1}`));
 
+// Mirrors build.js's own planHeading/afterHeading/nextSection/planSection extraction
+// (workflows/build.js:474-485): scope matching to the ### reference_module subsection alone,
+// never the whole document, and find the next heading with a line-start anchor rather than a
+// lookahead carrying `$`, whose /m behavior stops at the first line break instead of the section
+// end.
+const REF_MODULE_HEADING_RE = /^### reference_module\n/m;
+const refModuleSection = (doc) => {
+  const headingMatch = doc.match(REF_MODULE_HEADING_RE);
+  if (!headingMatch) return null;
+  const afterHeading = doc.slice(headingMatch.index + headingMatch[0].length);
+  const nextHeading = afterHeading.search(/^##+ /m);
+  return nextHeading === -1 ? afterHeading : afterHeading.slice(0, nextHeading);
+};
+// Kept in one const and reused by every assertion that needs it, the same way build.js's
+// idSet centralizes the regex an id extraction runs.
+const REF_MODULE_SHAPE_RE = /^.*reference_module:\s*\{[^}]*\}.*$/m;
+
+// DR-0093 splits reference_module's null into kind (module/no-module/new-shape) with reason.
+// The section's own shape example still shows the pre-DR bare object, so a plan author copying
+// it verbatim from SKILL.md would drop kind and reason on the floor.
+test("both trees' reference_module section records kind and reason, not a bare path-files-instances object", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const section = refModuleSection(read(path));
+    assert.ok(section, `${lang}: the ### reference_module subsection is present`);
+    const shape = section.match(REF_MODULE_SHAPE_RE);
+    assert.ok(shape, `${lang}: the reference_module shape example is stated`);
+    assert.match(shape[0], /\bkind\b/, `${lang}: the shape names kind`);
+    assert.match(shape[0], /\breason\b/, `${lang}: the shape names reason`);
+    assert.doesNotMatch(
+      shape[0],
+      /\{\s*path,\s*files,\s*instances\s*\}/,
+      `${lang}: the shape is not the bare path-files-instances object`,
+    );
+  }
+});
+
+// DR-0093's kind carries the reason requirement, not null itself: build.js's validate rejects a
+// missing reason for any kind other than module, module included or not. The section instead
+// singles out a bare null as "計画の欠陥"/"a planning defect", which is the framing DR-0093
+// dropped in favor of kind.
+test("both trees' reference_module section states that a kind other than module requires a reason, without calling a bare null the defect", () => {
+  const REQUIRES_REASON = {
+    en: /kind[\s\S]{0,80}(other than module|not module)[\s\S]{0,80}(requires|required)[\s\S]{0,40}reason|reason[\s\S]{0,80}(requires|required)[\s\S]{0,80}kind/i,
+    ja: /kind[\s\S]{0,80}module 以外[\s\S]{0,80}理由[\s\S]{0,40}必須|理由[\s\S]{0,80}必須[\s\S]{0,80}kind/,
+  };
+  const NULL_CALLED_DEFECT = {
+    en: /null[\s\S]{0,40}defect/i,
+    ja: /null[\s\S]{0,40}欠陥/,
+  };
+  for (const [lang, path] of Object.entries(skills)) {
+    const section = refModuleSection(read(path));
+    assert.ok(section, `${lang}: the ### reference_module subsection is present`);
+    assert.match(
+      section,
+      REQUIRES_REASON[lang],
+      `${lang}: a kind other than module is stated to require a reason`,
+    );
+    assert.doesNotMatch(
+      section,
+      NULL_CALLED_DEFECT[lang],
+      `${lang}: a bare null is not singled out as the defect`,
+    );
+  }
+});
+
 test("the plan template defines the skeleton (id notation, implementation order, the preconditions subsection, one-line statement tests, test_command, Backlog candidates) and the line-count rule", () => {
   for (const [lang, path] of Object.entries(templates)) {
     const doc = read(path);
