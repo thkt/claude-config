@@ -481,7 +481,7 @@ const plan = await agent(
       `preconditions は plan が前提にする既存コードの {path, pattern} の一覧、backlog_candidates は issue に書かれたスコープ外候補。本文に無ければ空配列。\n` +
       `rules は ### 決まりごと (### Rules) 節を {source, quote} の組にしたもの。source は行に書かれた文書のパス、quote はコロンより後ろの文を逐語で。節が無ければ空配列。\n` +
       `seam は本文が \`seam: true\` と記した unit だけ true、他はすべて false。unit の内容から推測しない。\n` +
-      `reference_module: 本文は \`null (理由)\` の散文で書く。null に潰さず object に変換し、kind は schema の enum 説明に従って選び、reason は原文のまま写す。kind が module のときは path/files/instances/conventions も本文から写す。本文の reference_module に理由が一切無いときだけ素の null を出す。本文に reference_module の行が無ければフィールドを省く。\n` +
+      `reference_module: 本文は object \`{kind, reason}\` (kind: module/no-module/new-shape) で書く。path/files/instances/conventions は kind が module のときだけ加わる。kind と reason は原文のまま写し、kind が module のときは path/files/instances/conventions も本文から写す。旧来の本文は今も \`null (理由)\` の散文で書くことがあり、その場合も素の null に潰さず同じ object 形に変換する。本文の reference_module に理由が一切無いときだけ素の null を出す。本文に reference_module の行が無ければフィールドを省く。\n` +
       `root_cause: 本文が記載していれば (Root Cause / 原因の行など) 原文のまま写す。本文に記載が無ければフィールドを省く。\n\n${fencedBody}`,
   ),
   {
@@ -495,6 +495,44 @@ const plan = await agent(
 );
 if (!plan) {
   return await stop("extraction-failed", { why: "extract agent が plan を返さなかった。" });
+}
+
+// reference_module.kind/reason の決定的フォールバック: 上の extract prompt はまだ
+// skills/think に遅れている。think は DR-0093 により object 形式で書くようになったので、
+// 追いついていない抽出は本文が明記する kind や reason を今も落としうる。上の
+// bodyUnitIds/bodyTestIds と同じ手段で回収する: fencedBody 全体ではなく planSection に
+// 絞った行頭アンカー付き正規表現で、本文中の他所にあるテンプレート引用を一致に数えない。
+// planSection に reference_module 行がちょうど1件あるときだけ補完し、補完するのは
+// kind/reason だけで path は作らない。
+const REFERENCE_MODULE_LINE_RE = /^reference_module:[ \t]*(.+)$/gm;
+const refModuleLines = [...planSection.matchAll(REFERENCE_MODULE_LINE_RE)];
+if (refModuleLines.length === 1) {
+  const refModuleLine = refModuleLines[0][1].trim();
+  const kindMatch = refModuleLine.match(/kind:\s*"([^"]*)"/);
+  const reasonMatch = refModuleLine.match(/reason:\s*"([^"]*)"/);
+  // 旧形式との互換 (DR-0093): 分割前の本文は kind を持たない `null (理由)` の散文で書く。
+  // reason しか記録していなかった plan の読み替えとして "no-module" が最も近い。
+  const legacyMatch = kindMatch ? null : refModuleLine.match(/^null\s*\(([\s\S]*)\)$/);
+  const filledKind = kindMatch ? kindMatch[1] : legacyMatch ? "no-module" : undefined;
+  const filledReason = reasonMatch ? reasonMatch[1] : legacyMatch ? legacyMatch[1] : undefined;
+  if (filledKind !== undefined || filledReason !== undefined) {
+    const existingRefModule =
+      plan.reference_module &&
+      typeof plan.reference_module === "object" &&
+      !Array.isArray(plan.reference_module)
+        ? plan.reference_module
+        : {};
+    const hasKind = typeof existingRefModule.kind === "string" && existingRefModule.kind.trim();
+    const hasReason =
+      typeof existingRefModule.reason === "string" && existingRefModule.reason.trim();
+    if (!hasKind || !hasReason) {
+      plan.reference_module = {
+        ...existingRefModule,
+        ...(!hasKind && filledKind !== undefined ? { kind: filledKind } : {}),
+        ...(!hasReason && filledReason !== undefined ? { reason: filledReason } : {}),
+      };
+    }
+  }
 }
 
 // Bug issue はタイトルに `[Bug]` prefix を持つ。fetch が title を取得できなかったときは

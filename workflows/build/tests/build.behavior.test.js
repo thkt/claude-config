@@ -403,6 +403,165 @@ test("a plan carrying both kind and reason clears validate", async () => {
   assert.notEqual(result.stopped, "invalid-plan", "kind plus reason clears validate");
 });
 
+// U-003: the extract prompt (line ~500) still only describes the legacy
+// `reference_module: null (reason)` prose, not the current `reference_module: {kind, reason}`
+// skeleton form skills/think now writes (DR-0093's Transition Plan). Until that prompt catches
+// up, a still-imperfect extraction can drop kind or reason even though the raw issue body states
+// them plainly. A deterministic regex fallback recovers them from planSection, the same way
+// bodyUnitIds scans planSection with a line-anchored regex rather than reading the whole body.
+const bodyWithRefModule = (refModuleLine) =>
+  [
+    "Background on the issue.",
+    "",
+    "## Plan",
+    "",
+    "### U-001: unit heading",
+    "- T-001: test scenario",
+    "",
+    "test_command: echo test",
+    refModuleLine,
+    "",
+  ].join("\n");
+
+test("a plan body written from the skeleton with the Reference module subsection omitted reaches Ship instead of stopping as invalid-plan", async () => {
+  // kind: no-module carries no ### Reference module subsection per templates/plan.md ("Omit the
+  // whole subsection when kind is not module."), only the top-level reference_module: line. The
+  // stubbed extraction drops the reason the way an as-yet-unfixed extract prompt would.
+  const reason = "adds one line to an existing skill; no new module needed";
+  const body = bodyWithRefModule(`reference_module: {kind: "no-module", reason: "${reason}"}`);
+  const { calls, result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      body,
+      plan: makePlan({ reference_module: { kind: "no-module", reason: "" } }),
+    }),
+  });
+  assert.notEqual(
+    result.stopped,
+    "invalid-plan",
+    "the fill recovers the dropped reason from the body line before validate runs",
+  );
+  assert.ok(calls.phase.includes("Ship"), "the run reaches Ship instead of stopping at Load");
+});
+
+test("the fill reads kind and reason off the body line when the extraction omits the field", async () => {
+  const reason = "no equivalent structure exists yet";
+  const body = bodyWithRefModule(`reference_module: {kind: "new-shape", reason: "${reason}"}`);
+  const { calls, result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ body, plan: makePlan({ reference_module: {} }) }),
+  });
+  // An object with no "kind" key already clears validate() unchecked (its own legacy-compat
+  // branch: "goes unchecked for backward compatibility"), so clearing validate alone would not
+  // prove the fill ran; the code workflow's structured payload is read directly instead.
+  assert.notEqual(result.stopped, "invalid-plan");
+  const codeCall = calls.workflow.find((c) => c.name === "code");
+  assert.ok(codeCall, "the code workflow runs");
+  assert.equal(
+    codeCall.args.plan.reference_module.kind,
+    "new-shape",
+    "kind is filled from the body line",
+  );
+  assert.equal(
+    codeCall.args.plan.reference_module.reason,
+    reason,
+    "reason is filled from the body line",
+  );
+});
+
+test("the legacy `reference_module: null (reason)` form fills a kind rather than being left absent", async () => {
+  const reason = "adds one line to an existing skill; no new module needed";
+  const body = bodyWithRefModule(`reference_module: null (${reason})`);
+  const { calls, result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ body, plan: makePlan({ reference_module: null }) }),
+  });
+  assert.notEqual(
+    result.stopped,
+    "invalid-plan",
+    "the legacy null(reason) form fills a kind and reason instead of stopping",
+  );
+  const codeCall = calls.workflow.find((c) => c.name === "code");
+  assert.ok(codeCall, "the code workflow runs");
+  const filled = codeCall.args.plan.reference_module;
+  assert.ok(
+    filled && typeof filled === "object",
+    "reference_module becomes an object rather than staying the bare null the extraction produced",
+  );
+  assert.match(
+    filled.kind,
+    /^(no-module|new-shape)$/,
+    "a kind is filled; the fill never produces module, since it never fabricates a path",
+  );
+  assert.equal(filled.reason, reason, "the reason is carried over verbatim");
+});
+
+// The outside quotation shares the reference_module shape but carries kind: "module" and a
+// different reason. A naive whole-body scan would either count it and abort the fill under the
+// "not exactly 1 match" rule, or let it win as a spurious first match. Correctly scoping the scan
+// to planSection makes neither happen: the fill still runs off the one line inside the Plan
+// section, its result untouched by what sits outside it.
+test("a template quotation outside the Plan section leaves the extraction untouched", async () => {
+  const reason = "adds one line to an existing skill; no new module needed";
+  const outsideQuote =
+    'The plan skeleton shows reference_module: {kind: "module", reason: "example only"} as its row.';
+  const body = [
+    outsideQuote,
+    "",
+    "## Plan",
+    "",
+    "### U-001: unit heading",
+    "- T-001: test scenario",
+    "",
+    "test_command: echo test",
+    `reference_module: {kind: "no-module", reason: "${reason}"}`,
+    "",
+  ].join("\n");
+  const { calls, result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      body,
+      plan: makePlan({ reference_module: { kind: "no-module", reason: "" } }),
+    }),
+  });
+  assert.notEqual(
+    result.stopped,
+    "invalid-plan",
+    "the one match inside the Plan section still fills, untouched by the quotation outside it",
+  );
+  const codeCall = calls.workflow.find((c) => c.name === "code");
+  assert.ok(codeCall, "the code workflow runs");
+  assert.equal(
+    codeCall.args.plan.reference_module.kind,
+    "no-module",
+    "the filled kind comes from the line inside the Plan section, not the module kind quoted outside it",
+  );
+  assert.equal(
+    codeCall.args.plan.reference_module.reason,
+    reason,
+    "the filled reason comes from the line inside the Plan section, not the example text quoted outside it",
+  );
+});
+
+test("the filled reason reaches no agent prompt", async () => {
+  const marker = "ZZQX-UNIQUE-FILL-MARKER-77281";
+  const body = bodyWithRefModule(`reference_module: {kind: "no-module", reason: "${marker}"}`);
+  const { calls, result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      body,
+      plan: makePlan({ reference_module: { kind: "no-module", reason: "" } }),
+    }),
+  });
+  assert.notEqual(result.stopped, "invalid-plan", "the fill clears validate so the run proceeds");
+  const otherPrompts = calls.agent.filter((c) => kindOf(c.opts) !== "extract").map((c) => c.prompt);
+  assert.ok(
+    otherPrompts.every((p) => !p.includes(marker)),
+    "the filled reason text, present verbatim only in the fenced body the extract call " +
+      "legitimately receives, reaches no other agent prompt",
+  );
+});
+
 // The [Bug] prefix on an issue title (qualify SKILL.md § Title type) marks the Bug
 // classification. A Bug issue that names no cause tends toward a symptomatic fix once it reaches
 // the Code stage, so validate at the Load stage demands that root_cause be written. root_cause
