@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 """Report assembly for the ablate skill.
 
-Not a CLI entry point: skills/ablate/SKILL.md imports this module for `build_report` and
-`write_report` below rather than shelling out to it (docs/wiki/deterministic-script-judgment.md
-"入力から一意に決まる判定は script に置く" — enumeration, arm listing, and verdict
-classification each already live in their own script; this module's own job is only to call
-those three in sequence and hand the combined result to the caller, mirroring verdict.py's
-`from arms import UNMEASURED` sibling-import shape rather than re-deriving any of their
-constants here).
+Not a CLI entry point: skills/ablate/SKILL.md imports `build_report` and `write_report`
+rather than shelling out. Each judgment this module combines already lives in its own script
+(docs/wiki/deterministic-script-judgment.md "入力から一意に決まる判定は script に置く"), so
+none of their constants is re-derived here.
 
-Caller contract: the caller (currently skills/ablate/tests/report_test.py; eventually
-skills/ablate/SKILL.md) puts this module's directory and skills/_lib on sys.path before
-importing it, the same way harness_elements.py and verdict.py are already imported by their
-own tests — report.py does not manipulate sys.path itself.
+The caller puts this module's directory and skills/_lib on sys.path before importing it;
+report.py does not manipulate sys.path itself.
 """
 
 from __future__ import annotations
@@ -22,6 +17,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import arms
+import dr_gate
 import harness_elements
 import verdict
 
@@ -43,28 +39,25 @@ def _is_apparatus(path: str) -> bool:
 
 
 def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, Any]:
-    """Runs the three preceding units in sequence and wires their outputs together.
+    """Calls each preceding unit's script in turn and wires their outputs together.
 
-    1. harness_elements.enumerate_elements(root) — the full harness population and each
-       member's classification.
-    2. arms.ARMS — every arm this ablation run compares.
-    3. verdict.classify(...), once per observation — the delete-candidate /
-       needs-human-judgment / unmeasured label for the element that observation reports on.
+    dr_gate.gate runs after verdict.classify's one-sided judgment and before the result
+    reaches write_report, so a held candidate never enters delete_candidates below.
 
-    Returns a plain dict (elements / arms / verdicts / delete_candidates) rather than a
-    report string, so a caller that only wants the data (this unit's tests; a future
-    enforcer/DR-gate wiring in U-009 through U-011) does not have to parse Markdown back out
-    of write_report's output.
+    Returns a plain dict rather than a report string, so a caller that only wants the data
+    does not have to parse Markdown back out of write_report's output.
     """
     elements = harness_elements.enumerate_elements(root)
 
     verdicts: dict[str, str] = {}
     for observation in observations:
-        verdicts[observation["path"]] = verdict.classify(
+        path = observation["path"]
+        raw_verdict = verdict.classify(
             trigger_task=observation.get("trigger_task"),
             task_set=observation.get("task_set"),
             complies=observation.get("complies"),
         )
+        verdicts[path] = dr_gate.gate(path=path, verdict=raw_verdict, root=root)
 
     delete_candidates = [
         path
@@ -104,6 +97,12 @@ def _render(result: dict[str, Any]) -> str:
             ("Arms", str(len(result["arms"]))),
             ("Elements observed", str(len(result["verdicts"]))),
             ("Delete candidates", str(len(result["delete_candidates"]))),
+            # Counted apart, since without this row the number is only reachable by
+            # scanning the Verdicts table for the held literal.
+            (
+                "Held by a live DR",
+                str(sum(1 for v in result["verdicts"].values() if v == dr_gate.HELD)),
+            ),
         ],
     )
     lines += [""]
