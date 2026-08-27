@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 """Report assembly for the ablate skill.
 
-Not a CLI entry point: skills/ablate/SKILL.md imports this module for `build_report` and
-`write_report` below rather than shelling out to it (docs/wiki/deterministic-script-judgment.md
-"入力から一意に決まる判定は script に置く" — enumeration, arm listing, verdict
-classification, and usage counting each already live in their own script; this module's own
-job is only to call those four in sequence and hand the combined result to the caller,
-mirroring verdict.py's `from arms import UNMEASURED` sibling-import shape rather than
-re-deriving any of their constants here).
+Not a CLI entry point: skills/ablate/SKILL.md imports `build_report` and `write_report`
+rather than shelling out. Each judgment this module combines already lives in its own script
+(docs/wiki/deterministic-script-judgment.md "入力から一意に決まる判定は script に置く"), so
+none of their constants is re-derived here.
 
-Caller contract: the caller (currently skills/ablate/tests/report_test.py; eventually
-skills/ablate/SKILL.md) puts this module's directory and skills/_lib on sys.path before
-importing it, the same way harness_elements.py and verdict.py are already imported by their
-own tests — report.py does not manipulate sys.path itself.
+The caller puts this module's directory and skills/_lib on sys.path before importing it;
+report.py does not manipulate sys.path itself.
 """
 
 from __future__ import annotations
@@ -26,9 +21,7 @@ import harness_elements
 import usage_counts
 import verdict
 
-# usage_counts.py's own docstring names its transcripts root as "the running side's
-# `projects/` directory" without spelling out a path; this is that path, held here once so
-# build_report and any future caller read the same value rather than each re-deriving it.
+# Held here once so every caller reads the same value rather than each re-deriving it.
 TRANSCRIPTS_ROOT = Path.home() / ".claude" / "projects"
 
 # The ablation apparatus's own script tree. A path under here is the code that produced the
@@ -49,22 +42,13 @@ def _is_apparatus(path: str) -> bool:
 
 
 def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, Any]:
-    """Runs the four preceding units in sequence and wires their outputs together.
+    """Calls each preceding unit's script in turn and wires their outputs together.
 
-    1. harness_elements.enumerate_elements(root) — the full harness population and each
-       member's classification.
-    2. arms.ARMS — every arm this ablation run compares.
-    3. verdict.classify(...), once per observation — the delete-candidate /
-       needs-human-judgment / unmeasured label for the element that observation reports on.
-    4. usage_counts.count_usage(TRANSCRIPTS_ROOT) — each element's real fire count and
-       most recent fire date, read from session transcripts rather than from `observations`
-       (this unit's contract: the reader learns usage from the report without also running
-       an ablation arm).
+    usage_counts reads session transcripts rather than `observations`, so the reader learns
+    usage from the report without also running an ablation arm.
 
-    Returns a plain dict (elements / arms / verdicts / delete_candidates / usage) rather than
-    a report string, so a caller that only wants the data (this unit's tests; a future
-    enforcer/DR-gate wiring in U-009 through U-011) does not have to parse Markdown back out
-    of write_report's output.
+    Returns a plain dict rather than a report string, so a caller that only wants the data
+    does not have to parse Markdown back out of write_report's output.
     """
     elements = harness_elements.enumerate_elements(root)
     usage = usage_counts.count_usage(TRANSCRIPTS_ROOT)
@@ -131,10 +115,11 @@ def _render(result: dict[str, Any]) -> str:
             (
                 element["path"],
                 element["classification"],
-                str(usage.get(element["path"], {}).get("fires", 0)),
-                usage.get(element["path"], {}).get("last_used") or "never",
+                str(element_usage.get("fires", 0)),
+                element_usage.get("last_used") or "never",
             )
             for element in result["elements"]
+            for element_usage in [usage.get(element["path"], {})]
         ],
     )
     lines += [""]

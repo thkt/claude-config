@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 """ablate skill のためのレポート組み立て。
 
-CLI のエントリポイントではない。skills/ablate/SKILL.md はこのモジュールを script として
-呼ぶのでなく、下の `build_report` と `write_report` を import して使う
-(docs/wiki/deterministic-script-judgment.md 「入力から一意に決まる判定は script に置く」—
-列挙・アーム一覧・verdict 分類・usage 集計はすでにそれぞれの script が持っており、この
-モジュール自身の仕事はその 4 つを順に呼んで結果を呼び出し側へ渡すことだけで、それらの定数を
-ここで再導出しない。これは verdict.py の `from arms import UNMEASURED` という兄弟 import
-の形に倣う)。
+CLI のエントリポイントではない。skills/ablate/SKILL.md は script として呼ぶのでなく
+`build_report` と `write_report` を import して使う。このモジュールがまとめる判定はすでに
+それぞれの script が持つ (docs/wiki/deterministic-script-judgment.md「入力から一意に決まる
+判定は script に置く」) ため、それらの定数をここで再導出しない。
 
-呼び出し側の契約: 呼び出し側 (現在は skills/ablate/tests/report_test.py、いずれ
-skills/ablate/SKILL.md) が、このモジュールのディレクトリと skills/_lib を import 前に
-sys.path へ入れる。harness_elements.py と verdict.py がそれぞれのテストから import される
-のと同じ形であり、report.py 自身は sys.path を操作しない。
+このモジュールのディレクトリと skills/_lib を import 前に sys.path へ入れるのは呼び出し側。
+report.py 自身は sys.path を操作しない。
 """
 
 from __future__ import annotations
@@ -26,9 +21,7 @@ import harness_elements
 import usage_counts
 import verdict
 
-# usage_counts.py 自身の docstring は自らの transcripts root を「実行側の `projects/`
-# ディレクトリ」とだけ名指し、パスそのものは書かない。ここがそのパスで、build_report と
-# 将来のどの呼び出し側もこの 1 箇所を読むだけで済むよう、ここに 1 度だけ持つ。
+# どの呼び出し側もこの 1 箇所を読むだけで済むよう、ここに 1 度だけ持つ。
 TRANSCRIPTS_ROOT = Path.home() / ".claude" / "projects"
 
 # ablation apparatus 自身の script tree。ここ配下のパスは観測を生成したコードそのものであり
@@ -49,20 +42,13 @@ def _is_apparatus(path: str) -> bool:
 
 
 def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, Any]:
-    """前段の 4 ユニットを順に呼び、その出力を結線する。
+    """前段の各ユニットの script を順に呼び、その出力を結線する。
 
-    1. harness_elements.enumerate_elements(root) — harness の全母集団と各要素の分類。
-    2. arms.ARMS — この ablation 実行が比較するすべてのアーム。
-    3. observation ごとの verdict.classify(...) — その observation が報告する要素の
-       delete-candidate / needs-human-judgment / unmeasured ラベル。
-    4. usage_counts.count_usage(TRANSCRIPTS_ROOT) — 各要素の実際の発火回数と最終発火日を、
-       `observations` からでなくセッションのトランスクリプトから読む (このユニットの契約:
-       ablation アームを走らせなくても読み手がレポートから usage を読める)。
+    usage_counts は `observations` からでなくセッションのトランスクリプトを読むため、
+    ablation アームを走らせなくても読み手がレポートから usage を読める。
 
-    レポート文字列でなく素の dict (elements / arms / verdicts / delete_candidates / usage)
-    を返すため、データだけを必要とする呼び出し側 (このユニットのテスト、いずれ U-009 から
-    U-011 が足す enforcer / DR ゲートの結線) は write_report の出力から Markdown を読み戻さ
-    ずに済む。
+    レポート文字列でなく素の dict を返すため、データだけを必要とする呼び出し側は
+    write_report の出力から Markdown を読み戻さずに済む。
     """
     elements = harness_elements.enumerate_elements(root)
     usage = usage_counts.count_usage(TRANSCRIPTS_ROOT)
@@ -128,10 +114,11 @@ def _render(result: dict[str, Any]) -> str:
             (
                 element["path"],
                 element["classification"],
-                str(usage.get(element["path"], {}).get("fires", 0)),
-                usage.get(element["path"], {}).get("last_used") or "never",
+                str(element_usage.get("fires", 0)),
+                element_usage.get("last_used") or "never",
             )
             for element in result["elements"]
+            for element_usage in [usage.get(element["path"], {})]
         ],
     )
     lines += [""]
