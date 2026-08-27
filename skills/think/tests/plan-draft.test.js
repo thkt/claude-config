@@ -874,24 +874,95 @@ test("SKILL.md and the template use the same heading word", () => {
 
 // #417 and #424 each placed a seam unit whose files were tests alone, leaving nothing for the
 // Red step to fail on (#433).
-test("think SKILL.md requires a seam unit to carry the file that makes the connection, and says what to do when it cannot", () => {
+test("think SKILL.md requires a seam unit to carry the file that makes the connection", () => {
   const ja = read(skills.ja);
   assert.match(
     ja,
     /seam unit の files には.{0,30}非テストファイル/,
     "ja: the non-test file is required",
   );
-  assert.match(ja, /seam unit を置かず/, "ja: the replacing operation");
-  assert.match(ja, /配線を作る unit の tests/, "ja: where the assertion goes instead");
-
   const en = read(skills.en);
   assert.match(en, /at least one non-test file/i, "en: the non-test file is required");
-  assert.match(en, /place no seam unit/i, "en: the replacing operation");
-  assert.match(
-    en,
-    /tests of the unit that makes the wiring/i,
-    "en: where the assertion goes instead",
+});
+
+// Step 11 requires exactly one seam unit last once 2+ units carry tests. Step 12's old exception
+// let a plan skip the seam unit entirely, which contradicts step 11 for the same plan. Replacing
+// the exception with a unit re-cut keeps step 11 an actual guarantee instead of a conditional one.
+// The re-cut regex below is the sole check for that replacing operation, scoped to step 12 itself
+// rather than the whole document, so it doesn't duplicate as a looser check elsewhere.
+const step12 = (doc) => steps(doc).find((line) => line.startsWith("12. "));
+
+test("both trees' step 12 carries no branch that places no seam unit", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const step = step12(doc);
+    assert.ok(step, `${lang}: step 12 exists`);
+    assert.doesNotMatch(
+      step,
+      lang === "ja" ? /seam unit を置かず/ : /place no seam unit/i,
+      `${lang}: step 12 carries no branch skipping the seam unit`,
+    );
+  }
+});
+
+test("both trees' step 12 makes the unit carrying the non-test file the seam", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const step = step12(doc);
+    assert.ok(step, `${lang}: step 12 exists`);
+    assert.match(
+      step,
+      lang === "ja" ? /それを持つ unit を seam に/ : /Make the unit carrying it the seam/i,
+      `${lang}: step 12 makes the unit carrying the non-test file the seam`,
+    );
+  }
+});
+
+// Not the per-language patterns above: each of those passes on its own tree, so a clause added to
+// one side alone (an "already carries" qualifier on the English step, say) satisfies both branches
+// and the divergence goes unseen. Counting sentences reads the shape rather than the wording.
+test("both trees' step 12 carries the same number of claims", () => {
+  const counts = Object.fromEntries(
+    Object.entries(skills).map(([lang, path]) => [
+      lang,
+      step12(read(path))
+        .split(/[.。]\s*/)
+        .filter((s) => s.trim()).length,
+    ]),
   );
+  assert.equal(
+    counts.ja,
+    counts.en,
+    `step 12 diverges: ja carries ${counts.ja} claims, en carries ${counts.en}`,
+  );
+});
+
+// step 11 places the seam last. A step 12 that lets a non-last unit become the seam cancels it,
+// which is what this issue set out to stop.
+test("both trees' step 12 does not qualify the seam as a unit that precedes another", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const step = step12(read(path));
+    assert.doesNotMatch(
+      step,
+      lang === "ja" ? /先行.{0,10}unit/ : /preceding unit/i,
+      `${lang}: step 12 leaves step 11's ordering intact`,
+    );
+  }
+});
+
+test("both trees' step 12 says to re-cut the units when no unit carries a non-test file", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const step = step12(doc);
+    assert.ok(step, `${lang}: step 12 exists`);
+    assert.match(
+      step,
+      lang === "ja"
+        ? /非テストファイルを持つ unit .{0,20}(いない|ない場合).{0,30}切り直/
+        : /no unit carries a non-test file.{0,40}re-cut the units/i,
+      `${lang}: step 12 says to re-cut the units when none carries a non-test file`,
+    );
+  }
 });
 
 // A step inserted mid-list leaves a duplicate number behind unless the tail is renumbered, and the
