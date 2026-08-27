@@ -12,7 +12,7 @@ import { parseRoutingLikeConst } from "./_brace.js";
 const here = dirname(fileURLToPath(import.meta.url));
 
 // One entry per <name>.js, in both the English source under workflows/ and its .ja/ mirror.
-// Shared by the focus-values test (audit only) and the no-args-identifier check (all three).
+// Used by the focus-values test below (audit only).
 const workflowTrees = (name) => [
   { label: `${name}/en`, path: join(here, "..", "..", `${name}.js`) },
   { label: `${name}/ja`, path: join(here, "..", "..", "..", ".ja", "workflows", `${name}.js`) },
@@ -20,21 +20,9 @@ const workflowTrees = (name) => [
 
 const TREES = workflowTrees("audit");
 
-for (const name of ["audit", "build", "code", "adrift", "assert", "shake"]) {
-  test(`${name}'s whenToUse in neither tree contains the identifier args`, () => {
-    for (const { label, path } of workflowTrees(name)) {
-      const meta = readMeta(path);
-      assert.doesNotMatch(
-        meta.whenToUse,
-        /\bargs\b/,
-        `[${label}] whenToUse names the identifier "args" instead of describing the shape in prose`,
-      );
-    }
-  });
-}
-
 // Full-tree sweep, following reference-notation.test.js's readdirSync pattern: every
-// <name>.js directly under workflows/ and its .ja/ mirror, not just the names listed above.
+// <name>.js directly under workflows/ and its .ja/ mirror. Supersedes a per-name loop, since it
+// covers every workflow rather than a hardcoded subset that drifts as workflows are added.
 const WORKFLOW_TREE_DIRS = [
   { label: "en", dir: join(here, "..", "..") },
   { label: "ja", dir: join(here, "..", "..", "..", ".ja", "workflows") },
