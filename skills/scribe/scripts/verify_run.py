@@ -126,6 +126,21 @@ def rejected_added(repo: Path, base: str) -> int:
     return section_rows(_store(repo), REJECTED) - section_rows(_store_at(repo, base), REJECTED)
 
 
+def _report(
+    expected_commits: int, actual_commits: int, expected_remaining: int, actual_remaining: int
+) -> Report:
+    mismatches: list[Mismatch] = []
+    if actual_commits != expected_commits:
+        mismatches.append(
+            {"field": "commits", "expected": expected_commits, "actual": actual_commits}
+        )
+    if actual_remaining != expected_remaining:
+        mismatches.append(
+            {"field": "remaining", "expected": expected_remaining, "actual": actual_remaining}
+        )
+    return {"ok": not mismatches, "mismatches": mismatches}
+
+
 def _verify_reported(
     repo: Path, start_count: int, expected_commits: int, base: str, created: int
 ) -> Report:
@@ -140,17 +155,7 @@ def _verify_reported(
     expected_remaining = start_count - promoted - rejected_added(repo, base)
     actual_remaining = section_rows(_store(repo), WAITING)
 
-    mismatches: list[Mismatch] = []
-    if actual_commits != expected_commits:
-        mismatches.append(
-            {"field": "commits", "expected": expected_commits, "actual": actual_commits}
-        )
-    if actual_remaining != expected_remaining:
-        mismatches.append(
-            {"field": "remaining", "expected": expected_remaining, "actual": actual_remaining}
-        )
-
-    return {"ok": not mismatches, "mismatches": mismatches}
+    return _report(expected_commits, actual_commits, expected_remaining, actual_remaining)
 
 
 def verify(repo: Path, report: TriageReport, base: str, created: int = 0) -> Report:
@@ -184,17 +189,7 @@ def verify(repo: Path, report: TriageReport, base: str, created: int = 0) -> Rep
     expected_remaining = start_count - cleared + inflow - rejected_added(repo, base)
     actual_remaining = section_rows(_store(repo), WAITING)
 
-    mismatches: list[Mismatch] = []
-    if actual_commits != expected_commits:
-        mismatches.append(
-            {"field": "commits", "expected": expected_commits, "actual": actual_commits}
-        )
-    if actual_remaining != expected_remaining:
-        mismatches.append(
-            {"field": "remaining", "expected": expected_remaining, "actual": actual_remaining}
-        )
-
-    return {"ok": not mismatches, "mismatches": mismatches}
+    return _report(expected_commits, actual_commits, expected_remaining, actual_remaining)
 
 
 def main() -> None:
