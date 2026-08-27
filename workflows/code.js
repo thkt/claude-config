@@ -89,10 +89,18 @@ const stopUnit = async (stopped, unit, why) => {
   await closeHerdrPanes();
   return { stopped, unit: unit.id, why, completed, skipped, anomalies, commits };
 };
-// Implementation executes the plan's contract / tests, so sonnet suffices; repeated failure
-// here signals a defective plan rather than a model too small. effort stays high because an
-// implementation agent's wall-clock is dominated by generating thinking tokens.
-const implementOpts = { model: input.model || "sonnet", effort: "high" };
+// Decides, in this one function alone, the route (claude / codex-herdr) and the call's
+// destination (no pane, or which of the tester / coder panes). The claude route executes the
+// plan's contract / tests, so sonnet suffices; repeated failure here signals a defective plan
+// rather than a model too small. effort stays high because an implementation agent's
+// wall-clock is dominated by generating thinking tokens. The codex-herdr route addresses a
+// pane instead of an agent, so it carries no model / effort, and reads the role's pane id from
+// herdrPanes (resolved at pane-start). herdrPanes is declared with let further below, but
+// every call this function receives happens inside the for loop, after that assignment runs.
+const implementDestination = (role) =>
+  implementer === "codex-herdr"
+    ? { opts: {}, paneId: herdrPanes ? herdrPanes[role] : undefined }
+    : { opts: { model: input.model || "sonnet", effort: "high" }, paneId: undefined };
 
 const RED_SCHEMA = {
   type: "object",
@@ -219,20 +227,28 @@ const recordDeferred = (unit, result) => {
   }
 };
 
-// What a still-failing result means belongs to the caller: an unconfirmed Red is recorded as
-// an anomaly, while a failing impl / Green stops the run. A null first result skips the retry,
-// so a dead agent is not asked twice.
-const stepWithRetry = async (unit, label, schema, ok, prompt, retryPrompt) => {
+// role is "tester" for the Red step and "coder" for Green / direct implementation. What a
+// still-failing result means belongs to the caller: an unconfirmed Red is recorded as an
+// anomaly, while a failing impl / Green stops the run. A null first result skips the retry, so
+// a dead agent is not asked twice.
+const stepWithRetry = async (unit, label, role, schema, ok, prompt, retryPrompt) => {
+  const dest = implementDestination(role);
+  // Prepended to both the first prompt and the retry prompt, so a codex-herdr retry addresses
+  // the same pane as its first attempt (dest.paneId is read once per call from the pane
+  // already resolved at pane-start, never re-resolved).
+  const addressing = dest.paneId
+    ? `Send this instruction to the ${role} pane ${dest.paneId} (the id resolved from herdr pane split via pane-start; never guess it).\n`
+    : "";
   const opts = (name) => ({
     label: `${name}:${unit.id}`,
     phase: `Unit ${unit.id}`,
     agentType: "general-purpose",
     schema,
-    ...implementOpts,
+    ...dest.opts,
   });
-  const first = await agent(anchor(prompt), opts(label));
+  const first = await agent(anchor(addressing + prompt), opts(label));
   if (!first || ok(first)) return first;
-  return await agent(anchor(retryPrompt(first)), opts(`${label}2`));
+  return await agent(anchor(addressing + retryPrompt(first)), opts(`${label}2`));
 };
 
 // ---- Implement: per unit, serial (the working tree is shared) ----
@@ -477,6 +493,7 @@ for (const [index, unit] of units.entries()) {
     const impl = await stepWithRetry(
       unit,
       "impl",
+      "coder",
       GREEN_SCHEMA,
       (r) => r.green,
       `Direct implementation step. ${ctx}` +
@@ -507,6 +524,7 @@ for (const [index, unit] of units.entries()) {
   const red = await stepWithRetry(
     unit,
     "red",
+    "tester",
     RED_SCHEMA,
     (r) => r.red_confirmed,
     `TDD Red step. ${ctx}` +
@@ -538,6 +556,7 @@ for (const [index, unit] of units.entries()) {
   const green = await stepWithRetry(
     unit,
     "green",
+    "coder",
     GREEN_SCHEMA,
     (r) => r.green,
     `TDD Green step. ${ctx}` +

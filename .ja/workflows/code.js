@@ -88,10 +88,17 @@ const stopUnit = async (stopped, unit, why) => {
   await closeHerdrPanes();
   return { stopped, unit: unit.id, why, completed, skipped, anomalies, commits };
 };
-// 実装は plan の contract / tests を実行する段なので sonnet で足りる。ここで失敗が続くのは
-// model が小さいのでなく plan の欠陥シグナル。effort を high に保つのは、実装 agent 1 体の
-// wall-clock を thinking tokens の生成が支配するため。
-const implementOpts = { model: input.model || "sonnet", effort: "high" };
+// 経路 (claude / codex-herdr) と呼び先 (pane が無いか、tester / coder どちらの pane か) を
+// この 1 関数だけで決める。claude 経路は実装が plan の contract / tests を実行する段なので
+// sonnet で足りる。ここで失敗が続くのは model が小さいのでなく plan の欠陥シグナル。effort を
+// high に保つのは、実装 agent 1 体の wall-clock を thinking tokens の生成が支配するため。
+// codex-herdr 経路は agent 宛でなく pane 宛の呼び出しなので model / effort を持たず、
+// herdrPanes (pane-start で解決済み) から role の pane id を返す。herdrPanes は下で let
+// 宣言されるが、この関数の呼び出しはすべて for loop の中、その代入より後に起きる。
+const implementDestination = (role) =>
+  implementer === "codex-herdr"
+    ? { opts: {}, paneId: herdrPanes ? herdrPanes[role] : undefined }
+    : { opts: { model: input.model || "sonnet", effort: "high" }, paneId: undefined };
 
 const RED_SCHEMA = {
   type: "object",
@@ -216,20 +223,27 @@ const recordDeferred = (unit, result) => {
   }
 };
 
-// まだ失敗している結果をどう扱うかは呼び出し元が持つ。Red 未確認は anomaly に記録し、
-// impl / Green の失敗は run を止める。1 回目が null なら retry しないので、死んだ agent を
-// 2 度叩かない。
-const stepWithRetry = async (unit, label, schema, ok, prompt, retryPrompt) => {
+// role は Red step が "tester"、Green / 直接実装が "coder"。まだ失敗している結果をどう
+// 扱うかは呼び出し元が持つ。Red 未確認は anomaly に記録し、impl / Green の失敗は run を止める。
+// 1 回目が null なら retry しないので、死んだ agent を 2 度叩かない。
+const stepWithRetry = async (unit, label, role, schema, ok, prompt, retryPrompt) => {
+  const dest = implementDestination(role);
+  // 初回と retry の両方の prompt へ前置くので、codex-herdr の retry も初回と同じ pane 宛になる
+  // (dest.paneId は呼び出し 1 回につき 1 度だけ、pane-start で解決済みの herdrPanes から読む。
+  // 再解決しない)。
+  const addressing = dest.paneId
+    ? `この指示は ${role} pane ${dest.paneId} 宛に送る (pane-start で herdr pane split から解決済みの id。推測しない)。\n`
+    : "";
   const opts = (name) => ({
     label: `${name}:${unit.id}`,
     phase: `Unit ${unit.id}`,
     agentType: "general-purpose",
     schema,
-    ...implementOpts,
+    ...dest.opts,
   });
-  const first = await agent(anchor(prompt), opts(label));
+  const first = await agent(anchor(addressing + prompt), opts(label));
   if (!first || ok(first)) return first;
-  return await agent(anchor(retryPrompt(first)), opts(`${label}2`));
+  return await agent(anchor(addressing + retryPrompt(first)), opts(`${label}2`));
 };
 
 // ---- Implement: unit ごとに直列で実装 (working tree を共有するため) ----
@@ -464,6 +478,7 @@ for (const [index, unit] of units.entries()) {
     const impl = await stepWithRetry(
       unit,
       "impl",
+      "coder",
       GREEN_SCHEMA,
       (r) => r.green,
       `直接実装 step。${ctx}` +
@@ -499,6 +514,7 @@ for (const [index, unit] of units.entries()) {
   const red = await stepWithRetry(
     unit,
     "red",
+    "tester",
     RED_SCHEMA,
     (r) => r.red_confirmed,
     `TDD Red step。${ctx}` +
@@ -532,6 +548,7 @@ for (const [index, unit] of units.entries()) {
   const green = await stepWithRetry(
     unit,
     "green",
+    "coder",
     GREEN_SCHEMA,
     (r) => r.green,
     `TDD Green step。${ctx}` +
