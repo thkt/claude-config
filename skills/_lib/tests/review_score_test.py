@@ -4,6 +4,7 @@ Run: python3 skills/_lib/tests/review_score_test.py
 """
 
 import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -18,6 +19,15 @@ from review_score import VERDICTS, Case, Previous, score  # noqa: E402
 # Derived rather than listed: a harness added later would otherwise sit outside these checks until
 # someone remembered to add its name here.
 HARNESS_SKILLS = sorted(p.parents[1].name for p in ROOT.glob("skills/*/test/expected.json"))
+
+HARNESS_DOC = ROOT / "skills" / "_lib" / "review-harness.md"
+
+
+def verdict_set_section() -> str:
+    """The '## Verdict set' section body, isolated from the schema section that follows it."""
+    text = HARNESS_DOC.read_text(encoding="utf-8")
+    after_heading = text.split("## Verdict set", 1)[1]
+    return after_heading.split("## expected.json schema", 1)[0]
 
 
 def flagged(file: str, category: str = "A03") -> Case:
@@ -133,6 +143,26 @@ class Scoring(unittest.TestCase):
         assert diff is not None, "a previous run was passed, so a diff comes back"
         self.assertEqual(diff["recall_strict"], 0.5)
         self.assertEqual(diff["fp_rate"], 0.0)
+
+
+class HarnessDocument(unittest.TestCase):
+    def test_the_verdict_table_in_the_harness_document_and_the_verdicts_constant_carry_the_same_key_set(
+        self,
+    ) -> None:
+        """A verdict added to the closed set that the doc's table forgets leaves a run silently unexplainable."""
+        documented = set(re.findall(r"^\|\s*`(\w+)`", verdict_set_section(), re.MULTILINE))
+        self.assertEqual(documented, set(VERDICTS.keys()))
+
+    def test_the_harness_document_states_which_side_of_recall_strict_the_new_verdict_falls_on(
+        self,
+    ) -> None:
+        """recall_strict stays hit / flagged; the doc must say the new verdict enters the
+        denominator only, same as below_severity, rather than leaving readers to guess."""
+        section = verdict_set_section()
+        self.assertIn("below_min_findings", section)
+        self.assertIn("recall_strict", section)
+        self.assertIn("denominator", section)
+        self.assertIn("numerator", section)
 
 
 class Corpora(unittest.TestCase):

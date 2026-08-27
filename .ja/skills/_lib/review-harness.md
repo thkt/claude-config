@@ -19,30 +19,37 @@ dispatch prompt にラベル、期待値、ヒントを含めると Recall が�
 
 記録は、その実行が何を測ったかをハッシュで名乗る。`skills/_lib/tests/harness_hash_test.py` が最新の記録のハッシュを現在の内容と突き合わせ、記録の無い skill を未計測として落とす。日付でなくハッシュにするのは、CI の checkout が浅く `git log` の日付を引けないためである。ゲートが読むのは名前順で最後の記録なので、同じ日に 2 回走らせるなら、後の実行が後ろに並ぶ名前を付ける。
 
-| キー                | 対象                                        |
-| ------------------- | ------------------------------------------- |
-| `definition_sha256` | `agents/reviewers/reviewer-<name>.md`       |
-| `skill_sha256`      | `<skill>/SKILL.md`                          |
-| `corpus_sha256`     | `<skill>/test/cases/**` と `expected.json`  |
+| キー                | 対象                                       |
+| ------------------- | ------------------------------------------ |
+| `definition_sha256` | `agents/reviewers/reviewer-<name>.md`      |
+| `skill_sha256`      | `<skill>/SKILL.md`                         |
+| `corpus_sha256`     | `<skill>/test/cases/**` と `expected.json` |
 
 ## verdict の集合
 
-この 6 つに限る。過去のログは実行ごとに独自の語 (`true`、`full_hit`、`detected_below_severity_min`) を使っており、実行どうしを比べられなくなっていた。
+この 7 つに限る。過去のログは実行ごとに独自の語 (`true`、`full_hit`、`detected_below_severity_min`) を使っており、実行どうしを比べられなくなっていた。`below_min_findings` は `recall_strict` (`hit`/`flagged`) の分母にのみ入り、分子には入らない。`below_severity` と同じ扱いである。
 
-| verdict          | 意味                                             |
-| ---------------- | ------------------------------------------------ |
-| `hit`            | 期待した finding を severity_min 以上で報告した  |
-| `below_severity` | 期待した finding を報告したが severity_min 未満  |
-| `other_finding`  | ファイルに finding は出たが期待したものではない  |
-| `miss`           | ファイルに finding が出なかった                  |
-| `pass`           | clean ケースで finding が出なかった              |
-| `false_positive` | clean ケースで finding が出た                    |
+| verdict              | 意味                                                  |
+| -------------------- | ----------------------------------------------------- |
+| `hit`                | 期待した finding を severity_min 以上で報告した       |
+| `below_severity`     | 期待した finding を報告したが severity_min 未満       |
+| `other_finding`      | ファイルに finding は出たが期待したものではない       |
+| `miss`               | ファイルに finding が出なかった                       |
+| `pass`               | clean ケースで finding が出なかった                   |
+| `false_positive`     | clean ケースで finding が出た                         |
+| `below_min_findings` | 期待した finding を報告したが min_findings に届かない |
 
 ## expected.json スキーマ
 
 ```json
 [
-  { "file": "cases/flag/<name>.ts", "expected": "detected", "category": "<skill 固有の id>", "severity_min": "medium", "note": "<何を捕らえるべきか>" },
+  {
+    "file": "cases/flag/<name>.ts",
+    "expected": "detected",
+    "category": "<skill 固有の id>",
+    "severity_min": "medium",
+    "note": "<何を捕らえるべきか>"
+  },
   { "file": "cases/clean/<name>.ts", "expected": "no_finding", "note": "<なぜ clean か>" }
 ]
 ```
