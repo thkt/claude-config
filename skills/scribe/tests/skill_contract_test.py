@@ -137,9 +137,7 @@ class SkillContract(unittest.TestCase):
         without depending on a broken reference."""
         for lang in LANGS:
             hits = structure_page_steps(lang)
-            self.assertTrue(
-                hits, f"{lang}: Phase 4 carries a step naming a structure page"
-            )
+            self.assertTrue(hits, f"{lang}: Phase 4 carries a step naming a structure page")
             self.assertFalse(
                 any(BROKEN_REFERENCE_WORD[lang] in step for step in hits),
                 f"{lang}: the structure-page step must not gate on a broken reference",
@@ -152,14 +150,10 @@ class SkillContract(unittest.TestCase):
         as what gets cross-checked."""
         for lang in LANGS:
             hits = structure_page_steps(lang)
-            self.assertTrue(
-                hits, f"{lang}: Phase 4 carries a step naming a structure page"
-            )
+            self.assertTrue(hits, f"{lang}: Phase 4 carries a step naming a structure page")
             step_text = "\n".join(hits)
             for word in STRUCTURE_ROW_WORDS[lang]:
-                self.assertIn(
-                    word, step_text, f"{lang}: the structure-page step names {word}"
-                )
+                self.assertIn(word, step_text, f"{lang}: the structure-page step names {word}")
 
     def test_the_line_phase_4_moves_carries_why_it_was_dropped(self) -> None:
         """The 棄却 section is outside what read_store ranks, so a line landing there without a
@@ -261,9 +255,7 @@ class SkillContract(unittest.TestCase):
         for lang in LANGS:
             phase6 = self.phase_6(lang)
             step = next(line for line in phase6.split("\n") if line.startswith("2. "))
-            self.assertIn(
-                pages_word[lang], step, f"{lang}: step 2 names the pages write"
-            )
+            self.assertIn(pages_word[lang], step, f"{lang}: step 2 names the pages write")
             self.assertIn(
                 structure_word[lang],
                 step,
@@ -292,16 +284,13 @@ class SkillContract(unittest.TestCase):
             # 内容/参照コード/由来 are narrative/reference sections the step never enumerates.
             row_headings = [h for h in headings if h in STRUCTURE_ROW_WORDS["ja"]]
             expected_order = [
-                STRUCTURE_ROW_WORDS[lang][STRUCTURE_ROW_WORDS["ja"].index(h)]
-                for h in row_headings
+                STRUCTURE_ROW_WORDS[lang][STRUCTURE_ROW_WORDS["ja"].index(h)] for h in row_headings
             ]
 
             hits = structure_page_steps(lang)
             self.assertTrue(hits, f"{lang}: Phase 4 carries a step naming a structure page")
             step_text = "\n".join(hits)
-            positions = sorted(
-                (step_text.index(word), word) for word in STRUCTURE_ROW_WORDS[lang]
-            )
+            positions = sorted((step_text.index(word), word) for word in STRUCTURE_ROW_WORDS[lang])
             named_order = [word for _, word in positions]
 
             self.assertEqual(
@@ -610,9 +599,7 @@ class WikiPageFormat(unittest.TestCase):
         """The fenced example in the page template that carries `kind: structure`, empty when
         the template has none. Headings inside stay Japanese in both trees, per the mirroring
         rule that code structure and stopped values stay identical across languages."""
-        template = at(lang, "skills", "scribe", "templates", "page.md").read_text(
-            encoding="utf-8"
-        )
+        template = at(lang, "skills", "scribe", "templates", "page.md").read_text(encoding="utf-8")
         for block in re.findall(r"```markdown\n(.*?)\n```", template, re.S):
             if "kind: structure" in block:
                 return block
