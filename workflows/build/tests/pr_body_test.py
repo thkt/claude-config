@@ -339,9 +339,11 @@ class ConformanceOrderTest(unittest.TestCase):
     structure keeps whatever order the payload gave it -- only conformance is ranked.
     """
 
-    def test_conformance_findings_render_in_high_medium_low_order_when_the_payload_lists_them_low_first(
+    def test_conformance_renders_high_medium_low_when_the_payload_lists_them_low_first(
         self,
     ) -> None:
+        """conformance findings render in high, medium, low order when the payload lists them
+        low first."""
         body = render(
             {
                 **CLEAN,
