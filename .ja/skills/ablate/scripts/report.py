@@ -4,8 +4,8 @@
 CLI のエントリポイントではない。skills/ablate/SKILL.md はこのモジュールを script として
 呼ぶのでなく、下の `build_report` と `write_report` を import して使う
 (docs/wiki/deterministic-script-judgment.md 「入力から一意に決まる判定は script に置く」—
-列挙・アーム一覧・verdict 分類はすでにそれぞれの script が持っており、このモジュール自身の
-仕事はその 3 つを順に呼んで結果を呼び出し側へ渡すことだけで、それらの定数をここで再導出
+列挙・アーム一覧・verdict 分類・DR ゲートはすでにそれぞれの script が持っており、このモジュール
+自身の仕事はその 4 つを順に呼んで結果を呼び出し側へ渡すことだけで、それらの定数をここで再導出
 しない。これは verdict.py の `from arms import UNMEASURED` という兄弟 import の形に倣う)。
 
 呼び出し側の契約: 呼び出し側 (現在は skills/ablate/tests/report_test.py、いずれ
@@ -21,6 +21,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import arms
+import dr_gate
 import harness_elements
 import verdict
 
@@ -48,20 +49,26 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
     2. arms.ARMS — この ablation 実行が比較するすべてのアーム。
     3. observation ごとの verdict.classify(...) — その observation が報告する要素の
        delete-candidate / needs-human-judgment / unmeasured ラベル。
+    4. observation ごとの dr_gate.gate(...) — 対象パスが、Reassessment Triggers の確認
+       記録を持たない DR に紐づくとき、DELETE_CANDIDATE 判定を差し止める (U-001)。
+       verdict.classify の片側判定の後、結果を write_report へ渡す前に実行するため、差し
+       止められた候補は下の delete_candidates に決して現れない。
 
     レポート文字列でなく素の dict (elements / arms / verdicts / delete_candidates) を返す
-    ため、データだけを必要とする呼び出し側 (このユニットのテスト、いずれ U-009 から U-011 が
-    足す enforcer / DR ゲートの結線) は write_report の出力から Markdown を読み戻さずに済む。
+    ため、データだけを必要とする呼び出し側 (このユニットのテスト) は write_report の出力から
+    Markdown を読み戻さずに済む。
     """
     elements = harness_elements.enumerate_elements(root)
 
     verdicts: dict[str, str] = {}
     for observation in observations:
-        verdicts[observation["path"]] = verdict.classify(
+        path = observation["path"]
+        raw_verdict = verdict.classify(
             trigger_task=observation.get("trigger_task"),
             task_set=observation.get("task_set"),
             complies=observation.get("complies"),
         )
+        verdicts[path] = dr_gate.gate(path=path, verdict=raw_verdict, root=root)
 
     delete_candidates = [
         path

@@ -3,11 +3,11 @@
 
 Not a CLI entry point: skills/ablate/SKILL.md imports this module for `build_report` and
 `write_report` below rather than shelling out to it (docs/wiki/deterministic-script-judgment.md
-"入力から一意に決まる判定は script に置く" — enumeration, arm listing, and verdict
-classification each already live in their own script; this module's own job is only to call
-those three in sequence and hand the combined result to the caller, mirroring verdict.py's
-`from arms import UNMEASURED` sibling-import shape rather than re-deriving any of their
-constants here).
+"入力から一意に決まる判定は script に置く" — enumeration, arm listing, verdict
+classification, and the DR gate each already live in their own script; this module's own job
+is only to call those four in sequence and hand the combined result to the caller, mirroring
+verdict.py's `from arms import UNMEASURED` sibling-import shape rather than re-deriving any of
+their constants here).
 
 Caller contract: the caller (currently skills/ablate/tests/report_test.py; eventually
 skills/ablate/SKILL.md) puts this module's directory and skills/_lib on sys.path before
@@ -22,6 +22,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import arms
+import dr_gate
 import harness_elements
 import verdict
 
@@ -50,21 +51,26 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
     2. arms.ARMS — every arm this ablation run compares.
     3. verdict.classify(...), once per observation — the delete-candidate /
        needs-human-judgment / unmeasured label for the element that observation reports on.
+    4. dr_gate.gate(...), once per observation — holds back a DELETE_CANDIDATE verdict
+       whose path traces to a DR with no Reassessment Triggers confirmation record (U-001).
+       Runs after verdict.classify's one-sided judgment and before the result is handed to
+       write_report, so a held candidate never reaches delete_candidates below.
 
     Returns a plain dict (elements / arms / verdicts / delete_candidates) rather than a
-    report string, so a caller that only wants the data (this unit's tests; a future
-    enforcer/DR-gate wiring in U-009 through U-011) does not have to parse Markdown back out
-    of write_report's output.
+    report string, so a caller that only wants the data (this unit's tests) does not have to
+    parse Markdown back out of write_report's output.
     """
     elements = harness_elements.enumerate_elements(root)
 
     verdicts: dict[str, str] = {}
     for observation in observations:
-        verdicts[observation["path"]] = verdict.classify(
+        path = observation["path"]
+        raw_verdict = verdict.classify(
             trigger_task=observation.get("trigger_task"),
             task_set=observation.get("task_set"),
             complies=observation.get("complies"),
         )
+        verdicts[path] = dr_gate.gate(path=path, verdict=raw_verdict, root=root)
 
     delete_candidates = [
         path
