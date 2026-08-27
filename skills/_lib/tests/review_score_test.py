@@ -14,7 +14,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE.parent))
 
-from review_score import VERDICTS, Case, Previous, score  # noqa: E402
+from review_score import VERDICTS, Case, Outcome, Previous, score  # noqa: E402
 
 # Derived rather than listed: a harness added later would otherwise sit outside these checks until
 # someone remembered to add its name here.
@@ -193,6 +193,93 @@ class Corpora(unittest.TestCase):
             report = score(entries, [])
             self.assertEqual(report["counts"]["flagged"] + report["counts"]["clean"], len(entries))
             self.assertEqual(report["counts"]["miss"], report["counts"]["flagged"], skill)
+
+
+class PreWideningRegression(unittest.TestCase):
+    """below_min_findings (U-001) must leave every run built from the original six verdicts
+    scoring exactly as it did before the set was widened."""
+
+    def test_a_results_set_using_only_the_original_six_verdicts_produces_the_same_counts_and_metrics_as_before_the_set_was_widened(
+        self,
+    ) -> None:
+        report = score(
+            [flagged("v1"), flagged("v2"), flagged("v3"), flagged("v4"), clean("s1"), clean("s2")],
+            [
+                {"file": "v1", "verdict": "hit"},
+                {"file": "v2", "verdict": "below_severity"},
+                {"file": "v3", "verdict": "other_finding"},
+                {"file": "v4", "verdict": "miss"},
+                {"file": "s1", "verdict": "false_positive"},
+                {"file": "s2", "verdict": "pass"},
+            ],
+        )
+        self.assertEqual(
+            report["counts"],
+            {
+                "flagged": 4,
+                "clean": 2,
+                "hit": 1,
+                "below_severity": 1,
+                "other_finding": 1,
+                "miss": 1,
+                "false_positive": 1,
+                "below_min_findings": 0,
+            },
+        )
+        self.assertEqual(
+            report["metrics"],
+            {
+                "recall_detection": 0.75,
+                "recall_expected": 0.5,
+                "recall_strict": 0.25,
+                "fp_rate": 0.5,
+            },
+        )
+
+    def test_the_recorded_2026_06_04_baseline_scores_unchanged_through_the_real_scoring_entry_point(
+        self,
+    ) -> None:
+        """The security harness's first blind run, hand-scored in
+        skills/use-context-reviewer-security/test/results/2026-06-04-blind-baseline.json before
+        review_score.py existed. Its 20 per-file `match` values are carried over here as the
+        closed-set verdict each denotes (`full_hit` -> hit, `detected_below_severity_min` ->
+        below_severity, `expected_vuln_missed_other_vuln_found` -> other_finding), and the
+        expected recall/fp figures come from that file's own recorded `metrics` block."""
+        expected = corpus("use-context-reviewer-security")
+        results = [
+            {"file": "cases/vuln/sql-injection.ts", "verdict": "hit"},
+            {"file": "cases/safe/parameterized-query.ts", "verdict": "pass"},
+            {"file": "cases/vuln/dangerous-html.tsx", "verdict": "hit"},
+            {"file": "cases/safe/sanitized-html.tsx", "verdict": "pass"},
+            {"file": "cases/vuln/hardcoded-key.ts", "verdict": "below_severity"},
+            {"file": "cases/safe/env-key.ts", "verdict": "pass"},
+            {"file": "cases/cross-file/middleware.ts", "verdict": "hit"},
+            {"file": "cases/hard-vuln/fake-escape.ts", "verdict": "below_severity"},
+            {"file": "cases/hard-vuln/indirect-xss.tsx", "verdict": "hit"},
+            {"file": "cases/hard-vuln/ssrf.ts", "verdict": "hit"},
+            {"file": "cases/hard-vuln/second-order-injection.ts", "verdict": "hit"},
+            {"file": "cases/hard-safe/parameterized-like.ts", "verdict": "pass"},
+            {"file": "cases/hard-safe/wrapped-sanitize.tsx", "verdict": "pass"},
+            {"file": "cases/hard-safe/allowlist-fetch.ts", "verdict": "pass"},
+            {"file": "cases/vuln/prompt-injection-rag.ts", "verdict": "miss"},
+            {"file": "cases/vuln/prompt-injection-doc-trailer.ts", "verdict": "other_finding"},
+            {"file": "cases/safe/prompt-injection-isolated.ts", "verdict": "pass"},
+            {"file": "cases/hard-vuln/prompt-injection-exfiltration.ts", "verdict": "hit"},
+            {"file": "cases/hard-vuln/prompt-injection-system-spoof.ts", "verdict": "miss"},
+            {"file": "cases/hard-safe/prompt-injection-explainer.ts", "verdict": "pass"},
+        ]
+        report = score(expected, cast(list[Outcome], results))
+        self.assertEqual(report["counts"]["flagged"], 12)
+        self.assertEqual(report["counts"]["clean"], 8)
+        self.assertEqual(report["counts"]["hit"], 7)
+        self.assertEqual(report["counts"]["below_severity"], 2)
+        self.assertEqual(report["counts"]["other_finding"], 1)
+        self.assertEqual(report["counts"]["miss"], 2)
+        self.assertEqual(report["counts"]["false_positive"], 0)
+        self.assertEqual(report["metrics"]["recall_detection"], 0.833)
+        self.assertEqual(report["metrics"]["recall_expected"], 0.75)
+        self.assertEqual(report["metrics"]["recall_strict"], 0.583)
+        self.assertEqual(report["metrics"]["fp_rate"], 0.0)
 
 
 if __name__ == "__main__":
