@@ -369,8 +369,8 @@ const perDr = await pipeline(
     // A DR the caller named by focus is scanned whatever its status: targets is already
     // filtered by matchesFocus above, so a non-empty focus means every target was asked for.
     if (!focus.length && isExpiredStatus(ex.status)) {
-      // an expired DR is no longer the live contract, so it skips the reviewer fan-out
-      // entirely while keeping its Per-DR row (fail-close, same as the other early returns here)
+      // skips the reviewer fan-out entirely while keeping its Per-DR row (fail-close, same
+      // as the other early returns here)
       return perDrRow(a, {
         status: ex.status,
         superseded_by: ex.superseded_by || "",

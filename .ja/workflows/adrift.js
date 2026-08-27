@@ -370,8 +370,8 @@ const perDr = await pipeline(
     // A DR the caller named by focus is scanned whatever its status: targets is already
     // filtered by matchesFocus above, so a non-empty focus means every target was asked for.
     if (!focus.length && isExpiredStatus(ex.status)) {
-      // 失効した DR はもう生きている契約ではないので、Per-DR 行は残したまま reviewer
-      // fan-out をまるごと飛ばす (この関数の他の早期 return と同じ fail-close)
+      // Per-DR 行は残したまま reviewer fan-out をまるごと飛ばす (この関数の他の早期
+      // return と同じ fail-close)
       return perDrRow(a, {
         status: ex.status,
         superseded_by: ex.superseded_by || "",
