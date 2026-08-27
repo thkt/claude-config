@@ -53,7 +53,8 @@
 - grep によるコード内出現検査は、コメントや文字列リテラル内の一致を除外しないと偽陽性になる #571
 - 個別の名前付き受け入れテストを全量一括検査へ吸収すると、独立した追跡可能性を失う #575
 - 新しい .ja ミラー対を追加する script は、同ファイル内の MIRRORED_PAIRS 等の回帰リストへも同一コミットで登録しないと、その対だけ行一致を守る自動テストの対象外のまま残る #577
-- plan が reference_module に指定した既存 skill の構造 (SKILL.md の phase 記載、templates/ のテンプレファイル) は、コード呼び出し列の一致だけでは揃わず、新規追加した script や report section の SKILL.md 未記載・template 欠如が merge まで残る #577
+- hako.sh の run_agent/run_login は agents.sh の agent 名検証より前に workspace 解決 (git clone) を実行し、validate-then-assemble の順序を逆転させている。未知の agent 名でも検証失敗前にクローンの副作用が生じ、後始末もされない #556
+- 参照モジュールが 1 ファイル内で T-NNN を T-001 から再採番する規約を持つとき、新規追加した複数ファイルに渡って単一の連番を通すと、後続ファイルがどこも T-001 から採番されない構造逸脱として検出される #556
 
 ## 棄却
 
