@@ -42,15 +42,17 @@ paths:
 
 ## meta.description と whenToUse の記載内容
 
-`meta.description` と `meta.whenToUse` は、workflow を起動するか判断する側へ向けた文章であって、`args` の形を教える場所ではない。どちらのフィールドも `args` という識別子やそのキーを名指さない。読み手はそれを上の「引数とプロンプトの受け取り」の表から得る。
+`meta.description` と `meta.whenToUse` は、workflow を起動するか判断する側へ向けた文章。`description` はその workflow が何をするかに答え、`whenToUse` はいつ手を伸ばすかに答える。`args` の形は上の「引数とプロンプトの受け取り」の表から読み手が得るため、どちらのフィールドもその識別子やキーを名指さない。
+
+workflow スクリプトはトップレベルに `return` を持つため ESM でも CommonJS でもなく、`FOCUS` や `MODES` を生きた値として読むために `import()` できない (スクリプトの評価形式)。meta-contract.test.js はスクリプトと `meta` リテラルをソーステキストとして読み、const のキーと `whenToUse` の列挙をそれぞれパースで取り出し、突き合わせる。import で取り出しているわけではない。
 
 | 対象                                                   | 規約                                                                                                                                              |
 | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `args` の形                                             | `description` や `whenToUse` へ書かない。`args` やそのキーを名指すのはコードとこの文書であって、workflow の文章ではない                          |
+| `description`                                           | その workflow が行う操作と、スクリプトが決定論的に強制する対象を書く。読み手が兄弟の workflow と見分けられる粒度にする                          |
+| `whenToUse`                                             | その workflow を呼ぶ状況、隣の状況に合う兄弟の名前、呼び出し側が渡すものを文章で書く                                                            |
+| `args` の形                                             | 対象を文章で書く (どのリポジトリか、どの範囲か)。`args` やそのキーを名指すのはコードとこの文書であって、workflow の文章ではない                 |
 | `whenToUse` が列挙する選択肢 (audit の focus、polish の mode) | スクリプト自身の const (audit.js の `FOCUS`、polish.js の `MODES`) が正準。「focus (a / b / ...)」「mode (a / b / ...)」のような `whenToUse` の列挙はその const のキーに揃える派生コピー |
 | コピーを崩れさせない仕組み                             | `workflows/_lib/tests/meta-contract.test.js` が両方を検査する。`whenToUse` が `args` を名指したとき、また列挙した `whenToUse` とスクリプトの const が食い違ったときに落ちる |
-
-workflow スクリプトはトップレベルに `return` を持つため ESM でも CommonJS でもなく、`FOCUS` や `MODES` を生きた値として読むために `import()` できない (スクリプトの評価形式)。meta-contract.test.js はスクリプトと `meta` リテラルをソーステキストとして読み、const のキーと `whenToUse` の列挙をそれぞれパースで取り出し、突き合わせる。import で取り出しているわけではない。
 
 ## degradation の記録
 

@@ -44,15 +44,17 @@ A script accepts `args` as either a string or an object. The string is shorthand
 
 ## meta.description and whenToUse content
 
-`meta.description` and `meta.whenToUse` are prose for whoever decides whether to invoke the workflow, not a place to teach the `args` shape. Neither field names the identifier `args` or spells out its object keys; a reader gets those from the "Taking arguments and prompts" table above.
+`meta.description` and `meta.whenToUse` are prose for whoever decides whether to invoke the workflow. `description` answers what the workflow does, `whenToUse` answers when to reach for it. A reader gets the `args` shape from the "Taking arguments and prompts" table above instead, so neither field names that identifier or spells out its object keys.
+
+A workflow script holds a top-level `return`, so it is neither ESM nor CommonJS and nothing can `import()` it to read `FOCUS` or `MODES` as live values (Script evaluation form). meta-contract.test.js instead reads the script and its `meta` literal as source text, extracts the const's keys and the `whenToUse` listing by parsing rather than by importing, and compares the two extracted sets.
 
 | Target                                                          | Convention                                                                                                                                                             |
 | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `args` shape                                                    | Do not write it into `description` or `whenToUse`. Naming `args` or its keys belongs in code and in this document, not in workflow prose                             |
+| `description`                                                   | Name the operation the workflow performs and what its script enforces deterministically, so a reader tells it apart from its siblings                                |
+| `whenToUse`                                                     | Name the situation that calls for this workflow, the sibling that fits a neighbouring situation, and what the caller supplies, in prose                              |
+| `args` shape                                                    | Write the target in prose (which repository, which scope). Naming `args` or its keys belongs in code and in this document, not in workflow prose                     |
 | An option `whenToUse` enumerates (audit's focus, polish's mode) | The script's own const (audit.js's `FOCUS`, polish.js's `MODES`) is canonical. A `whenToUse` listing such as "focus (a / b / ...)" or "mode (a / b / ...)" is a derived copy and follows that const's keys |
 | Keeping the copy honest                                         | `workflows/_lib/tests/meta-contract.test.js` checks both: it fails when a `whenToUse` names `args`, and when an enumerated `whenToUse` diverges from its script's const |
-
-A workflow script holds a top-level `return`, so it is neither ESM nor CommonJS and nothing can `import()` it to read `FOCUS` or `MODES` as live values (Script evaluation form). meta-contract.test.js instead reads the script and its `meta` literal as source text, extracts the const's keys and the `whenToUse` listing by parsing rather than by importing, and compares the two extracted sets.
 
 ## Degradation recording
 

@@ -28,22 +28,28 @@ const WORKFLOW_TREE_DIRS = [
   { label: "ja", dir: join(here, "..", "..", "..", ".ja", "workflows") },
 ];
 
+// Both fields, not whenToUse alone: rules/conventions/WORKFLOWS.md states the ban over
+// description too, and a rule enforced on one field lets the other drift.
+const META_PROSE_FIELDS = ["description", "whenToUse"];
+
 for (const name of NAMED_WORKFLOWS) {
-  test(`${name}'s whenToUse in neither tree contains the identifier args`, () => {
+  test(`${name}'s meta prose in neither tree contains the identifier args`, () => {
     for (const { label, path } of workflowTrees(name)) {
       const meta = readMeta(path);
-      assert.doesNotMatch(
-        meta.whenToUse,
-        /\bargs\b/,
-        `[${label}] whenToUse names the identifier "args" instead of describing the shape in prose`,
-      );
+      for (const field of META_PROSE_FIELDS) {
+        assert.doesNotMatch(
+          meta[field],
+          /\bargs\b/,
+          `[${label}] ${field} names the identifier "args" instead of describing the target in prose`,
+        );
+      }
     }
   });
 }
 
 // Holds the list itself to the tree rather than re-asserting the property: a workflow added
 // later fails here until it is named, instead of slipping past unchecked.
-test("no whenToUse under either tree contains the identifier args", () => {
+test("no meta prose under either tree contains the identifier args", () => {
   for (const { label, dir } of WORKFLOW_TREE_DIRS) {
     const scripts = readdirSync(dir)
       .filter((name) => name.endsWith(".js"))
@@ -52,7 +58,7 @@ test("no whenToUse under either tree contains the identifier args", () => {
     assert.deepEqual(
       scripts,
       [...NAMED_WORKFLOWS].sort(),
-      `[${label}] every workflow carries a named whenToUse test; this tree holds one that does not`,
+      `[${label}] every workflow carries a named meta-prose test; this tree holds one that does not`,
     );
   }
 });
