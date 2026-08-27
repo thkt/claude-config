@@ -17,6 +17,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import arms
+import dr_gate
 import harness_elements
 import usage_counts
 import verdict
@@ -55,6 +56,9 @@ def build_report(
 ) -> dict[str, Any]:
     """Calls each preceding unit's script in turn and wires their outputs together.
 
+    dr_gate.gate runs after verdict.classify's one-sided judgment and before the result
+    reaches write_report, so a held candidate never enters delete_candidates below.
+
     usage_counts reads session transcripts rather than `observations`, so the reader learns
     usage from the report without also running an ablation arm.
 
@@ -67,11 +71,13 @@ def build_report(
 
     verdicts: dict[str, str] = {}
     for observation in observations:
-        verdicts[observation["path"]] = verdict.classify(
+        path = observation["path"]
+        raw_verdict = verdict.classify(
             trigger_task=observation.get("trigger_task"),
             task_set=observation.get("task_set"),
             complies=observation.get("complies"),
         )
+        verdicts[path] = dr_gate.gate(path=path, verdict=raw_verdict, root=root)
 
     usage_verdicts = {
         path: _usage_verdict(path, usage["elements"], today)
@@ -134,6 +140,12 @@ def _render(result: dict[str, Any]) -> str:
             ("Arms", str(len(result["arms"]))),
             ("Elements observed", str(len(result["verdicts"]))),
             ("Delete candidates", str(len(result["delete_candidates"]))),
+            # Counted apart, since without this row the number is only reachable by
+            # scanning the Verdicts table for the held literal.
+            (
+                "Held by a live DR",
+                str(sum(1 for v in result["verdicts"].values() if v == dr_gate.HELD)),
+            ),
             ("Transcripts parsed", str(result["transcripts"]["count"])),
             ("Transcript date range", _date_range(result["transcripts"]["date_range"])),
         ],

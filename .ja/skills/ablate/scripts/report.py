@@ -17,6 +17,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import arms
+import dr_gate
 import harness_elements
 import usage_counts
 import verdict
@@ -55,6 +56,9 @@ def build_report(
 ) -> dict[str, Any]:
     """前段の各ユニットの script を順に呼び、その出力を結線する。
 
+    dr_gate.gate は verdict.classify の片側判定の後、結果が write_report へ渡る前に走る
+    ため、差し止められた候補は下の delete_candidates に決して現れない。
+
     usage_counts は `observations` からでなくセッションのトランスクリプトを読むため、
     ablation アームを走らせなくても読み手がレポートから usage を読める。
 
@@ -67,11 +71,13 @@ def build_report(
 
     verdicts: dict[str, str] = {}
     for observation in observations:
-        verdicts[observation["path"]] = verdict.classify(
+        path = observation["path"]
+        raw_verdict = verdict.classify(
             trigger_task=observation.get("trigger_task"),
             task_set=observation.get("task_set"),
             complies=observation.get("complies"),
         )
+        verdicts[path] = dr_gate.gate(path=path, verdict=raw_verdict, root=root)
 
     usage_verdicts = {
         path: _usage_verdict(path, usage["elements"], today)
@@ -133,6 +139,12 @@ def _render(result: dict[str, Any]) -> str:
             ("Arms", str(len(result["arms"]))),
             ("Elements observed", str(len(result["verdicts"]))),
             ("Delete candidates", str(len(result["delete_candidates"]))),
+            # 別に数える。この行が無いと、Verdicts の表を held の文字列で走査しない限り
+            # 件数が分からない。
+            (
+                "Held by a live DR",
+                str(sum(1 for v in result["verdicts"].values() if v == dr_gate.HELD)),
+            ),
             ("Transcripts parsed", str(result["transcripts"]["count"])),
             ("Transcript date range", _date_range(result["transcripts"]["date_range"])),
         ],

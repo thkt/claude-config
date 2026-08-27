@@ -15,7 +15,7 @@ argument-hint: "[要素のパス]"
 
 ## 判定と閾値の所在
 
-アームの一覧、1 アームあたりの実行回数、通過閾値はすべて `${CLAUDE_SKILL_DIR}/scripts/arms.py` の定数が持つ。分類の基準は `${CLAUDE_SKILL_DIR}/scripts/verdict.py` が持つ。計測窓と rare-by-design の集合は `${CLAUDE_SKILL_DIR}/scripts/usage_counts.py` が持つ。この本文に数値を書き写さない (`docs/wiki/deterministic-script-judgment.md`)。
+アームの一覧、1 アームあたりの実行回数、通過閾値はすべて `${CLAUDE_SKILL_DIR}/scripts/arms.py` の定数が持つ。分類の基準は `${CLAUDE_SKILL_DIR}/scripts/verdict.py` が持つ。DR ゲートの基準、未達の記録を表す印、記録を読む先は `${CLAUDE_SKILL_DIR}/scripts/dr_gate.py` が持つ。計測窓と rare-by-design の集合は `${CLAUDE_SKILL_DIR}/scripts/usage_counts.py` が持つ。この本文に数値を書き写さない (`docs/wiki/deterministic-script-judgment.md`)。
 
 ## Phase 1: 列挙
 
@@ -37,7 +37,7 @@ Phase 1 が返した要素それぞれについて、`arms.ARMS` の各アーム
 
 ## Phase 3: レポート
 
-`report.write_report(root, observations)` を呼ぶ。同時に `usage_counts.py` も実行し、各要素の発火回数と最終使用日を同じ Harness Elements 表へ組み込む。見る経路は 1 つで、別経路を並走させない。書き出し先の既定は `docs/audit/` で、ファイル名は UTC の `<YYYY-MM-DD>-<HHMMSS>-ablate.md`。
+`report.write_report(root, observations)` を呼ぶ。削除候補がレポートへ届く前に `dr_gate.gate` が `docs/decisions/` を読み、生きている記録が支配する要素を保留するので、Summary はその件数を分けて数える。同時に `usage_counts.py` も実行し、各要素の発火回数と最終使用日を同じ Harness Elements 表へ組み込む。見る経路は 1 つで、別経路を並走させない。書き出し先の既定は `docs/audit/` で、ファイル名は UTC の `<YYYY-MM-DD>-<HHMMSS>-ablate.md`。
 
 ```bash
 python3 -c 'import sys; sys.path.insert(0, "skills/ablate/scripts"); sys.path.insert(0, "skills/_lib"); import report, json, pathlib; print(report.write_report(pathlib.Path("."), json.load(sys.stdin)))' < <observations.json>

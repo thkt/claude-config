@@ -147,6 +147,7 @@ MIRRORED_PAIRS = [
     ("skills/ablate/scripts/arms.py", ".ja/skills/ablate/scripts/arms.py"),
     ("skills/ablate/scripts/verdict.py", ".ja/skills/ablate/scripts/verdict.py"),
     ("skills/ablate/scripts/report.py", ".ja/skills/ablate/scripts/report.py"),
+    ("skills/ablate/scripts/dr_gate.py", ".ja/skills/ablate/scripts/dr_gate.py"),
     ("skills/ablate/scripts/usage_counts.py", ".ja/skills/ablate/scripts/usage_counts.py"),
     ("skills/_lib/harness_elements.py", ".ja/skills/_lib/harness_elements.py"),
 ]
