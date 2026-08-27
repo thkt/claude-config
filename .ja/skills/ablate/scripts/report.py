@@ -4,14 +4,16 @@
 CLI のエントリポイントではない。skills/ablate/SKILL.md はこのモジュールを script として
 呼ぶのでなく、下の `build_report` と `write_report` を import して使う
 (docs/wiki/deterministic-script-judgment.md 「入力から一意に決まる判定は script に置く」—
-列挙・アーム一覧・verdict 分類はすでにそれぞれの script が持っており、このモジュール自身の
-仕事はその 3 つを順に呼んで結果を呼び出し側へ渡すことだけで、それらの定数をここで再導出
-しない。これは verdict.py の `from arms import UNMEASURED` という兄弟 import の形に倣う)。
+列挙・アーム一覧・verdict 分類・常時ロード / enforcer 対応づけはすでにそれぞれの script が
+持っており、このモジュール自身の仕事はその 4 つを順に呼んで結果を呼び出し側へ渡すことだけで、
+それらの定数をここで再導出しない。これは verdict.py の `from arms import UNMEASURED` という
+兄弟 import の形に倣う)。
 
-呼び出し側の契約: 呼び出し側 (現在は skills/ablate/tests/report_test.py、いずれ
-skills/ablate/SKILL.md) が、このモジュールのディレクトリと skills/_lib を import 前に
-sys.path へ入れる。harness_elements.py と verdict.py がそれぞれのテストから import される
-のと同じ形であり、report.py 自身は sys.path を操作しない。
+呼び出し側の契約: 呼び出し側 (現在は skills/ablate/tests/report_test.py と
+skills/ablate/tests/report_enforcer_test.py、いずれ skills/ablate/SKILL.md) が、このモジュール
+のディレクトリと skills/_lib を import 前に sys.path へ入れる。harness_elements.py と
+verdict.py がそれぞれのテストから import されるのと同じ形であり、report.py 自身は sys.path
+を操作しない。
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import arms
+import enforcer_map
 import harness_elements
 import verdict
 
@@ -41,17 +44,35 @@ def _is_apparatus(path: str) -> bool:
     return PurePosixPath(path).as_posix().startswith(APPARATUS_DIR)
 
 
+def _enforcer_rows(root: Path) -> list[dict[str, object]]:
+    """enforcer_map.TARGET_FILES の空行以外の各行を enforcer_map.classify_file で分類した
+    もの。ファイル順、その中では行順。enforcer_map.main() 自身のループが持つファイル存在
+    ガード (対象ファイルが 1 つ (より狭いチェックアウト) 欠けても残りのマッピングを止めない)
+    に倣う。main() は module の CLI エントリポイントで返り値でなく print するため、main() へ
+    委譲するのでなくここで持つ。"""
+    rows: list[dict[str, object]] = []
+    for rel_path in enforcer_map.TARGET_FILES:
+        if not (root / rel_path).is_file():
+            continue
+        rows.extend(enforcer_map.classify_file(root, rel_path))
+    return rows
+
+
 def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, Any]:
-    """前段の 3 ユニットを順に呼び、その出力を結線する。
+    """前段の 4 ユニットを順に呼び、その出力を結線する。
 
     1. harness_elements.enumerate_elements(root) — harness の全母集団と各要素の分類。
     2. arms.ARMS — この ablation 実行が比較するすべてのアーム。
     3. observation ごとの verdict.classify(...) — その observation が報告する要素の
        delete-candidate / needs-human-judgment / unmeasured ラベル。
+    4. enforcer_map.TARGET_FILES の各メンバーごとの enforcer_map.classify_file(...) —
+       常時ロードされる各ファイル自身の行についての delete-candidate / ablation-residue
+       ラベル。
 
-    レポート文字列でなく素の dict (elements / arms / verdicts / delete_candidates) を返す
-    ため、データだけを必要とする呼び出し側 (このユニットのテスト、いずれ U-009 から U-011 が
-    足す enforcer / DR ゲートの結線) は write_report の出力から Markdown を読み戻さずに済む。
+    レポート文字列でなく素の dict (elements / arms / verdicts / delete_candidates /
+    enforcer_rows) を返すため、データだけを必要とする呼び出し側 (このユニットのテスト、
+    いずれ U-009 から U-011 が足す DR ゲートの結線) は write_report の出力から Markdown を
+    読み戻さずに済む。
     """
     elements = harness_elements.enumerate_elements(root)
 
@@ -74,21 +95,24 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
         "arms": list(arms.ARMS),
         "verdicts": verdicts,
         "delete_candidates": sorted(delete_candidates),
+        "enforcer_rows": _enforcer_rows(root),
     }
 
 
-def _table(headers: tuple[str, str], rows: list[tuple[str, str]]) -> list[str]:
-    """2 列 Markdown 表の見出し行、区切り行、データ行。_render がこの形の表を 3 つ
-    (Summary、Harness Elements、Verdicts) 別々の入力から組むので切り出した。ここで
-    列の組み方を 1 箇所変えると 3 つとも変わる。"""
-    lines = [f"| {headers[0]} | {headers[1]} |", "| --- | --- |"]
-    lines += [f"| {a} | {b} |" for a, b in rows]
+def _table(headers: tuple[str, ...], rows: list[tuple[str, ...]]) -> list[str]:
+    """Markdown 表の見出し行、区切り行、データ行。_render がこの形の表を 5 つ
+    (Summary、Harness Elements、Verdicts、Always-Loaded Elements、そして上の 2 列呼び出し側
+    経由で他のすべての節) 別々の入力から組むので切り出した。ここで行の連結ルールを 1 箇所
+    変えるとそのすべてが変わる。列数は `headers` から決まるため、2 列の呼び出し側とこの
+    ユニットの 4 列 Always-Loaded Elements 表が同じ描画を共有する。"""
+    lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
+    lines += ["| " + " | ".join(row) + " |" for row in rows]
     return lines
 
 
 def _render(result: dict[str, Any]) -> str:
-    """`build_report` の結果を Markdown として描画する。build_report が返す 4 つの key
-    だけを読み、呼び出し側が渡した生の `observations` は決して読まないため、observation が
+    """`build_report` の結果を Markdown として描画する。build_report が返す key だけを
+    読み、呼び出し側が渡した生の `observations` は決して読まないため、observation が
     自分の由来を示すために持つフィールド (実行に使われた settings のスナップショットなど) が
     書き出されたレポートに (逐語的にであれ) 混入することはない (T-014)。"""
     lines: list[str] = ["# Ablation Report", ""]
@@ -101,6 +125,22 @@ def _render(result: dict[str, Any]) -> str:
             ("Arms", str(len(result["arms"]))),
             ("Elements observed", str(len(result["verdicts"]))),
             ("Delete candidates", str(len(result["delete_candidates"]))),
+            ("Always-loaded lines mapped", str(len(result["enforcer_rows"]))),
+        ],
+    )
+    lines += [""]
+
+    lines += ["## Always-Loaded Elements", ""]
+    lines += _table(
+        ("File", "Line", "Verdict", "Enforcer"),
+        [
+            (
+                row["file"],
+                str(row["line_number"]),
+                row["verdict"],
+                row.get("enforcer", ""),
+            )
+            for row in result["enforcer_rows"]
         ],
     )
     lines += [""]

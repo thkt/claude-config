@@ -3,16 +3,17 @@
 
 Not a CLI entry point: skills/ablate/SKILL.md imports this module for `build_report` and
 `write_report` below rather than shelling out to it (docs/wiki/deterministic-script-judgment.md
-"入力から一意に決まる判定は script に置く" — enumeration, arm listing, and verdict
-classification each already live in their own script; this module's own job is only to call
-those three in sequence and hand the combined result to the caller, mirroring verdict.py's
-`from arms import UNMEASURED` sibling-import shape rather than re-deriving any of their
-constants here).
+"入力から一意に決まる判定は script に置く" — enumeration, arm listing, verdict
+classification, and the always-loaded/enforcer mapping each already live in their own script;
+this module's own job is only to call those four in sequence and hand the combined result to
+the caller, mirroring verdict.py's `from arms import UNMEASURED` sibling-import shape rather
+than re-deriving any of their constants here).
 
-Caller contract: the caller (currently skills/ablate/tests/report_test.py; eventually
-skills/ablate/SKILL.md) puts this module's directory and skills/_lib on sys.path before
-importing it, the same way harness_elements.py and verdict.py are already imported by their
-own tests — report.py does not manipulate sys.path itself.
+Caller contract: the caller (currently skills/ablate/tests/report_test.py and
+skills/ablate/tests/report_enforcer_test.py; eventually skills/ablate/SKILL.md) puts this
+module's directory and skills/_lib on sys.path before importing it, the same way
+harness_elements.py and verdict.py are already imported by their own tests — report.py does
+not manipulate sys.path itself.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import arms
+import enforcer_map
 import harness_elements
 import verdict
 
@@ -42,18 +44,34 @@ def _is_apparatus(path: str) -> bool:
     return PurePosixPath(path).as_posix().startswith(APPARATUS_DIR)
 
 
+def _enforcer_rows(root: Path) -> list[dict[str, object]]:
+    """Every non-blank line of enforcer_map.TARGET_FILES, classified by
+    enforcer_map.classify_file, file order then line order. Mirrors the file-existence guard
+    in enforcer_map.main()'s own loop (a target file absent from a narrower checkout must not
+    stop the mapping for the rest) rather than delegating to main(), which is the module's
+    CLI entry point and prints instead of returning."""
+    rows: list[dict[str, object]] = []
+    for rel_path in enforcer_map.TARGET_FILES:
+        if not (root / rel_path).is_file():
+            continue
+        rows.extend(enforcer_map.classify_file(root, rel_path))
+    return rows
+
+
 def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, Any]:
-    """Runs the three preceding units in sequence and wires their outputs together.
+    """Runs the four preceding units in sequence and wires their outputs together.
 
     1. harness_elements.enumerate_elements(root) — the full harness population and each
        member's classification.
     2. arms.ARMS — every arm this ablation run compares.
     3. verdict.classify(...), once per observation — the delete-candidate /
        needs-human-judgment / unmeasured label for the element that observation reports on.
+    4. enforcer_map.classify_file(...), once per enforcer_map.TARGET_FILES member — the
+       delete-candidate / ablation-residue label for each always-loaded file's own lines.
 
-    Returns a plain dict (elements / arms / verdicts / delete_candidates) rather than a
-    report string, so a caller that only wants the data (this unit's tests; a future
-    enforcer/DR-gate wiring in U-009 through U-011) does not have to parse Markdown back out
+    Returns a plain dict (elements / arms / verdicts / delete_candidates / enforcer_rows)
+    rather than a report string, so a caller that only wants the data (this unit's tests; a
+    future DR-gate wiring in U-009 through U-011) does not have to parse Markdown back out
     of write_report's output.
     """
     elements = harness_elements.enumerate_elements(root)
@@ -77,20 +95,24 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
         "arms": list(arms.ARMS),
         "verdicts": verdicts,
         "delete_candidates": sorted(delete_candidates),
+        "enforcer_rows": _enforcer_rows(root),
     }
 
 
-def _table(headers: tuple[str, str], rows: list[tuple[str, str]]) -> list[str]:
-    """The header + separator + data lines of a two-column Markdown table, factored out
-    because _render builds three of these (Summary, Harness Elements, Verdicts) from
-    differently-shaped inputs — one column pairing changed here changes all three."""
-    lines = [f"| {headers[0]} | {headers[1]} |", "| --- | --- |"]
-    lines += [f"| {a} | {b} |" for a, b in rows]
+def _table(headers: tuple[str, ...], rows: list[tuple[str, ...]]) -> list[str]:
+    """The header + separator + data lines of a Markdown table, factored out because
+    _render builds five of these (Summary, Harness Elements, Verdicts, Always-Loaded
+    Elements, and — via the two-column callers above — every other section) from
+    differently-shaped inputs — one row-joining rule changed here changes all of them.
+    Column count comes from `headers`, so a 2-column caller and this unit's 4-column
+    Always-Loaded Elements table share the same rendering."""
+    lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
+    lines += ["| " + " | ".join(row) + " |" for row in rows]
     return lines
 
 
 def _render(result: dict[str, Any]) -> str:
-    """Renders `build_report`'s result as Markdown. Reads only the four keys build_report
+    """Renders `build_report`'s result as Markdown. Reads only the keys build_report
     returns — never the raw `observations` a caller passed in — so a field an observation
     carries for its own provenance (such as the settings snapshot a run used) can never
     reach the written report, verbatim or otherwise (T-014)."""
@@ -104,6 +126,22 @@ def _render(result: dict[str, Any]) -> str:
             ("Arms", str(len(result["arms"]))),
             ("Elements observed", str(len(result["verdicts"]))),
             ("Delete candidates", str(len(result["delete_candidates"]))),
+            ("Always-loaded lines mapped", str(len(result["enforcer_rows"]))),
+        ],
+    )
+    lines += [""]
+
+    lines += ["## Always-Loaded Elements", ""]
+    lines += _table(
+        ("File", "Line", "Verdict", "Enforcer"),
+        [
+            (
+                row["file"],
+                str(row["line_number"]),
+                row["verdict"],
+                row.get("enforcer", ""),
+            )
+            for row in result["enforcer_rows"]
         ],
     )
     lines += [""]
