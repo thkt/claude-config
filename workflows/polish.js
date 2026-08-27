@@ -224,15 +224,19 @@ if (mode !== "cleanup") {
     },
   );
   reviewDied = !codexResult;
-  codex = codexResult || {
-    available: false,
-    has_changes: true,
-    diff_kind: "",
-    findings: [],
-    review_note: "Review agent returned nothing",
-  };
-  if (codex.review_note === undefined) {
+  // CODEX_SCHEMA has no review_note property (additionalProperties: false), so a
+  // codexResult that passed validation never carries one; derive it here directly.
+  if (codexResult) {
+    codex = codexResult;
     codex.review_note = codex.available ? "Review complete" : "codex CLI missing";
+  } else {
+    codex = {
+      available: false,
+      has_changes: true,
+      diff_kind: "",
+      findings: [],
+      review_note: "Review agent returned nothing",
+    };
   }
   if (!codex.has_changes) {
     return {

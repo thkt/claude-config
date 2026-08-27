@@ -219,15 +219,19 @@ if (mode !== "cleanup") {
     },
   );
   reviewDied = !codexResult;
-  codex = codexResult || {
-    available: false,
-    has_changes: true,
-    diff_kind: "",
-    findings: [],
-    review_note: "Review agent が結果を返さなかった",
-  };
-  if (codex.review_note === undefined) {
+  // CODEX_SCHEMA に review_note は無い (additionalProperties: false) ため、検証を通った
+  // codexResult がこの値を自分で持つことは無い。ここで確定させる。
+  if (codexResult) {
+    codex = codexResult;
     codex.review_note = codex.available ? "Review 完了" : "codex CLI なし";
+  } else {
+    codex = {
+      available: false,
+      has_changes: true,
+      diff_kind: "",
+      findings: [],
+      review_note: "Review agent が結果を返さなかった",
+    };
   }
   if (!codex.has_changes) {
     return { mode, polished: false, why: "diff に変更が無く polish 対象なし" };
