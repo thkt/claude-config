@@ -214,6 +214,22 @@ const commitUnit = async (unit, tests, testFiles) => {
   log(`${unit.id}: 未コミット (${why})。作業ツリーに残す。`);
 };
 
+// agent tool の schema は形しか保証しない: courier が読んだ codex のファイルが
+// `{"red_confirmed": "false"}` のように文字列で書かれていても RED_SCHEMA の宣言する
+// プロパティ自体は満たしてしまう。呼び出し側が truthy 判定でそれを信頼する直前、ここで実際の
+// 型を検査する。
+const boolMismatch = (result, field) => !!result && typeof result[field] !== "boolean";
+
+// stopUnit と同じ形 (completed / skipped / anomalies / commits を添えて run を止める) を
+// courier の型不一致向けに使い回す。呼び出し側の 3 箇所 (impl / red / green) が重複させずに
+// 済むよう、ここへまとめる。
+const courierTypeStop = (unit, result, field) =>
+  stopUnit(
+    "courier-type-mismatch",
+    unit,
+    `courier が返した ${field} が boolean ではなく ${typeof result[field]} だった (値: ${JSON.stringify(result[field])})。`,
+  );
+
 // agent の自己申告を script が anomaly 化するので、無断で狭めた実装が code_anomalies: 0 の
 // まま緑で ship されることはない。
 const recordDeferred = (unit, result) => {
@@ -223,16 +239,25 @@ const recordDeferred = (unit, result) => {
   }
 };
 
+// codex-herdr 経路で codex が JSON を書き込む先。read-back には agent が要るので (workflow
+// realm に fs が無い)、unit と role が決まれば同じ 1 ファイルを初回・retry で使い回す。
+const responsePath = (unit, role) => `.codex-response/${unit.id}-${role}.json`;
+
 // role は Red step が "tester"、Green / 直接実装が "coder"。まだ失敗している結果をどう
 // 扱うかは呼び出し元が持つ。Red 未確認は anomaly に記録し、impl / Green の失敗は run を止める。
 // 1 回目が null なら retry しないので、死んだ agent を 2 度叩かない。
 const stepWithRetry = async (unit, label, role, schema, ok, prompt, retryPrompt) => {
   const dest = implementDestination(role);
-  // 初回と retry の両方の prompt へ前置くので、codex-herdr の retry も初回と同じ pane 宛になる
-  // (dest.paneId は呼び出し 1 回につき 1 度だけ、pane-start で解決済みの herdrPanes から読む。
-  // 再解決しない)。
+  // 初回と retry の両方の prompt へ前置くので、codex-herdr の retry も初回と同じ pane・同じ
+  // 応答ファイル宛になる (dest.paneId は呼び出し 1 回につき 1 度だけ、pane-start で解決済みの
+  // herdrPanes から読む。再解決しない)。この agent 呼び出しに schema (RED_SCHEMA /
+  // GREEN_SCHEMA) を付けるだけでは型を強制できない: codex がファイルに
+  // `{"red_confirmed": "false"}` と文字列で書いても schema の形は満たしてしまい、JS の
+  // truthy 判定はその文字列を true と読む (issue #367)。workflow realm に fs が無く読み戻しに
+  // どのみち courier agent が要るため、型検証は呼び出し元 (下の red_confirmed / green の
+  // チェック) に残す。
   const addressing = dest.paneId
-    ? `この指示は ${role} pane ${dest.paneId} 宛に送る (pane-start で herdr pane split から解決済みの id。推測しない)。\n`
+    ? `この指示は ${role} pane ${dest.paneId} 宛に送る (pane-start で herdr pane split から解決済みの id。推測しない)。pane 内の codex agent に、この schema の形に沿った JSON だけをファイル ${responsePath(unit, role)} (repo からの相対パス) へ書かせる。あなたは courier として振る舞う: 自分では TDD の作業をせず、指示を pane へ送ったらそのファイルを読み、パースした中身をこの schema の形で返すだけでよい。codex の作業が終わってもそのファイルが無ければ、結果を捏造せず、見た事実を notes に書いて false 相当の結果を返す。\n`
     : "";
   const opts = (name) => ({
     label: `${name}:${unit.id}`,
@@ -491,12 +516,14 @@ for (const [index, unit] of units.entries()) {
         `前回 suite が pass しなかった。理由は ${prev.notes}。\n原因を特定して実装を直し、suite を pass させる。テストの弱体化は禁止。`,
     );
 
-    if (!impl || !impl.green) {
-      return stopUnit(
-        "unit-failed",
-        unit,
-        (impl && impl.notes) || "implement agent が結果を返さなかった",
-      );
+    if (!impl) {
+      return stopUnit("unit-failed", unit, "implement agent が結果を返さなかった");
+    }
+    if (boolMismatch(impl, "green")) {
+      return courierTypeStop(unit, impl, "green");
+    }
+    if (!impl.green) {
+      return stopUnit("unit-failed", unit, impl.notes || "implement agent が結果を返さなかった");
     }
 
     recordDeferred(unit, impl);
@@ -530,6 +557,9 @@ for (const [index, unit] of units.entries()) {
   );
 
   if (!red) return stopUnit("red-failed", unit, "red agent が結果を返さなかった");
+  if (boolMismatch(red, "red_confirmed")) {
+    return courierTypeStop(unit, red, "red_confirmed");
+  }
 
   if (!red.red_confirmed) {
     anomalies.push({
@@ -563,12 +593,14 @@ for (const [index, unit] of units.entries()) {
       `前回テストが pass しなかった。理由は ${prev.notes}。\n原因を特定して実装を直し、unit のテストを pass させる。テストの弱体化は禁止。`,
   );
 
-  if (!green || !green.green) {
-    return stopUnit(
-      "unit-failed",
-      unit,
-      (green && green.notes) || "green agent が結果を返さなかった",
-    );
+  if (!green) {
+    return stopUnit("unit-failed", unit, "green agent が結果を返さなかった");
+  }
+  if (boolMismatch(green, "green")) {
+    return courierTypeStop(unit, green, "green");
+  }
+  if (!green.green) {
+    return stopUnit("unit-failed", unit, green.notes || "green agent が結果を返さなかった");
   }
   recordDeferred(unit, green);
   completed.push(unit.id);

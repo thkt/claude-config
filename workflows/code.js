@@ -218,6 +218,20 @@ const commitUnit = async (unit, tests, testFiles) => {
   log(`${unit.id}: not committed (${why}). Left in the working tree.`);
 };
 
+// The agent tool's schema only guarantees shape: a courier reading codex's response file can
+// hand back `{"red_confirmed": "false"}` as a string and still satisfy RED_SCHEMA's declared
+// properties. The type is checked here, right before a caller trusts it via truthiness.
+const boolMismatch = (result, field) => !!result && typeof result[field] !== "boolean";
+
+// Reuses stopUnit's shape (a run stop carrying completed / skipped / anomalies / commits) for a
+// courier type mismatch, so the 3 call sites below (impl / red / green) do not duplicate it.
+const courierTypeStop = (unit, result, field) =>
+  stopUnit(
+    "courier-type-mismatch",
+    unit,
+    `the courier returned ${field} as ${typeof result[field]} instead of boolean (value: ${JSON.stringify(result[field])}).`,
+  );
+
 // The agent's self-report becomes an anomaly in the script, so a silently narrowed
 // implementation cannot ship green with code_anomalies: 0.
 const recordDeferred = (unit, result) => {
@@ -227,6 +241,10 @@ const recordDeferred = (unit, result) => {
   }
 };
 
+// codex-herdr writes its JSON here. Read-back needs an agent regardless (the workflow realm has
+// no fs), so unit + role settle on one file reused across the first attempt and its retry.
+const responsePath = (unit, role) => `.codex-response/${unit.id}-${role}.json`;
+
 // role is "tester" for the Red step and "coder" for Green / direct implementation. What a
 // still-failing result means belongs to the caller: an unconfirmed Red is recorded as an
 // anomaly, while a failing impl / Green stops the run. A null first result skips the retry, so
@@ -234,10 +252,15 @@ const recordDeferred = (unit, result) => {
 const stepWithRetry = async (unit, label, role, schema, ok, prompt, retryPrompt) => {
   const dest = implementDestination(role);
   // Prepended to both the first prompt and the retry prompt, so a codex-herdr retry addresses
-  // the same pane as its first attempt (dest.paneId is read once per call from the pane
-  // already resolved at pane-start, never re-resolved).
+  // the same pane and the same response file as its first attempt (dest.paneId is read once per
+  // call from the pane already resolved at pane-start, never re-resolved). Attaching schema
+  // (RED_SCHEMA / GREEN_SCHEMA) to this agent call does not by itself enforce the type: codex
+  // can write `{"red_confirmed": "false"}` as a string to the file and still satisfy the
+  // schema's shape, and JS truthiness then reads that string as true (issue #367). The workflow
+  // realm has no fs, so reading the file back needs a courier agent regardless; the type check
+  // is left to the caller (the red_confirmed / green checks below).
   const addressing = dest.paneId
-    ? `Send this instruction to the ${role} pane ${dest.paneId} (the id resolved from herdr pane split via pane-start; never guess it).\n`
+    ? `Send this instruction to the ${role} pane ${dest.paneId} (the id resolved from herdr pane split via pane-start; never guess it). Tell the codex agent in that pane to write its response as JSON, matching this schema and nothing else, to the file ${responsePath(unit, role)} (repo-relative). You are the courier: you do not do the TDD work yourself. Send the instruction into the pane, then read that file back and return its parsed contents in this schema's shape. If the file is not there once codex is done, do not invent a result: report what you found in notes with a false-shaped result.\n`
     : "";
   const opts = (name) => ({
     label: `${name}:${unit.id}`,
@@ -505,12 +528,14 @@ for (const [index, unit] of units.entries()) {
         rulesCtx() +
         `Last time the suite did not pass. The reason was ${prev.notes}.\nIdentify the cause, fix the implementation, and make the suite pass. Weakening tests is forbidden.`,
     );
-    if (!impl || !impl.green) {
-      return stopUnit(
-        "unit-failed",
-        unit,
-        (impl && impl.notes) || "the implement agent returned no result",
-      );
+    if (!impl) {
+      return stopUnit("unit-failed", unit, "the implement agent returned no result");
+    }
+    if (boolMismatch(impl, "green")) {
+      return courierTypeStop(unit, impl, "green");
+    }
+    if (!impl.green) {
+      return stopUnit("unit-failed", unit, impl.notes || "the implement agent returned no result");
     }
     recordDeferred(unit, impl);
     completed.push(unit.id);
@@ -539,6 +564,9 @@ for (const [index, unit] of units.entries()) {
       `If after scrutiny the tests still pass, judge the behavior as already implemented and keep red_confirmed=false. notes carries the conclusion alone, one sentence; what the scrutiny looked at goes in evidence, one fact per element.`,
   );
   if (!red) return stopUnit("red-failed", unit, "the red agent returned no result");
+  if (boolMismatch(red, "red_confirmed")) {
+    return courierTypeStop(unit, red, "red_confirmed");
+  }
   if (!red.red_confirmed) {
     anomalies.push({
       unit: unit.id,
@@ -570,12 +598,14 @@ for (const [index, unit] of units.entries()) {
       rulesCtx() +
       `Last time the tests did not pass. The reason was ${prev.notes}.\nIdentify the cause, fix the implementation, and make the unit's tests pass. Weakening tests is forbidden.`,
   );
-  if (!green || !green.green) {
-    return stopUnit(
-      "unit-failed",
-      unit,
-      (green && green.notes) || "the green agent returned no result",
-    );
+  if (!green) {
+    return stopUnit("unit-failed", unit, "the green agent returned no result");
+  }
+  if (boolMismatch(green, "green")) {
+    return courierTypeStop(unit, green, "green");
+  }
+  if (!green.green) {
+    return stopUnit("unit-failed", unit, green.notes || "the green agent returned no result");
   }
   recordDeferred(unit, green);
   completed.push(unit.id);
