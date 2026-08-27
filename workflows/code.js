@@ -174,6 +174,7 @@ const commitBody = (unit, tests) =>
     `Contract: ${flatten(unit.contract)}`,
     ...(tests.length ? [`Tests: ${tests.map((t) => t.id).join(", ")}`] : []),
     `Seam: ${unit.seam === true}`,
+    `Implementer: ${implementer}`,
     ...(issueRef ? [`Issue: #${issueRef}`] : []),
   ].join("\n");
 

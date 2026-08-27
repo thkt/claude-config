@@ -376,3 +376,43 @@ test("T-002 a code run given args.repo prepends the repository pin to every agen
     assert.match(c.prompt, /cd \/abs\/target-repo &&/, `${c.opts.label ?? "?"} carries the pin`);
   }
 });
+
+// The Implementer trailer names, per commit, who wrote the unit: reading a commit's trailers
+// (git interpret-trailers / git log --format) must tell codex-herdr and claude apart without
+// consulting anything outside the commit itself.
+const herdrCommitStub = (prompt, opts) => {
+  const label = opts.label ?? "";
+  if (label === "herdr-check") return { herdr_available: true, notes: "" };
+  if (label === "pane-start:tester") return { pane_id: "pane-tester-1", started: true, notes: "" };
+  if (label === "pane-start:coder") return { pane_id: "pane-coder-1", started: true, notes: "" };
+  if (label === "pane-close:tester") return { closed: true, notes: "" };
+  if (label === "pane-close:coder") return { closed: true, notes: "" };
+  if (label.startsWith("red:"))
+    return { red_confirmed: true, test_files: ["t.test.js"], notes: "", evidence: [] };
+  if (label.startsWith("green:")) return { green: true, notes: "", deferred: [] };
+  if (label.startsWith("commit:")) return committed;
+  if (label === "verify") return { tests_pass: true, gates_pass: true, output_tail: "" };
+  throw new Error(`unexpected label: ${label}`);
+};
+
+test("codex-herdr のとき commit trailer に codex-herdr が入る", async () => {
+  const { calls } = await runWorkflow(codeJs, {
+    args: { plan, repo: "/abs/target-repo", commit: true, implementer: "codex-herdr" },
+    stubs: { agent: herdrCommitStub },
+  });
+  const prompt = commitCalls(calls)[0].prompt;
+  assert.match(
+    prompt,
+    /^Implementer: codex-herdr$/m,
+    "the Implementer trailer carries codex-herdr",
+  );
+});
+
+test("implementer を渡さないとき commit trailer に claude が入る", async () => {
+  const { calls } = await runWorkflow(codeJs, {
+    args: { plan, repo: "/abs/target-repo", commit: true },
+    stubs: { agent: stubWith(committed) },
+  });
+  const prompt = commitCalls(calls)[0].prompt;
+  assert.match(prompt, /^Implementer: claude$/m, "the Implementer trailer carries claude");
+});
