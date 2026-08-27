@@ -12,14 +12,16 @@
 #     entrypoint.sh demotion step.
 #   - ENTRYPOINT is entrypoint.sh, started as root, so the same image can hand off to
 #     whichever agent's exec command agents.sh (U-001) names for the argument it is given;
-#     CMD defaults that argument to claude, and codex (U-009) reuses this same image without
-#     a Dockerfile change beyond adding its own install step.
+#     CMD defaults that argument to claude. codex (#490) reuses this same image, adding its
+#     own install step plus its own auth-directory entry in the existing mkdir/chown block:
+#     "install step" alone left the codex auth volume mounted onto a root-owned directory.
 FROM node:20
 
 ARG TZ
 ENV TZ="$TZ"
 
 ARG CLAUDE_CODE_VERSION=latest
+ARG CODEX_VERSION=latest
 
 # Install basic development tools and iptables/ipset/gosu.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -46,10 +48,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN mkdir -p /usr/local/share/npm-global && \
   chown -R node:node /usr/local/share
 
-# Create workspace and config directories and set permissions. /home/node/.claude is the
-# auth directory agents.sh (U-001) names for the claude agent.
-RUN mkdir -p /workspace /home/node/.claude && \
-  chown -R node:node /workspace /home/node/.claude
+# Create workspace and config directories and set permissions. /home/node/.claude and
+# /home/node/.codex are the auth directories agents.sh (U-001) names for the claude and
+# codex agents; each is pre-created and node-owned so the per-agent named volume hako.sh
+# mounts there (run_container, hako.sh) inherits node ownership instead of root's.
+RUN mkdir -p /workspace /home/node/.claude /home/node/.codex && \
+  chown -R node:node /workspace /home/node/.claude /home/node/.codex
 
 WORKDIR /workspace
 
@@ -62,6 +66,9 @@ ENV PATH=$PATH:/usr/local/share/npm-global/bin
 
 # Install Claude
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
+
+# Install Codex (npm package name and CLI confirmed via openai/codex's own README).
+RUN npm install -g @openai/codex@${CODEX_VERSION}
 
 # Hand off to entrypoint.sh (U-003), which runs as root: it applies the firewall
 # (init-firewall.sh, U-002) directly as the container's own PID 1, and only on success
