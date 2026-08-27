@@ -546,6 +546,47 @@ class WikiPageFormat(unittest.TestCase):
             )
             self.assertIn("scenes:", template, f"{lang}: the skeleton carries scenes")
 
+    def structure_skeleton_block(self, lang: str) -> str:
+        """The fenced example in the page template that carries `kind: structure`, empty when
+        the template has none. Headings inside stay Japanese in both trees, per the mirroring
+        rule that code structure and stopped values stay identical across languages."""
+        template = at(lang, "skills", "scribe", "templates", "page.md").read_text(
+            encoding="utf-8"
+        )
+        for block in re.findall(r"```markdown\n(.*?)\n```", template, re.S):
+            if "kind: structure" in block:
+                return block
+        return ""
+
+    def test_both_trees_page_template_carries_a_structure_page_skeleton_whose_sections_run_in_the_order_the_wiki_readme_states(  # noqa: E501
+        self,
+    ) -> None:
+        """T-003: both trees' page template carries a structure-page skeleton whose sections run
+        in the order the wiki README states."""
+        for lang in LANGS:
+            block = self.structure_skeleton_block(lang)
+            self.assertTrue(block, f"{lang}: the template carries a structure-page skeleton")
+            headings = [ln for ln in block.split("\n") if ln.startswith("## ")]
+            self.assertEqual(
+                headings,
+                ["## 内容", "## 境界", "## 契約", "## 要求", "## 参照コード", "## 由来"],
+                f"{lang}: the skeleton runs 内容 → 境界 → 契約 → 要求 → 参照コード → 由来",
+            )
+
+    def test_both_trees_page_template_marks_the_structure_page_skeleton_with_the_kind_that_selects_it(  # noqa: E501
+        self,
+    ) -> None:
+        """T-004: both trees' page template marks the structure-page skeleton with the kind that
+        selects it."""
+        for lang in LANGS:
+            block = self.structure_skeleton_block(lang)
+            self.assertTrue(block, f"{lang}: the template carries a structure-page skeleton")
+            self.assertIn(
+                "kind: structure",
+                block,
+                f"{lang}: the skeleton frontmatter carries kind: structure",
+            )
+
 
 if __name__ == "__main__":
     _ = unittest.main(verbosity=2)

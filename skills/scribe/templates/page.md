@@ -36,3 +36,45 @@ scenes: ["<situation this rule bears on, from SCENES only>"]
 - #34 何があったか1行
 - (research) 何が分かったか1行
 ```
+
+## The `kind: structure` page
+
+Besides the 共通項 page, a structure page carries `kind: structure` in its frontmatter. A 共通項 page writes a recurring pattern extracted from PRs/issues, while a structure page writes the structure of one glob contract group (files sharing the same boundary and contract). The skeleton to use is decided by whether a Phase 3 `pages` item carries `kind: structure`: an item without it uses the 共通項 skeleton above, and an item with it uses this one. Phase 3's extraction targets only 共通項 patterns from PRs/issues, so no `pages` item ever carries `kind: structure`, and a structure page is hand-written and added separately. Its sections run 内容 → 境界 → 契約 → 要求 → 参照コード → 由来, and it carries neither 定型手順 nor 根拠. It always keeps the 由来 heading, and empties the content under it only when no record passes the counterfactual test。
+
+```markdown
+---
+globs: ["<pattern of the files this group bears on>"]
+scenes: []
+kind: structure
+---
+
+# <グループ名>
+
+## 内容
+
+このグループが何をするか（1〜3 文）。
+
+## 境界
+
+- 何と何が独立し、何が入れ子か（1行ずつ）
+
+## 契約
+
+| 対象     | 契約     |
+| -------- | -------- |
+| `<対象>` | `<契約>` |
+
+## 要求
+
+| 対象     | 上限     | 超えたときの挙動 |
+| -------- | -------- | ---------------- |
+| `<対象>` | `<上限>` | `<挙動>`         |
+
+## 参照コード
+
+- `path/to/file` の `シンボル名`（何が読めるか1行）
+
+## 由来
+
+- `docs/decisions/<NNNN>-<タイトル>.md`（この決定から派生。1行で何を決めた DR か）
+```
