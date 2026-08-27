@@ -1976,6 +1976,39 @@ test("the Load prompt keeps the verbatim requirement for title and body", async 
   );
 });
 
+// U-002: the conformance review prompt reads the spec (the originating issue) with the same
+// gh-presence judgment as U-001's Load fetch: check `which gh`, run `gh issue view` when found,
+// and fall back to the mcp__github__issue_read tool when gh is missing. findings keeps its
+// existing schema (category / severity / spec_line / location / detail) regardless of the route.
+test("the conformance review prompt names both the gh command and the MCP tool for reading the spec", async () => {
+  const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const conformance = agentCallsOf(run.calls, "conformance")[0];
+  assert.ok(conformance, "the conformance agent ran");
+  assert.match(
+    conformance.prompt,
+    /which gh/,
+    "gh's presence is checked via Bash the same way U-001's Load fetch checks it",
+  );
+  assert.match(conformance.prompt, /gh issue view/, "the gh path is still named");
+  assert.match(
+    conformance.prompt,
+    /mcp__github__issue_read/,
+    "the MCP tool is named as the path taken when gh is missing",
+  );
+});
+
+test("the conformance findings schema is unchanged by the route", async () => {
+  const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const conformance = agentCallsOf(run.calls, "conformance")[0];
+  assert.ok(conformance, "the conformance agent ran");
+  const findingsItem = conformance.opts.schema.properties.findings.items;
+  assert.deepEqual(
+    findingsItem.required,
+    ["category", "severity", "spec_line", "location", "detail"],
+    "findings keeps its category/severity/spec_line/location/detail schema whichever route read the spec",
+  );
+});
+
 test("a Load stage that returns no body still stops as no-issue-body", async () => {
   const run = await runWorkflow(buildJs, {
     args,

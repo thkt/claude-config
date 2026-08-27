@@ -199,13 +199,20 @@ await recordRun("started");
 // across the gh branch and the mcp fallback branch, so the verbatim requirement stays a single
 // source both branches read instead of two copies that can drift apart.
 const VERBATIM_TITLE_BODY = "both verbatim; do not summarize or reformat either";
+// Verify's conformance review (below) reads the same originating issue as spec, so it must make
+// the same gh-vs-mcp judgment in a gh-less environment. Rewriting the route judgment prose at
+// each of the 2 call sites lets them drift, so it is held as one script constant instead
+// (docs/wiki/harness-production-divergence.md). ghStep / mcpStep are each call site's own
+// continuation once the route is decided.
+const ghOrMcpRoute = (issueNumber, ghStep, mcpStep) =>
+  `check \`which gh\`. When gh is found, ${ghStep} When gh is missing, ${mcpStep}`;
 const fetched = await agent(
   anchor(
-    `First check \`which gh\`. ` +
-      `When gh is found, run exactly \`gh issue view ${issueNumber} --json title,body\` and return its title field as title and its body field as body, ${VERBATIM_TITLE_BODY}. ` +
-      `If the command exits non-zero (issue not found / fetch failed), return found: false. ` +
-      `When gh is missing, call the mcp__github__issue_read tool for issue ${issueNumber} in this repository instead, and return its title and body fields the same way, ${VERBATIM_TITLE_BODY}. ` +
-      `If the tool call fails or the issue is not found, return found: false.`,
+    `First ${ghOrMcpRoute(
+      issueNumber,
+      `run exactly \`gh issue view ${issueNumber} --json title,body\` and return its title field as title and its body field as body, ${VERBATIM_TITLE_BODY}. If the command exits non-zero (issue not found / fetch failed), return found: false.`,
+      `call the mcp__github__issue_read tool for issue ${issueNumber} in this repository instead, and return its title and body fields the same way, ${VERBATIM_TITLE_BODY}. If the tool call fails or the issue is not found, return found: false.`,
+    )}`,
   ),
   {
     label: "fetch",
@@ -972,8 +979,13 @@ const [diff, testPresence, conformance, structure] = await parallel([
   () =>
     agent(
       anchor(
-        `Conformance review against the originating issue. The spec is GitHub issue #${issueNumber}: ` +
-          `read it with \`gh issue view ${issueNumber}\`. The implementation to review is everything this build ` +
+        `Conformance review against the originating issue. The spec is GitHub issue #${issueNumber}. ` +
+          `${ghOrMcpRoute(
+            issueNumber,
+            `run \`gh issue view ${issueNumber}\` and read its output as the spec.`,
+            `call the mcp__github__issue_read tool for issue ${issueNumber} in this repository instead, and read its returned body as the spec.`,
+          )} ` +
+          `The implementation to review is everything this build ` +
           `produced since its branch point ${diffBase}, committed and uncommitted alike, so use \`git diff ${diffBase}\` ` +
           `plus the untracked files shown by \`git status --porcelain\`; do not use main...HEAD. ` +
           `Report one deviation per finding: an observation with its own spec_line or location becomes its own finding, not a second sentence in detail.`,

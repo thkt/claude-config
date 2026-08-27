@@ -195,13 +195,19 @@ await recordRun("started");
 // 1 つの script 定数として持ち、両分岐が同じ 1 箇所を読むようにして、食い違う 2 つのコピーに
 // ならないようにする。
 const VERBATIM_TITLE_BODY = "いずれも逐語で返す。要約や整形をしない";
+// Verify の conformance review (後述) も同じ起点 issue を spec として読むので、gh の無い環境
+// では同じ判定をしなければならない。2 箇所が読む経路の判定文を呼び出し元ごとに書き直すと
+// 食い違うので、1 つの script 定数として持つ (docs/wiki/harness-production-divergence.md)。
+// ghStep / mcpStep は経路が決まった後の各呼び出し元固有の続き。
+const ghOrMcpRoute = (issueNumber, ghStep, mcpStep) =>
+  `\`which gh\` を確認する。gh があれば、${ghStep}gh が無ければ、${mcpStep}`;
 const fetched = await agent(
   anchor(
-    `まず \`which gh\` を確認する。` +
-      `gh があれば \`gh issue view ${issueNumber} --json title,body\` を正確に実行し、その title フィールドを title として、body フィールドを body として、${VERBATIM_TITLE_BODY}。` +
-      `コマンドが非ゼロで終了した場合 (issue が無い / 取得失敗) は found: false を返す。` +
-      `gh が無ければ、代わりに issue ${issueNumber} に対して mcp__github__issue_read ツールを呼び、同じように title と body を、${VERBATIM_TITLE_BODY}。` +
-      `ツール呼び出しが失敗するか issue が見つからない場合は found: false を返す。`,
+    `まず ${ghOrMcpRoute(
+      issueNumber,
+      `\`gh issue view ${issueNumber} --json title,body\` を正確に実行し、その title フィールドを title として、body フィールドを body として、${VERBATIM_TITLE_BODY}。コマンドが非ゼロで終了した場合 (issue が無い / 取得失敗) は found: false を返す。`,
+      `代わりに issue ${issueNumber} に対して mcp__github__issue_read ツールを呼び、同じように title と body を、${VERBATIM_TITLE_BODY}。ツール呼び出しが失敗するか issue が見つからない場合は found: false を返す。`,
+    )}`,
   ),
   {
     label: "fetch",
@@ -948,8 +954,13 @@ const [diff, testPresence, conformance, structure] = await parallel([
   () =>
     agent(
       anchor(
-        `起点 issue に対する conformance review。spec は GitHub issue #${issueNumber} で、` +
-          `\`gh issue view ${issueNumber}\` で読む。レビュー対象は、分岐点 ${diffBase} 以降にこの build が生んだ変更 ` +
+        `起点 issue に対する conformance review。spec は GitHub issue #${issueNumber}。` +
+          `${ghOrMcpRoute(
+            issueNumber,
+            `\`gh issue view ${issueNumber}\` を実行し、その出力を spec として読む。`,
+            `代わりに issue ${issueNumber} に対して mcp__github__issue_read ツールを呼び、返ってきた body を spec として読む。`,
+          )} ` +
+          `レビュー対象は、分岐点 ${diffBase} 以降にこの build が生んだ変更 ` +
           `すべて (commit 済みも未 commit も含む) なので、\`git diff ${diffBase}\` と \`git status --porcelain\` が示す ` +
           `未追跡ファイルを使う。main...HEAD は使わない。` +
           `finding 1 件につき逸脱は 1 件。別の spec_line や location を持つ指摘は、detail の 2 文目でなく別の finding にする。`,
