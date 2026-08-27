@@ -263,6 +263,20 @@ class SkillContract(unittest.TestCase):
                 f"{lang}: verify_run.py runs before PR creation",
             )
 
+    def test_phase_6_step_4_calls_verify_run_without_self_reported_counts(self) -> None:
+        """T-008 両ツリーの SKILL.md 手順 4 が、自己申告の件数を渡さない形で verify_run.py を呼ぶ"""
+        for lang in LANGS:
+            steps = self.phase_6_steps(lang)
+            step4 = next(line for line in steps.split("\n") if "verify_run.py" in line)
+            self.assertNotIn(
+                "<start-count>", step4, f"{lang}: step 4 no longer self-reports start-count"
+            )
+            self.assertNotIn(
+                "<expected-commits>",
+                step4,
+                f"{lang}: step 4 no longer self-reports expected-commits",
+            )
+
     def test_triage_commits_length_fed_to_verify_run_is_ok_true_and_a_one_off_shift_is_false(
         self,
     ) -> None:
