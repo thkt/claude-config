@@ -194,16 +194,14 @@ await recordRun("started");
 // The extracted number, never the reference as given: a URL matches as long as /issues/N
 // appears anywhere in it, so passing it through would carry whatever follows into the shell.
 // gh resolves a bare number against the repository anchor already runs in.
-// The route is decided by gh's presence, checked via the agent's own Bash the same way
-// polish.js checks `which codex`. Held as one script constant rather than as prose scattered
-// across the gh branch and the mcp fallback branch, so the verbatim requirement stays a single
-// source both branches read instead of two copies that can drift apart.
+// Writing the verbatim requirement into the gh branch and the mcp fallback branch separately
+// leaves two copies that can drift apart.
 const VERBATIM_TITLE_BODY = "both verbatim; do not summarize or reformat either";
-// Verify's conformance review (below) reads the same originating issue as spec, so it must make
-// the same gh-vs-mcp judgment in a gh-less environment. Rewriting the route judgment prose at
-// each of the 2 call sites lets them drift, so it is held as one script constant instead
-// (docs/wiki/harness-production-divergence.md). ghStep / mcpStep are each call site's own
-// continuation once the route is decided.
+// The route is decided by gh's presence, checked via the agent's own Bash the same way
+// polish.js checks `which codex`. Verify's conformance review (below) reads the same
+// originating issue as spec, so it makes the same judgment; rewriting the route prose at each
+// of the 2 call sites lets them drift (docs/wiki/harness-production-divergence.md). ghStep /
+// mcpStep are each call site's own continuation once the route is decided.
 const ghOrMcpRoute = (ghStep, mcpStep) =>
   `check \`which gh\`. When gh is found, ${ghStep} When gh is missing, ${mcpStep}`;
 const fetched = await agent(

@@ -190,15 +190,13 @@ await recordRun("started");
 // 渡すのは抽出した番号で、受け取った参照そのものではない。URL は /issues/N がどこかに
 // あれば一致するので、そのまま渡すと後続の文字列ごとシェルへ入る。番号なら anchor が
 // 既に cd している対象リポジトリで gh が解決する。
-// 経路は gh の有無で決まり、polish.js が `which codex` を見るのと同じく agent 自身の Bash
-// で判定する。逐語の要求を gh 分岐と mcp フォールバック分岐に別々の散文として書くのではなく
-// 1 つの script 定数として持ち、両分岐が同じ 1 箇所を読むようにして、食い違う 2 つのコピーに
-// ならないようにする。
+// 逐語の要求を gh 分岐と mcp フォールバック分岐へ別々に書くと、食い違う 2 つのコピーになる。
 const VERBATIM_TITLE_BODY = "いずれも逐語で返す。要約や整形をしない";
-// Verify の conformance review (後述) も同じ起点 issue を spec として読むので、gh の無い環境
-// では同じ判定をしなければならない。2 箇所が読む経路の判定文を呼び出し元ごとに書き直すと
-// 食い違うので、1 つの script 定数として持つ (docs/wiki/harness-production-divergence.md)。
-// ghStep / mcpStep は経路が決まった後の各呼び出し元固有の続き。
+// 経路は gh の有無で決まり、polish.js が `which codex` を見るのと同じく agent 自身の Bash で
+// 判定する。Verify の conformance review (後述) も同じ起点 issue を spec として読むので同じ
+// 判定をする。2 箇所が読む判定文を呼び出し元ごとに書き直すと食い違う
+// (docs/wiki/harness-production-divergence.md)。ghStep / mcpStep は経路が決まった後の各
+// 呼び出し元固有の続き。
 const ghOrMcpRoute = (ghStep, mcpStep) =>
   `\`which gh\` を確認する。gh があれば、${ghStep}gh が無ければ、${mcpStep}`;
 const fetched = await agent(
