@@ -45,11 +45,11 @@ python3 -c 'import sys; sys.path.insert(0, "skills/ablate/scripts"); sys.path.in
 
 ## Output
 
+レポートが名指したものを実際に外すのは別の実行。削除候補は `docs/wiki/retire-rename-procedure.md` へ渡す。retire で失われる検出層と、それを復活させる判断トリガーはそちらが持つ。この skill は判定までで止まる。
+
 | 項目           | 内容                                                |
 | -------------- | --------------------------------------------------- |
 | レポートのパス | `write_report` が返したパス                         |
 | 削除候補       | レポートの Delete Candidates 節。0 件のときはその旨 |
 | 測定できた数   | Verdicts 節のうち `unmeasured` でない行数           |
 | Usage          | 各要素の発火回数と最終使用日。Harness Elements 内   |
-
-レポートが名指したものを実際に外すのは別の実行。削除候補は `docs/wiki/retire-rename-procedure.md` へ渡す。retire で失われる検出層と、それを復活させる判断トリガーはそちらが持つ。この skill は判定までで止まる。
