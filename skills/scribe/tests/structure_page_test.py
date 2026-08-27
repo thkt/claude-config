@@ -3,6 +3,7 @@
 Run: python3 skills/scribe/tests/structure_page_test.py
 """
 
+import difflib
 import re
 import sys
 import unittest
@@ -195,6 +196,79 @@ class StructurePageContractRequirement(unittest.TestCase):
         self.assertIsNone(
             _extract_unit_caps(renamed),
             "renaming the constant the page's 参照コード names makes the check unable to find it",
+        )
+
+
+# The shortest contiguous run shared between a claim row and this file's own source that
+# counts as a test naming that row, rather than an accidental overlap on a common short word
+# such as `build` or `repo` alone (see the length probe recorded on the U-003 unit).
+_MIN_ANCHOR_LEN = 10
+
+
+def _is_claim_checked(row: str, test_source: str) -> bool:
+    """Whether some run of at least _MIN_ANCHOR_LEN characters in `row` also occurs verbatim
+    in `test_source`. A test that names a claim row copies a fragment of it, in code or in its
+    own docstring (T-003's `` `build` の unit ``, T-004's docstring quoting the literal
+    `{ stopped: "<理由>", why }`), so the longest run the two texts share is the signal."""
+    matcher = difflib.SequenceMatcher(None, row, test_source, autojunk=False)
+    match = matcher.find_longest_match(0, len(row), 0, len(test_source))
+    return match.size >= _MIN_ANCHOR_LEN
+
+
+def _unchecked_claim_rows(rows: list[str], test_source: str) -> list[str]:
+    """The rows among `rows` that no test in `test_source` names by any fragment long enough
+    to be a real anchor. Returns the row text itself, not a count, so the report can be acted
+    on directly (docs/wiki/brittle-test-removal.md)."""
+    return [row for row in rows if not _is_claim_checked(row, test_source)]
+
+
+class StructurePageClaimCoverage(unittest.TestCase):
+    """U-003: 契約/要求 の主張のうち、このファイルのどのテストからも検査されていない行を、
+    件数ではなく行の全文で名指しする。不在を見る検査には陽性対照を常設する
+    (docs/wiki/zero-hit-positive-control.md)。"""
+
+    def test_a_claim_row_with_no_check_is_reported_by_row_text_not_only_as_a_count(self) -> None:
+        """T-006: workflow-structure.md の 契約/要求 のうち、このファイルのどのテストの
+        本体にも現れない行を、_unchecked_claim_rows は件数ではなく行そのもので返す。
+        すでに T-003/T-004 が検査している行は結果に含まれない。"""
+        claims = read_claims(PAGE)
+        rows = claims["契約"] + claims["要求"]
+        test_source = Path(__file__).read_text(encoding="utf-8")
+
+        unchecked = _unchecked_claim_rows(rows, test_source)
+
+        self.assertIsInstance(unchecked, list, "unchecked は件数ではなく行の一覧で返る")
+        self.assertTrue(unchecked, "workflow-structure.md はまだ検査されていない行を持つ")
+        for row in unchecked:
+            self.assertIn(row, rows, "報告される要素は主張行そのもの")
+
+        checked_row = next(r for r in claims["要求"] if "`build` の unit" in r)
+        self.assertNotIn(checked_row, unchecked, "T-003 が検査済みの行は含まれない")
+        stop_row = next(r for r in claims["契約"] if '{ stopped: "<理由>", why }' in r)
+        self.assertNotIn(stop_row, unchecked, "T-004 が検査済みの行は含まれない")
+
+    def test_the_positive_control_fails_when_it_is_removed(self) -> None:
+        """T-007: T-003 が検査している要求の行を陽性対照とする。この行が検査済みと判定される
+        のは、その行を検査しているテストの手掛かり文字列(`` `build` の unit ``)がこのファイルの
+        中に実在するからであることを確かめるため、その手掛かりだけを取り除いたソースの写しに
+        対しては同じ行が検査漏れとして落ちることを確認する。"""
+        claims = read_claims(PAGE)
+        anchor = "`build` の unit"
+        control_row = next(r for r in claims["要求"] if anchor in r)
+        test_source = Path(__file__).read_text(encoding="utf-8")
+
+        self.assertEqual(
+            _unchecked_claim_rows([control_row], test_source),
+            [],
+            "陽性対照: 検査済みの行は、検査が実在する間は検査漏れとして拾われない",
+        )
+
+        removed = test_source.replace(anchor, "REMOVED")
+        self.assertNotIn(anchor, removed, "手掛かり文字列を取り除いた写しであることの確認")
+        self.assertEqual(
+            _unchecked_claim_rows([control_row], removed),
+            [control_row],
+            "陽性対照: 検査を取り除くと同じ行が検査漏れとして落ちる",
         )
 
 
