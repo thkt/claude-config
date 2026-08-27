@@ -80,6 +80,15 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
     }
 
 
+def _table(headers: tuple[str, str], rows: list[tuple[str, str]]) -> list[str]:
+    """The header + separator + data lines of a two-column Markdown table, factored out
+    because _render builds three of these (Summary, Harness Elements, Verdicts) from
+    differently-shaped inputs — one column pairing changed here changes all three."""
+    lines = [f"| {headers[0]} | {headers[1]} |", "| --- | --- |"]
+    lines += [f"| {a} | {b} |" for a, b in rows]
+    return lines
+
+
 def _render(result: dict[str, Any]) -> str:
     """Renders `build_report`'s result as Markdown. Reads only the four keys build_report
     returns — never the raw `observations` a caller passed in — so a field an observation
@@ -88,16 +97,22 @@ def _render(result: dict[str, Any]) -> str:
     lines: list[str] = ["# Ablation Report", ""]
 
     lines += ["## Summary", ""]
-    lines += ["| Metric | Value |", "| --- | --- |"]
-    lines += [f"| Harness elements enumerated | {len(result['elements'])} |"]
-    lines += [f"| Arms | {len(result['arms'])} |"]
-    lines += [f"| Elements observed | {len(result['verdicts'])} |"]
-    lines += [f"| Delete candidates | {len(result['delete_candidates'])} |", ""]
+    lines += _table(
+        ("Metric", "Value"),
+        [
+            ("Harness elements enumerated", str(len(result["elements"]))),
+            ("Arms", str(len(result["arms"]))),
+            ("Elements observed", str(len(result["verdicts"]))),
+            ("Delete candidates", str(len(result["delete_candidates"]))),
+        ],
+    )
+    lines += [""]
 
     lines += ["## Harness Elements", ""]
-    lines += ["| Path | Classification |", "| --- | --- |"]
-    for element in result["elements"]:
-        lines += [f"| {element['path']} | {element['classification']} |"]
+    lines += _table(
+        ("Path", "Classification"),
+        [(element["path"], element["classification"]) for element in result["elements"]],
+    )
     lines += [""]
 
     lines += ["## Arms", ""]
@@ -105,9 +120,10 @@ def _render(result: dict[str, Any]) -> str:
     lines += [""]
 
     lines += ["## Verdicts", ""]
-    lines += ["| Path | Verdict |", "| --- | --- |"]
-    for path in sorted(result["verdicts"]):
-        lines += [f"| {path} | {result['verdicts'][path]} |"]
+    lines += _table(
+        ("Path", "Verdict"),
+        [(path, result["verdicts"][path]) for path in sorted(result["verdicts"])],
+    )
     lines += [""]
 
     lines += ["## Delete Candidates", ""]
