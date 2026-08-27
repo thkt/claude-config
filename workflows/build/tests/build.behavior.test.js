@@ -1943,3 +1943,47 @@ test("reports no unstaged paths rather than undefined when Ship omits the field"
 
   assert.deepEqual(run.result.unstaged, [], "an omitted field reads as nothing left behind");
 });
+
+// U-001: the Load fetch prompt decides its path by gh's presence, checked via the agent's own
+// Bash the same way polish.js checks `which codex`, and falls back to the mcp__github__issue_read
+// tool when gh is missing. The verbatim requirement for title and body carries into both paths.
+test("the Load prompt names both the gh command and the MCP tool for reading the issue", async () => {
+  const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const fetch = run.calls.agent.find((c) => c.opts && c.opts.label === "fetch");
+  assert.ok(fetch, "the fetch agent ran");
+  assert.match(
+    fetch.prompt,
+    /which gh/,
+    "gh's presence is checked via Bash the same way polish.js checks `which codex`",
+  );
+  assert.match(fetch.prompt, /gh issue view/, "the gh path is still named");
+  assert.match(
+    fetch.prompt,
+    /mcp__github__issue_read/,
+    "the MCP tool is named as the path taken when gh is missing",
+  );
+});
+
+test("the Load prompt keeps the verbatim requirement for title and body", async () => {
+  const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const fetch = run.calls.agent.find((c) => c.opts && c.opts.label === "fetch");
+  assert.ok(fetch, "the fetch agent ran");
+  assert.match(fetch.prompt, /title[\s\S]*verbatim/i, "title is still required back verbatim");
+  assert.match(
+    fetch.prompt,
+    /mcp__github__issue_read[\s\S]{0,400}verbatim/i,
+    "the verbatim requirement carries into the mcp__github__issue_read path too, not only gh's",
+  );
+});
+
+test("a Load stage that returns no body still stops as no-issue-body", async () => {
+  const run = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ body: "" }),
+  });
+  assert.equal(
+    run.result.stopped,
+    "no-issue-body",
+    "an empty body stops the run regardless of which path (gh or mcp) fetched it",
+  );
+});

@@ -190,11 +190,18 @@ await recordRun("started");
 // 渡すのは抽出した番号で、受け取った参照そのものではない。URL は /issues/N がどこかに
 // あれば一致するので、そのまま渡すと後続の文字列ごとシェルへ入る。番号なら anchor が
 // 既に cd している対象リポジトリで gh が解決する。
+// 経路は gh の有無で決まり、polish.js が `which codex` を見るのと同じく agent 自身の Bash
+// で判定する。逐語の要求を gh 分岐と mcp フォールバック分岐に別々の散文として書くのではなく
+// 1 つの script 定数として持ち、両分岐が同じ 1 箇所を読むようにして、食い違う 2 つのコピーに
+// ならないようにする。
+const VERBATIM_TITLE_BODY = "いずれも逐語で返す。要約や整形をしない";
 const fetched = await agent(
   anchor(
-    `\`gh issue view ${issueNumber} --json title,body\` を正確に実行し、その title フィールドを title として、body フィールドを body として、いずれも逐語で返す。` +
-      `どちらも要約や整形をしない。` +
-      `コマンドが非ゼロで終了した場合 (issue が無い / 取得失敗) は found: false を返す。`,
+    `まず \`which gh\` を確認する。` +
+      `gh があれば \`gh issue view ${issueNumber} --json title,body\` を正確に実行し、その title フィールドを title として、body フィールドを body として、${VERBATIM_TITLE_BODY}。` +
+      `コマンドが非ゼロで終了した場合 (issue が無い / 取得失敗) は found: false を返す。` +
+      `gh が無ければ、代わりに issue ${issueNumber} に対して mcp__github__issue_read ツールを呼び、同じように title と body を、${VERBATIM_TITLE_BODY}。` +
+      `ツール呼び出しが失敗するか issue が見つからない場合は found: false を返す。`,
   ),
   {
     label: "fetch",

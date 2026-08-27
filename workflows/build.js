@@ -194,11 +194,18 @@ await recordRun("started");
 // The extracted number, never the reference as given: a URL matches as long as /issues/N
 // appears anywhere in it, so passing it through would carry whatever follows into the shell.
 // gh resolves a bare number against the repository anchor already runs in.
+// The route is decided by gh's presence, checked via the agent's own Bash the same way
+// polish.js checks `which codex`. Held as one script constant rather than as prose scattered
+// across the gh branch and the mcp fallback branch, so the verbatim requirement stays a single
+// source both branches read instead of two copies that can drift apart.
+const VERBATIM_TITLE_BODY = "both verbatim; do not summarize or reformat either";
 const fetched = await agent(
   anchor(
-    `Run exactly \`gh issue view ${issueNumber} --json title,body\` and return its title field as title and its body field as body, both verbatim; ` +
-      `do not summarize or reformat either. ` +
-      `If the command exits non-zero (issue not found / fetch failed), return found: false.`,
+    `First check \`which gh\`. ` +
+      `When gh is found, run exactly \`gh issue view ${issueNumber} --json title,body\` and return its title field as title and its body field as body, ${VERBATIM_TITLE_BODY}. ` +
+      `If the command exits non-zero (issue not found / fetch failed), return found: false. ` +
+      `When gh is missing, call the mcp__github__issue_read tool for issue ${issueNumber} in this repository instead, and return its title and body fields the same way, ${VERBATIM_TITLE_BODY}. ` +
+      `If the tool call fails or the issue is not found, return found: false.`,
   ),
   {
     label: "fetch",
