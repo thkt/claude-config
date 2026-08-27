@@ -138,7 +138,8 @@ def main() -> None:
     output: dict[str, object] = {"path": str(RUNS_PATH), "run_id": run_id}
     try:
         counts = count_plan_quality_stops(RUNS_PATH)
-    except Exception:  # noqa: BLE001 - path/run_id must reach stdout even on a surprise here
+    # A broad catch: path/run_id must reach stdout even on a surprise here.
+    except Exception:
         counts = None
     if counts is not None:
         output.update(counts)
