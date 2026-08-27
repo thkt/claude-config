@@ -1,50 +1,35 @@
 # Ablation Report Template
 
-The skeleton that `/ablate`'s `${CLAUDE_SKILL_DIR}/scripts/report.py`'s `_render` emits. Each table's column definitions are held by the `_table` calls inside `_render`; this skeleton does not repeat them. Read `_render` for the headers and their order.
+The section skeleton `/ablate`'s `${CLAUDE_SKILL_DIR}/scripts/report.py` `_render` emits: which sections appear and in what order. Every table's columns and every Summary row label come from the `_table` calls inside `_render`, so this file names neither. A copy of them here goes stale on the next column `_render` gains, with nothing to catch it.
 
-When `_render` detects no delete candidates, it writes `No delete candidates.` for that section.
+When `_render` finds no delete candidates, it writes `No delete candidates.` in place of that section's list.
 
 ## Template
-
-Substitute `{...}` from the report data. The four table sections below (Summary, Always-Loaded Elements, Harness Elements, Verdicts) are each generated once.
 
 ```markdown
 # Ablation Report
 
 ## Summary
 
-| Metric                        | Value |
-| ----------------------------- | ----- |
-| Harness elements enumerated   | {N}   |
-| Arms                          | {N}   |
-| Elements observed             | {N}   |
-| Delete candidates             | {N}   |
-| Always-loaded lines mapped    | {N}   |
-| Held by a live DR             | {N}   |
+<one row per metric _render counts>
 
 ## Always-Loaded Elements
 
-| File      | Line | Verdict | Enforcer |
-| --------- | ---- | ------- | -------- |
-| {file}    | {N}  | {verb}  | {name}   |
+<one row per line enforcer_map classified>
 
 ## Harness Elements
 
-| Path   | Classification |
-| ------ | -------------- |
-| {path} | {class}        |
+<one row per element harness_elements enumerated>
 
 ## Arms
 
-- {arm}
+<one bullet per arm>
 
 ## Verdicts
 
-| Path   | Verdict |
-| ------ | ------- |
-| {path} | {verb}  |
+<one row per observed element>
 
 ## Delete Candidates
 
-- {path}
+<one bullet per surviving candidate>
 ```

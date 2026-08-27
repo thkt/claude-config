@@ -1,51 +1,35 @@
-# Ablation Report テンプレート
+# アブレーションレポートの骨格
 
-`/ablate` の `${CLAUDE_SKILL_DIR}/scripts/report.py` の `_render` が出力する骨格。各テーブルの列定義は
-`_render` 内の `_table` 呼び出しが持ち、ここには重ねて書かない。ヘッダーと順序については `_render` を読む。
+`/ablate` の `${CLAUDE_SKILL_DIR}/scripts/report.py` の `_render` が出す節の骨格。どの節がどの順で現れるかを持つ。各表の列と Summary の行ラベルは `_render` 内の `_table` 呼び出しが持つため、このファイルはどちらも書かない。ここへ複製すると、`_render` が次に列を足した時点で古くなり、それを捕まえるものが無い。
 
-`_render` が delete candidates を検出しないとき、そのセクションに `No delete candidates.` と書く。
+削除候補が 1 件も無いとき、`_render` はその節の一覧の代わりに `No delete candidates.` と書く。
 
-## Template
-
-以下の 4 つのテーブルセクション (Summary、Always-Loaded Elements、Harness Elements、Verdicts) は各 1 回生成される。`{...}` はレポートデータで置き換える。
+## 骨格
 
 ```markdown
 # Ablation Report
 
 ## Summary
 
-| Metric                        | Value |
-| ----------------------------- | ----- |
-| Harness elements enumerated   | {N}   |
-| Arms                          | {N}   |
-| Elements observed             | {N}   |
-| Delete candidates             | {N}   |
-| Always-loaded lines mapped    | {N}   |
-| Held by a live DR             | {N}   |
+<_render が数える指標ごとに 1 行>
 
 ## Always-Loaded Elements
 
-| File      | Line | Verdict | Enforcer |
-| --------- | ---- | ------- | -------- |
-| {file}    | {N}  | {verb}  | {name}   |
+<enforcer_map が分類した行ごとに 1 行>
 
 ## Harness Elements
 
-| Path   | Classification |
-| ------ | -------------- |
-| {path} | {class}        |
+<harness_elements が列挙した要素ごとに 1 行>
 
 ## Arms
 
-- {arm}
+<アームごとに 1 項目>
 
 ## Verdicts
 
-| Path   | Verdict |
-| ------ | ------- |
-| {path} | {verb}  |
+<観測した要素ごとに 1 行>
 
 ## Delete Candidates
 
-- {path}
+<残った候補ごとに 1 項目>
 ```

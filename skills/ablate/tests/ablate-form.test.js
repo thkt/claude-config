@@ -152,3 +152,33 @@ test("T-006 the skill document names one invocation route and no threshold of it
       `${lang}: the rare-by-design set is not spelled out in this body`,
     );
   }));
+
+// The one claim the skeleton still makes on its own: which sections _render emits, and in
+// what order. Columns and row labels were removed from it because nothing pinned them, and
+// the Harness Elements table had already fallen two columns behind _render by the time this
+// test was written.
+const templates = pair("ablate", "templates", "report-template.md");
+const reportPy = join(root, "skills", "ablate", "scripts", "report.py");
+
+test("T-007 the skeleton's sections match the ones report.py renders, in order", async () => {
+  const rendered = [...(await readFile(reportPy, "utf8")).matchAll(/lines \+= \["## ([^"]+)"/g)].map(
+    (m) => m[1],
+  );
+  assert.ok(rendered.length > 0, "report.py's section headings are extractable");
+
+  await eachLanguage(templates, (doc, lang) => {
+    const fence = doc.split("```markdown")[1];
+    assert.ok(fence, `${lang}: the skeleton carries a markdown fence`);
+    const sections = [...fence.matchAll(/^## (.+)$/gm)].map((m) => m[1]);
+    assert.deepEqual(sections, rendered, `${lang}: the skeleton and _render name the same sections`);
+  });
+});
+
+// Columns live in _render alone. A header row copied back into the skeleton is the drift
+// this unit removed, so its absence is what gets held.
+test("T-008 the skeleton names no table column of its own", () =>
+  eachLanguage(templates, (doc, lang) => {
+    const fence = doc.split("```markdown")[1] ?? "";
+    const tableRows = fence.split("\n").filter((line) => line.trim().startsWith("|"));
+    assert.deepEqual(tableRows, [], `${lang}: the skeleton carries no table row`);
+  }));
