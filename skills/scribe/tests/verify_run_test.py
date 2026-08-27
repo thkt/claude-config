@@ -17,6 +17,7 @@ SCRIPT = HERE.parent / "scripts" / "verify_run.py"
 sys.path.insert(0, str(SCRIPT.parent))
 
 import verify_run  # noqa: E402  (sys.path must be set first)
+from triage import Pattern, triage  # noqa: E402  (sys.path must be set first)
 
 GIT_ENV = {
     **os.environ,
@@ -437,6 +438,31 @@ class DerivedFromBaseAndTriage(unittest.TestCase):
                 "deferred": [],
             }
             result = _verify(repo, report, base)
+
+        self.assertEqual(result["ok"], True, result["mismatches"])
+
+    def test_a_commit_built_from_triage_returned_commits_and_pages_makes_verify_run_return_ok_true(
+        self,
+    ) -> None:
+        """T-009 triage が返した commits と pages から組んだコミットが、verify_run で
+        `ok: true` になる"""
+        patterns: list[Pattern] = [
+            {"name": "alpha", "evidence": ["#1", "#2"], "existing": "none"},
+            {"name": "beta", "evidence": ["#3", "#4"], "existing": "none"},
+        ]
+        report = triage(patterns)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = _init_worktree(Path(tmp), None)
+            base = _base(repo)
+            names = [row["name"] for commit in report["commits"] for row in commit]
+            _commit_pages(repo, [], names)
+            created = sum(1 for page in report["pages"] if page["action"] == "create")
+
+            # `report` here is triage()'s own return value, unmodified: it carries `pages` and
+            # `candidates` alongside the `commits`/`deferred` verify_run.verify reads, exactly
+            # the shape a real caller would hand it.
+            result = verify_run.verify(repo, report=report, base=base, created=created)
 
         self.assertEqual(result["ok"], True, result["mismatches"])
 
