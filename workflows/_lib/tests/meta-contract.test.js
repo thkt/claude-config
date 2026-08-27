@@ -20,7 +20,7 @@ const workflowTrees = (name) => [
 
 const TREES = workflowTrees("audit");
 
-for (const name of ["audit", "build", "code"]) {
+for (const name of ["audit", "build", "code", "adrift"]) {
   test(`${name}'s whenToUse in neither tree contains the identifier args`, () => {
     for (const { label, path } of workflowTrees(name)) {
       const meta = readMeta(path);
