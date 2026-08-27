@@ -14,6 +14,9 @@ from typing import cast
 
 HERE = Path(__file__).resolve().parent
 SCRIPT = HERE.parent / "scripts" / "verify_run.py"
+sys.path.insert(0, str(SCRIPT.parent))
+
+import verify_run  # noqa: E402  (sys.path must be set first)
 
 GIT_ENV = {
     **os.environ,
@@ -42,20 +45,32 @@ def _candidates(waiting: list[str], rejected: list[str] | None = None) -> str:
     )
 
 
-def _init_worktree(root: Path, start_waiting: list[str]) -> Path:
+def _init_worktree(root: Path, start_waiting: list[str] | None) -> Path:
     """The baseline carries a `docs(wiki):` commit of its own, because every branch point in
-    this repository already holds earlier scribe runs."""
+    this repository already holds earlier scribe runs. `start_waiting=None` leaves the store
+    out, which is the branch point a first run starts from."""
     repo = root / "worktree"
     wiki = repo / "docs" / "wiki"
     wiki.mkdir(parents=True)
-    _ = (wiki / "_candidates.md").write_text(_candidates(start_waiting), encoding="utf-8")
     _git(repo, "init", "-q")
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-q", "-m", "chore: seed candidates")
+    if start_waiting is not None:
+        _ = (wiki / "_candidates.md").write_text(_candidates(start_waiting), encoding="utf-8")
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-q", "-m", "chore: seed candidates")
     _ = (wiki / "an-earlier-page.md").write_text("# earlier\n", encoding="utf-8")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-q", "-m", "docs(wiki): an-earlier-page を追加/更新")
     return repo
+
+
+def _assert_mismatch(
+    case: unittest.TestCase, report: dict[str, object], field: str, expected: int, actual: int
+) -> None:
+    mismatches = cast(list[dict[str, object]], report["mismatches"])
+    named = [m for m in mismatches if m.get("field") == field]
+    case.assertEqual(len(named), 1, f"{field} の mismatch は 1 件: {mismatches}")
+    case.assertEqual(named[0]["expected"], expected)
+    case.assertEqual(named[0]["actual"], actual)
 
 
 def _base(repo: Path) -> str:
@@ -182,11 +197,7 @@ class VerifyRun(unittest.TestCase):
         self.assertEqual(proc.returncode, 1, proc.stderr)
         report = cast(dict[str, object], json.loads(proc.stdout))
         self.assertEqual(report["ok"], False)
-        mismatches = cast(list[dict[str, object]], report["mismatches"])
-        commit_mismatches = [m for m in mismatches if m.get("field") == "commits"]
-        self.assertEqual(len(commit_mismatches), 1)
-        self.assertEqual(commit_mismatches[0]["expected"], 3)
-        self.assertEqual(commit_mismatches[0]["actual"], 2)
+        _assert_mismatch(self, report, "commits", expected=3, actual=2)
 
     def test_remaining_rows_off_the_computed_value_is_ok_false_exit_1_naming_the_row_diff(
         self,
@@ -214,11 +225,81 @@ class VerifyRun(unittest.TestCase):
         self.assertEqual(proc.returncode, 1, proc.stderr)
         report = cast(dict[str, object], json.loads(proc.stdout))
         self.assertEqual(report["ok"], False)
-        mismatches = cast(list[dict[str, object]], report["mismatches"])
-        row_mismatches = [m for m in mismatches if m.get("field") == "remaining"]
-        self.assertEqual(len(row_mismatches), 1)
-        self.assertEqual(row_mismatches[0]["expected"], 0)
-        self.assertEqual(row_mismatches[0]["actual"], 1)
+        _assert_mismatch(self, report, "remaining", expected=0, actual=1)
+
+
+class FirstRun(unittest.TestCase):
+    """SKILL.md Phase 1 step 3 writes the store inside Phase 6's worktree when the repository
+    has none, so on that run the store is absent at the branch point and present at HEAD."""
+
+    def _repo_without_store(self, root: Path) -> Path:
+        return _init_worktree(root, None)
+
+    def test_store_が_base_に_無い_run_も_verdict_を_返す(self) -> None:
+        """Phase 4 は 棄却 へ動かす行が無いので、起こしたページ 1 枚と行 0 件で釣り合う"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo_without_store(Path(tmp))
+            base = _base(repo)
+            wiki = repo / "docs" / "wiki"
+            _ = (wiki / "brand-new.md").write_text("# brand-new\n", encoding="utf-8")
+            _ = (wiki / "_candidates.md").write_text(_candidates([]), encoding="utf-8")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): brand-new を追加/更新")
+
+            proc = _run_verify(repo, start_count=0, expected_commits=1, base=base, created=1)
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        report = cast(dict[str, object], json.loads(proc.stdout))
+        self.assertEqual(report["ok"], True)
+
+    def test_store_が_base_に_無くても_行数_のずれ_は_見逃さない(self) -> None:
+        """不在を 0 行として読むので、余った行はそのまま remaining の差として出る"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = self._repo_without_store(Path(tmp))
+            base = _base(repo)
+            wiki = repo / "docs" / "wiki"
+            _ = (wiki / "brand-new.md").write_text("# brand-new\n", encoding="utf-8")
+            _ = (wiki / "_candidates.md").write_text(_candidates(["leftover"]), encoding="utf-8")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): brand-new を追加/更新")
+
+            proc = _run_verify(repo, start_count=0, expected_commits=1, base=base, created=1)
+
+        self.assertEqual(proc.returncode, 1, proc.stdout)
+        report = cast(dict[str, object], json.loads(proc.stdout))
+        _assert_mismatch(self, report, "remaining", expected=0, actual=1)
+
+
+class ArgumentContract(unittest.TestCase):
+    """exit 1 は「検証が通らなかった run」に予約されている。引数が壊れているだけの run が
+    同じ値を返すと、呼び出し側は run の失敗と読む。"""
+
+    def _run(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(SCRIPT), *args], capture_output=True, text=True, check=False
+        )
+
+    def test_引数が足りない_run_は_exit_2_で_usage_を_出す(self) -> None:
+        proc = self._run(".", "0", "1", "HEAD")
+        self.assertEqual(proc.returncode, 2, proc.stderr)
+        self.assertIn("usage: verify_run.py", proc.stderr)
+        self.assertEqual(proc.stdout, "")
+
+    def test_数値でない引数の_run_も_exit_2_で_usage_を_出す(self) -> None:
+        proc = self._run(".", "x", "1", "HEAD", "0")
+        self.assertEqual(proc.returncode, 2, proc.stderr)
+        self.assertIn("usage: verify_run.py", proc.stderr)
+        self.assertEqual(proc.stdout, "")
+
+
+class StoreAtFailures(unittest.TestCase):
+    def test_読めない_rev_は_空の_store_ではなく_例外になる(self) -> None:
+        """不在を 0 行として読む扱いは、rev が読めた run に限る。読めなかった run まで
+        0 行として通すと、読んでいない store から verdict が出る。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = _init_worktree(Path(tmp), ["item0"])
+            with self.assertRaises(subprocess.CalledProcessError):
+                _ = verify_run._store_at(repo, "deadbeef" * 5)
 
 
 if __name__ == "__main__":

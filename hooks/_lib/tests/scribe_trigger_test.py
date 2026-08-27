@@ -92,7 +92,9 @@ class TestShouldPrompt(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             target = scribe_trigger.find(f"cd {tmp}; git pull")
             assert target is not None
-            self.assertFalse(scribe_trigger.should_prompt(target))
+            stamp = Path(tmp) / "cache" / "claude-scribe_trigger.last"
+            self.assertFalse(scribe_trigger.should_prompt(target, stamp=stamp))
+            self.assertFalse(stamp.exists(), "対象外のリポジトリは cooldown を始めない")
 
     def test_未マージ_scribe_pr_が_1_件以上あるとき促さない(self) -> None:
         """未マージ scribe PR が 1 件以上あるとき促さない"""
@@ -102,6 +104,7 @@ class TestShouldPrompt(unittest.TestCase):
             stamp = directory / "cache" / "claude-scribe_trigger.last"
             runner = _QueueRunner(['[{"number": 1}]'])
             self.assertFalse(scribe_trigger.should_prompt(target, stamp=stamp, runner=runner))
+            self.assertFalse(stamp.exists(), "促さなかった run は cooldown を始めない")
 
     def test_cursor_以降の入力が_0_件のとき促さない(self) -> None:
         """両方の kind が 0 件のとき促さない。片方だけ見て止まると、もう片方に溜まった入力を落とす"""
@@ -111,6 +114,7 @@ class TestShouldPrompt(unittest.TestCase):
             stamp = directory / "cache" / "claude-scribe_trigger.last"
             runner = _QueueRunner(["[]", "2026-01-01T00:00:00Z", "[]", "[]"])
             self.assertFalse(scribe_trigger.should_prompt(target, stamp=stamp, runner=runner))
+            self.assertFalse(stamp.exists(), "入力が無い run は cooldown を始めない")
 
     def test_merged_pr_が_0_件でも_closed_issue_があれば促す(self) -> None:
         """merged PR が 0 件でも、cursor 以降に closed issue が 1 件あれば入力はある"""

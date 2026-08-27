@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Usage: verify_run.py <worktree> <start-count> <expected-commits> <base> <created>
 
-Phase 6 runs this before pushing, so a run that committed fewer elements than triage handed it
-never reaches a PR.
+Phase 6 が push の前にこれを走らせる。triage が渡した数より少ない要素しかコミットしなかった
+run が PR まで届かないようにするため。
 
 stdout: JSON { ok, mismatches: [{field, expected, actual}] }
-exit: 0 when ok, 1 when not, 2 when an argument is missing
+exit: ok なら 0、そうでなければ 1、引数が無いときは 2
 """
 
 import json
@@ -14,8 +14,8 @@ import sys
 from pathlib import Path
 from typing import TypedDict
 
-# Every branch point already carries earlier scribe commits wearing this prefix, so the prefix
-# alone does not separate one run from the history behind it.
+# どの分岐点にも、この接頭辞を持つ過去の scribe コミットが既に載っている。接頭辞だけでは
+# 1 回の run を背後の履歴から切り分けられない。
 COMMIT_PREFIX = "docs(wiki):"
 
 NOT_A_PAGE = {"_candidates.md", "README.md"}
@@ -94,17 +94,17 @@ def _store(repo: Path) -> str:
 
 
 def _store_at(repo: Path, rev: str) -> str:
-    """Not `git show`'s exit status: absent and unreadable share it, so a rev that could not be
-    read would pass as no rows and the verdict would come from a store nobody read. `ls-tree`
-    prints nothing for an absent path and still fails on a rev it cannot resolve."""
+    """`git show` の終了コードは見ない。不在と読めないを同じ値で返すので、読めなかった rev
+    まで 0 行として通り、誰も読んでいない store から verdict が出る。ls-tree は不在のとき
+    何も出さずに 0 で終わり、解決できない rev では落ちる。"""
     if not _git(repo, "ls-tree", "--name-only", rev, f"{WIKI_DIR}/_candidates.md").strip():
         return ""
     return _git(repo, "show", f"{rev}:{WIKI_DIR}/_candidates.md")
 
 
 def rejected_added(repo: Path, base: str) -> int:
-    """Phase 4 moves a dropped item's row into `棄却` without producing a page, so a row can
-    leave `昇格待ち` with no page to account for it."""
+    """Phase 4 は落とした項目の行を、ページを起こさずに 棄却 へ動かす。ページで説明の付かない
+    まま 昇格待ち を離れる行が出る。"""
     return section_rows(_store(repo), REJECTED) - section_rows(_store_at(repo, base), REJECTED)
 
 
@@ -112,8 +112,8 @@ def verify(repo: Path, start_count: int, expected_commits: int, base: str, creat
     commits = run_commits(repo, base)
     actual_commits = len(commits)
     committed_pages = sum(pages_added(repo, c) for c in commits)
-    # A created page never held a candidate row, so counting it against the store would read
-    # one row too many as gone.
+    # 新しく起こしたページは候補行を持っていなかったので、蓄積に対して数えると、消えた行を
+    # 1 件多く読むことになる。
     promoted = committed_pages - created
     expected_remaining = start_count - promoted - rejected_added(repo, base)
     actual_remaining = section_rows(_store(repo), WAITING)
@@ -137,8 +137,8 @@ def main() -> None:
         sys.exit(2)
     repo = Path(sys.argv[1])
     base = sys.argv[4]
-    # Not a bare int(): its ValueError exits 1, the code reserved for a run whose verification
-    # did not pass, so a caller reading the status takes a malformed count for a failed run.
+    # 素の int() にはしない。ValueError は exit 1 になり、それは検証が通らなかった run に
+    # 予約されたコードなので、呼び出し側が壊れた数値を失敗した run として読む。
     try:
         start_count, expected_commits, created = (int(sys.argv[i]) for i in (2, 3, 5))
     except ValueError as exc:
