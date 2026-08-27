@@ -39,19 +39,16 @@ def skill(lang: str) -> str:
     return at(lang, "skills", "scribe", "SKILL.md").read_text(encoding="utf-8")
 
 
-def phase_4_steps_naming_the_store(lang: str) -> str:
-    """Every Phase 4 step naming the store, joined. Empty when no Phase 4 step names it."""
-    doc = skill(lang)
-    phase4 = doc[doc.index("## Phase 4") : doc.index("## Phase 5")]
-    steps = [line for line in phase4.split("\n") if re.match(r"^\d+\. ", line)]
-    return "\n".join(step for step in steps if "_candidates.md" in step)
-
-
 def phase_4_steps(lang: str) -> list[str]:
     """Every numbered Phase 4 step line, in order."""
     doc = skill(lang)
     phase4 = doc[doc.index("## Phase 4") : doc.index("## Phase 5")]
     return [line for line in phase4.split("\n") if re.match(r"^\d+\. ", line)]
+
+
+def phase_4_steps_naming_the_store(lang: str) -> str:
+    """Every Phase 4 step naming the store, joined. Empty when no Phase 4 step names it."""
+    return "\n".join(step for step in phase_4_steps(lang) if "_candidates.md" in step)
 
 
 # The words that name a structure page and a broken reference, per language. The Phase 4 table
@@ -66,6 +63,11 @@ STRUCTURE_ROW_WORDS = {
     "ja": ("境界", "契約", "要求"),
     "en": ("boundary", "contract", "requirement"),
 }
+
+
+def structure_page_steps(lang: str) -> list[str]:
+    """Phase 4 steps naming a structure page, in order. Empty when none does."""
+    return [step for step in phase_4_steps(lang) if STRUCTURE_PAGE_WORD[lang] in step]
 
 
 class SkillContract(unittest.TestCase):
@@ -134,8 +136,7 @@ class SkillContract(unittest.TestCase):
         """T-001: both trees' Phase 4 carries a step that cross-checks a structure page's rows
         without depending on a broken reference."""
         for lang in LANGS:
-            steps = phase_4_steps(lang)
-            hits = [step for step in steps if STRUCTURE_PAGE_WORD[lang] in step]
+            hits = structure_page_steps(lang)
             self.assertTrue(
                 hits, f"{lang}: Phase 4 carries a step naming a structure page"
             )
@@ -150,8 +151,7 @@ class SkillContract(unittest.TestCase):
         """T-002: both trees' Phase 4 step names the boundary, contract, and requirement rows
         as what gets cross-checked."""
         for lang in LANGS:
-            steps = phase_4_steps(lang)
-            hits = [step for step in steps if STRUCTURE_PAGE_WORD[lang] in step]
+            hits = structure_page_steps(lang)
             self.assertTrue(
                 hits, f"{lang}: Phase 4 carries a step naming a structure page"
             )
@@ -283,8 +283,7 @@ class SkillContract(unittest.TestCase):
                 for h in row_headings
             ]
 
-            steps = phase_4_steps(lang)
-            hits = [step for step in steps if STRUCTURE_PAGE_WORD[lang] in step]
+            hits = structure_page_steps(lang)
             self.assertTrue(hits, f"{lang}: Phase 4 carries a step naming a structure page")
             step_text = "\n".join(hits)
             positions = sorted(
