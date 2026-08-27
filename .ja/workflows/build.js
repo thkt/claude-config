@@ -32,6 +32,12 @@ if (typeof argsValue === "string" && argsValue.trim().startsWith("{")) {
   }
 }
 const input = typeof argsValue === "object" && argsValue ? argsValue : {};
+// implementer は code.js へそのまま転送する。有効値の一覧は code.js 側の定数
+// (VALID_IMPLEMENTERS) が持ち、ここでは文字列の有無だけを見て既定値を決める。
+const implementer =
+  typeof input.implementer === "string" && input.implementer.trim()
+    ? input.implementer.trim()
+    : "claude";
 const issueRef = String(typeof argsValue === "string" ? argsValue : input.issue || "").trim();
 // 受け付けるのは数字単体 / #数字 / issue URL のみ。数字を含むだけの自由記述
 // ("a11y" など) を issue 参照と読まない。
@@ -57,6 +63,15 @@ const PLAN_QUALITY = {
   "plan-drift": true,
   "code-failed": false,
 };
+// record.py の stdout が path/run_id と並べて持つ window tally の key。型をここで 1 度だけ
+// 名付け、下の RECORD_SCHEMA の properties をそこから導くことで、key の追加・改名・型変更で
+// 両者がずれるのを防ぐ。
+const RECORD_COUNT_TYPES = {
+  started: "number",
+  stops: "number",
+  trigger_met: "boolean",
+  skipped_lines: "number",
+};
 // このブロックは obj() より前に置くので、schema は組み立てずに直に書く。
 const RECORD_SCHEMA = {
   type: "object",
@@ -65,11 +80,20 @@ const RECORD_SCHEMA = {
   properties: {
     path: { type: "string", description: "record.py の stdout JSON の path をそのまま" },
     run_id: { type: "string", description: "record.py の stdout JSON の run_id をそのまま" },
+    // window tally の 4 key は optional。RUNS_PATH を読み返せない run では 4 つとも
+    // 揃って落ちる (record.py の count_plan_quality_stops の docstring)。
+    ...Object.fromEntries(
+      Object.entries(RECORD_COUNT_TYPES).map(([key, type]) => [
+        key,
+        { type, description: `record.py の stdout JSON の ${key} をそのまま、存在すれば` },
+      ]),
+    ),
   },
 };
 // workflow script は時計を持たず、乱数も引けない (rules/conventions/WORKFLOWS.md § Script
 // evaluation form) ので、runId は record.py が発行する。
 let runId = "";
+let recordedCounts = {};
 // anchor より上の gate は行を残さずに返る。plan 品質の信号ではなく、記録の agent を固定する
 // リポジトリも無い。
 let recordable = false;
@@ -89,8 +113,8 @@ const recordRun = async (reason, fields = {}) => {
     anchor(
       `build の 1 実行を記録する。値を判断・要約・編集しない。手順は、(1) この JSON をそのまま一時ファイルへ書く。` +
         `(2) \`python3 ${bundled("workflows/build/record.py")} < <tempfile>\` を実行する。` +
-        `(3) script の stdout の run_id と path をそのまま返す。` +
-        `script は {"path":...,"run_id":...} を出力する。\n` +
+        `(3) script の stdout の path、run_id、started、stops、trigger_met、skipped_lines をそのまま返す。後ろの 4 つは stdout に無ければ省く。` +
+        `script は {"path":...,"run_id":...,"started":...,"stops":...,"trigger_met":...,"skipped_lines":...} を出力する。\n` +
         `入力 JSON は次のとおり。\n${JSON.stringify(payload)}`,
     ),
     {
@@ -109,11 +133,22 @@ const recordRun = async (reason, fields = {}) => {
     return;
   }
   runId = id;
+  recordedCounts = {};
+  for (const [key, type] of Object.entries(RECORD_COUNT_TYPES))
+    if (typeof written[key] === type) recordedCounts[key] = written[key];
+  // skipped_lines は構造化された返り値の件数として loss granularity を既に持つので、
+  // 0 でなくても log() への複写は要らない (WORKFLOWS.md § Degradation recording)。
+  // tally がまるごと無い、つまり記録側 agent の relay 失敗だけを run log に残す。
+  if (Object.keys(recordedCounts).length === 0) {
+    log(
+      `"${reason}" の行の window tally が record.py から届かなかったので、この run の返り値に started/stops/trigger_met/skipped_lines は無い。`,
+    );
+  }
 };
 // stopped の返り値はここでしか組み立てない。行を残さずに抜ける停止を作れない。
 const stop = async (reason, fields = {}, recordFields = {}) => {
   if (recordable) await recordRun(reason, recordFields);
-  return { stopped: reason, ...fields };
+  return { stopped: reason, ...recordedCounts, ...fields };
 };
 
 if (!issueRef || !issueNumber) {
@@ -500,13 +535,10 @@ log(
   `Plan 抽出: ${plan.units.length} unit / ${planTestIds.size} test scenario、id クロスチェック pass。`,
 );
 
-// 決定論 Python verifier (revalidate.py / verify-tests.py) への relay prompt。agent は
-// payload を流し込んで stdout を返すだけで、判定を LLM が下すことはない。
-const relayVerifier = ({ what, script, shape, payload, count }) =>
+const relayVerifier = ({ what, script, payload, count }) =>
   `${what}を決定論 verifier で検証する。判定を自分で下さない。手順は、(1) この JSON をそのまま一時ファイルに書く。` +
   `(2) リポジトリルートから \`python3 ${bundled(script)} < <tempfile>\` を実行する。` +
-  `(3) verifier の stdout の "results" 配列を、全 ${count} 件そのまま返す。追加 / 削除 / 編集をしない。` +
-  `verifier は ${shape} を出力する。\n` +
+  `(3) verifier の stdout の "results" 配列を、全 ${count} 件そのまま返す。追加 / 削除 / 編集をしない。\n` +
   `入力 JSON は以下。\n${JSON.stringify(payload)}`;
 
 const REVALIDATE_SCHEMA = obj(["results"], {
@@ -573,7 +605,6 @@ const [reval, branchRes, baseline] = await parallel([
             relayVerifier({
               what: "plan の前提",
               script: "workflows/build/revalidate.py",
-              shape: '{"results":[{path,pattern,exists,matches}]}',
               payload: revalidationTargets,
               count: revalidationTargets.length,
             }),
@@ -673,7 +704,6 @@ if (revalidationTargets.length) {
         relayVerifier({
           what: "plan の前提 (前回の relay で欠落した分。コード以外の資産パスも 1 件も省略しない)",
           script: "workflows/build/revalidate.py",
-          shape: '{"results":[{path,pattern,exists,matches}]}',
           payload: unreported,
           count: unreported.length,
         }),
@@ -747,6 +777,7 @@ const code =
     // 実装は plan の contract / tests を実行する段で、設計判断は plan 側 (think /
     // critic-design) が済ませている。code.js の default 変更を暗黙に追従しない。
     model: "sonnet",
+    implementer,
     commit: perUnitCommits,
     issue: issueNumber,
     untracked_baseline: baselineUntracked,
@@ -754,7 +785,13 @@ const code =
 if (!code || code.stopped) {
   // nested_reason が無いと、code の内側で起きた plan 起因の停止は code-failed としか数えられない。
   const nested = String((code && code.stopped) || "");
-  return await stop("code-failed", { detail: code }, nested ? { nested_reason: nested } : {});
+  // codex-herdr の pane が code 自身の停止 (loop 途中の stopUnit など) より前に解決済みなら、
+  // その pane id は detail の中だけでなく build の返り値にもそのまま届く。
+  return await stop(
+    "code-failed",
+    { detail: code, herdr_panes: code && code.herdr_panes },
+    nested ? { nested_reason: nested } : {},
+  );
 }
 if (!code.tests_pass || !code.gates_pass)
   log(
@@ -924,7 +961,6 @@ const [diff, testPresence, conformance, structure] = await parallel([
             relayVerifier({
               what: "plan のテスト言明",
               script: "workflows/build/verify-tests.py",
-              shape: '{"results":[{name,found}]}',
               payload: testChecks,
               count: allTestNames.length,
             }),
@@ -1213,6 +1249,9 @@ const ship = await agent(
 return {
   issue: issueNumber,
   branch,
+  // 同じ window tally を stop() のすべての stopped 返り値にも spread している。finished
+  // run は recordRun をもう一度呼ばないので、自分の start row が読んだ件数をそのまま返す。
+  ...recordedCounts,
   units_completed: code.completed.length,
   code_anomalies: (code.anomalies || []).length,
   code_verified: code.tests_pass && code.gates_pass,
@@ -1243,4 +1282,5 @@ return {
   // Ship が意図して置き去りにしたもの。prompt がこれを求めるのは、stage すると仕様書・調査
   // メモ・ローカル設定が PR へ漏れるため。返り値に無いと、何が残ったか誰も見られない。
   unstaged: Array.isArray(ship.unstaged) ? ship.unstaged : [],
+  herdr_panes: code.herdr_panes,
 };

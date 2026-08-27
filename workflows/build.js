@@ -33,6 +33,12 @@ if (typeof argsValue === "string" && argsValue.trim().startsWith("{")) {
   }
 }
 const input = typeof argsValue === "object" && argsValue ? argsValue : {};
+// implementer rides through to code.js unchanged. The valid-value list lives as code.js's
+// own constant (VALID_IMPLEMENTERS); here only presence decides the default.
+const implementer =
+  typeof input.implementer === "string" && input.implementer.trim()
+    ? input.implementer.trim()
+    : "claude";
 const issueRef = String(typeof argsValue === "string" ? argsValue : input.issue || "").trim();
 // Accept only a bare number, #number, or an issue URL. A freeform description that
 // merely contains digits (e.g. "a11y") must not be read as an issue reference.
@@ -58,6 +64,15 @@ const PLAN_QUALITY = {
   "plan-drift": true,
   "code-failed": false,
 };
+// The window-tally keys record.py's stdout carries alongside path/run_id (its own docstring).
+// Naming each key's type here once and deriving RECORD_SCHEMA's matching properties below
+// keeps the two from drifting apart when a key is added, renamed, or retyped.
+const RECORD_COUNT_TYPES = {
+  started: "number",
+  stops: "number",
+  trigger_met: "boolean",
+  skipped_lines: "number",
+};
 // The schema is written out rather than assembled by obj(), which this block precedes.
 const RECORD_SCHEMA = {
   type: "object",
@@ -66,11 +81,20 @@ const RECORD_SCHEMA = {
   properties: {
     path: { type: "string", description: "path from record.py's stdout JSON, verbatim" },
     run_id: { type: "string", description: "run_id from record.py's stdout JSON, verbatim" },
+    // The four window-tally keys are optional: record.py omits all four together when it
+    // cannot read RUNS_PATH back (see its count_plan_quality_stops docstring).
+    ...Object.fromEntries(
+      Object.entries(RECORD_COUNT_TYPES).map(([key, type]) => [
+        key,
+        { type, description: `${key} from record.py's stdout JSON, verbatim, when present` },
+      ]),
+    ),
   },
 };
 // record.py mints runId, because a workflow script has neither a clock nor a random source
 // (rules/conventions/WORKFLOWS.md § Script evaluation form).
 let runId = "";
+let recordedCounts = {};
 // The gates ahead of anchor return without a row: neither is a plan-quality signal, and the
 // recorder's agent would have no repository to be anchored to.
 let recordable = false;
@@ -90,8 +114,8 @@ const recordRun = async (reason, fields = {}) => {
     anchor(
       `Record one build run; do not judge, summarize, or edit any value. The steps are, (1) write this exact JSON to a temp file; ` +
         `(2) run \`python3 ${bundled("workflows/build/record.py")} < <tempfile>\`; ` +
-        `(3) return the script's stdout run_id and path verbatim. ` +
-        `The script prints {"path":...,"run_id":...}.\n` +
+        `(3) return the script's stdout path, run_id, started, stops, trigger_met, and skipped_lines verbatim, omitting any of the last four the stdout does not carry. ` +
+        `The script prints {"path":...,"run_id":...,"started":...,"stops":...,"trigger_met":...,"skipped_lines":...}.\n` +
         `The input JSON is as follows.\n${JSON.stringify(payload)}`,
     ),
     {
@@ -110,11 +134,22 @@ const recordRun = async (reason, fields = {}) => {
     return;
   }
   runId = id;
+  recordedCounts = {};
+  for (const [key, type] of Object.entries(RECORD_COUNT_TYPES))
+    if (typeof written[key] === type) recordedCounts[key] = written[key];
+  // skipped_lines already carries its own loss granularity as a count on the structured
+  // return value, so a non-zero value needs no separate log() (WORKFLOWS.md § Degradation
+  // recording). Only a wholly missing tally, an agent relay failure, needs the run log.
+  if (Object.keys(recordedCounts).length === 0) {
+    log(
+      `record.py's window tally for the "${reason}" row is unavailable, so this run's return value carries no started/stops/trigger_met/skipped_lines.`,
+    );
+  }
 };
 // Every stopped return is assembled here, so no stop can leave without its row.
 const stop = async (reason, fields = {}, recordFields = {}) => {
   if (recordable) await recordRun(reason, recordFields);
-  return { stopped: reason, ...fields };
+  return { stopped: reason, ...recordedCounts, ...fields };
 };
 
 if (!issueRef || !issueNumber) {
@@ -519,15 +554,11 @@ log(
   `Plan extracted: ${plan.units.length} unit(s), ${planTestIds.size} test scenario(s), id cross-check pass.`,
 );
 
-// Relay prompt for the deterministic Python verifiers (revalidate.py /
-// verify-tests.py): the agent pipes the payload in and echoes stdout back; the
-// verdict never comes from LLM judgment.
-const relayVerifier = ({ what, script, shape, payload, count }) =>
+const relayVerifier = ({ what, script, payload, count }) =>
   `Run the deterministic verifier for ${what}; do not judge the verdict yourself. ` +
   `The steps are, (1) write this exact JSON to a temp file; (2) from the repository root run ` +
   `\`python3 ${bundled(script)} < <tempfile>\`; ` +
-  `(3) return the verifier's stdout "results" array verbatim, all ${count} entries; add, drop, or edit none. ` +
-  `The verifier prints ${shape}.\n` +
+  `(3) return the verifier's stdout "results" array verbatim, all ${count} entries; add, drop, or edit none.\n` +
   `The input JSON is as follows.\n${JSON.stringify(payload)}`;
 
 const REVALIDATE_SCHEMA = obj(["results"], {
@@ -594,7 +625,6 @@ const [reval, branchRes, baseline] = await parallel([
             relayVerifier({
               what: "the plan's preconditions",
               script: "workflows/build/revalidate.py",
-              shape: '{"results":[{path,pattern,exists,matches}]}',
               payload: revalidationTargets,
               count: revalidationTargets.length,
             }),
@@ -696,7 +726,6 @@ if (revalidationTargets.length) {
         relayVerifier({
           what: "the plan's preconditions dropped by the previous relay (omit none, including non-code asset paths)",
           script: "workflows/build/revalidate.py",
-          shape: '{"results":[{path,pattern,exists,matches}]}',
           payload: unreported,
           count: unreported.length,
         }),
@@ -771,6 +800,7 @@ const code =
     // happened on the plan side (think / critic-design). Do not silently track
     // code.js's default.
     model: "sonnet",
+    implementer,
     commit: perUnitCommits,
     issue: issueNumber,
     untracked_baseline: baselineUntracked,
@@ -778,7 +808,13 @@ const code =
 if (!code || code.stopped) {
   // Without nested_reason a plan-caused stop inside code would be counted as code-failed alone.
   const nested = String((code && code.stopped) || "");
-  return await stop("code-failed", { detail: code }, nested ? { nested_reason: nested } : {});
+  // A pane already resolved before code's own stop (e.g. a mid-loop stopUnit after
+  // codex-herdr's panes started) still reaches build's return value, not just detail.
+  return await stop(
+    "code-failed",
+    { detail: code, herdr_panes: code && code.herdr_panes },
+    nested ? { nested_reason: nested } : {},
+  );
 }
 if (!code.tests_pass || !code.gates_pass)
   log(
@@ -948,7 +984,6 @@ const [diff, testPresence, conformance, structure] = await parallel([
             relayVerifier({
               what: "the plan's test statements",
               script: "workflows/build/verify-tests.py",
-              shape: '{"results":[{name,found}]}',
               payload: testChecks,
               count: allTestNames.length,
             }),
@@ -1248,6 +1283,9 @@ const ship = await agent(
 return {
   issue: issueNumber,
   branch,
+  // The same window tally stop() spreads into every stopped return; a run that finishes
+  // reports the count its own start row read, since a finished run never calls recordRun again.
+  ...recordedCounts,
   units_completed: code.completed.length,
   code_anomalies: (code.anomalies || []).length,
   code_verified: code.tests_pass && code.gates_pass,
@@ -1279,4 +1317,5 @@ return {
   // leaks specs, research notes, and local config into the PR; without it on the return value
   // nobody can see what stayed out.
   unstaged: Array.isArray(ship.unstaged) ? ship.unstaged : [],
+  herdr_panes: code.herdr_panes,
 };

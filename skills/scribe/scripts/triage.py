@@ -111,6 +111,7 @@ def read_store(path: Path) -> list[Pattern]:
     if not path.is_file():
         return []
     rows: list[Pattern] = []
+    dropped: list[str] = []
     section: str | None = None
     for line in path.read_text(encoding="utf-8").split("\n"):
         if line.startswith("## "):
@@ -127,6 +128,15 @@ def read_store(path: Path) -> list[Pattern]:
             rows.append(
                 {"name": name, "evidence": evidence, "existing": "candidate", "section": section}
             )
+        else:
+            dropped.append(line)
+    # Not stdout: the report there is a closed 4-key object the skill parses.
+    if dropped:
+        print(
+            f"triage.py: skipped {len(dropped)} candidate row(s) carrying no body", file=sys.stderr
+        )
+        for line in dropped:
+            print(f"  {line}", file=sys.stderr)
     return rows
 
 
