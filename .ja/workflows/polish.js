@@ -187,6 +187,11 @@ let needsContext = [];
 let fix = null;
 let reopened = [];
 let rejudgeNotes = "";
+// Review agent の呼び出し自体が結果を返さなかった (異常終了 / timeout) ときだけ立てる。
+// available: false で答えた場合 (codex CLI なしという確定した結論) には立てない。
+// Challenge / Fix が finding / survivor 0 件で終わることは、それ単体では純粋に
+// diff がきれいだった場合と区別が付かないため、このフラグで最終返り値の両者を分ける。
+let reviewDied = false;
 
 if (mode !== "cleanup") {
   // ---- Review: 外部 Codex レンズ ----
@@ -194,7 +199,7 @@ if (mode !== "cleanup") {
   const detectNote = scope
     ? `まず \`git status\` と \`git diff HEAD\` で polish 対象の変更が存在するか確認する。無ければ has_changes: false、diff_kind 空で返す。あれば diff_kind: uncommitted とする。`
     : `まず対象 diff の種類を判定する。\`git status --porcelain\` に出力があれば diff_kind: uncommitted。無ければ \`git rev-list --count ${base}..HEAD\` が 1 以上で diff_kind: branch (push 済み branch diff)。どちらにも該当しなければ has_changes: false、diff_kind 空で返す。`;
-  codex = (await agent(
+  const codexResult = await agent(
     anchor(
       `外部 Codex review stage。${detectNote}\n` +
         `次に \`which codex\` を確認する。無ければ available: false、findings 空で返す。\n` +
@@ -212,7 +217,9 @@ if (mode !== "cleanup") {
       schema: CODEX_SCHEMA,
       model: "sonnet",
     },
-  )) || {
+  );
+  reviewDied = !codexResult;
+  codex = codexResult || {
     available: false,
     has_changes: true,
     diff_kind: "",
@@ -397,6 +404,20 @@ const cleanup = (await agent(
   notes: "validate agent が結果を返さなかった",
 };
 
+// WORKFLOWS.md § Degradation recording: Review agent が死んで findings が [] のままだと
+// Challenge (challenge する finding が無い) と Fix (fix する survivor が無い) も走らない。
+// これは本物の「きれいな diff」ではなく agent が死んだ結果に過ぎない。3 段の名前と、
+// それに伴って diff_kind: "" -> cleanupTarget が fallback したことをここへ載せ、
+// 本当に何もすることが無かった run と区別できるようにする。
+const unverified = reviewDied
+  ? [
+      codex.review_note,
+      "Challenge は未実施: Review agent が結果を返さず challenge する finding が無かった",
+      "Fix は未実施: Review agent が結果を返さず fix する survivor が無かった",
+      "Cleanup 対象は「現在の diff」へ fallback した: Review agent が結果を返さず diff_kind が空のままだった",
+    ]
+  : [];
+
 return {
   mode,
   codex_available: codex.available,
@@ -409,5 +430,6 @@ return {
   reopened,
   rejudge_notes: rejudgeNotes,
   needs_context: needsContext,
+  unverified,
   cleanup,
 };

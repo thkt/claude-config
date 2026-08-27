@@ -191,6 +191,12 @@ let needsContext = [];
 let fix = null;
 let reopened = [];
 let rejudgeNotes = "";
+// Set only when the Review agent call itself returns nothing (crashed / timed out),
+// never when it answers with available: false (codex CLI missing is a verified
+// conclusion, not a degradation). Challenge/Fix finding zero findings/survivors is
+// indistinguishable on their own return values from a genuinely clean diff, so this
+// flag is what lets the final return tell the two readings apart.
+let reviewDied = false;
 
 if (mode !== "cleanup") {
   // ---- Review: external Codex lens ----
@@ -198,7 +204,7 @@ if (mode !== "cleanup") {
   const detectNote = scope
     ? `First check with \`git status\` and \`git diff HEAD\` whether changes to polish exist. If not, return has_changes: false with an empty diff_kind. If they do, set diff_kind: uncommitted.`
     : `First determine the kind of target diff. If \`git status --porcelain\` prints anything, diff_kind: uncommitted. Otherwise, if \`git rev-list --count ${base}..HEAD\` is 1 or more, diff_kind: branch (the pushed branch diff). If neither applies, return has_changes: false with an empty diff_kind.`;
-  codex = (await agent(
+  const codexResult = await agent(
     anchor(
       `External Codex review stage. ${detectNote}\n` +
         `Then check \`which codex\`. If missing, return available: false with empty findings.\n` +
@@ -216,7 +222,9 @@ if (mode !== "cleanup") {
       schema: CODEX_SCHEMA,
       model: "sonnet",
     },
-  )) || {
+  );
+  reviewDied = !codexResult;
+  codex = codexResult || {
     available: false,
     has_changes: true,
     diff_kind: "",
@@ -407,6 +415,20 @@ const cleanup = (await agent(
   notes: "validate agent returned nothing",
 };
 
+// WORKFLOWS.md § Degradation recording: a dead Review agent leaves findings at
+// [], so Challenge (nothing to challenge) and Fix (no survivors) never run -- but
+// that is a consequence of the agent dying, not of a genuinely clean diff. Naming
+// all three here (plus the diff_kind: "" -> cleanupTarget fallback it also forces)
+// keeps that reading distinct from a real "nothing to do" run.
+const unverified = reviewDied
+  ? [
+      codex.review_note,
+      "Challenge did not run: Review agent returned nothing, so there were no findings to challenge",
+      "Fix did not run: Review agent returned nothing, so there were no survivors to fix",
+      `Cleanup target fell back to "the current diff": diff_kind stayed empty because the Review agent returned nothing`,
+    ]
+  : [];
+
 return {
   mode,
   codex_available: codex.available,
@@ -419,5 +441,6 @@ return {
   reopened,
   rejudge_notes: rejudgeNotes,
   needs_context: needsContext,
+  unverified,
   cleanup,
 };
