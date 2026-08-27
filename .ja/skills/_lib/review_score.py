@@ -20,6 +20,7 @@ VERDICTS = {
     "miss": "ファイルに finding が出なかった",
     "pass": "clean ケースで finding が出なかった",
     "false_positive": "clean ケースで finding が出た",
+    "below_min_findings": "min_findings に届かない件数だが、報告された指摘は severity_min 以上",
 }
 
 
@@ -50,6 +51,7 @@ class Counts(TypedDict):
     other_finding: int
     miss: int
     false_positive: int
+    below_min_findings: int
 
 
 class Category(TypedDict):
@@ -104,6 +106,7 @@ def score(
         "other_finding": sum(1 for e in flagged if verdict_of(e) == "other_finding"),
         "miss": sum(1 for e in flagged if verdict_of(e) == "miss"),
         "false_positive": sum(1 for e in clean if verdict_of(e) == "false_positive"),
+        "below_min_findings": sum(1 for e in flagged if verdict_of(e) == "below_min_findings"),
     }
 
     metrics: Metrics = {
