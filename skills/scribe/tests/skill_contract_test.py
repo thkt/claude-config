@@ -250,6 +250,54 @@ class SkillContract(unittest.TestCase):
                 body = doc[doc.index(f"## Phase {phase}") : doc.index(f"## Phase {phase + 1}")]
                 self.assertIn(defers[lang], body, f"{lang}: Phase {phase} defers its write")
 
+    def test_phase_6_step_2_selects_the_skeleton_by_the_pages_kind(self) -> None:
+        """T-005: both trees' Phase 6 step 2 selects the skeleton by the page's kind"""
+        for lang in LANGS:
+            phase6 = self.phase_6(lang)
+            step = next(line for line in phase6.split("\n") if line.startswith("2. "))
+            self.assertIn(
+                "kind", step, f"{lang}: step 2 names kind as what selects the skeleton"
+            )
+            self.assertIn(
+                "kind: structure",
+                step,
+                f"{lang}: step 2 names the structure kind value that picks the other skeleton",
+            )
+
+    def test_structure_skeleton_order_matches_phase_4_cross_check_order(self) -> None:
+        """T-006: the structure-page skeleton the template carries and the section order
+        Phase 4's cross-check step names are the same list"""
+        for lang in LANGS:
+            template = at(lang, "skills", "scribe", "templates", "page.md").read_text(
+                encoding="utf-8"
+            )
+            blocks = re.findall(r"```markdown\n(.*?)\n```", template, re.S)
+            block = next((b for b in blocks if "kind: structure" in b), "")
+            self.assertTrue(block, f"{lang}: the template carries a structure-page skeleton")
+            headings = [ln[3:] for ln in block.split("\n") if ln.startswith("## ")]
+            # 境界/契約/要求 are the row-bearing sections the Phase 4 cross-check step names;
+            # 内容/参照コード/由来 are narrative/reference sections the step never enumerates.
+            row_headings = [h for h in headings if h in STRUCTURE_ROW_WORDS["ja"]]
+            expected_order = [
+                STRUCTURE_ROW_WORDS[lang][STRUCTURE_ROW_WORDS["ja"].index(h)]
+                for h in row_headings
+            ]
+
+            steps = phase_4_steps(lang)
+            hits = [step for step in steps if STRUCTURE_PAGE_WORD[lang] in step]
+            self.assertTrue(hits, f"{lang}: Phase 4 carries a step naming a structure page")
+            step_text = "\n".join(hits)
+            positions = sorted(
+                (step_text.index(word), word) for word in STRUCTURE_ROW_WORDS[lang]
+            )
+            named_order = [word for _, word in positions]
+
+            self.assertEqual(
+                named_order,
+                expected_order,
+                f"{lang}: the step names the sections in the template's own order",
+            )
+
     def test_the_worktree_step_writes_every_kind(self) -> None:
         """A kind of write missing from the step that holds the worktree has nowhere else it can
         legally land. The step alone is the anchor: Phase 6's opening prose names the repairs too,
