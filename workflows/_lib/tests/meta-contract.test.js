@@ -12,7 +12,6 @@ import { parseRoutingLikeConst } from "./_brace.js";
 const here = dirname(fileURLToPath(import.meta.url));
 
 // One entry per <name>.js, in both the English source under workflows/ and its .ja/ mirror.
-// Used by the focus-values test below (audit only).
 const workflowTrees = (name) => [
   { label: `${name}/en`, path: join(here, "..", "..", `${name}.js`) },
   { label: `${name}/ja`, path: join(here, "..", "..", "..", ".ja", "workflows", `${name}.js`) },
@@ -20,11 +19,10 @@ const workflowTrees = (name) => [
 
 const TREES = workflowTrees("audit");
 
-// The workflows this slice and the ones before it named. Each gets its own test below, so a
-// failure names the workflow rather than a file position inside a sweep.
+// Each name gets its own test, so a failure names the workflow rather than a file position
+// inside a sweep.
 const NAMED_WORKFLOWS = ["adrift", "assert", "audit", "build", "code", "polish", "shake"];
 
-// One entry per tree root, following reference-notation.test.js's readdirSync pattern.
 const WORKFLOW_TREE_DIRS = [
   { label: "en", dir: join(here, "..", "..") },
   { label: "ja", dir: join(here, "..", "..", "..", ".ja", "workflows") },
@@ -43,9 +41,8 @@ for (const name of NAMED_WORKFLOWS) {
   });
 }
 
-// Not a second sweep asserting the same property: the per-name tests above already read every
-// whenToUse. This one holds the list itself to the tree, so a workflow added later fails here
-// until it is named rather than slipping past unchecked.
+// Holds the list itself to the tree rather than re-asserting the property: a workflow added
+// later fails here until it is named, instead of slipping past unchecked.
 test("no whenToUse under either tree contains the identifier args", () => {
   for (const { label, dir } of WORKFLOW_TREE_DIRS) {
     const scripts = readdirSync(dir)
@@ -96,11 +93,7 @@ test("the focus values in audit's whenToUse match the FOCUS keys extracted from 
   }
 });
 
-// One tree per polish.js: the English source under workflows/, and its .ja/ mirror.
-const POLISH_TREES = [
-  { label: "en", path: join(here, "..", "..", "polish.js") },
-  { label: "ja", path: join(here, "..", "..", "..", ".ja", "workflows", "polish.js") },
-];
+const POLISH_TREES = workflowTrees("polish");
 
 // Only the key set matters here: MODES's values are null placeholders that whenToUse's prose
 // never restates.

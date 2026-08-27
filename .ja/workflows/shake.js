@@ -3,7 +3,7 @@ export const meta = {
   description:
     "flaky テスト検出を決定論的に行う workflow。対象テストを 4 次元 (repeat / order / parallelism / seed) で各 10 回 shake し、静的 smell scan を並走させて confirmed-flaky / latent-flaky / stable に分類する。実行回数と分類規則は script が強制するため、回数の間引きや甘い stable 判定が起きない。confirmed-flaky は root cause を fix し、re-shake で検証する。",
   whenToUse:
-    "テストが時々落ちる、CI が不定期に赤くなる、green なテストの潜在 flakiness を洗いたいとき。単一バグの修正は fix、静的レビューのみは audit workflow を使う。対象リポジトリを指定する (必須)。指定しない場合は no-repo で早期 stop する。scope (test path / suite filter 文字列) で対象を絞り込める。省略時は working tree と base branch diff (base、デフォルト main) で触れたテストファイルが対象。",
+    "テストが時々落ちる、CI が不定期に赤くなる、green なテストの潜在 flakiness を洗いたいとき。単一バグの修正は fix、静的レビューのみは audit workflow を使う。対象リポジトリを指定する。scope (test path / suite filter 文字列) で対象を絞り込める。省略時は working tree と base branch diff (base、デフォルト main) で触れたテストファイルが対象。",
   phases: [{ title: "Route" }, { title: "Shake" }, { title: "Fix" }],
 };
 

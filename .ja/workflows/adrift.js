@@ -3,7 +3,7 @@ export const meta = {
   description:
     "DR の Decision Outcome と現コードの drift スキャンを決定論的に行う workflow。DR ごとに symbol 抽出 -> 参照検索 -> manifest で routing した reviewer の意味的照合を pipeline で流し、file:line + 修正方向 + 優先度のレポートを docs/audit/ に書く。全 DR の漏れなき列挙と reviewer routing 表は script が強制する。",
   whenToUse:
-    "DR とコードの整合性を確認したいとき、意思決定の風化を洗いたいとき。DR が無いリポジトリの発掘は census を先に使う。対象リポジトリを指定する (必須)。指定しない場合は no-repo で早期 stop する。focus で対象 DR を絞り込める。focus には DR id またはキーワードを渡せる。省略時は docs/decisions/ の全 DR を対象にする。",
+    "DR とコードの整合性を確認したいとき、意思決定の風化を洗いたいとき。DR が無いリポジトリの発掘は census を先に使う。対象リポジトリを指定する。focus で対象 DR を絞り込める。focus には DR id またはキーワードを渡せる。省略時は docs/decisions/ の全 DR を対象にする。",
   phases: [{ title: "Detect" }, { title: "Scan" }, { title: "Report" }],
 };
 

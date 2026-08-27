@@ -3,7 +3,7 @@ export const meta = {
   description:
     "独立した outcome-based assertion を決定論的に行う workflow。isolated worktree で Codex が独立検証し、audit workflow (reviewer -> challenge -> verify -> integrate) と並走する。三値 gate (Ready / Ready (caveat) / NotReady) の判定規則は script が適用するため、gate の甘い自己申告や動的 evidence の skip が起きない。",
   whenToUse:
-    "merge 可否を静的 + 動的 evidence で独立に断定したいとき。軽い code review は polish workflow、静的のみの監査は audit workflow を使う。対象リポジトリを指定する (必須)。指定しない場合は no-repo で早期 stop する。scope (file / directory) で対象を絞り込める。省略時は diff mode (uncommitted、無ければ base (デフォルト main) との diff)。",
+    "merge 可否を静的 + 動的 evidence で独立に断定したいとき。軽い code review は polish workflow、静的のみの監査は audit workflow を使う。対象リポジトリを指定する。scope (file / directory) で対象を絞り込める。省略時は diff mode (uncommitted、無ければ base (デフォルト main) との diff)。",
   phases: [
     { title: "Bootstrap" },
     { title: "Evidence" },
