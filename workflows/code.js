@@ -100,14 +100,9 @@ const stopUnit = async (stopped, unit, why) => {
     pane_closes: paneCloses,
   };
 };
-// Decides, in this one function alone, the route (claude / codex-herdr) and the call's
-// destination (no pane, or which of the tester / coder panes). The claude route executes the
-// plan's contract / tests, so sonnet suffices; repeated failure here signals a defective plan
-// rather than a model too small. effort stays high because an implementation agent's
-// wall-clock is dominated by generating thinking tokens. The codex-herdr route addresses a
-// pane instead of an agent, so it carries no model / effort, and reads the role's pane id from
-// herdrPanes (resolved at pane-start). herdrPanes is declared with let further below, but
-// every call this function receives happens inside the for loop, after that assignment runs.
+// Decides the route and the destination in this one function alone. herdrPanes is declared
+// with let further below, but every call this function receives happens inside the for loop,
+// after that assignment runs.
 const implementDestination = (role) =>
   implementer === "codex-herdr"
     ? { opts: {}, paneId: herdrPanes ? herdrPanes[role] : undefined }
@@ -235,8 +230,6 @@ const commitUnit = async (unit, tests, testFiles) => {
 // properties. The type is checked here, right before a caller trusts it via truthiness.
 const boolMismatch = (result, field) => !!result && typeof result[field] !== "boolean";
 
-// Reuses stopUnit's shape (a run stop carrying completed / skipped / anomalies / commits) for a
-// courier type mismatch, so the 3 call sites below (impl / red / green) do not duplicate it.
 const courierTypeStop = (unit, result, field) =>
   stopUnit(
     "courier-type-mismatch",
@@ -264,15 +257,9 @@ const responsePath = (unit, role) => `.codex-response/${unit.id}-${role}.json`;
 const stepWithRetry = async (unit, label, role, schema, ok, prompt, retryPrompt) => {
   const dest = implementDestination(role);
   // Prepended to both the first prompt and the retry prompt, so a codex-herdr retry addresses
-  // the same pane and the same response file as its first attempt (dest.paneId is read once per
-  // call from the pane already resolved at pane-start, never re-resolved). Attaching schema
-  // (RED_SCHEMA / GREEN_SCHEMA) to this agent call does not by itself enforce the type: codex
-  // can write `{"red_confirmed": "false"}` as a string to the file and still satisfy the
-  // schema's shape, and JS truthiness then reads that string as true (issue #367). The workflow
-  // realm has no fs, so reading the file back needs a courier agent regardless; the type check
-  // is left to the caller (the red_confirmed / green checks below).
+  // the same pane and the same response file as its first attempt.
   const addressing = dest.paneId
-    ? `Send this instruction to the ${role} agent with \`herdr agent prompt ${role} "<the instruction>" --wait --timeout 180000\`, which returns only once that agent reports agent_status "done" (pane ${dest.paneId} is the id resolved from herdr pane split via pane-start; never guess it). Not a bare send: without --wait nothing tells you codex finished, and reading the response file early returns whatever a previous unit left there. Tell the codex agent to write its response as JSON, matching this schema and nothing else, to the file ${responsePath(unit, role)} (repo-relative). You are the courier: you do not do the TDD work yourself. Once the prompt call returns, read that file back and return its parsed contents in this schema's shape. If the call exits non-zero or the file is not there, do not invent a result: report what you found in notes with a false-shaped result.\n`
+    ? `Send this instruction to the ${role} agent with \`herdr agent prompt ${role} "<the instruction>" --wait --timeout 180000\`, which returns only once that agent reports agent_status "done" (pane ${dest.paneId} was resolved at pane-start). Not a bare send: without --wait nothing tells you codex finished, and reading the response file early returns whatever a previous unit left there. Tell the codex agent to write its response as JSON, matching this schema and nothing else, to the file ${responsePath(unit, role)} (repo-relative). You are the courier: you do not do the TDD work yourself. Once the prompt call returns, read that file back and return its parsed contents in this schema's shape. If the call exits non-zero or the file is not there, do not invent a result: report what you found in notes with a false-shaped result.\n`
     : "";
   const opts = (name) => ({
     label: `${name}:${unit.id}`,
@@ -364,8 +351,7 @@ const closePane = (role, paneId) =>
     },
   );
 
-// The tester / coder pane ids. Stays null for a non-codex-herdr run, so closeHerdrPanes is a
-// no-op there.
+// Stays null for a non-codex-herdr run, so closeHerdrPanes is a no-op there.
 let herdrPanes = null;
 // run-workflow.js's calls.agent records only each agent's {prompt, opts}, which cannot show
 // that the pane id resolved from pane split, or the open/close count, actually reached this

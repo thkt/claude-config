@@ -1256,7 +1256,5 @@ return {
   // Ship が意図して置き去りにしたもの。prompt がこれを求めるのは、stage すると仕様書・調査
   // メモ・ローカル設定が PR へ漏れるため。返り値に無いと、何が残ったか誰も見られない。
   unstaged: Array.isArray(ship.unstaged) ? ship.unstaged : [],
-  // code 自身の返り値をそのまま転送する (claude の run では undefined)。codex-herdr の build の
-  // pane lifecycle が、停止時に detail を開かなくても見える。
   herdr_panes: code.herdr_panes,
 };

@@ -99,13 +99,8 @@ const stopUnit = async (stopped, unit, why) => {
     pane_closes: paneCloses,
   };
 };
-// 経路 (claude / codex-herdr) と呼び先 (pane が無いか、tester / coder どちらの pane か) を
-// この 1 関数だけで決める。claude 経路は実装が plan の contract / tests を実行する段なので
-// sonnet で足りる。ここで失敗が続くのは model が小さいのでなく plan の欠陥シグナル。effort を
-// high に保つのは、実装 agent 1 体の wall-clock を thinking tokens の生成が支配するため。
-// codex-herdr 経路は agent 宛でなく pane 宛の呼び出しなので model / effort を持たず、
-// herdrPanes (pane-start で解決済み) から role の pane id を返す。herdrPanes は下で let
-// 宣言されるが、この関数の呼び出しはすべて for loop の中、その代入より後に起きる。
+// 経路と呼び先をこの 1 関数だけで決める。herdrPanes は下で let 宣言されるが、この関数の
+// 呼び出しはすべて for loop の中、その代入より後に起きる。
 const implementDestination = (role) =>
   implementer === "codex-herdr"
     ? { opts: {}, paneId: herdrPanes ? herdrPanes[role] : undefined }
@@ -232,9 +227,6 @@ const commitUnit = async (unit, tests, testFiles) => {
 // 型を検査する。
 const boolMismatch = (result, field) => !!result && typeof result[field] !== "boolean";
 
-// stopUnit と同じ形 (completed / skipped / anomalies / commits を添えて run を止める) を
-// courier の型不一致向けに使い回す。呼び出し側の 3 箇所 (impl / red / green) が重複させずに
-// 済むよう、ここへまとめる。
 const courierTypeStop = (unit, result, field) =>
   stopUnit(
     "courier-type-mismatch",
@@ -261,15 +253,9 @@ const responsePath = (unit, role) => `.codex-response/${unit.id}-${role}.json`;
 const stepWithRetry = async (unit, label, role, schema, ok, prompt, retryPrompt) => {
   const dest = implementDestination(role);
   // 初回と retry の両方の prompt へ前置くので、codex-herdr の retry も初回と同じ pane・同じ
-  // 応答ファイル宛になる (dest.paneId は呼び出し 1 回につき 1 度だけ、pane-start で解決済みの
-  // herdrPanes から読む。再解決しない)。この agent 呼び出しに schema (RED_SCHEMA /
-  // GREEN_SCHEMA) を付けるだけでは型を強制できない: codex がファイルに
-  // `{"red_confirmed": "false"}` と文字列で書いても schema の形は満たしてしまい、JS の
-  // truthy 判定はその文字列を true と読む (issue #367)。workflow realm に fs が無く読み戻しに
-  // どのみち courier agent が要るため、型検証は呼び出し元 (下の red_confirmed / green の
-  // チェック) に残す。
+  // 応答ファイル宛になる。
   const addressing = dest.paneId
-    ? `この指示は \`herdr agent prompt ${role} "<指示>" --wait --timeout 180000\` で ${role} agent へ送る。この呼び出しは相手が agent_status "done" を報告してから返る (pane ${dest.paneId} は pane-start で herdr pane split から解決済みの id。推測しない)。ただ送るだけにはしない。--wait が無いと codex が終わったことを知る手段が無く、応答ファイルを早く読むと前の unit が残した内容が返る。pane 内の codex agent には、この schema の形に沿った JSON だけをファイル ${responsePath(unit, role)} (repo からの相対パス) へ書かせる。あなたは courier として振る舞う: 自分では TDD の作業をしない。prompt の呼び出しが返ったらそのファイルを読み、パースした中身をこの schema の形で返す。呼び出しが非ゼロ終了したりファイルが無かったりしたら、結果を捏造せず、見た事実を notes に書いて false 相当の結果を返す。\n`
+    ? `この指示は \`herdr agent prompt ${role} "<指示>" --wait --timeout 180000\` で ${role} agent へ送る。この呼び出しは相手が agent_status "done" を報告してから返る (pane ${dest.paneId} は pane-start で解決済み)。ただ送るだけにはしない。--wait が無いと codex が終わったことを知る手段が無く、応答ファイルを早く読むと前の unit が残した内容が返る。pane 内の codex agent には、この schema の形に沿った JSON だけをファイル ${responsePath(unit, role)} (repo からの相対パス) へ書かせる。あなたは courier として振る舞う: 自分では TDD の作業をしない。prompt の呼び出しが返ったらそのファイルを読み、パースした中身をこの schema の形で返す。呼び出しが非ゼロ終了したりファイルが無かったりしたら、結果を捏造せず、見た事実を notes に書いて false 相当の結果を返す。\n`
     : "";
   const opts = (name) => ({
     label: `${name}:${unit.id}`,
@@ -360,8 +346,7 @@ const closePane = (role, paneId) =>
     },
   );
 
-// tester / coder 両 pane の id。codex-herdr でない run では null のままで、closeHerdrPanes は
-// 何もしない。
+// codex-herdr でない run では null のままで、closeHerdrPanes は何もしない。
 let herdrPanes = null;
 // run-workflow.js の calls.agent は各 agent の {prompt, opts} しか記録しないので、pane split
 // から解決した pane id や開閉回数がこの workflow 自身の返り値 (build.js がさらに自分の返り値へ

@@ -1292,7 +1292,5 @@ return {
   // leaks specs, research notes, and local config into the PR; without it on the return value
   // nobody can see what stayed out.
   unstaged: Array.isArray(ship.unstaged) ? ship.unstaged : [],
-  // Forwarded from code's own return value unchanged (undefined for a claude run), so a
-  // codex-herdr build's pane lifecycle is visible without opening detail on a stop.
   herdr_panes: code.herdr_panes,
 };
