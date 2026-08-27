@@ -159,8 +159,9 @@ def verify(repo: Path, report: TriageReport, base: str) -> Report:
         1 for commit in report["commits"] for row in commit if row.get("section") == WAITING_SECTION
     )
     # A row the commit cap left in `deferred` is still promotion-worthy, so the store carries it
-    # under `昇格待ち` to wait for the next run. Only a row arriving from elsewhere (`単発`, or fresh)
-    # is new to that section; one already there stays counted once, in start_count.
+    # under `昇格待ち` to wait for the next run. Only a row arriving from elsewhere
+    # (`単発`, or fresh) is new to that section; one already there stays counted once,
+    # in start_count.
     inflow = sum(1 for row in report["deferred"] if row.get("section") != WAITING_SECTION)
     expected_remaining = start_count - cleared + inflow - rejected_added(repo, base)
     actual_remaining = section_rows(_store(repo), WAITING)
