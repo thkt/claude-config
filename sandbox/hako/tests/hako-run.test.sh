@@ -30,6 +30,11 @@ TEST_TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/hako-run-tests-XXXXXX")
 cleanup() { rm -rf "$TEST_TMPDIR"; }
 trap cleanup EXIT
 
+# hako.sh's resolve_workspace_src takes its clone directory from TMPDIR. Pointed inside
+# TEST_TMPDIR so the trap above carries the clones away; left at the outer value, every
+# scenario strands one full clone beside it.
+export TMPDIR="$TEST_TMPDIR"
+
 STUB_BIN="$TEST_TMPDIR/bin"
 mkdir -p "$STUB_BIN"
 
