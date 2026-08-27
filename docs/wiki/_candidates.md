@@ -49,6 +49,7 @@
 - 供給の一覧は実行側の定数で持ち、docstring やインライン辞書リテラルへ分散すると契約が陳腐化する #557
 - seam の受け入れテストが新関数を直接呼ぶだけでは足りず、production の実呼び出し口 (CLI main() 等) も同じ経路を通ることを確認する #558
 - 契約に返り値フィールドを追加するときは、早期 return (stopped) 分岐も含めた全 exit path でそのフィールドを持たせる #562
+- marketplace action が GitHub から削除されるとそれを参照する workflow は評価不能になり trigger のたびに startup failure が積まれる。gh api で参照先の実在を確認し、無ければ同等処理を gh CLI ベースの inline script へ置き換えて外部依存を切る #565
 
 ## 棄却
 
