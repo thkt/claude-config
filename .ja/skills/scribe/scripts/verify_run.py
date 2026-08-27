@@ -94,14 +94,9 @@ def _store(repo: Path) -> str:
 
 
 def _store_at(repo: Path, rev: str) -> str:
-    """不在は _store と同じく 0 行として読む。SKILL.md Phase 1 step 3 が、蓄積の無い
-    リポジトリでは Phase 6 の worktree 内で作ると定めているので、初回 run は分岐点に
-    何も持たない。
-
-    `git show` の非ゼロ終了は見ない。不在と読めないとを同じ status で返すので、読めない
-    rev まで 0 行として通すと、誰も読んでいない store から verdict が出る。ls-tree は
-    不在のとき何も出さずに 0 で終わり、解決できない rev では落ちるので、この 2 つを分ける。
-    """
+    """`git show` の終了コードは見ない。不在と読めないを同じ値で返すので、読めなかった rev
+    まで 0 行として通り、誰も読んでいない store から verdict が出る。ls-tree は不在のとき
+    何も出さずに 0 で終わり、解決できない rev では落ちる。"""
     if not _git(repo, "ls-tree", "--name-only", rev, f"{WIKI_DIR}/_candidates.md").strip():
         return ""
     return _git(repo, "show", f"{rev}:{WIKI_DIR}/_candidates.md")

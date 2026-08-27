@@ -134,9 +134,8 @@ def should_prompt(
     runner: GhRunner | None = None,
     gh: Path | None = None,
 ) -> bool:
-    """Only a nudge stamps the cooldown, so a pull that finds nothing leaves the next pull free
-    to ask GitHub again. Stamping on every evaluation would buy those round trips at the cost of
-    swallowing a merge that lands minutes into the window."""
+    """Not a stamp on every evaluation: it would buy the gh round trips a quiet pull spends at
+    the cost of swallowing a merge that lands minutes into the window it opened."""
     if not (directory / "docs" / "wiki").is_dir():
         return False
     stamp_path = stamp or _default_stamp()

@@ -94,15 +94,9 @@ def _store(repo: Path) -> str:
 
 
 def _store_at(repo: Path, rev: str) -> str:
-    """Absent reads as no rows, the same as _store: SKILL.md Phase 1 step 3 writes the store
-    inside Phase 6's worktree when the repository has none, so the first run has nothing at the
-    branch point.
-
-    Not a non-zero exit from `git show`: that answers absent and unreadable with the same
-    status, and reading an unreadable rev as no rows computes a verdict from a store nobody
-    read. `ls-tree` separates the two, printing nothing for an absent path while still failing
-    on a rev it cannot resolve.
-    """
+    """Not `git show`'s exit status: absent and unreadable share it, so a rev that could not be
+    read would pass as no rows and the verdict would come from a store nobody read. `ls-tree`
+    prints nothing for an absent path and still fails on a rev it cannot resolve."""
     if not _git(repo, "ls-tree", "--name-only", rev, f"{WIKI_DIR}/_candidates.md").strip():
         return ""
     return _git(repo, "show", f"{rev}:{WIKI_DIR}/_candidates.md")
