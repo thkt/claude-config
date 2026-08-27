@@ -1,7 +1,7 @@
 export const meta = {
   name: "polish",
   description:
-    'Codex review + cleanup を決定論的に行う workflow。Codex の findings は critic-audit の challenge を必ず通り、triage (confirmed / disputed / downgraded / needs_context) は script が判定するため、fact 扱いの集約や challenge の skip が起きない。fix 後は critic-audit が post-fix diff で resolved / still_open を再判定し、still_open は reopened として結果に出る。単体で呼ぶ。入れ子で呼ぶ workflow は無い。',
+    "Codex review + cleanup を決定論的に行う workflow。Codex の findings は critic-audit の challenge を必ず通り、triage (confirmed / disputed / downgraded / needs_context) は script が判定するため、fact 扱いの集約や challenge の skip が起きない。fix 後は critic-audit が post-fix diff で resolved / still_open を再判定し、still_open は reopened として結果に出る。単体で呼ぶ。入れ子で呼ぶ workflow は無い。",
   whenToUse:
     "diff の外部レンズ review と AI slop 除去を headless に行う。args は scope 文字列、または {scope, repo, mode, base}。scope 省略時は uncommitted な変更、無ければ base branch (既定 main) より先行する commit の diff (push 済み branch diff) を対象とする。mode: full (既定) は review -> fix -> rejudge -> cleanup、review は challenge 済み findings を返すだけ (fix しない)、cleanup は simplify + enhancer-code + テスト検証のみ。内部 reviewer の深い audit は audit workflow を使う。",
   phases: [
@@ -174,7 +174,13 @@ const CLEANUP_SCHEMA = {
   },
 };
 
-let codex = { available: false, has_changes: true, diff_kind: "", findings: [] };
+let codex = {
+  available: false,
+  has_changes: true,
+  diff_kind: "",
+  findings: [],
+  review_note: "cleanup 専用実行のため Review 段をスキップ",
+};
 let verdicts = [];
 let survivors = [];
 let needsContext = [];
@@ -206,14 +212,23 @@ if (mode !== "cleanup") {
       schema: CODEX_SCHEMA,
       model: "sonnet",
     },
-  )) || { available: false, has_changes: true, diff_kind: "", findings: [] };
+  )) || {
+    available: false,
+    has_changes: true,
+    diff_kind: "",
+    findings: [],
+    review_note: "Review agent が結果を返さなかった",
+  };
+  if (codex.review_note === undefined) {
+    codex.review_note = codex.available ? "Review 完了" : "codex CLI なし";
+  }
   if (!codex.has_changes) {
     return { mode, polished: false, why: "diff に変更が無く polish 対象なし" };
   }
   log(
     codex.available
       ? `Codex findings ${codex.findings.length} 件。`
-      : "codex CLI なし。findings なしで cleanup へ。",
+      : `${codex.review_note}。findings なしで cleanup へ。`,
   );
 
   // ---- Challenge: critic-audit による false positive 除去 ----
@@ -269,6 +284,7 @@ if (mode !== "cleanup") {
     return {
       mode,
       codex_available: codex.available,
+      review_note: codex.review_note,
       diff_kind: codex.diff_kind,
       survivors,
       needs_context: needsContext,
@@ -384,6 +400,7 @@ const cleanup = (await agent(
 return {
   mode,
   codex_available: codex.available,
+  review_note: codex.review_note,
   diff_kind: codex.diff_kind,
   findings: codex.findings.length,
   survivors: survivors.length,
