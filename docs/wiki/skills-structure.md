@@ -8,12 +8,12 @@ kind: structure
 
 ## 内容
 
-skill は `skills/<name>/SKILL.md` を本体とし、Skill tool が読み込む。27 の skill が SKILL.md を持ち、`skills/_lib/` だけが本体を持たない共有ライブラリになる。
+skill は `skills/<name>/SKILL.md` を本体とし、Skill tool が読み込む。29 の skill が SKILL.md を持ち、`skills/_lib/` だけが本体を持たない共有ライブラリになる。
 
 ## 境界
 
 - skill は Skill tool で起動し、workflow は Workflow tool で起動する。両者は別の機構で、skill から workflow を呼ぶ経路は無い
-- `user-invocable: false` の skill は `/名前` で呼べない。他の skill か agent が参照する側になる。11 件がこれに当たる
+- `user-invocable: false` の skill は `/名前` で呼べない。他の skill か agent が参照する側になる。12 件がこれに当たる
 - `skills/_lib/` は SKILL.md を持たず、skill として起動しない。`review_score.py` と `review-harness.md` を読むのは reviewer skill の測定手順で、`rules/development/TESTING.md` と `skills/use-context-reviewer-security/test/README.md` がその経路を書く
 - skill の scripts は他の skill から `${CLAUDE_SKILL_DIR}/../<skill>/scripts/<file>` で呼べる。実在する経路は 3 本で、`issue/validate-issue-body.py`、`research/find-prior-research.py`、`scribe/find_wiki_rule.py` が呼ばれる側になる
 
@@ -21,7 +21,7 @@ skill は `skills/<name>/SKILL.md` を本体とし、Skill tool が読み込む�
 
 | 対象 | 契約 |
 | --- | --- |
-| frontmatter の必須 | `name`、`description`、`allowed-tools` の 3 つを 27 件すべてが持つ。`model` は 15 件、`argument-hint` は 13 件、`user-invocable` は 11 件、`context` は 7 件、`agent` は 4 件 |
+| frontmatter の必須 | `name`、`description`、`allowed-tools` の 3 つを 29 件すべてが持つ。`model` は 16 件、`argument-hint` は 14 件、`user-invocable` は 12 件、`context` は 7 件、`agent` は 4 件 |
 | `${CLAUDE_SKILL_DIR}` | skill 自身のディレクトリを指す。`../` で 1 つ上がると `skills/` に届き、他の skill の scripts へ辿れる |
 | `allowed-tools` と呼び出し形 | SKILL.md が書くコマンドと `allowed-tools` の許可が一致しないと拒否される。`Bash(python3:*)` を持たない skill は `python3` で script を呼べない |
 | テストの置き場 | `skills/<name>/tests/*_test.py`。CI は `find agents hooks skills workflows -name '*_test.py'` で拾うので、`docs/` 配下に置くと走らない |

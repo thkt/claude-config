@@ -61,11 +61,11 @@ test_command の失敗は計画スコープだけに帰着できなければな�
 
 ### reference_module
 
-contract が引用できるのは 1 箇所の振る舞いだけなので、周辺構造は実装者が手で組むことになる。Phase 2 手順 3 の控えを `reference_module: { path, files, instances }` へ記録し、探索はやり直さない。構造は plan の参照モジュール節に書き、各 unit はそこを参照する。
+contract が引用できるのは 1 箇所の振る舞いだけなので、周辺構造は実装者が手で組むことになる。Phase 2 手順 3 の控えを `reference_module: { kind, reason, path, files, instances, conventions }` へ記録し、探索はやり直さない。kind は module/no-module/new-shape のいずれかで、module 以外なら理由 (reason) が必須。構造は plan の参照モジュール節に書き、各 unit はそこを参照する。
 
 1. 骨格が 4 ファイル未満に収まるときだけ、U-001 をその構造複製にする。複製するのは同じディレクトリ配置、コンポーネント名、export 名で、tests は空配列。収まらないときは layer ごとに unit を割り、各 unit が担当分を複製する
 2. 維持する共有慣例 (合成する共有コンポーネント/整形を書く場所/状態の渡し方) を明記する。逸脱は plan に理由を書いたときのみ許す
-3. 選ばなかった候補の名前と、kind が module でない理由を散文に書く。理由の無い null は計画の欠陥として扱う
+3. 選ばなかった候補の名前と、kind が module でない理由を reason に書く。reason の無い kind は計画の欠陥として扱う
 4. instances が 2 以上なら「N 例目」と散文に書き、実装者へ設計でなく複製を指示する
 
 ### preconditions
