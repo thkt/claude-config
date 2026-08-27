@@ -333,6 +333,80 @@ class RenderTest(unittest.TestCase):
         self.assertIn("**Planned test statements not found**", body)
 
 
+class ConformanceOrderTest(unittest.TestCase):
+    """render() ranks conformance by severity right after building the list, so a
+    reviewer sees the highest-severity finding first regardless of payload order.
+    structure keeps whatever order the payload gave it -- only conformance is ranked.
+    """
+
+    def test_conformance_renders_high_medium_low_when_the_payload_lists_them_low_first(
+        self,
+    ) -> None:
+        """conformance findings render in high, medium, low order when the payload lists them
+        low first."""
+        body = render(
+            {
+                **CLEAN,
+                "conformance": [
+                    {"category": "a", "severity": "low", "detail": "low finding"},
+                    {"category": "b", "severity": "medium", "detail": "medium finding"},
+                    {"category": "c", "severity": "high", "detail": "high finding"},
+                ],
+            }
+        )
+        self.assertLess(body.index("high finding"), body.index("medium finding"))
+        self.assertLess(body.index("medium finding"), body.index("low finding"))
+
+    def test_conformance_findings_sharing_one_severity_keep_the_order_they_had_in_the_payload(
+        self,
+    ) -> None:
+        # low sits between the two highs in the payload; a correct sort must move both
+        # highs ahead of it while keeping "first high" before "second high" (sorted's
+        # stability), not just leave the payload order untouched.
+        body = render(
+            {
+                **CLEAN,
+                "conformance": [
+                    {"category": "a", "severity": "low", "detail": "low item"},
+                    {"category": "b", "severity": "high", "detail": "first high"},
+                    {"category": "c", "severity": "high", "detail": "second high"},
+                ],
+            }
+        )
+        self.assertLess(body.index("first high"), body.index("second high"))
+        self.assertLess(body.index("second high"), body.index("low item"))
+
+    def test_a_conformance_finding_with_no_severity_renders_after_every_finding_that_carries_one(
+        self,
+    ) -> None:
+        body = render(
+            {
+                **CLEAN,
+                "conformance": [
+                    {"category": "a", "detail": "no severity finding"},
+                    {"category": "b", "severity": "low", "detail": "low finding"},
+                    {"category": "c", "severity": "high", "detail": "high finding"},
+                ],
+            }
+        )
+        self.assertLess(body.index("high finding"), body.index("no severity finding"))
+        self.assertLess(body.index("low finding"), body.index("no severity finding"))
+
+    def test_the_structure_section_keeps_the_order_the_payload_gave_it(self) -> None:
+        # structure carries the same severity field as conformance but the contract
+        # keeps it out of the rank sort, so a low-then-high payload must stay low-then-high.
+        body = render(
+            {
+                **CLEAN,
+                "structure": [
+                    {"category": "a", "severity": "low", "detail": "structure low"},
+                    {"category": "b", "severity": "high", "detail": "structure high"},
+                ],
+            }
+        )
+        self.assertLess(body.index("structure low"), body.index("structure high"))
+
+
 class LabelTest(unittest.TestCase):
     def test_every_label_key_is_rendered(self) -> None:
         # A label whose producer is gone renders nothing, so no assertion on the output catches it.
