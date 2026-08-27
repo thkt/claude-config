@@ -1219,7 +1219,7 @@ const ship = await agent(
         `追記と \`gh pr create\` を \`&&\` で連結し、レンダラー失敗時は PR 作成前に中断させる。リポジトリルートから ` +
           `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{title}" --body-file {bodyfile}\` を実行する。{title} は手順 (1) で決めたタイトル。` +
           `pr-body.py は payload が壊れているか必須フィールドを欠くと非ゼロで終了する (何も出力しない)。チェーンが失敗したら他の手段で PR を作らない。committed と空の pr_url とエラーを報告する。`,
-        `shell の \`&&\` はツール呼び出しへ連結できないので、不変条件は自分で守る: リポジトリルートから \`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile}\` を実行し、続けて {bodyfile} を最後まで読み切る。読み切れなかったら (pr-body.py が非ゼロ終了したか何も書かなかった)、pull request を作らない。committed と空の pr_url とエラーを報告する。読み切れたら mcp__github__create_pull_request ツールを draft: true${baseBranch ? `、base: ${JSON.stringify(baseBranch)}` : ""}、title: {title}、body に body ファイルの全文を指定して呼ぶ。`,
+        `shell の \`&&\` はツール呼び出しへ連結できないので、不変条件は自分で守る: リポジトリルートから \`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile}; echo "renderer-exit=$?"\` を実行する。{bodyfile} を読み切れるかでは判定しない。手順 (1) が既に人の書く本文をそこへ書いており、pr-body.py が非ゼロ終了して何も追記しなかった run でも最後まで読み切れる。renderer-exit が 0 以外なら pull request を作らない。committed と空の pr_url とエラーを報告する。0 なら mcp__github__create_pull_request ツールを draft: true${baseBranch ? `、base: ${JSON.stringify(baseBranch)}` : ""}、title: {title}、body に body ファイルの全文を指定して呼ぶ。`,
       )}\n` +
       `committed の状態と PR url を報告する。${guard}`,
   ),

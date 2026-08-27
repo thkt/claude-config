@@ -1331,7 +1331,7 @@ test("with the per-unit commits on, the Ship prompt instructs a remainder commit
 // U-003: gh's absence blocks the shell `&&` chain that gates `gh pr create` on pr-body.py
 // succeeding, since the MCP create_pull_request tool cannot join a shell chain. The Ship
 // prompt names both routes and restates the chain's invariant as a prompt sentence instead:
-// a body file the agent cannot read back in full leaves the pull request uncreated.
+// a non-zero renderer exit leaves the pull request uncreated.
 test("the Ship prompt names both the gh command and the MCP tool for creating the pull request", async () => {
   const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
   const ship = agentCallsOf(run.calls, "ship")[0];
@@ -1344,19 +1344,28 @@ test("the Ship prompt names both the gh command and the MCP tool for creating th
   );
 });
 
-test("the Ship prompt states that a body file it cannot read leaves the pull request uncreated", async () => {
+// Not readability of the body file: step (1) writes the human-facing body into it before
+// pr-body.py ever runs, so it reads back in full on a run where the renderer appended nothing.
+// The exit status is the same signal the gh route's `&&` chain branches on.
+test("the MCP route gates the pull request on the renderer's exit status, not on the body file reading back", async () => {
   const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
   const ship = agentCallsOf(run.calls, "ship")[0];
   assert.ok(ship, "the ship agent ran");
+  const mcpRoute = ship.prompt.slice(ship.prompt.indexOf("cannot chain into a tool call"));
   assert.match(
-    ship.prompt,
-    /cannot read the body file/i,
-    "the invariant names the failure condition, replacing the shell && chain the MCP route cannot join",
+    mcpRoute,
+    /renderer-exit=\$\?/,
+    "the MCP route captures pr-body.py's exit status",
   );
   assert.match(
-    ship.prompt,
-    /(the pull request is not created|do not create the pull request|leaves the pull request uncreated)/i,
-    "the invariant names the consequence: no pull request gets created",
+    mcpRoute,
+    /renderer-exit is anything but 0[\s\S]{0,120}do not create the pull request/i,
+    "a non-zero exit is the condition that leaves the pull request uncreated",
+  );
+  assert.doesNotMatch(
+    mcpRoute,
+    /if you cannot read the body file back in full/i,
+    "the readability predicate is gone: it holds on a failed render too",
   );
 });
 
