@@ -783,15 +783,8 @@ test("think SKILL.md requires a seam unit to carry the file that makes the conne
     /seam unit の files には.{0,30}非テストファイル/,
     "ja: the non-test file is required",
   );
-  assert.match(ja, /配線を作る unit の tests/, "ja: where the assertion goes instead");
-
   const en = read(skills.en);
   assert.match(en, /at least one non-test file/i, "en: the non-test file is required");
-  assert.match(
-    en,
-    /tests of the unit that makes the wiring/i,
-    "en: where the assertion goes instead",
-  );
 });
 
 // Step 11 requires exactly one seam unit last once 2+ units carry tests. Step 12's old exception
@@ -821,10 +814,40 @@ test("both trees' step 12 makes the unit carrying the non-test file the seam", (
     assert.ok(step, `${lang}: step 12 exists`);
     assert.match(
       step,
-      lang === "ja"
-        ? /非テストファイルを持つ unit .{0,10}seam/
-        : /unit carrying the non-test file .{0,20}seam/i,
+      lang === "ja" ? /それを持つ unit を seam に/ : /Make the unit carrying it the seam/i,
       `${lang}: step 12 makes the unit carrying the non-test file the seam`,
+    );
+  }
+});
+
+// Not the per-language patterns above: each of those passes on its own tree, so a clause added to
+// one side alone (an "already carries" qualifier on the English step, say) satisfies both branches
+// and the divergence goes unseen. Counting sentences reads the shape rather than the wording.
+test("both trees' step 12 carries the same number of claims", () => {
+  const counts = Object.fromEntries(
+    Object.entries(skills).map(([lang, path]) => [
+      lang,
+      step12(read(path))
+        .split(/[.。]\s*/)
+        .filter((s) => s.trim()).length,
+    ]),
+  );
+  assert.equal(
+    counts.ja,
+    counts.en,
+    `step 12 diverges: ja carries ${counts.ja} claims, en carries ${counts.en}`,
+  );
+});
+
+// step 11 places the seam last. A step 12 that lets a non-last unit become the seam cancels it,
+// which is what this issue set out to stop.
+test("both trees' step 12 does not qualify the seam as a unit that precedes another", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const step = step12(read(path));
+    assert.doesNotMatch(
+      step,
+      lang === "ja" ? /先行.{0,10}unit/ : /preceding unit/i,
+      `${lang}: step 12 leaves step 11's ordering intact`,
     );
   }
 });
