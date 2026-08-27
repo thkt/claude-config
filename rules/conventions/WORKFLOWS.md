@@ -46,7 +46,7 @@ A script accepts `args` as either a string or an object. The string is shorthand
 
 `meta.description` and `meta.whenToUse` are prose for whoever decides whether to invoke the workflow. `description` answers what the workflow does, `whenToUse` answers when to reach for it. A reader gets the `args` shape from the "Taking arguments and prompts" table above instead, so neither field names that identifier or spells out its object keys.
 
-A workflow script holds a top-level `return`, so it is neither ESM nor CommonJS and nothing can `import()` it to read `FOCUS` or `MODES` as live values (Script evaluation form). meta-contract.test.js instead reads the script and its `meta` literal as source text, extracts the const's keys and the `whenToUse` listing by parsing rather than by importing, and compares the two extracted sets.
+A workflow script holds a top-level `return`, so it is neither ESM nor CommonJS and nothing can `import()` it to read `FOCUS` or `MODES` as live values (Script evaluation form). That is why the check below parses both sides as source text rather than importing either.
 
 | Target                                                          | Convention                                                                                                                                                             |
 | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

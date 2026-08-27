@@ -9,7 +9,7 @@ scope: [meta, workflows]
 
 ## Context and Problem Statement
 
-`rules/conventions/WORKFLOWS.md` (added alongside this DR) tells a `whenToUse` listing such as audit's `focus (a / b / ...)` to follow its script's own const (`FOCUS`, `MODES`) as a derived copy. `workflows/_lib/tests/meta-contract.test.js` was written to enforce that, and its own header comment states the reason in passing: the enum "survives that rule only because a caller cannot recover it at run time." Neither the rule nor the test explains, on its own, why the value has to live in prose at all instead of being read from the const directly, or when that constraint stops holding. This record answers both.
+`rules/conventions/WORKFLOWS.md` (added alongside this DR) tells a `whenToUse` listing such as audit's `focus (a / b / ...)` to follow its script's own const (`FOCUS`, `MODES`) as a derived copy. `workflows/_lib/tests/meta-contract.test.js` was written to enforce that, and its own header comment states the reason in passing: the enum "survives that rule only because a caller cannot recover it at run time." Neither the rule nor the test explains why the value has to live in prose at all instead of being read from the const directly, or when that constraint stops holding.
 
 ## Decision Drivers
 
@@ -28,7 +28,7 @@ scope: [meta, workflows]
 
 Chosen option: "Keep the enum values in `whenToUse` prose as a derived copy, held honest by a parsing test", because the decision-time reader has no other channel to the const's values.
 
-`meta.whenToUse` is consulted before the script runs, and the Script evaluation form rules out `import()` as a way to read `FOCUS` or `MODES` live at that point. The value list therefore has to be restated as static prose for the reader to see it in advance. That restatement is a copy DRY cannot merge away, so Single Source of Truth applies: the const stays canonical, and the copy in `whenToUse` carries a marker back to it, in the form of `meta-contract.test.js` reading both as source text and failing on any divergence.
+The value list has to be restated as static prose for the reader to see it in advance. That restatement is a copy DRY cannot merge away, so Single Source of Truth applies: the const stays canonical, and `meta-contract.test.js` is the marker tying the copy back to it, failing on any divergence.
 
 ### Consequences
 
@@ -39,7 +39,6 @@ Chosen option: "Keep the enum values in `whenToUse` prose as a derived copy, hel
 ### Confirmation
 
 - `node --test "workflows/**/tests/*.test.js"` passes `meta-contract.test.js`'s focus/mode divergence checks
-- `rules/conventions/WORKFLOWS.md`'s "meta.description and whenToUse content" section names the const as canonical for any enumerated `whenToUse`
 
 ## Pros and Cons of the Options
 
