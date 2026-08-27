@@ -58,6 +58,17 @@ const PLAN_QUALITY = {
   "plan-drift": true,
   "code-failed": false,
 };
+// The window-tally keys record.py's stdout carries alongside path/run_id (its own docstring).
+// record.py omits all four together when it cannot read RUNS_PATH back, so recordedCounts
+// holds either every key or none; the caller reads their presence as one unit. Naming each
+// key's type here once and deriving RECORD_SCHEMA's matching properties below keeps the two
+// from drifting apart when a key is added, renamed, or retyped.
+const RECORD_COUNT_TYPES = {
+  started: "number",
+  stops: "number",
+  trigger_met: "boolean",
+  skipped_lines: "number",
+};
 // The schema is written out rather than assembled by obj(), which this block precedes.
 const RECORD_SCHEMA = {
   type: "object",
@@ -68,36 +79,17 @@ const RECORD_SCHEMA = {
     run_id: { type: "string", description: "run_id from record.py's stdout JSON, verbatim" },
     // The four window-tally keys are optional: record.py omits all four together when it
     // cannot read RUNS_PATH back (see its count_plan_quality_stops docstring).
-    started: {
-      type: "number",
-      description: "started count from record.py's stdout JSON, verbatim, when present",
-    },
-    stops: {
-      type: "number",
-      description: "stops count from record.py's stdout JSON, verbatim, when present",
-    },
-    trigger_met: {
-      type: "boolean",
-      description: "trigger_met from record.py's stdout JSON, verbatim, when present",
-    },
-    skipped_lines: {
-      type: "number",
-      description: "skipped_lines count from record.py's stdout JSON, verbatim, when present",
-    },
+    ...Object.fromEntries(
+      Object.entries(RECORD_COUNT_TYPES).map(([key, type]) => [
+        key,
+        { type, description: `${key} from record.py's stdout JSON, verbatim, when present` },
+      ]),
+    ),
   },
 };
 // record.py mints runId, because a workflow script has neither a clock nor a random source
 // (rules/conventions/WORKFLOWS.md § Script evaluation form).
 let runId = "";
-// The window-tally keys record.py's stdout carries alongside path/run_id (its own docstring).
-// record.py omits all four together when it cannot read RUNS_PATH back, so recordedCounts
-// holds either every key or none; the caller reads their presence as one unit.
-const RECORD_COUNT_TYPES = {
-  started: "number",
-  stops: "number",
-  trigger_met: "boolean",
-  skipped_lines: "number",
-};
 let recordedCounts = {};
 // The gates ahead of anchor return without a row: neither is a plan-quality signal, and the
 // recorder's agent would have no repository to be anchored to.

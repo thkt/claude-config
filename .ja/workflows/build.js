@@ -57,6 +57,16 @@ const PLAN_QUALITY = {
   "plan-drift": true,
   "code-failed": false,
 };
+// record.py の stdout が path/run_id と並べて持つ window tally の key。RUNS_PATH を読み
+// 返せない run では record.py が 4 つとも揃って落とすので、recordedCounts も全部揃うか
+// 何も持たないかの 2 択として読む。key の型をここで 1 度だけ名付け、下の RECORD_SCHEMA の
+// 対応する properties をそこから導くことで、key の追加・改名・型変更で両者がずれるのを防ぐ。
+const RECORD_COUNT_TYPES = {
+  started: "number",
+  stops: "number",
+  trigger_met: "boolean",
+  skipped_lines: "number",
+};
 // このブロックは obj() より前に置くので、schema は組み立てずに直に書く。
 const RECORD_SCHEMA = {
   type: "object",
@@ -67,36 +77,17 @@ const RECORD_SCHEMA = {
     run_id: { type: "string", description: "record.py の stdout JSON の run_id をそのまま" },
     // window tally の 4 key は optional。RUNS_PATH を読み返せない run では 4 つとも
     // 揃って落ちる (record.py の count_plan_quality_stops の docstring)。
-    started: {
-      type: "number",
-      description: "record.py の stdout JSON の started をそのまま、存在すれば",
-    },
-    stops: {
-      type: "number",
-      description: "record.py の stdout JSON の stops をそのまま、存在すれば",
-    },
-    trigger_met: {
-      type: "boolean",
-      description: "record.py の stdout JSON の trigger_met をそのまま、存在すれば",
-    },
-    skipped_lines: {
-      type: "number",
-      description: "record.py の stdout JSON の skipped_lines をそのまま、存在すれば",
-    },
+    ...Object.fromEntries(
+      Object.entries(RECORD_COUNT_TYPES).map(([key, type]) => [
+        key,
+        { type, description: `record.py の stdout JSON の ${key} をそのまま、存在すれば` },
+      ]),
+    ),
   },
 };
 // workflow script は時計を持たず、乱数も引けない (rules/conventions/WORKFLOWS.md § Script
 // evaluation form) ので、runId は record.py が発行する。
 let runId = "";
-// record.py の stdout が path/run_id と並べて持つ window tally の key。RUNS_PATH を読み
-// 返せない run では record.py が 4 つとも揃って落とすので、recordedCounts も全部揃うか
-// 何も持たないかの 2 択として読む。
-const RECORD_COUNT_TYPES = {
-  started: "number",
-  stops: "number",
-  trigger_met: "boolean",
-  skipped_lines: "number",
-};
 let recordedCounts = {};
 // anchor より上の gate は行を残さずに返る。plan 品質の信号ではなく、記録の agent を固定する
 // リポジトリも無い。
