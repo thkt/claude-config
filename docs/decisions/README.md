@@ -115,6 +115,7 @@ This directory contains important decisions about the project.
 | [0107](0107-track-research-reports-in-git-while-the-rest-of-the-workspace-stays-untracked.md) | Track research reports in git while the rest of the workspace stays untracked | accepted | 2026-08-26 |
 | [0108](0108-grant-ast-grep-only-to-write-capable-agents.md) | Grant ast-grep only to write-capable agents | accepted | 2026-08-27 |
 | [0109](0109-keep-the-scope-tag-and-retire-the-cluster-promotion-rule.md) | Keep the scope tag and retire the cluster-promotion rule | proposed | 2026-08-27 |
+| [0110](0110-keep-workflow-enums-in-meta-as-derived-copy.md) | Keep workflow enums in meta as a derived copy | accepted | 2026-08-28 |
 | [0111](0111-adopt-apple-container-for-agent-sandbox.md) | Adopt Apple container for agent sandbox | accepted | 2026-08-28 |
 
 ## By Status
@@ -216,6 +217,7 @@ This directory contains important decisions about the project.
 - **0106**: Adopt the wiki as the current-state view over immutable DRs
 - **0107**: Track research reports in git while the rest of the workspace stays untracked
 - **0108**: Grant ast-grep only to write-capable agents
+- **0110**: Keep workflow enums in meta as a derived copy
 - **0111**: Adopt Apple container for agent sandbox
 
 ### Deprecated
