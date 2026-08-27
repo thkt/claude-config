@@ -5,7 +5,10 @@ Run: python3 skills/ablate/tests/usage_counts_test.py
 Fixture records follow the shape a real ~/.claude/projects/**/*.jsonl transcript carries for
 a hook fire (confirmed by reading a live transcript in this session): a top-level "timestamp"
 paired with an "attachment" object whose "hookEvent" is PreToolUse or PostToolUse and whose
-"command" names the hook script that fired.
+"command" names the hook script that fired. A real "command" carries the home-relative form
+the harness invoked ("~/.claude/hooks/pre-bash/wiki_scene.py"), measured over this session's
+transcripts, so the fixtures below write that form rather than the repo-root-relative path a
+harness element is named by.
 """
 
 import json
@@ -62,17 +65,47 @@ class FireCounting(unittest.TestCase):
                 [
                     _fire(
                         event="PreToolUse",
-                        command="hooks/pre-bash/wiki_scene.py",
+                        command="~/.claude/hooks/pre-bash/wiki_scene.py",
                         timestamp="2026-08-01T00:00:00.000Z",
                     )
                 ],
             )
 
-            result = usage_counts.count_usage(root, now=date(2026, 8, 27))
+            result = usage_counts.count_usage(root)
 
-            self.assertEqual(
-                result["elements"]["hooks/pre-bash/wiki_scene.py"]["fires"], 1
+            self.assertEqual(result["elements"]["hooks/pre-bash/wiki_scene.py"]["fires"], 1)
+
+
+class LabelFires(unittest.TestCase):
+    def test_a_fire_whose_command_is_a_label_rather_than_a_path_is_left_out_of_the_tally(
+        self,
+    ) -> None:
+        """T-007 A fire whose command is a label rather than a path is left out of the tally"""
+        # "formatter" and "gates changed" are command values this session measured in real
+        # transcripts. Neither names a harness element, so counting them would put a key in
+        # the tally that no element in harness_elements' population can ever join to.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_transcript(
+                root,
+                "project-a/session-1.jsonl",
+                [
+                    _fire(
+                        event="PostToolUse",
+                        command="formatter",
+                        timestamp="2026-08-01T00:00:00.000Z",
+                    ),
+                    _fire(
+                        event="PreToolUse",
+                        command="~/.claude/hooks/pre-bash/wiki_scene.py",
+                        timestamp="2026-08-01T00:00:00.000Z",
+                    ),
+                ],
             )
+
+            result = usage_counts.count_usage(root)
+
+            self.assertEqual(list(result["elements"]), ["hooks/pre-bash/wiki_scene.py"])
 
 
 class RareByDesign(unittest.TestCase):
@@ -128,7 +161,7 @@ class TranscriptSummary(unittest.TestCase):
                 [
                     _fire(
                         event="PreToolUse",
-                        command="hooks/pre-bash/wiki_scene.py",
+                        command="~/.claude/hooks/pre-bash/wiki_scene.py",
                         timestamp="2026-08-01T00:00:00.000Z",
                     )
                 ],
@@ -139,18 +172,16 @@ class TranscriptSummary(unittest.TestCase):
                 [
                     _fire(
                         event="PostToolUse",
-                        command="hooks/post-bash/scribe_prompt.py",
+                        command="~/.claude/hooks/post-bash/scribe_prompt.py",
                         timestamp="2026-08-10T00:00:00.000Z",
                     )
                 ],
             )
 
-            result = usage_counts.count_usage(root, now=date(2026, 8, 27))
+            result = usage_counts.count_usage(root)
 
             self.assertEqual(result["transcript_count"], 2)
-            self.assertEqual(
-                result["date_range"], {"start": "2026-08-01", "end": "2026-08-10"}
-            )
+            self.assertEqual(result["date_range"], {"start": "2026-08-01", "end": "2026-08-10"})
 
 
 if __name__ == "__main__":

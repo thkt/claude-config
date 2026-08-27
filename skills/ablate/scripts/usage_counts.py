@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Per-element hook fire counting and last-used dating for the ablate skill.
 
-Reads every session transcript under `~/.claude/projects/**/*.jsonl` and counts, per
-harness element, how many PreToolUse/PostToolUse hook fires named it and the most recent
-date one did.
+Reads every session transcript under the transcripts root the caller passes (the running
+side's `projects/` directory) and counts, per harness element, how many PreToolUse/PostToolUse
+hook fires named it and the most recent date one did.
 
 Not a CLI entry point: skills/ablate/SKILL.md imports this module for the constants and
 functions below, mirroring arms.py / verdict.py's own docstring convention
@@ -14,10 +14,11 @@ script constants, not as prose in SKILL.md).
 from __future__ import annotations
 
 import json
+import re
 import sys
 from collections.abc import Iterator
 from datetime import date, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import TypedDict
 
 from arms import UNMEASURED
@@ -25,13 +26,28 @@ from verdict import DELETE_CANDIDATE, NEEDS_HUMAN_JUDGMENT
 
 # A real transcript records one hook fire as a top-level "attachment" object whose
 # hookEvent names the event and whose command names the fired script (confirmed by reading
-# a live ~/.claude/projects/**/*.jsonl transcript in this session: attachment.type
+# a live transcript under the running side's projects/ directory in this session:
+# attachment.type
 # "hook_success", attachment.hookEvent "PreToolUse", attachment.command
 # "${CLAUDE_PLUGIN_ROOT}/hooks/context-gate.sh", sibling top-level "timestamp"). The
 # contract also names "hookSpecificOutput" records; no attachment sampled in this session
 # carried that key, so reading it is deferred rather than guessed at (see this unit's
 # reported deferred list).
 FIRE_EVENTS = frozenset({"PreToolUse", "PostToolUse"})
+
+# A transcript's `command` is the string the harness invoked: either a path running through
+# the .claude directory (a tilde- or $HOME-anchored one, spelled out in this module's tests)
+# or one starting from an unexpanded plugin variable ("${CLAUDE_PLUGIN_ROOT}/hooks/
+# context-gate.sh"), both measured in this session. A harness element is named by its
+# repo-root-relative path. Without dropping the lead-in, neither RARE_BY_DESIGN nor
+# harness_elements' population matches a single key.
+_CLAUDE_DIR_MARKER = "/.claude/"
+_VARIABLE_PREFIX_RE = re.compile(r"^\$\{[A-Z_]+\}/")
+
+# The suffixes that count as an element. Some fires carry a label instead of a path
+# (measured in this session's transcripts: "formatter", "gates changed", "guardrails..."),
+# and a label names no harness element, so it stays out of the tally.
+ELEMENT_SUFFIXES = frozenset({".py", ".sh", ".js"})
 
 # Elements expected to fire rarely by their own design — a safety net exercised only on an
 # uncommon input, not a frequently-run path — held as a script constant per
@@ -44,8 +60,8 @@ RARE_BY_DESIGN: frozenset[str] = frozenset({"hooks/security/rm_to_trash.py"})
 
 # How many days back from `now` a most-recent fire still counts as observed. Past this
 # window, an element reports as unmeasured rather than keeping a stale last-used date alive
-# (T-003; issue #487 Testing Decisions: "計測窓の定数を動かすと、未計測として報告される要素
-# が変わることを固定する").
+# (T-003; issue #487 Testing Decisions asks that moving this constant change which elements
+# report as unmeasured, which is why the test patches it rather than picking a stale date).
 MEASUREMENT_WINDOW_DAYS = 90
 
 
@@ -59,6 +75,24 @@ class UsageResult(TypedDict):
     elements: dict[str, ElementUsage]
     transcript_count: int
     date_range: dict[str, str | None]
+
+
+def element_path(command: str) -> str | None:
+    """The repo-root-relative path of the element `command` fired, or None when it names no
+    element.
+
+    Drops the prefix, then treats the remainder as a path only when it carries an
+    ELEMENT_SUFFIXES suffix. An absolute path, or one still leading with an unexpanded
+    variable, has no repo-root-relative form, so it returns None.
+    """
+    text = command.strip()
+    cut = text.find(_CLAUDE_DIR_MARKER)
+    text = text[cut + len(_CLAUDE_DIR_MARKER) :] if cut != -1 else _VARIABLE_PREFIX_RE.sub("", text)
+    if not text or text[0] in "~$/":
+        return None
+    if PurePosixPath(text).suffix not in ELEMENT_SUFFIXES:
+        return None
+    return text
 
 
 def _parse_date(timestamp: str) -> date | None:
@@ -97,19 +131,18 @@ def _iter_fires(path: Path) -> Iterator[tuple[str, date]]:
             timestamp = record.get("timestamp")
             if not isinstance(command, str) or not isinstance(timestamp, str):
                 continue
+            element = element_path(command)
+            if element is None:
+                continue
             fire_date = _parse_date(timestamp)
             if fire_date is None:
                 continue
-            yield command, fire_date
+            yield element, fire_date
 
 
-def count_usage(root: Path, now: date) -> UsageResult:
-    """Scans every `*.jsonl` transcript under `root` and tallies fires per element.
-
-    `now` is passed in rather than read from the clock so a caller (classify's callers,
-    and this unit's tests) can pin it; `count_usage` itself does not use `now` beyond
-    accepting it for callers that want one now/root pairing.
-    """
+def count_usage(root: Path) -> UsageResult:
+    """Scans every `*.jsonl` transcript under `root` and tallies fires per element. An
+    element's key is the repo-root-relative path element_path returns."""
     transcripts = sorted(root.glob("**/*.jsonl"))
     elements: dict[str, ElementUsage] = {}
     fire_dates: list[date] = []
@@ -151,13 +184,13 @@ def count_usage(root: Path, now: date) -> UsageResult:
 # every zero-fire element into UNMEASURED and make DELETE_CANDIDATE unreachable — caught by
 # this unit's own break-the-implementation pass on T-002 (docs/wiki/brittle-test-removal.md).
 #
-# | Condition                                                   | Verdict              |
-# | -------------------------------------------------------------- | --------------------- |
-# | path is in RARE_BY_DESIGN                                      | NEEDS_HUMAN_JUDGMENT  |
-# | fires > 0 and last_used is None (inconsistent input)           | UNMEASURED            |
-# | fires > 0 and last_used falls outside MEASUREMENT_WINDOW_DAYS  | UNMEASURED            |
-# | fires > 0 and last_used falls inside MEASUREMENT_WINDOW_DAYS   | NEEDS_HUMAN_JUDGMENT  |
-# | fires == 0                                                      | DELETE_CANDIDATE      |
+# | Condition | Verdict |
+# | --- | --- |
+# | path is in RARE_BY_DESIGN | NEEDS_HUMAN_JUDGMENT |
+# | fires > 0 and last_used is None (inconsistent input) | UNMEASURED |
+# | fires > 0 and last_used falls outside MEASUREMENT_WINDOW_DAYS | UNMEASURED |
+# | fires > 0 and last_used falls inside MEASUREMENT_WINDOW_DAYS | NEEDS_HUMAN_JUDGMENT |
+# | fires == 0 | DELETE_CANDIDATE |
 def classify(path: str, *, fires: int, last_used: str | None, now: date) -> str:
     """Assigns one element's usage observation to DELETE_CANDIDATE, NEEDS_HUMAN_JUDGMENT,
     or UNMEASURED, per the table above. Reads RARE_BY_DESIGN and MEASUREMENT_WINDOW_DAYS
@@ -179,7 +212,7 @@ def main(argv: list[str]) -> int:
     if len(argv) != 2:
         print("usage: usage_counts.py <transcripts-root>", file=sys.stderr)
         return 2
-    result = count_usage(Path(argv[1]), now=date.today())
+    result = count_usage(Path(argv[1]))
     print(json.dumps(result, ensure_ascii=False))
     return 0
 
