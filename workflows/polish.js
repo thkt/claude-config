@@ -192,13 +192,23 @@ const CLEANUP_SCHEMA = {
   },
 };
 
-let codex = { available: false, has_changes: true, diff_kind: "", findings: [] };
+let codex = {
+  available: false,
+  has_changes: true,
+  diff_kind: "",
+  findings: [],
+  review_note: "Review stage skipped: cleanup-only run",
+};
 let verdicts = [];
 let survivors = [];
 let needsContext = [];
 let fix = null;
 let reopened = [];
 let rejudgeNotes = "";
+// Set only when the Review agent call itself returns nothing (crashed / timed out),
+// never when it answers with available: false (codex CLI missing is a verified
+// conclusion, not a degradation).
+let reviewDied = false;
 
 if (mode !== "cleanup") {
   // ---- Review: external Codex lens ----
@@ -206,7 +216,7 @@ if (mode !== "cleanup") {
   const detectNote = scope
     ? `First check with \`git status\` and \`git diff HEAD\` whether changes to polish exist. If not, return has_changes: false with an empty diff_kind. If they do, set diff_kind: uncommitted.`
     : `First determine the kind of target diff. If \`git status --porcelain\` prints anything, diff_kind: uncommitted. Otherwise, if \`git rev-list --count ${base}..HEAD\` is 1 or more, diff_kind: branch (the pushed branch diff). If neither applies, return has_changes: false with an empty diff_kind.`;
-  codex = (await agent(
+  const codexResult = await agent(
     anchor(
       `External Codex review stage. ${detectNote}\n` +
         `Then check \`which codex\`. If missing, return available: false with empty findings.\n` +
@@ -224,7 +234,22 @@ if (mode !== "cleanup") {
       schema: CODEX_SCHEMA,
       model: "sonnet",
     },
-  )) || { available: false, has_changes: true, diff_kind: "", findings: [] };
+  );
+  reviewDied = !codexResult;
+  // CODEX_SCHEMA has no review_note property (additionalProperties: false), so a
+  // codexResult that passed validation never carries one; derive it here directly.
+  if (codexResult) {
+    codex = codexResult;
+    codex.review_note = codex.available ? "Review complete" : "codex CLI missing";
+  } else {
+    codex = {
+      available: false,
+      has_changes: true,
+      diff_kind: "",
+      findings: [],
+      review_note: "Review agent returned nothing",
+    };
+  }
   if (!codex.has_changes) {
     return {
       mode,
@@ -235,7 +260,7 @@ if (mode !== "cleanup") {
   log(
     codex.available
       ? `${codex.findings.length} Codex finding(s).`
-      : "codex CLI missing; proceeding to cleanup with no findings.",
+      : `${codex.review_note}; proceeding to cleanup with no findings.`,
   );
 
   // ---- Challenge: critic-audit filters false positives ----
@@ -292,6 +317,7 @@ if (mode !== "cleanup") {
     return {
       mode,
       codex_available: codex.available,
+      review_note: codex.review_note,
       diff_kind: codex.diff_kind,
       survivors,
       needs_context: needsContext,
@@ -405,9 +431,24 @@ const cleanup = (await agent(
   notes: "validate agent returned nothing",
 };
 
+// WORKFLOWS.md § Degradation recording: a dead Review agent leaves findings at
+// [], so Challenge (nothing to challenge) and Fix (no survivors) never run -- but
+// that is a consequence of the agent dying, not of a genuinely clean diff. Naming
+// all three here (plus the diff_kind: "" -> cleanupTarget fallback it also forces)
+// keeps that reading distinct from a real "nothing to do" run.
+const unverified = reviewDied
+  ? [
+      codex.review_note,
+      "Challenge did not run: Review agent returned nothing, so there were no findings to challenge",
+      "Fix did not run: Review agent returned nothing, so there were no survivors to fix",
+      `Cleanup target fell back to "the current diff": diff_kind stayed empty because the Review agent returned nothing`,
+    ]
+  : [];
+
 return {
   mode,
   codex_available: codex.available,
+  review_note: codex.review_note,
   diff_kind: codex.diff_kind,
   findings: codex.findings.length,
   survivors: survivors.length,
@@ -416,5 +457,6 @@ return {
   reopened,
   rejudge_notes: rejudgeNotes,
   needs_context: needsContext,
+  unverified,
   cleanup,
 };
