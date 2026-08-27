@@ -56,13 +56,11 @@ const REQUIRES_REASON = {
 };
 
 // Scope matching to the single numbered item stating the reference_module rule, not the whole
-// pre-write-check.md document, the same way build.js's planSection scopes to the ## Plan section
-// rather than the whole issue body (afterHeading/nextSection/planSection, workflows/build.js:474-485).
-// `reference_module:` (colon) picks the item stating the field's value shape; item 2's
-// `reference_module.files` (dot) names a path and must not match. Kept in one const and reused,
-// mirroring idSet above.
-const PRE_WRITE_REF_MODULE_ITEM_RE = /^\d+\. .*reference_module:.*$/m;
-const refModuleCheckItem = (doc) => doc.match(PRE_WRITE_REF_MODULE_ITEM_RE)?.[0] ?? null;
+// pre-write-check.md document, reusing the file's own steps() helper the same way the seam step
+// check below it does. `reference_module:` (colon) picks the item stating the field's value
+// shape; item 2's `reference_module.files` (dot) names a path and must not match.
+const refModuleCheckItem = (doc) =>
+  steps(doc).find((line) => line.includes("reference_module:")) ?? null;
 
 // DR-0093 splits reference_module's null into kind (module/no-module/new-shape) with reason.
 // The section's own shape example still shows the pre-DR bare object, so a plan author copying
