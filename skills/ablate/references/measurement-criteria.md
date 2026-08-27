@@ -2,8 +2,9 @@
 
 Used by Phase 2 to build each element's observation and by `verdict.classify` in
 `${CLAUDE_SKILL_DIR}/scripts/verdict.py` to score it. The run count, pass threshold, and arm
-list stay script constants in `${CLAUDE_SKILL_DIR}/scripts/arms.py`
-(`docs/wiki/deterministic-script-judgment.md`); this file never restates them.
+list stay script constants in `${CLAUDE_SKILL_DIR}/scripts/arms.py`; a copy of a number here
+goes stale on the next edit to that file with nothing to catch it
+(`docs/wiki/deterministic-script-judgment.md`).
 
 ## Why a fixed task set
 
@@ -18,8 +19,6 @@ measuring the same rule start from the same task and stay comparable.
 `always-loaded` carries no path or glob condition of its own, so the task below is the only
 thing that makes a run exercise it. `path-triggered` already names its own condition in its
 `paths:` frontmatter; the task below names one concrete file shape that condition matches.
-The Trigger task ID is the literal string Phase 2 passes as `trigger_task` and collects into
-`task_set`.
 
 | Rule                                   | Classification | Trigger task ID    | Task                                                                                              |
 | --------------------------------------- | --------------- | ------------------- | --------------------------------------------------------------------------------------------------- |
@@ -48,9 +47,9 @@ The Trigger task ID is the literal string Phase 2 passes as `trigger_task` and c
 
 `complies` in each observation records whether the wiped arm's transcript already honors the
 triggering task's own rule, judged by reading that arm's output against the specific
-directive the task exercises. `True` means the wiped arm already complies without the
-element restored, so `verdict.classify` reports the element as a delete candidate. `False`
-means the wiped arm's output violates the rule once the element is removed, so
-`verdict.classify` reports needs-human-judgment rather than keep: a human still confirms the
-violation traces to the removed element and not to run noise, since `arms.PASS_THRESHOLD`
-only decides how many of `arms.RUN_COUNT` runs must agree before `complies` is set at all.
+directive the task exercises. `verdict.classify` turns it into a verdict; this file does not
+restate that mapping.
+
+A violation never reads as keep on its own. `arms.PASS_THRESHOLD` decides only how many of
+`arms.RUN_COUNT` runs must agree before `complies` is set at all, so a human still confirms
+the violation traces to the removed element rather than to run noise.

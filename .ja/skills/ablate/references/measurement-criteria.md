@@ -1,9 +1,9 @@
 # /ablate 計測基準
 
 Phase 2 が各要素の観測を組む際と、`${CLAUDE_SKILL_DIR}/scripts/verdict.py` の `verdict.classify`
-が判定する際に使う。実行回数、通過閾値、アームの一覧は
-`${CLAUDE_SKILL_DIR}/scripts/arms.py` の定数に留め (`docs/wiki/deterministic-script-judgment.md`)、
-この本文には書き写さない。
+が判定する際に使う。実行回数、通過閾値、アームの一覧は `${CLAUDE_SKILL_DIR}/scripts/arms.py` の
+定数に留める。数値をここへ複製すると、その定数を次に編集した時点で古くなり、それを捕まえるものが
+無い (`docs/wiki/deterministic-script-judgment.md`)。
 
 ## 固定タスクセットが要る理由
 
@@ -16,8 +16,7 @@ Phase 2 が各要素の観測を組む際と、`${CLAUDE_SKILL_DIR}/scripts/verd
 
 `always-loaded` はそれ自身のパスや glob の条件を持たないため、下表のタスクだけが実行にその規則
 を発火させる。`path-triggered` は `paths:` frontmatter に自身の条件を既に持ち、下表のタスクは
-その条件が一致する具体的なファイルの形を 1 つ挙げる。起動タスク ID は Phase 2 が
-`trigger_task` として渡し、`task_set` へ集める文字列そのもの。
+その条件が一致する具体的なファイルの形を 1 つ挙げる。
 
 | 規則                                     | 分類            | 起動タスク ID        | タスク                                                                                        |
 | ------------------------------------------ | --------------- | ------------------- | ------------------------------------------------------------------------------------------------- |
@@ -45,8 +44,9 @@ Phase 2 が各要素の観測を組む際と、`${CLAUDE_SKILL_DIR}/scripts/verd
 ## `complies` が指すもの
 
 各観測の `complies` は、wiped アームの transcript が、起動タスクが発火させるその規則自身の指示を
-既に満たしているかを記録する。要素を復元しなくても transcript が規則を満たしていれば真とし、
-`verdict.classify` はその要素を delete candidate として報告する。要素を外したことで transcript が
-規則に反していれば偽とし、`verdict.classify` は keep ではなく needs-human-judgment を報告する。
-`arms.PASS_THRESHOLD` は `arms.RUN_COUNT` 回のうち何回が揃えば `complies` を定めるかを決めるだけで、
-その違反が外した要素に起因すると確定するものではないため、人間が確認を挟む。
+既に満たしているかを記録する。そこから verdict を決めるのは `verdict.classify` であり、この本文は
+その対応を繰り返さない。
+
+違反がそれ自体で keep になることはない。`arms.PASS_THRESHOLD` は `arms.RUN_COUNT` 回のうち何回が
+揃えば `complies` を定めるかを決めるだけなので、その違反が外した要素に起因するのか実行のばらつきか
+は人間が確認を挟む。
