@@ -29,15 +29,15 @@ python3 -c 'import sys; sys.path.insert(0, "skills/_lib"); import harness_elemen
 
 Phase 1 が返した要素それぞれについて、`arms.ARMS` の各アームで `arms.arm_command(arm, element)` が返す命令を組み、`arms.RUN_COUNT` 回実行する。各 run の結果から、その要素についての観測 1 件を組む。
 
-| 状況                                     | 扱い                                                             |
-| ---------------------------------------- | ---------------------------------------------------------------- |
-| run 数が `arms.RUN_COUNT` に届かない     | `arms.measurement_status(runs)` が `unmeasured` を返すまま進める |
-| `wiped+1` に渡す要素が決まらない         | `arm_command` が ValueError で止まるので、要素を確定してから呼ぶ |
-| 実行が失敗し結果を読めない run がある    | その run を数えず、observation に届いた run 数だけを載せる       |
+| 状況                                  | 扱い                                                             |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| run 数が `arms.RUN_COUNT` に届かない  | `arms.measurement_status(runs)` が `unmeasured` を返すまま進める |
+| `wiped+1` に渡す要素が決まらない      | `arm_command` が ValueError で止まるので、要素を確定してから呼ぶ |
+| 実行が失敗し結果を読めない run がある | その run を数えず、observation に届いた run 数だけを載せる       |
 
 ## Phase 3: レポート
 
-`report.write_report(root, observations)` を呼ぶ。書き出し先の既定は `docs/audit/` で、ファイル名は UTC の `<YYYY-MM-DD>-<HHMMSS>-ablate.md`。
+`report.write_report(root, observations)` を呼ぶ。同時に `usage_counts.py` も実行し、各要素の発火回数と最終使用日を同じ Harness Elements 表へ組み込む。見る経路は 1 つで、別経路を並走させない。書き出し先の既定は `docs/audit/` で、ファイル名は UTC の `<YYYY-MM-DD>-<HHMMSS>-ablate.md`。
 
 ```bash
 python3 -c 'import sys; sys.path.insert(0, "skills/ablate/scripts"); sys.path.insert(0, "skills/_lib"); import report, json, pathlib; print(report.write_report(pathlib.Path("."), json.load(sys.stdin)))' < <observations.json>
@@ -45,8 +45,9 @@ python3 -c 'import sys; sys.path.insert(0, "skills/ablate/scripts"); sys.path.in
 
 ## Output
 
-| 項目           | 内容                                                     |
-| -------------- | -------------------------------------------------------- |
-| レポートのパス | `write_report` が返したパス                              |
-| 削除候補       | レポートの Delete Candidates 節。0 件のときはその旨      |
-| 測定できた数   | Verdicts 節のうち `unmeasured` でない行数                |
+| 項目           | 内容                                                |
+| -------------- | --------------------------------------------------- |
+| レポートのパス | `write_report` が返したパス                         |
+| 削除候補       | レポートの Delete Candidates 節。0 件のときはその旨 |
+| 測定できた数   | Verdicts 節のうち `unmeasured` でない行数           |
+| Usage          | 各要素の発火回数と最終使用日。Harness Elements 内   |
