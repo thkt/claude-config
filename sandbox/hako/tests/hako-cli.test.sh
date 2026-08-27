@@ -92,6 +92,7 @@ test_an_omitted_or_unknown_agent_name_exits_non_zero_without_calling_container_r
   run_hako "bogus-agent" || status=$?
   assert_eq "unknown agent: exit code is non-zero" "yes" "$([[ "$status" -ne 0 ]] && echo yes || echo no)"
   assert_empty "unknown agent: container run was never called" "$(grep '^run ' "$CONTAINER_LOG" 2>/dev/null || true)"
+  assert_empty "unknown agent: no throwaway clone was left behind" "$(cat "$GIT_LOG" 2>/dev/null || true)"
 
   status=0
   run_hako login || status=$?
@@ -102,6 +103,7 @@ test_an_omitted_or_unknown_agent_name_exits_non_zero_without_calling_container_r
   run_hako login "bogus-agent" || status=$?
   assert_eq "login, unknown agent: exit code is non-zero" "yes" "$([[ "$status" -ne 0 ]] && echo yes || echo no)"
   assert_empty "login, unknown agent: container run was never called" "$(grep '^run ' "$CONTAINER_LOG" 2>/dev/null || true)"
+  assert_empty "login, unknown agent: no throwaway clone was left behind" "$(cat "$GIT_LOG" 2>/dev/null || true)"
 }
 
 echo "=== hako.sh CLI subcommand and validation tests ==="
