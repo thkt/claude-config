@@ -335,8 +335,10 @@ log(
 // adrift.degradation.test.js が readFileSync で読む。audit.routing.test.js の
 // parseRoutingLikeConst が audit.js の ROUTING/FOCUS を読むのと同じ形。
 const EXPIRED_STATUSES = ["rejected", "deprecated", "superseded"];
+// Not an equality test: docs/decisions/ front matter writes `status: "Superseded by DR-0055"`,
+// carrying the successor's id in the same string, so an exact match reads it as live.
 const isExpiredStatus = (status) =>
-  EXPIRED_STATUSES.some((s) => s.toLowerCase() === String(status || "").toLowerCase());
+  EXPIRED_STATUSES.some((s) => String(status || "").toLowerCase().startsWith(s.toLowerCase()));
 
 // ---- Scan: DR ごとに extract -> reviewer 照合を独立に流す ----
 const perDr = await pipeline(
@@ -365,7 +367,9 @@ const perDr = await pipeline(
       // extract stall は unverifiable として Per-DR 列挙に残す (fail-close)
       return perDrRow(a, { note: "extract agent stall" });
     }
-    if (isExpiredStatus(ex.status)) {
+    // A DR the caller named by focus is scanned whatever its status: targets is already
+    // filtered by matchesFocus above, so a non-empty focus means every target was asked for.
+    if (!focus.length && isExpiredStatus(ex.status)) {
       // 失効した DR はもう生きている契約ではないので、Per-DR 行は残したまま reviewer
       // fan-out をまるごと飛ばす (この関数の他の早期 return と同じ fail-close)
       return perDrRow(a, {

@@ -737,3 +737,27 @@ test("T-104 a DR whose status is accepted, empty, or unrecognised reaches the re
     assert.equal(reviewerRan(calls), true, `status "${status}" reaches the reviewer fan-out`);
   }
 });
+
+// docs/decisions/ front matter writes the successor's id into the same string
+// (`status: "Superseded by DR-0055"`), so the check has to be a case-insensitive prefix match.
+// T-101 feeds the bare constant values, which an equality test also passes.
+test("T-105 a status carrying the successor id after the expired word keeps the DR out of the fan-out", async () => {
+  for (const status of ["Superseded by DR-0055", "DEPRECATED as of 2026-01", "Rejected (see #12)"]) {
+    const { calls } = await runWorkflow(adriftJs, {
+      args: { repo: "/abs/target-repo" },
+      stubs: { agent: expiredStatusStub(status) },
+    });
+    assert.equal(reviewerRan(calls), false, `status "${status}" stays out of the fan-out`);
+  }
+});
+
+// The caller asked for this DR by id. Skipping it on status returns a run that scanned nothing
+// while reporting success, so the expired check yields to an explicit focus.
+test("T-106 a DR named by focus is scanned even when its status is expired", async () => {
+  const { calls } = await runWorkflow(adriftJs, {
+    args: { repo: "/abs/target-repo", focus: "0001" },
+    stubs: { agent: expiredStatusStub("Superseded by DR-0055") },
+  });
+
+  assert.equal(reviewerRan(calls), true, "the focus-named DR reaches the reviewer fan-out");
+});

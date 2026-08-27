@@ -334,8 +334,10 @@ log(
 // source adrift.degradation.test.js reads via readFileSync, mirroring how
 // audit.routing.test.js's parseRoutingLikeConst reads ROUTING/FOCUS from audit.js.
 const EXPIRED_STATUSES = ["rejected", "deprecated", "superseded"];
+// Not an equality test: docs/decisions/ front matter writes `status: "Superseded by DR-0055"`,
+// carrying the successor's id in the same string, so an exact match reads it as live.
 const isExpiredStatus = (status) =>
-  EXPIRED_STATUSES.some((s) => s.toLowerCase() === String(status || "").toLowerCase());
+  EXPIRED_STATUSES.some((s) => String(status || "").toLowerCase().startsWith(s.toLowerCase()));
 
 // ---- Scan: per DR, run extract -> reviewer matching independently ----
 const perDr = await pipeline(
@@ -364,7 +366,9 @@ const perDr = await pipeline(
       // an extract stall stays in the Per-DR listing as unverifiable (fail-close)
       return perDrRow(a, { note: "extract agent stall" });
     }
-    if (isExpiredStatus(ex.status)) {
+    // A DR the caller named by focus is scanned whatever its status: targets is already
+    // filtered by matchesFocus above, so a non-empty focus means every target was asked for.
+    if (!focus.length && isExpiredStatus(ex.status)) {
       // an expired DR is no longer the live contract, so it skips the reviewer fan-out
       // entirely while keeping its Per-DR row (fail-close, same as the other early returns here)
       return perDrRow(a, {
