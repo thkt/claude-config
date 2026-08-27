@@ -13,16 +13,35 @@ jobs:
   label:
     runs-on: ubuntu-latest
     steps:
-      - name: Apply priority labels
-        uses: stefanbuck/[email protected]
-        with:
-          template: bug.yml
-          section: priority
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Apply priority labels (feature)
-        uses: stefanbuck/[email protected]
-        with:
-          template: feature.yml
-          section: priority
-          token: ${{ secrets.GITHUB_TOKEN }}
+      # Not a marketplace action: stefanbuck/issue-action was deleted from GitHub, and every
+      # push then produced a startup_failure run for this file. The form renders Priority as a
+      # `## Priority` section, so awk over the body needs no dependency to go stale.
+      - name: Apply the priority label the issue form selected
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          body=$(gh issue view "$NUMBER" --repo "$REPO" --json body --jq .body)
+          priority=$(printf '%s\n' "$body" | awk '
+            /^## Priority[[:space:]]*$/ { grab = 1; next }
+            /^## / { grab = 0 }
+            grab && NF { print $1; exit }
+          ')
+          case "$priority" in
+            high|medium|low) ;;
+            *)
+              echo "no priority section in the form body (read: '${priority}'); leaving labels alone"
+              exit 0
+              ;;
+          esac
+          # --remove-label on a label the issue lacks exits non-zero, so the removals are
+          # filtered to the ones actually on the issue before the add.
+          current=$(gh issue view "$NUMBER" --repo "$REPO" --json labels --jq '.labels[].name')
+          for stale in high medium low; do
+            [ "$stale" = "$priority" ] && continue
+            printf '%s\n' "$current" | grep -qx "priority:${stale}" || continue
+            gh issue edit "$NUMBER" --repo "$REPO" --remove-label "priority:${stale}"
+          done
+          gh issue edit "$NUMBER" --repo "$REPO" --add-label "priority:${priority}"
