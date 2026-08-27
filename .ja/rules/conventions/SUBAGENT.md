@@ -82,7 +82,9 @@ reviewer- 系は `~/.claude/agents/_lib/finding-schema.md` の Severity (critica
 
 ## 検出項目の追加可否
 
-検出した項目を指摘として追加するかどうかは、diff を読み流す人がその問題を見落とすかどうかで判断する。この判断は検出した直後にかかる点で、`agents/_lib/finding-schema.md` § Calibration Filters が報告の直前にかける絞り込みとは掛かる時点が異なる。
+検出項目を reviewer に持たせるのは、出力を読み流す人がその項目の捉える問題を見落とすときにする。読み流しても同じ問題に行き着くなら持たせない。
+
+この判断は reviewer が何を持つかを決めるもので、項目ごとに 1 回、定義を書く時点でかかる。`agents/_lib/finding-schema.md` § Calibration Filters は run が出した finding のどれを報告するかを決めるもので、finding ごとに 1 回、reviewer が走る時点でかかる。
 
 ## 参照記法
 
