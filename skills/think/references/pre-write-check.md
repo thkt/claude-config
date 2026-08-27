@@ -7,7 +7,7 @@ Verify from the same repository root as the build workflow's Revalidate; fix or 
 1. Each `### Preconditions` line: paths via `test -f <path>`, anchors via `ugrep -F '<pattern>' <path>` (base-branch forms above when base differs)
 2. Every `units[].files` and `reference_module.files` entry that refers to an existing file, via `test -f <path>` (same base-branch substitution)
 3. If any unit touches an existing file while `### Preconditions` is empty or absent, that is a failure; add a line anchoring the load-bearing dependency
-4. A `reference_module: null` with no stated reason in the prose fails
+4. A kind other than module requires a reason for `reference_module:`; fails when the reason is empty
 5. No overflow against the line-count rules in templates/plan.md
 6. Count each non-seam unit's `files` entries and T-NNN entries; every count stays within the unit caps. If one exceeds them, split it and re-verify
 7. Run test_command once from the repository root. On a failure whose cause predates the plan, rescope the command per `### test_command`. State the scoping reason in the plan prose. A missing script or repo-wide debt is such a cause

@@ -46,6 +46,24 @@ const refModuleSection = (doc) => {
 // idSet centralizes the regex an id extraction runs.
 const REF_MODULE_SHAPE_RE = /^.*reference_module:\s*\{[^}]*\}.*$/m;
 
+// DR-0093's kind carries the reason requirement, not null itself, in both SKILL.md's prose
+// section and pre-write-check.md's numbered item. Shared across both call sites the same way
+// idSet is shared across id extractions, so the "kind other than module requires a reason"
+// wording is checked once rather than duplicated per document.
+const REQUIRES_REASON = {
+  en: /kind[\s\S]{0,80}(other than module|not module)[\s\S]{0,80}(requires|required)[\s\S]{0,40}reason|reason[\s\S]{0,80}(requires|required)[\s\S]{0,80}kind/i,
+  ja: /kind[\s\S]{0,80}module 以外[\s\S]{0,80}理由[\s\S]{0,40}必須|理由[\s\S]{0,80}必須[\s\S]{0,80}kind/,
+};
+
+// Scope matching to the single numbered item stating the reference_module rule, not the whole
+// pre-write-check.md document, the same way build.js's planSection scopes to the ## Plan section
+// rather than the whole issue body (afterHeading/nextSection/planSection, workflows/build.js:474-485).
+// `reference_module:` (colon) picks the item stating the field's value shape; item 2's
+// `reference_module.files` (dot) names a path and must not match. Kept in one const and reused,
+// mirroring idSet above.
+const PRE_WRITE_REF_MODULE_ITEM_RE = /^\d+\. .*reference_module:.*$/m;
+const refModuleCheckItem = (doc) => doc.match(PRE_WRITE_REF_MODULE_ITEM_RE)?.[0] ?? null;
+
 // DR-0093 splits reference_module's null into kind (module/no-module/new-shape) with reason.
 // The section's own shape example still shows the pre-DR bare object, so a plan author copying
 // it verbatim from SKILL.md would drop kind and reason on the floor.
@@ -70,10 +88,6 @@ test("both trees' reference_module section records kind and reason, not a bare p
 // singles out a bare null as "計画の欠陥"/"a planning defect", which is the framing DR-0093
 // dropped in favor of kind.
 test("both trees' reference_module section states that a kind other than module requires a reason, without calling a bare null the defect", () => {
-  const REQUIRES_REASON = {
-    en: /kind[\s\S]{0,80}(other than module|not module)[\s\S]{0,80}(requires|required)[\s\S]{0,40}reason|reason[\s\S]{0,80}(requires|required)[\s\S]{0,80}kind/i,
-    ja: /kind[\s\S]{0,80}module 以外[\s\S]{0,80}理由[\s\S]{0,40}必須|理由[\s\S]{0,80}必須[\s\S]{0,80}kind/,
-  };
   const NULL_CALLED_DEFECT = {
     en: /null[\s\S]{0,40}defect/i,
     ja: /null[\s\S]{0,40}欠陥/,
@@ -90,6 +104,27 @@ test("both trees' reference_module section states that a kind other than module 
       section,
       NULL_CALLED_DEFECT[lang],
       `${lang}: a bare null is not singled out as the defect`,
+    );
+  }
+});
+
+// U-002 aligns pre-write-check.md's item 4 to the same kind/reason shape U-001 aligned SKILL.md's
+// ### reference_module section to (DR-0093). build.js's validate branches on
+// `refModule.kind !== "module"` and requires reason there, regardless of whether refModule is a
+// bare null; the pre-write check's own item 4 must fail the same case rather than keying off null.
+test("both trees' pre-write check fails a reference_module whose kind is not module and whose reason is empty", () => {
+  for (const [lang, path] of Object.entries(preWriteChecks)) {
+    const item = refModuleCheckItem(read(path));
+    assert.ok(item, `${lang}: the reference_module check item is present`);
+    assert.match(
+      item,
+      REQUIRES_REASON[lang],
+      `${lang}: a kind other than module with an empty reason is stated to fail`,
+    );
+    assert.doesNotMatch(
+      item,
+      /reference_module:\s*null/,
+      `${lang}: the item no longer keys off a bare null`,
     );
   }
 });
