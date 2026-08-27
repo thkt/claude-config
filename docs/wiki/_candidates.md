@@ -27,7 +27,6 @@
 - Python の共有コードは同ディレクトリ sibling import・tree 配下の _lib + sys.path.insert・skills/_lib の CLI 分離の 3 階層で置き場が決まる (research)
 - agentType の bare name 解決は plugin-only install で失敗し、workflow() の sibling 相当のフォールバックが無い (research)
 - build.js の Ship stage は plan スコープ外の tracked file 変更も無条件で commit に含める (research)
-- workflow script は import/export で値を共有できず、定数一致はソーステキスト比較テストでのみ担保する #548
 - severity ランクの引き算は NaN フォールスルーで || チェーンを素通りする #548
 - sort の fixture は補助属性の順がソートキーと偶然一致するとフォールスルー欠陥を検出し損ねる #548
 - issue の Alternatives が却下した粒度に実装が逆戻りし、独立した適合性レビューで検出される #547
@@ -44,6 +43,12 @@
 - bug の root cause 特定後は同一生成工程の兄弟 artifact を洗い出し同種欠陥を検証する (research)
 - 自作 CLI は --help 使用例・JSON 出力・--dry-run が揃って欠ける (research)
 - skill に tool を書いて許可するだけでは使われず、既存手段を明示的に禁止する enforcement 文が要る (research)
+- PR 本文に scope 外のファイル変更を列挙しレビューの焦点を宣言スコープ側に示す #554
+- issue 本文の未確認 premise は tentative と明記する #377
+- 実需が未証明の提案は premise 未確認のまま実装せず、再着手条件を残して close する #377
+- 供給の一覧は実行側の定数で持ち、docstring やインライン辞書リテラルへ分散すると契約が陳腐化する #557
+- seam の受け入れテストが新関数を直接呼ぶだけでは足りず、production の実呼び出し口 (CLI main() 等) も同じ経路を通ることを確認する #558
+- 契約に返り値フィールドを追加するときは、早期 return (stopped) 分岐も含めた全 exit path でそのフィールドを持たせる #562
 
 ## 棄却
 
