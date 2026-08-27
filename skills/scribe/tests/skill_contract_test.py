@@ -39,12 +39,35 @@ def skill(lang: str) -> str:
     return at(lang, "skills", "scribe", "SKILL.md").read_text(encoding="utf-8")
 
 
-def phase_4_steps_naming_the_store(lang: str) -> str:
-    """Every Phase 4 step naming the store, joined. Empty when no Phase 4 step names it."""
+def phase_4_steps(lang: str) -> list[str]:
+    """Every numbered Phase 4 step line, in order."""
     doc = skill(lang)
     phase4 = doc[doc.index("## Phase 4") : doc.index("## Phase 5")]
-    steps = [line for line in phase4.split("\n") if re.match(r"^\d+\. ", line)]
-    return "\n".join(step for step in steps if "_candidates.md" in step)
+    return [line for line in phase4.split("\n") if re.match(r"^\d+\. ", line)]
+
+
+def phase_4_steps_naming_the_store(lang: str) -> str:
+    """Every Phase 4 step naming the store, joined. Empty when no Phase 4 step names it."""
+    return "\n".join(step for step in phase_4_steps(lang) if "_candidates.md" in step)
+
+
+# The words that name a structure page and a broken reference, per language. The Phase 4 table
+# row "Does a structure page match the current implementation?" must be drawn by a step that
+# fires regardless of whether a reference is broken, so a step that only fires under a broken
+# reference does not satisfy T-001.
+STRUCTURE_PAGE_WORD = {"ja": "構造ページ", "en": "structure page"}
+BROKEN_REFERENCE_WORD = {"ja": "壊れ", "en": "broken"}
+
+# The three structure-page section headings the cross-check must name, per language.
+STRUCTURE_ROW_WORDS = {
+    "ja": ("境界", "契約", "要求"),
+    "en": ("boundary", "contract", "requirement"),
+}
+
+
+def structure_page_steps(lang: str) -> list[str]:
+    """Phase 4 steps naming a structure page, in order. Empty when none does."""
+    return [step for step in phase_4_steps(lang) if STRUCTURE_PAGE_WORD[lang] in step]
 
 
 class SkillContract(unittest.TestCase):
@@ -106,6 +129,31 @@ class SkillContract(unittest.TestCase):
             steps = phase_4_steps_naming_the_store(lang)
             self.assertIn("_candidates.md", steps, f"{lang}: a Phase 4 step names the store")
             self.assertIn(moves[lang], steps, f"{lang}: that step moves the line")
+
+    def test_phase_4_carries_a_structure_page_cross_check_independent_of_broken_references(
+        self,
+    ) -> None:
+        """T-001: both trees' Phase 4 carries a step that cross-checks a structure page's rows
+        without depending on a broken reference."""
+        for lang in LANGS:
+            hits = structure_page_steps(lang)
+            self.assertTrue(hits, f"{lang}: Phase 4 carries a step naming a structure page")
+            self.assertFalse(
+                any(BROKEN_REFERENCE_WORD[lang] in step for step in hits),
+                f"{lang}: the structure-page step must not gate on a broken reference",
+            )
+
+    def test_phase_4_structure_page_step_names_the_boundary_contract_requirement_rows(
+        self,
+    ) -> None:
+        """T-002: both trees' Phase 4 step names the boundary, contract, and requirement rows
+        as what gets cross-checked."""
+        for lang in LANGS:
+            hits = structure_page_steps(lang)
+            self.assertTrue(hits, f"{lang}: Phase 4 carries a step naming a structure page")
+            step_text = "\n".join(hits)
+            for word in STRUCTURE_ROW_WORDS[lang]:
+                self.assertIn(word, step_text, f"{lang}: the structure-page step names {word}")
 
     def test_the_line_phase_4_moves_carries_why_it_was_dropped(self) -> None:
         """The 棄却 section is outside what read_store ranks, so a line landing there without a
@@ -195,6 +243,61 @@ class SkillContract(unittest.TestCase):
             for phase in (1, 3, 4, 5):
                 body = doc[doc.index(f"## Phase {phase}") : doc.index(f"## Phase {phase + 1}")]
                 self.assertIn(defers[lang], body, f"{lang}: Phase {phase} defers its write")
+
+    def test_phase_6_step_2_selects_the_skeleton_by_the_write(self) -> None:
+        """T-005: both trees' Phase 6 step 2 selects the skeleton by which write it is making,
+        and Phase 6 names the structure-page rewrite among the writes outside the cap.
+
+        Not a `kind` field on a `pages` item: Phase 3 extracts 共通項 patterns alone, so nothing
+        in `pages` ever carries one and a branch reading it never fires."""
+        pages_word = {"ja": "`pages`", "en": "`pages`"}
+        structure_word = {"ja": "構造ページ", "en": "structure"}
+        for lang in LANGS:
+            phase6 = self.phase_6(lang)
+            step = next(line for line in phase6.split("\n") if line.startswith("2. "))
+            self.assertIn(pages_word[lang], step, f"{lang}: step 2 names the pages write")
+            self.assertIn(
+                structure_word[lang],
+                step,
+                f"{lang}: step 2 names the structure-page write as the other skeleton's source",
+            )
+
+            opening = phase6[: phase6.index("\n1. ")]
+            self.assertIn(
+                structure_word[lang],
+                opening,
+                f"{lang}: Phase 6 names the structure-page rewrite among the cap-exempt writes",
+            )
+
+    def test_structure_skeleton_order_matches_phase_4_cross_check_order(self) -> None:
+        """T-006: the structure-page skeleton the template carries and the section order
+        Phase 4's cross-check step names are the same list"""
+        for lang in LANGS:
+            template = at(lang, "skills", "scribe", "templates", "page.md").read_text(
+                encoding="utf-8"
+            )
+            blocks = re.findall(r"```markdown\n(.*?)\n```", template, re.S)
+            block = next((b for b in blocks if "kind: structure" in b), "")
+            self.assertTrue(block, f"{lang}: the template carries a structure-page skeleton")
+            headings = [ln[3:] for ln in block.split("\n") if ln.startswith("## ")]
+            # 境界/契約/要求 are the row-bearing sections the Phase 4 cross-check step names;
+            # 内容/参照コード/由来 are narrative/reference sections the step never enumerates.
+            row_headings = [h for h in headings if h in STRUCTURE_ROW_WORDS["ja"]]
+            expected_order = [
+                STRUCTURE_ROW_WORDS[lang][STRUCTURE_ROW_WORDS["ja"].index(h)] for h in row_headings
+            ]
+
+            hits = structure_page_steps(lang)
+            self.assertTrue(hits, f"{lang}: Phase 4 carries a step naming a structure page")
+            step_text = "\n".join(hits)
+            positions = sorted((step_text.index(word), word) for word in STRUCTURE_ROW_WORDS[lang])
+            named_order = [word for _, word in positions]
+
+            self.assertEqual(
+                named_order,
+                expected_order,
+                f"{lang}: the step names the sections in the template's own order",
+            )
 
     def test_the_worktree_step_writes_every_kind(self) -> None:
         """A kind of write missing from the step that holds the worktree has nowhere else it can
@@ -491,6 +594,45 @@ class WikiPageFormat(unittest.TestCase):
                 encoding="utf-8"
             )
             self.assertIn("scenes:", template, f"{lang}: the skeleton carries scenes")
+
+    def structure_skeleton_block(self, lang: str) -> str:
+        """The fenced example in the page template that carries `kind: structure`, empty when
+        the template has none. Headings inside stay Japanese in both trees, per the mirroring
+        rule that code structure and stopped values stay identical across languages."""
+        template = at(lang, "skills", "scribe", "templates", "page.md").read_text(encoding="utf-8")
+        for block in re.findall(r"```markdown\n(.*?)\n```", template, re.S):
+            if "kind: structure" in block:
+                return block
+        return ""
+
+    def test_both_trees_page_template_carries_a_structure_page_skeleton_whose_sections_run_in_the_order_the_wiki_readme_states(  # noqa: E501
+        self,
+    ) -> None:
+        """T-003: both trees' page template carries a structure-page skeleton whose sections run
+        in the order the wiki README states."""
+        for lang in LANGS:
+            block = self.structure_skeleton_block(lang)
+            self.assertTrue(block, f"{lang}: the template carries a structure-page skeleton")
+            headings = [ln for ln in block.split("\n") if ln.startswith("## ")]
+            self.assertEqual(
+                headings,
+                ["## 内容", "## 境界", "## 契約", "## 要求", "## 参照コード", "## 由来"],
+                f"{lang}: the skeleton runs 内容 → 境界 → 契約 → 要求 → 参照コード → 由来",
+            )
+
+    def test_both_trees_page_template_marks_the_structure_page_skeleton_with_the_kind_that_selects_it(  # noqa: E501
+        self,
+    ) -> None:
+        """T-004: both trees' page template marks the structure-page skeleton with the kind that
+        selects it."""
+        for lang in LANGS:
+            block = self.structure_skeleton_block(lang)
+            self.assertTrue(block, f"{lang}: the template carries a structure-page skeleton")
+            self.assertIn(
+                "kind: structure",
+                block,
+                f"{lang}: the skeleton frontmatter carries kind: structure",
+            )
 
 
 if __name__ == "__main__":
