@@ -42,12 +42,15 @@ _TRIGGERS_HEADING = re.compile(r"^#{2,3}\s+Reassessment Triggers\s*$", re.MULTIL
 _CONFIRMED_UNMET = re.compile(r"^Confirmed unmet:", re.MULTILINE)
 
 
-def _find_governing_dr(path: str, root: Path) -> Path | None:
-    """The first _DR_GLOB match under `root` whose body mentions `path`, or None when no DR
-    mentions it (also None, via the empty glob result, when docs/decisions/ is absent)."""
+def _find_governing_dr(path: str, root: Path) -> tuple[Path, str] | None:
+    """The first _DR_GLOB match under `root` whose body mentions `path`, paired with that
+    body's text, or None when no DR mentions it (also None, via the empty glob result, when
+    docs/decisions/ is absent). Returns the text alongside the path so a caller that goes on
+    to read the matched DR's body does not open the same file a second time."""
     for dr_path in sorted(root.glob(_DR_GLOB)):
-        if path in dr_path.read_text(encoding="utf-8"):
-            return dr_path
+        text = dr_path.read_text(encoding="utf-8")
+        if path in text:
+            return dr_path, text
     return None
 
 
@@ -58,7 +61,7 @@ def _confirmed_unmet(dr_text: str) -> bool:
     if heading is None:
         return False
     next_heading = re.search(r"^#{1,6}\s+\S", dr_text[heading.end() :], re.MULTILINE)
-    section_end = heading.end() + (next_heading.start() if next_heading else len(dr_text) - heading.end())
+    section_end = heading.end() + next_heading.start() if next_heading else len(dr_text)
     section = dr_text[heading.end() : section_end]
     return _CONFIRMED_UNMET.search(section) is not None
 
@@ -70,9 +73,10 @@ def gate(path: str, verdict: str, root: Path) -> str:
     through unchanged — this gate only ever holds a delete candidate back."""
     if verdict != DELETE_CANDIDATE:
         return verdict
-    dr_path = _find_governing_dr(path, root)
-    if dr_path is None:
+    found = _find_governing_dr(path, root)
+    if found is None:
         return verdict
-    if _confirmed_unmet(dr_path.read_text(encoding="utf-8")):
+    _, dr_text = found
+    if _confirmed_unmet(dr_text):
         return verdict
     return HELD

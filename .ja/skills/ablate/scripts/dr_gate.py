@@ -41,13 +41,16 @@ _TRIGGERS_HEADING = re.compile(r"^#{2,3}\s+Reassessment Triggers\s*$", re.MULTIL
 _CONFIRMED_UNMET = re.compile(r"^Confirmed unmet:", re.MULTILINE)
 
 
-def _find_governing_dr(path: str, root: Path) -> Path | None:
+def _find_governing_dr(path: str, root: Path) -> tuple[Path, str] | None:
     """`root` 下の _DR_GLOB にマッチするファイルのうち、本文に `path` が現れる最初の
-    ファイル。どの DR も言及しないときは None (docs/decisions/ 自体が無いときも glob の
-    結果が空になり、同じく None)。"""
+    ファイルを、その本文テキストと組にして返す。どの DR も言及しないときは None
+    (docs/decisions/ 自体が無いときも glob の結果が空になり、同じく None)。テキストをパス
+    と一緒に返すのは、呼び出し側がその後マッチした DR の本文を読むときに同じファイルを
+    二度開かずに済ませるため。"""
     for dr_path in sorted(root.glob(_DR_GLOB)):
-        if path in dr_path.read_text(encoding="utf-8"):
-            return dr_path
+        text = dr_path.read_text(encoding="utf-8")
+        if path in text:
+            return dr_path, text
     return None
 
 
@@ -58,7 +61,7 @@ def _confirmed_unmet(dr_text: str) -> bool:
     if heading is None:
         return False
     next_heading = re.search(r"^#{1,6}\s+\S", dr_text[heading.end() :], re.MULTILINE)
-    section_end = heading.end() + (next_heading.start() if next_heading else len(dr_text) - heading.end())
+    section_end = heading.end() + next_heading.start() if next_heading else len(dr_text)
     section = dr_text[heading.end() : section_end]
     return _CONFIRMED_UNMET.search(section) is not None
 
@@ -70,9 +73,10 @@ def gate(path: str, verdict: str, root: Path) -> str:
     このゲートは削除候補を保留に落とすことしかしない。"""
     if verdict != DELETE_CANDIDATE:
         return verdict
-    dr_path = _find_governing_dr(path, root)
-    if dr_path is None:
+    found = _find_governing_dr(path, root)
+    if found is None:
         return verdict
-    if _confirmed_unmet(dr_path.read_text(encoding="utf-8")):
+    _, dr_text = found
+    if _confirmed_unmet(dr_text):
         return verdict
     return HELD
