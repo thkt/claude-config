@@ -3,7 +3,7 @@ export const meta = {
   description:
     "Deterministic workflow that scans for drift between DR Decision Outcomes and the current code. Per DR, it pipelines symbol extraction -> reference search -> semantic matching by manifest-routed reviewers, and writes a report with file:line + fix direction + priority to docs/audit/. Exhaustive per-DR listing and the reviewer routing table are enforced by the script.",
   whenToUse:
-    'When you want to check DR-code consistency or surface decayed decisions. For repositories without DRs, run census first. args is a DR directory path string, a DR id list string (e.g. "0061, 0073"), or {dir, repo, focus}. focus is an array or string of ids / keywords narrowing the target DRs. When omitted, every DR under docs/decisions/ is in scope.',
+    "When you want to check DR-code consistency or surface decayed decisions. For repositories without DRs, run census first. Name the target repository. Narrow the scope with focus, which takes DR ids or keywords; when omitted, every DR under docs/decisions/ is in scope.",
   phases: [{ title: "Detect" }, { title: "Scan" }, { title: "Report" }],
 };
 
@@ -337,7 +337,11 @@ const EXPIRED_STATUSES = ["rejected", "deprecated", "superseded"];
 // Not an equality test: docs/decisions/ front matter writes `status: "Superseded by DR-0055"`,
 // carrying the successor's id in the same string, so an exact match reads it as live.
 const isExpiredStatus = (status) =>
-  EXPIRED_STATUSES.some((s) => String(status || "").toLowerCase().startsWith(s.toLowerCase()));
+  EXPIRED_STATUSES.some((s) =>
+    String(status || "")
+      .toLowerCase()
+      .startsWith(s.toLowerCase()),
+  );
 
 // ---- Scan: per DR, run extract -> reviewer matching independently ----
 const perDr = await pipeline(
