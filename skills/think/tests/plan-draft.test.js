@@ -776,27 +776,17 @@ test("SKILL.md and the template use the same heading word", () => {
 
 // #417 and #424 each placed a seam unit whose files were tests alone, leaving nothing for the
 // Red step to fail on (#433).
-test("think SKILL.md requires a seam unit to carry the file that makes the connection, and says what to do when it cannot", () => {
+test("think SKILL.md requires a seam unit to carry the file that makes the connection", () => {
   const ja = read(skills.ja);
   assert.match(
     ja,
     /seam unit の files には.{0,30}非テストファイル/,
     "ja: the non-test file is required",
   );
-  assert.match(
-    ja,
-    /非テストファイルを持つ unit .{0,20}(いない|ない場合).{0,30}切り直/,
-    "ja: the replacing operation",
-  );
   assert.match(ja, /配線を作る unit の tests/, "ja: where the assertion goes instead");
 
   const en = read(skills.en);
   assert.match(en, /at least one non-test file/i, "en: the non-test file is required");
-  assert.match(
-    en,
-    /no unit carries a non-test file.{0,40}re-cut the units/i,
-    "en: the replacing operation",
-  );
   assert.match(
     en,
     /tests of the unit that makes the wiring/i,
@@ -807,6 +797,8 @@ test("think SKILL.md requires a seam unit to carry the file that makes the conne
 // Step 11 requires exactly one seam unit last once 2+ units carry tests. Step 12's old exception
 // let a plan skip the seam unit entirely, which contradicts step 11 for the same plan. Replacing
 // the exception with a unit re-cut keeps step 11 an actual guarantee instead of a conditional one.
+// The re-cut regex below is the sole check for that replacing operation, scoped to step 12 itself
+// rather than the whole document, so it doesn't duplicate as a looser check elsewhere.
 const step12 = (doc) => steps(doc).find((line) => line.startsWith("12. "));
 
 test("both trees' step 12 carries no branch that places no seam unit", () => {
