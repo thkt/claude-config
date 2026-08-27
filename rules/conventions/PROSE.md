@@ -105,7 +105,7 @@ Delete a sentence a reader can already read off the adjacent code, table, or hea
 | Reprinted brief        | An instruction to the writer that arrived with the source material, such as "keep the original texture". Obey it and leave the sentence out |
 | Code restatement       | Prose repeating what the code directly below states                                                                                         |
 | Consequence narration  | Stating what an instruction or branch leads to. Keep the instruction alone                                                                  |
-| Measurement provenance | Recording where a number came from or what was measured. It goes stale without changing behavior                                            |
+| Measurement provenance | It goes stale without changing behavior. Recording where a number came from or what was measured falls under this                           |
 | Filler section         | Built only from restatement of other sections or generalities. Removing it leaves the claims unchanged                                      |
 | Redundant summary      | Re-stating at the end what the body already said                                                                                            |
 | Boilerplate frame      | Placed to fill a template, carrying nothing specific to this document                                                                       |
