@@ -1,9 +1,9 @@
 export const meta = {
   name: "build",
   description:
-    "自律的な end-to-end build。/think + /issue で精緻化した Plan 節付き issue を入力に、Load (逐語 fetch → 決定論 id 収集 → 抽出 → validate + id クロスチェック) / Revalidate / Branch / Code / Cleanup / Verify / Ship を headless の決定論 script stage として実行する。Code は unit ごとに plan の指示を trailer に載せてコミットし、Verify / Ship は HEAD でなく Branch で捕まえた分岐点を基準にする。Plan 節なし issue は no-plan で停止し、issue の精緻化に差し戻す。正しさの確認は plan 自身のアンカー (前提、files スコープ、T-NNN 言明、conformance) との比較であり、開放的な欠陥探索ではない。重い担保 (/audit、/polish review) は draft PR に対して人間が起動する。",
+    "自律的な end-to-end build。/think + /issue で精緻化した Plan 節付き issue を入力に、plan の読み込みと検証を終えてから Code / Cleanup / Verify / Ship を headless の決定論 script stage として実行する。Code は unit ごとに plan の指示を trailer に載せてコミットし、Verify / Ship は HEAD でなく実行中に捕まえた分岐点を基準にする。Plan 節なし issue は no-plan で停止し、issue の精緻化に差し戻す。正しさの確認は plan 自身のアンカー (前提、files スコープ、T-NNN 言明、conformance) との比較であり、開放的な欠陥探索ではない。重い担保 (/audit、/polish review) は draft PR に対して人間が起動する。",
   whenToUse:
-    'plan 付き issue の実装。args には {issue, repo, base?} を渡す (issue は番号 "123" / "#123" か URL、repo は対象リポジトリの絶対パス、base は任意で PR の base ブランチと新規 checkout の起点。epic ブランチ集約フローで使う)。repo の無い args は no-repo で早期 stop する。## Plan 節の無い issue は no-plan で早期 stop するので、/think + /issue で ## Plan 節を書いてから再実行する。離席して戻れば、前提 / conformance findings / 決定論 verify 結果を記録した draft PR ができている。スコープ外の backlog 候補は workflow の戻り値で返り、/issue で起票する。途中で舵を取る場合は phase を対話的に進める。',
+    "plan 付き issue の実装。実装対象の issue と対象リポジトリを指定する。repo を指定しない場合は no-repo で早期 stop する。## Plan 節の無い issue は no-plan で早期 stop するので、/think + /issue で ## Plan 節を書いてから再実行する。離席して戻れば、前提 / conformance findings / 決定論 verify 結果を記録した draft PR ができている。スコープ外の backlog 候補は workflow の戻り値で返り、/issue で起票する。途中で舵を取る場合は phase を対話的に進める。",
   phases: [
     { title: "Load" },
     { title: "Revalidate" },

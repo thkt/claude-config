@@ -238,8 +238,8 @@ test("base stays build's arg, documented there and absent from think", () => {
   const build = buildJs();
   assert.match(
     build,
-    /base \(optional\)[\s\S]{0,200}epic-branch aggregation flow/,
-    "build's own arg description says when a base is passed",
+    /base serves the flow that aggregates slice PRs into an epic branch/,
+    "build's own why comment on baseBranch says when a base is passed",
   );
   assert.match(
     build,
