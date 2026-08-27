@@ -248,6 +248,11 @@
             "type": "command",
             "command": "~/.claude/hooks/pre-bash/client_identifier_gate.py",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/pre-bash/wiki_scene.py",
+            "timeout": 30
           }
         ]
       },

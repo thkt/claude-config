@@ -1,5 +1,6 @@
 ---
 globs: ["**/skills/**/*.md", "**/skills/**/scripts/*"]
+scenes: []
 ---
 
 # 決定論の判定は script へ出す

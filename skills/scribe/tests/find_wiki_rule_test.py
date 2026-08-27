@@ -94,6 +94,61 @@ class Ranking(unittest.TestCase):
         self.assertEqual(result["matched"], [])
 
 
+class SceneAxis(unittest.TestCase):
+    def test_a_page_whose_scenes_include_the_given_scene_is_returned_under_the_scenes_output_key(
+        self,
+    ) -> None:
+        directory = Path(wiki())
+        page = directory / "plan-rule.md"
+        _ = page.write_text(
+            '---\nglobs: []\nscenes: ["plan"]\n---\n\n# plan-rule\n', encoding="utf-8"
+        )
+        result = find(str(directory), "x", [], scene="plan")
+        self.assertEqual(result["scenes"], ["plan-rule.md"])
+
+    def test_a_valid_scene_no_page_declares_yet_returns_an_empty_list(self) -> None:
+        """/think passes --scene plan on every run. A wiki whose pages have not adopted the
+        scene yet must answer with empty scenes, not exit 2, or the pre-scene matched flow
+        dies with it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            _ = (Path(tmp) / "some-rule.md").write_text(
+                "---\nglobs: []\nscenes: []\n---\n\n# some-rule\n", encoding="utf-8"
+            )
+            result = find(tmp, "x", [], scene="pr-create")
+        self.assertEqual(result["scenes"], [])
+
+    def test_an_unknown_scene_argument_exits_with_status_2(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPT), tmp, "x", "--scene", "not-a-real-scene"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        self.assertEqual(proc.returncode, 2)
+
+    def test_a_globs_line_on_the_fifth_frontmatter_line_is_still_read(self) -> None:
+        """The old read stopped at a fixed first 4 lines. Adding a `scenes` line ahead of
+        `globs` pushes it past that cap, so the read must instead follow the frontmatter to
+        its closing `---` rather than counting lines."""
+        directory = Path(wiki())
+        page = directory / "p.md"
+        _ = page.write_text(
+            '---\nscenes: []\ntitle: p\nextra: y\nglobs: ["**/x.md"]\n---\n\n# p\n',
+            encoding="utf-8",
+        )
+        self.assertEqual(read_globs(page), ["**/x.md"])
+
+    def test_without_a_scene_argument_the_matched_and_related_output_stays_byte_identical_to_before(
+        self,
+    ) -> None:
+        directory = wiki(mirror_drift='["**/.ja/**/*"]', mirror_notes="[]")
+        result = find(directory, "mirror drift", [".ja/skills/x/SKILL.md"])
+        self.assertEqual([m["page"] for m in result["matched"]], ["mirror-drift.md"])
+        self.assertEqual([r["page"] for r in result["related"]], ["mirror-notes.md"])
+        self.assertEqual(result["scenes"], [])
+
+
 class RealWiki(unittest.TestCase):
     def test_every_glob_this_repository_declares_matches_a_tracked_file(self) -> None:
         """A glob matching nothing is either wrong or names files that no longer exist. Either way

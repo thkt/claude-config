@@ -1,5 +1,6 @@
 ---
 globs: ["**/workflows/**/*.js"]
+scenes: []
 ---
 
 # 公開リポの issue body はデータフェンスで囲んで渡す

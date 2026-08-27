@@ -1,2 +1,5 @@
 [global]
 disable = ["MD013", "MD014"]
+# Research reports are tracked as raw material for scribe (DR-0107), not as documents
+# to restyle; linting them would force edits to historical records.
+exclude = [".claude/workspace/research"]

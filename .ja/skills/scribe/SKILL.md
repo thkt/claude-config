@@ -14,10 +14,10 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 | 条件                | 内容                                                                                                                                         |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | PR 経由             | デフォルトブランチへ直接コミット / プッシュしない                                                                                            |
-| 進捗の記録          | cursor は最後にマージされた scribe PR の mergedAt。research ファイルはその mergedAt と mtime を比べる                                        |
+| 進捗の記録          | cursor は最後にマージされた scribe PR の mergedAt。research ファイルはその mergedAt と最終コミット時刻を比べる                                        |
 | 閾値の所在          | ページにするか候補に置くかの判定は `scripts/triage.py` が持ち、この skill は判定しない                                                       |
 | 事実のみ            | PR / issue と research ファイルに書かれた事実、および現在のコードで確認できた事実のみ書く。推測で埋めない                                    |
-| research は引かない | `.claude/workspace/research/` のファイルパスを `docs/wiki/` 配下に書かない。workspace は追跡外で、wiki を読む人が辿れない                    |
+| research は引かない | `.claude/workspace/research/` のファイルパスを `docs/wiki/` 配下に書かない。wiki は蒸留した共通項を置く場所で、パスは読者を原資料へ送り返す                    |
 | worktree 隔離       | 編集 / commit は隔離 worktree 内で行い、ユーザーの作業ツリーを動かさない。worktree を作るのは Phase 6 なので、書き込む Phase は Phase 6 だけ |
 
 ## Phase 1: 前提確認とオンボーディング
@@ -31,8 +31,8 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 
 1. 最後にマージされた scribe PR の mergedAt を `gh pr list --label scribe --state merged --limit 1 --json mergedAt -q '.[0].mergedAt'` で取得する
 2. mergedAt が取れなければ初回。`gh pr list --state merged --search '-label:scribe'` と `gh issue list --state closed` の全件、および `find .claude/workspace/research -name '*.md'` の全件を対象にする
-3. mergedAt が取れたら差分だけを対象にする。PR は `gh pr list --state merged --search "-label:scribe merged:><mergedAt>"` で集める。issue は `gh issue list --state closed --search "closed:><mergedAt>"` で集める。調査ファイルは `find .claude/workspace/research -name '*.md' -newermt "<mergedAt>"` で集める
-4. research の対象は `*.md` だけとし、他の形式は読まない。cursor には mtime を使い、ファイル内の `Generated:` 行は使わない。`Generated:` は生成時の日付で、後から追記してもその日付のままなので、更新を取りこぼす
+3. mergedAt が取れたら差分だけを対象にする。PR は `gh pr list --state merged --search "-label:scribe merged:><mergedAt>"` で集める。issue は `gh issue list --state closed --search "closed:><mergedAt>"` で集める。調査ファイルは `git log --since="<mergedAt>" --name-only --diff-filter=AM --pretty=format: -- '.claude/workspace/research/*.md' | sort -u` で集める。これに未追跡分の `git ls-files --others --exclude-standard -- '.claude/workspace/research/*.md'` を加える。未コミットのレポートは git log に載らず、それこそローカル run が持っていやすい 1 件になる
+4. research の対象は `*.md` だけとし、他の形式は読まない。cursor には各ファイルの最終コミット時刻を使い、mtime とファイル内の `Generated:` 行は使わない。checkout は内容の変更時期と無関係に mtime を checkout 時刻へ戻すので、mtime では比較の基準にならない。`Generated:` は生成時の日付で、後から追記してもその日付のままなので、更新を取りこぼす
 5. PR/issue/research のいずれも 0 件でも、`docs/wiki/_candidates.md` に根拠 2 件以上の行があれば Phase 3 へ進む。その行も無いときだけ「新規なし」と報告して終了する
 
 ## Phase 3: 抽出
@@ -56,7 +56,7 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 ページ化/昇格/更新の前に、各共通項を現在のコードと突き合わせる。この Phase で決めるのは書く内容で、ファイルへの書き込みは Phase 6 の worktree 内でまとめて行う。
 
 1. 成立を確認した項目に、現行コードの位置を参照コードとして `path` + シンボル名で付記する。行番号は書かない
-2. その決まりごとが効く実装ファイルの glob を決める。実装中に届く決まりごとだけが glob を持ち、起票や PR の運用に閉じるものは空配列にする
+2. その決まりごとが効く実装ファイルの glob と、`find_wiki_rule.py` の `SCENES` 定数から選ぶ scenes を決める。両者は独立した判定になる。glob は実装ファイルを、scenes は場面を指し、起票や PR の運用に閉じる決まりごとは glob が空配列のまま scenes を持つ
 3. 今回のスコープに関係しない既存ページも含め、`docs/wiki/*.md` 全ページの参照コードを掃除する。ファイルの存在と、ファイル内でのシンボル名の grep 一致を機械的に確認する
 4. 壊れていた参照は現行コードを読み直す。決める内容は下表による
 5. 落とした項目が `_candidates.md` に行を持つとき、その行を「棄却」節へ移し、次の行に落とした理由をインデントして書く。Phase 3 手順 7 が用意した削除より優先する

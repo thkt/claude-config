@@ -1,5 +1,6 @@
 ---
 globs: []
+scenes: ["issue-close"]
 ---
 
 # runtime 側のバグは wontfix + upstream 起票 + guard 文言で閉じる

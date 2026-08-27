@@ -1,5 +1,6 @@
 ---
 globs: []
+scenes: ["pr-create"]
 ---
 
 # 実 run で観測できるまで PR を draft に据え置く

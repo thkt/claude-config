@@ -1,5 +1,6 @@
 ---
 globs: []
+scenes: ["issue-close"]
 ---
 
 # incident-driven deferral

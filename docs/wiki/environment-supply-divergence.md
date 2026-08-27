@@ -1,5 +1,6 @@
 ---
 globs: [".github/workflows/*.yml"]
+scenes: []
 ---
 
 # ローカルと CI の差は環境が供給するものの違いから出る

@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Usage: find_wiki_rule.py <wiki-dir> <slug> [file ...]
+"""Usage: find_wiki_rule.py <wiki-dir> <slug> [file ...] [--scene <scene>]
 
 Ranks the rule pages under <wiki-dir> for a task. A page whose globs match one of the given
 files is a hard match; a page whose filename shares a word with the slug is a soft one.
+`--scene` additionally lists pages whose frontmatter `scenes` includes it; the value must
+come from SCENES, or the run exits 2.
 
-stdout: JSON { matched: [{page, globs, files}], related: [{page, shared}] }
-exit: 0
+stdout: JSON { matched: [{page, globs, files}], related: [{page, shared}] } normally,
+        plus scenes: [page] when --scene is given
+exit: 0, or 2 on a missing argument or an unknown --scene value
 """
 
 import json
@@ -16,6 +19,11 @@ from typing import TypedDict, cast
 
 # README indexes the directory and _candidates holds rows below the threshold. Neither is a rule.
 NOT_A_RULE = {"README.md", "_candidates.md"}
+
+# The closed set of values a page's frontmatter `scenes` may declare. Importing this in the
+# wiki-page contract test, rather than restating the list there, keeps that test and this
+# module from drifting to two different closed sets.
+SCENES = ["plan", "implement", "issue-create", "pr-create", "issue-close"]
 
 # The same subset workflows/code.js's globToRegExp accepts: `**/` crosses directories, `*` stops
 # at one. Keeping the two in step is what glob-parity guards; widening one side alone would make
@@ -38,6 +46,7 @@ class Related(TypedDict):
 class Report(TypedDict):
     matched: list[Matched]
     related: list[Related]
+    scenes: list[str]
 
 
 def glob_to_regexp(glob: str) -> re.Pattern[str]:
@@ -53,16 +62,26 @@ def normalize(path: str) -> str:
     return re.sub(r"^(?:\./|/)+", "", str(path))
 
 
-def read_globs(page: Path) -> list[str]:
-    """The globs line of the frontmatter, or an empty list when the page carries none.
+def _frontmatter_lines(page: Path) -> list[str]:
+    """Following the closing delimiter rather than a fixed line count is what lets a page
+    order `scenes` ahead of `globs` without pushing `globs` out of view."""
+    lines = page.read_text(encoding="utf-8").split("\n")
+    if not lines or lines[0] != "---":
+        return []
+    for i, line in enumerate(lines[1:], start=1):
+        if line == "---":
+            return lines[1:i]
+    return []
 
-    A value that is not an array reads as empty too. Iterating `globs: "**/*"` as written turns
-    each character into a glob, which makes the page look like it matches every file.
-    """
-    for line in page.read_text(encoding="utf-8").split("\n")[:4]:
-        if line.startswith("globs:"):
+
+def _array_from_frontmatter(lines: list[str], key: str) -> list[str]:
+    """A value that is not an array reads as empty: iterating `globs: "**/*"` as written
+    turns each character into a glob, which makes the page look like it matches every file."""
+    prefix = f"{key}:"
+    for line in lines:
+        if line.startswith(prefix):
             try:
-                value = cast(object, json.loads(line[len("globs:") :].strip()))
+                value = cast(object, json.loads(line[len(prefix) :].strip()))
             except json.JSONDecodeError:
                 return []
             if not isinstance(value, list):
@@ -71,38 +90,89 @@ def read_globs(page: Path) -> list[str]:
     return []
 
 
+def _read_frontmatter_array(page: Path, key: str) -> list[str]:
+    return _array_from_frontmatter(_frontmatter_lines(page), key)
+
+
+def read_globs(page: Path) -> list[str]:
+    return _read_frontmatter_array(page, "globs")
+
+
+def read_scenes(page: Path) -> list[str]:
+    return _read_frontmatter_array(page, "scenes")
+
+
 def words(text: str) -> set[str]:
     return {w for w in re.split(r"[-_\s]+", text.lower()) if w}
 
 
-def find(wiki_dir: str, slug: str, files: list[str]) -> Report:
+def find(wiki_dir: str, slug: str, files: list[str], *, scene: str | None = None) -> Report:
     pages = sorted(p for p in Path(wiki_dir).glob("*.md") if p.name not in NOT_A_RULE)
     normalized = [normalize(f) for f in files]
     slug_words = words(slug)
+    # Read each page's frontmatter once and derive both keys from it, rather than letting
+    # read_globs and read_scenes each reread the file from disk.
+    page_lines = {page: _frontmatter_lines(page) for page in pages}
+    page_scenes = {page: _array_from_frontmatter(page_lines[page], "scenes") for page in pages}
+
+    # SCENES is the closed set a --scene value is checked against. Checking against what the
+    # pages happen to declare would make a valid scene with no pages yet an error, which kills
+    # the caller's pre-existing matched flow.
+    if scene is not None and scene not in SCENES:
+        raise ValueError(f"unknown scene: {scene!r}")
 
     matched: list[Matched] = []
     related: list[Related] = []
+    scenes: list[str] = []
     for page in pages:
-        globs = read_globs(page)
+        globs = _array_from_frontmatter(page_lines[page], "globs")
         hits = [f for f in normalized if any(glob_to_regexp(normalize(g)).match(f) for g in globs)]
         if hits:
             matched.append({"page": page.name, "globs": globs, "files": hits})
-            continue
-        shared = len(slug_words & words(page.stem))
-        if shared:
-            related.append({"page": page.name, "shared": shared})
+        else:
+            shared = len(slug_words & words(page.stem))
+            if shared:
+                related.append({"page": page.name, "shared": shared})
+        if scene is not None and scene in page_scenes[page]:
+            scenes.append(page.name)
 
     # A page whose rule bears on a file this plan touches outranks one that only shares a word.
     matched.sort(key=lambda m: -len(m["files"]))
     related.sort(key=lambda r: -r["shared"])
-    return {"matched": matched, "related": related}
+    return {"matched": matched, "related": related, "scenes": scenes}
+
+
+def _split_scene_flag(argv: list[str]) -> tuple[list[str], str | None]:
+    """Pulls a `--scene <value>` pair out of argv, returning the rest as positional args."""
+    if "--scene" not in argv:
+        return argv, None
+    i = argv.index("--scene")
+    if i + 1 >= len(argv):
+        return argv, None
+    return argv[:i] + argv[i + 2 :], argv[i + 1]
 
 
 def main() -> None:
-    if len(sys.argv) < 3:
-        print("usage: find_wiki_rule.py <wiki-dir> <slug> [file ...]", file=sys.stderr)
+    positional, scene = _split_scene_flag(sys.argv[1:])
+    if len(positional) < 2:
+        print(
+            "usage: find_wiki_rule.py <wiki-dir> <slug> [file ...] [--scene <scene>]",
+            file=sys.stderr,
+        )
         sys.exit(2)
-    print(json.dumps(find(sys.argv[1], sys.argv[2], sys.argv[3:]), ensure_ascii=False))
+    wiki_dir, slug, *files = positional
+    try:
+        report = find(wiki_dir, slug, files, scene=scene)
+    except ValueError as exc:
+        print(f"find_wiki_rule: {exc}", file=sys.stderr)
+        sys.exit(2)
+
+    # Preserving the pre-scene 2-key shape when --scene is absent is what keeps every existing
+    # caller (skills/think, skills/fix) byte-for-byte unaffected by this axis's addition.
+    output: dict[str, object] = {"matched": report["matched"], "related": report["related"]}
+    if scene is not None:
+        output["scenes"] = report["scenes"]
+    print(json.dumps(output, ensure_ascii=False))
     sys.exit(0)
 
 

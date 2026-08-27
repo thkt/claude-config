@@ -1,5 +1,6 @@
 ---
 globs: []
+scenes: ["issue-close"]
 ---
 
 # 成果物が追跡外にある作業は手動 close する

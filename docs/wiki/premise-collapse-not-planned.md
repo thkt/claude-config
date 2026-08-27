@@ -1,5 +1,6 @@
 ---
 globs: []
+scenes: ["issue-close"]
 ---
 
 # 前提が消えた issue は not planned で閉じ、消えた前提を残す

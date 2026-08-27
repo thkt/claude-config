@@ -1,5 +1,6 @@
 ---
 globs: ["**/rules/**"]
+scenes: []
 ---
 
 # rules の paths が発火しないまま実装が先行する
