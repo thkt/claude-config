@@ -202,6 +202,44 @@ class StoreMerge(unittest.TestCase):
         self.assertEqual(rows[0]["count"], 3)
 
 
+class DroppedRows(unittest.TestCase):
+    """A row whose body is gone leaves the ranking. Silently, the run proceeds on a candidate
+    count smaller than the store holds and nothing tells the operator which row went missing."""
+
+    def _run(self, text: str) -> subprocess.CompletedProcess[str]:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "_candidates.md"
+            _ = path.write_text(text, encoding="utf-8")
+            return subprocess.run(
+                [sys.executable, str(SCRIPT), "[]", str(path)],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                check=False,
+            )
+
+    def test_本文の無い行は件数と本文つきで_stderr_に出る(self) -> None:
+        proc = self._run(store(["- #123 (research)", f"- {WAITING} #200"], []))
+
+        self.assertEqual(proc.returncode, 0)
+        self.assertIn("1", proc.stderr)
+        self.assertIn("- #123 (research)", proc.stderr)
+
+    def test_落とす行が無い_run_の_stderr_は空(self) -> None:
+        proc = self._run(store([f"- {WAITING} #200"], []))
+
+        self.assertEqual(proc.returncode, 0)
+        self.assertEqual(proc.stderr, "")
+
+    def test_報告は_stdout_の_4_キーを増やさない(self) -> None:
+        proc = self._run(store(["- #123 (research)"], []))
+
+        self.assertEqual(
+            sorted(cast(dict[str, object], json.loads(proc.stdout))),
+            ["candidates", "commits", "deferred", "pages"],
+        )
+
+
 class Commits(unittest.TestCase):
     """PAGE_CAP moved from per-run to per-commit, so a run's promoted pages split into
     PAGE_CAP-sized commits and stop at COMMIT_CAP of them."""
