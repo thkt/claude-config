@@ -3,7 +3,7 @@ export const meta = {
   description:
     "Codex review + cleanup を決定論的に行う workflow。Codex の findings は critic-audit の challenge を必ず通り、triage (confirmed / disputed / downgraded / needs_context) は script が判定するため、fact 扱いの集約や challenge の skip が起きない。fix 後は critic-audit が post-fix diff で resolved / still_open を再判定し、still_open は reopened として結果に出る。単体で呼ぶ。入れ子で呼ぶ workflow は無い。",
   whenToUse:
-    "diff の外部レンズ review と AI slop 除去を headless に行う。args は scope 文字列、または {scope, repo, mode, base}。scope 省略時は uncommitted な変更、無ければ base branch (既定 main) より先行する commit の diff (push 済み branch diff) を対象とする。mode: full (既定) は review -> fix -> rejudge -> cleanup、review は challenge 済み findings を返すだけ (fix しない)、cleanup は simplify + enhancer-code + テスト検証のみ。内部 reviewer の深い audit は audit workflow を使う。",
+    "diff の外部レンズ review と AI slop 除去を headless に行う。scope 文字列、または scope, repo, mode, base を持つ object を渡す。scope 省略時は uncommitted な変更、無ければ base branch (既定 main) より先行する commit の diff (push 済み branch diff) を対象とする。mode (full / review / cleanup): full (既定) は review -> fix -> rejudge -> cleanup、review は challenge 済み findings を返すだけ (fix しない)、cleanup は simplify + enhancer-code + テスト検証のみ。内部 reviewer の深い audit は audit workflow を使う。",
   phases: [
     { title: "Review" },
     { title: "Challenge" },
@@ -41,7 +41,21 @@ if (!repo) {
     why: `対象リポジトリを args.repo に絶対パスで渡す: Workflow({name: "polish", args: {repo: "/abs/path"}})。`,
   };
 }
-const mode = opts.mode === "review" || opts.mode === "cleanup" ? opts.mode : "full";
+// audit.js の FOCUS メンバーシップ検査と同じ形。MODES の外を渡した mode は以前は黙って
+// "full" に落ちていた (typo が気づかれない) ので、テストが抽出できる named const に出す。
+// inline 三項のままにはしない。
+const MODES = {
+  review: null,
+  cleanup: null,
+  full: null,
+};
+const mode = typeof opts.mode === "string" ? opts.mode : "full";
+if (!(mode in MODES)) {
+  return {
+    stopped: "invalid-mode",
+    why: `Mode "${mode}" は有効な値ではない。次のいずれかを渡す: ${Object.keys(MODES).join(", ")}。`,
+  };
+}
 const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 
 const anchor = (p) =>
