@@ -37,13 +37,20 @@ class Pattern(TypedDict, total=False):
     name: str
     evidence: list[str]
     existing: Literal["page", "candidate", "none"]
+    # Which STORE_SECTIONS heading the accumulated row lived under. Absent on a fresh row.
+    section: str
 
 
-class Row(TypedDict):
+class _RequiredRow(TypedDict):
     name: str
     count: int
     evidence: list[str]
     existing: str
+
+
+class Row(_RequiredRow, total=False):
+    # Which section the accumulated row came from. Absent on a row that originates in fresh.
+    section: str
 
 
 class Triaged(Row):
@@ -59,12 +66,16 @@ class Report(TypedDict):
 
 def _row(pattern: Pattern) -> Row:
     evidence = pattern.get("evidence") or []
-    return {
+    row: Row = {
         "name": pattern.get("name", ""),
         "count": len(evidence),
         "evidence": evidence,
         "existing": pattern.get("existing") or "none",
     }
+    section = pattern.get("section")
+    if section is not None:
+        row["section"] = section
+    return row
 
 
 def triage(patterns: list[Pattern]) -> Report:
@@ -101,18 +112,22 @@ def read_store(path: Path) -> list[Pattern]:
         return []
     rows: list[Pattern] = []
     dropped: list[str] = []
-    inside = False
+    section: str | None = None
     for line in path.read_text(encoding="utf-8").split("\n"):
         if line.startswith("## "):
-            inside = any(line.startswith(s) for s in STORE_SECTIONS)
+            section = next(
+                (s.removeprefix("## ") for s in STORE_SECTIONS if line.startswith(s)), None
+            )
             continue
-        if not inside or not line.startswith("- "):
+        if section is None or not line.startswith("- "):
             continue
         body = line[2:]
         evidence = EVIDENCE.findall(body)
         name = EVIDENCE.sub("", body).strip()
         if name:
-            rows.append({"name": name, "evidence": evidence, "existing": "candidate"})
+            rows.append(
+                {"name": name, "evidence": evidence, "existing": "candidate", "section": section}
+            )
         else:
             dropped.append(line)
     # Not stdout: the report there is a closed 4-key object the skill parses.
@@ -127,7 +142,8 @@ def read_store(path: Path) -> list[Pattern]:
 
 def merge(store: list[Pattern], fresh: list[Pattern]) -> list[Pattern]:
     """Fresh first would let a pattern tying on evidence count displace one that already waited
-    a run, since sorted is stable."""
+    a run, since sorted is stable. The accumulated row's front position is decided here, and
+    overwriting its existing from fresh below does not disturb that."""
     merged: list[Pattern] = []
     index: dict[str, int] = {}
     for p in [*store, *fresh]:
@@ -139,6 +155,11 @@ def merge(store: list[Pattern], fresh: list[Pattern]) -> list[Pattern]:
             continue
         seen = merged[at]["evidence"]
         seen.extend(e for e in (p.get("evidence") or []) if e not in seen)
+        # The accumulated row's existing is only the fixed value read_store attached. Which side
+        # fresh saw the same name on this time is what the row actually is now, so it wins.
+        existing = p.get("existing")
+        if existing is not None:
+            merged[at]["existing"] = existing
     return merged
 
 

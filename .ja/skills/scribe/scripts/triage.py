@@ -37,13 +37,20 @@ class Pattern(TypedDict, total=False):
     name: str
     evidence: list[str]
     existing: Literal["page", "candidate", "none"]
+    # 蓄積の行が STORE_SECTIONS のどの見出し配下にあったか。fresh には無い。
+    section: str
 
 
-class Row(TypedDict):
+class _RequiredRow(TypedDict):
     name: str
     count: int
     evidence: list[str]
     existing: str
+
+
+class Row(_RequiredRow, total=False):
+    # 蓄積行がどの節から来たかを運ぶ。fresh 由来の行には無い。
+    section: str
 
 
 class Triaged(Row):
@@ -59,12 +66,16 @@ class Report(TypedDict):
 
 def _row(pattern: Pattern) -> Row:
     evidence = pattern.get("evidence") or []
-    return {
+    row: Row = {
         "name": pattern.get("name", ""),
         "count": len(evidence),
         "evidence": evidence,
         "existing": pattern.get("existing") or "none",
     }
+    section = pattern.get("section")
+    if section is not None:
+        row["section"] = section
+    return row
 
 
 def triage(patterns: list[Pattern]) -> Report:
@@ -101,18 +112,22 @@ def read_store(path: Path) -> list[Pattern]:
         return []
     rows: list[Pattern] = []
     dropped: list[str] = []
-    inside = False
+    section: str | None = None
     for line in path.read_text(encoding="utf-8").split("\n"):
         if line.startswith("## "):
-            inside = any(line.startswith(s) for s in STORE_SECTIONS)
+            section = next(
+                (s.removeprefix("## ") for s in STORE_SECTIONS if line.startswith(s)), None
+            )
             continue
-        if not inside or not line.startswith("- "):
+        if section is None or not line.startswith("- "):
             continue
         body = line[2:]
         evidence = EVIDENCE.findall(body)
         name = EVIDENCE.sub("", body).strip()
         if name:
-            rows.append({"name": name, "evidence": evidence, "existing": "candidate"})
+            rows.append(
+                {"name": name, "evidence": evidence, "existing": "candidate", "section": section}
+            )
         else:
             dropped.append(line)
     # stdout には出さない。あちらは skill が解析する 4 キー固定の報告。
@@ -125,7 +140,8 @@ def read_store(path: Path) -> list[Pattern]:
 
 def merge(store: list[Pattern], fresh: list[Pattern]) -> list[Pattern]:
     """fresh を先にすると、sorted が安定なぶん、根拠数で並んだ共通項が 1 run 待った側を
-    押しのける。"""
+    押しのける。蓄積行を先頭に置く位置はここで決まり、以降 fresh 側の existing で上書きしても
+    崩れない。"""
     merged: list[Pattern] = []
     index: dict[str, int] = {}
     for p in [*store, *fresh]:
@@ -137,6 +153,11 @@ def merge(store: list[Pattern], fresh: list[Pattern]) -> list[Pattern]:
             continue
         seen = merged[at]["evidence"]
         seen.extend(e for e in (p.get("evidence") or []) if e not in seen)
+        # 蓄積行の existing は read_store が付けた固定値でしかない。同じ名前を fresh が
+        # 今回どちらで見たかの方が実体を表すので、それで上書きする。
+        existing = p.get("existing")
+        if existing is not None:
+            merged[at]["existing"] = existing
     return merged
 
 

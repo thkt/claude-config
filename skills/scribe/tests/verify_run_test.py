@@ -17,6 +17,7 @@ SCRIPT = HERE.parent / "scripts" / "verify_run.py"
 sys.path.insert(0, str(SCRIPT.parent))
 
 import verify_run  # noqa: E402  (sys.path must be set first)
+from triage import Pattern, triage  # noqa: E402  (sys.path must be set first)
 
 GIT_ENV = {
     **os.environ,
@@ -37,24 +38,46 @@ def _git(repo: Path, *args: str) -> None:
     )
 
 
-def _candidates(waiting: list[str], rejected: list[str] | None = None) -> str:
+def _candidates(
+    waiting: list[str], rejected: list[str] | None = None, one_off: list[str] | None = None
+) -> str:
     rows = [f"- {n}" for n in waiting]
     dropped = [f"- {n}" for n in rejected or []]
+    solo = [f"- {n}" for n in one_off or []]
     return "\n".join(
-        ["# candidates", "", "## 昇格待ち", "", *rows, "", "## 単発", "", "## 棄却", "", *dropped]
+        [
+            "# candidates",
+            "",
+            "## 昇格待ち",
+            "",
+            *rows,
+            "",
+            "## 単発",
+            "",
+            *solo,
+            "",
+            "## 棄却",
+            "",
+            *dropped,
+        ]
     )
 
 
-def _init_worktree(root: Path, start_waiting: list[str] | None) -> Path:
+def _init_worktree(
+    root: Path, start_waiting: list[str] | None, start_one_off: list[str] | None = None
+) -> Path:
     """The baseline carries a `docs(wiki):` commit of its own, because every branch point in
     this repository already holds earlier scribe runs. `start_waiting=None` leaves the store
-    out, which is the branch point a first run starts from."""
+    out, which is the branch point a first run starts from. `start_one_off` seeds 単発 rows for
+    a scenario where a row crosses sections during the run."""
     repo = root / "worktree"
     wiki = repo / "docs" / "wiki"
     wiki.mkdir(parents=True)
     _git(repo, "init", "-q")
     if start_waiting is not None:
-        _ = (wiki / "_candidates.md").write_text(_candidates(start_waiting), encoding="utf-8")
+        _ = (wiki / "_candidates.md").write_text(
+            _candidates(start_waiting, one_off=start_one_off), encoding="utf-8"
+        )
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "chore: seed candidates")
     _ = (wiki / "an-earlier-page.md").write_text("# earlier\n", encoding="utf-8")
@@ -99,19 +122,27 @@ def _commit_pages(repo: Path, still_waiting: list[str], names: list[str]) -> lis
     return left
 
 
+WAITING_SECTION = "昇格待ち"
+
+
+def _rows(names: list[str], section: str | None = WAITING_SECTION) -> list[dict[str, object]]:
+    """A triage row as `verify` reads it: the name, and the store section the row came from.
+    A row with no section never held a 昇格待ち line to clear."""
+    return [{"name": n, "section": section} for n in names]
+
+
+def _report(
+    commits: list[list[dict[str, object]]], deferred: list[dict[str, object]] | None = None
+) -> dict[str, object]:
+    return {"commits": commits, "deferred": deferred or []}
+
+
 def _run_verify(
-    repo: Path, start_count: int, expected_commits: int, base: str, created: int = 0
+    repo: Path, base: str, report: dict[str, object]
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [
-            sys.executable,
-            str(SCRIPT),
-            str(repo),
-            str(start_count),
-            str(expected_commits),
-            base,
-            str(created),
-        ],
+        [sys.executable, str(SCRIPT), str(repo), base],
+        input=json.dumps(report, ensure_ascii=False),
         capture_output=True,
         text=True,
         check=False,
@@ -134,7 +165,11 @@ class VerifyRun(unittest.TestCase):
             _git(repo, "add", "-A")
             _git(repo, "commit", "-q", "-m", "docs(wiki): item0, item1, brand-new を追加/更新")
 
-            proc = _run_verify(repo, start_count=5, expected_commits=1, base=base, created=1)
+            proc = _run_verify(
+                repo,
+                base,
+                _report([_rows(["item0", "item1"]) + _rows(["brand-new"], None)]),
+            )
 
         self.assertEqual(proc.returncode, 0, proc.stdout)
         self.assertEqual(json.loads(proc.stdout)["ok"], True)
@@ -154,7 +189,7 @@ class VerifyRun(unittest.TestCase):
             _git(repo, "add", "-A")
             _git(repo, "commit", "-q", "-m", "docs(wiki): item0, item1 を追加/更新")
 
-            proc = _run_verify(repo, start_count=5, expected_commits=1, base=base)
+            proc = _run_verify(repo, base, _report([_rows(["item0", "item1"])]))
 
         self.assertEqual(proc.returncode, 0, proc.stdout)
         report = cast(dict[str, object], json.loads(proc.stdout))
@@ -171,7 +206,11 @@ class VerifyRun(unittest.TestCase):
             left = _commit_pages(repo, start, ["item0", "item1", "item2"])
             _commit_pages(repo, left, ["item3", "item4"])
 
-            proc = _run_verify(repo, start_count=5, expected_commits=2, base=base)
+            proc = _run_verify(
+                repo,
+                base,
+                _report([_rows(["item0", "item1", "item2"]), _rows(["item3", "item4"])]),
+            )
 
         self.assertEqual(proc.returncode, 0, proc.stderr)
         report = cast(dict[str, object], json.loads(proc.stdout))
@@ -192,7 +231,17 @@ class VerifyRun(unittest.TestCase):
 
             # 2 commits actually ran, but the caller expected 3 (one short of what triage.py
             # planned) — the mismatch this scenario exists to catch.
-            proc = _run_verify(repo, start_count=5, expected_commits=3, base=base)
+            proc = _run_verify(
+                repo,
+                base,
+                _report(
+                    [
+                        _rows(["item0", "item1"]),
+                        _rows(["item2", "item3"]),
+                        _rows(["item4"]),
+                    ]
+                ),
+            )
 
         self.assertEqual(proc.returncode, 1, proc.stderr)
         report = cast(dict[str, object], json.loads(proc.stdout))
@@ -220,7 +269,11 @@ class VerifyRun(unittest.TestCase):
             _git(repo, "commit", "-q", "-m", "docs(wiki): item3, item4 を追加/更新")
 
             # 2 commits ran, matching what was expected — only the row count is wrong here.
-            proc = _run_verify(repo, start_count=5, expected_commits=2, base=base)
+            proc = _run_verify(
+                repo,
+                base,
+                _report([_rows(["item0", "item1", "item2"]), _rows(["item3", "item4"])]),
+            )
 
         self.assertEqual(proc.returncode, 1, proc.stderr)
         report = cast(dict[str, object], json.loads(proc.stdout))
@@ -246,7 +299,7 @@ class FirstRun(unittest.TestCase):
             _git(repo, "add", "-A")
             _git(repo, "commit", "-q", "-m", "docs(wiki): brand-new を追加/更新")
 
-            proc = _run_verify(repo, start_count=0, expected_commits=1, base=base, created=1)
+            proc = _run_verify(repo, base, _report([_rows(["brand-new"], None)]))
 
         self.assertEqual(proc.returncode, 0, proc.stderr)
         report = cast(dict[str, object], json.loads(proc.stdout))
@@ -263,7 +316,7 @@ class FirstRun(unittest.TestCase):
             _git(repo, "add", "-A")
             _git(repo, "commit", "-q", "-m", "docs(wiki): brand-new を追加/更新")
 
-            proc = _run_verify(repo, start_count=0, expected_commits=1, base=base, created=1)
+            proc = _run_verify(repo, base, _report([_rows(["brand-new"], None)]))
 
         self.assertEqual(proc.returncode, 1, proc.stdout)
         report = cast(dict[str, object], json.loads(proc.stdout))
@@ -274,19 +327,29 @@ class ArgumentContract(unittest.TestCase):
     """exit 1 は「検証が通らなかった run」に予約されている。引数が壊れているだけの run が
     同じ値を返すと、呼び出し側は run の失敗と読む。"""
 
-    def _run(self, *args: str) -> subprocess.CompletedProcess[str]:
+    def _run(self, *args: str, stdin: str = "") -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, str(SCRIPT), *args], capture_output=True, text=True, check=False
+            [sys.executable, str(SCRIPT), *args],
+            input=stdin,
+            capture_output=True,
+            text=True,
+            check=False,
         )
 
     def test_引数が足りない_run_は_exit_2_で_usage_を_出す(self) -> None:
-        proc = self._run(".", "0", "1", "HEAD")
+        proc = self._run(".", stdin=json.dumps({"commits": [], "deferred": []}))
         self.assertEqual(proc.returncode, 2, proc.stderr)
         self.assertIn("usage: verify_run.py", proc.stderr)
         self.assertEqual(proc.stdout, "")
 
-    def test_数値でない引数の_run_も_exit_2_で_usage_を_出す(self) -> None:
-        proc = self._run(".", "x", "1", "HEAD", "0")
+    def test_stdin_が_JSON_でない_run_も_exit_2_で_usage_を_出す(self) -> None:
+        proc = self._run(".", "HEAD", stdin="not json")
+        self.assertEqual(proc.returncode, 2, proc.stderr)
+        self.assertIn("usage: verify_run.py", proc.stderr)
+        self.assertEqual(proc.stdout, "")
+
+    def test_commits_を_持たない_stdin_も_exit_2_で_usage_を_出す(self) -> None:
+        proc = self._run(".", "HEAD", stdin=json.dumps({"deferred": []}))
         self.assertEqual(proc.returncode, 2, proc.stderr)
         self.assertIn("usage: verify_run.py", proc.stderr)
         self.assertEqual(proc.stdout, "")
@@ -300,6 +363,141 @@ class StoreAtFailures(unittest.TestCase):
             repo = _init_worktree(Path(tmp), ["item0"])
             with self.assertRaises(subprocess.CalledProcessError):
                 _ = verify_run._store_at(repo, "deadbeef" * 5)
+
+
+def _verify(repo: Path, report: dict[str, object], base: str) -> dict[str, object]:
+    """`verify` takes triage's own output (`commits`, `deferred`) and derives `start_count` from
+    `base`'s store and `expected_commits` from that report, rather than taking either as an int."""
+    return cast(dict[str, object], verify_run.verify(repo, report=report, base=base))
+
+
+class DerivedFromBaseAndTriage(unittest.TestCase):
+    """`section_rows` already counts a heading's rows, and `_store_at` already reads `base`'s
+    `_candidates.md` unchanged. `verify` is expected to compose the two into `start_count`
+    itself, and to read `expected_commits` off `report["commits"]` rather than trust either as
+    an argument."""
+
+    def test_a_run_that_does_not_pass_start_count_counts_the_base_waiting_rows_itself(
+        self,
+    ) -> None:
+        """T-004 `start_count` を渡さない run が base 時点の昇格待ち行数を自分で数える"""
+        with tempfile.TemporaryDirectory() as tmp:
+            start = [f"item{i}" for i in range(5)]
+            repo = _init_worktree(Path(tmp), start)
+            base = _base(repo)
+            _commit_pages(repo, start, ["item0", "item1", "item2"])
+
+            report: dict[str, object] = {
+                "commits": [
+                    [{"name": n, "section": "昇格待ち"} for n in ("item0", "item1", "item2")]
+                ],
+                "deferred": [],
+            }
+            result = _verify(repo, report, base)
+
+        self.assertEqual(result["ok"], True, result["mismatches"])
+
+    def test_a_run_where_deferred_enters_waiting_grows_the_expected_value_by_the_inflow(
+        self,
+    ) -> None:
+        """T-005 `deferred` が昇格待ちへ入る run の期待値が、流入分だけ増える"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = _init_worktree(Path(tmp), ["item0", "item1"], start_one_off=["solo"])
+            base = _base(repo)
+            wiki = repo / "docs" / "wiki"
+            for n in ["item0", "item1"]:
+                _ = (wiki / f"{n}.md").write_text(f"# {n}\n", encoding="utf-8")
+            # solo now carries a second piece of evidence and is promotion-worthy, but this
+            # run's commit cap leaves it uncommitted, so it moves into 昇格待ち to wait.
+            _ = (wiki / "_candidates.md").write_text(_candidates(["solo"]), encoding="utf-8")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): item0, item1 を追加/更新")
+
+            report: dict[str, object] = {
+                "commits": [[{"name": n, "section": "昇格待ち"} for n in ("item0", "item1")]],
+                "deferred": [{"name": "solo", "section": "単発"}],
+            }
+            result = _verify(repo, report, base)
+
+        self.assertEqual(result["ok"], True, result["mismatches"])
+
+    def test_a_run_that_updates_an_existing_page_with_status_m_and_clears_its_row_returns_ok_true(
+        self,
+    ) -> None:
+        """T-006 既存ページを M で更新し昇格待ち行を消した run が `ok: true` を返す"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = _init_worktree(Path(tmp), ["some-topic"])
+            wiki = repo / "docs" / "wiki"
+            # some-topic already has a page before base, so this run's write lands on git as
+            # status M (modify), never A (add).
+            _ = (wiki / "some-topic.md").write_text("# some-topic\n", encoding="utf-8")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): some-topic を追加/更新")
+            base = _base(repo)
+
+            _ = (wiki / "some-topic.md").write_text("# some-topic\n\nmore.\n", encoding="utf-8")
+            _ = (wiki / "_candidates.md").write_text(_candidates([]), encoding="utf-8")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): some-topic を追加/更新")
+
+            report: dict[str, object] = {
+                "commits": [[{"name": "some-topic", "section": "昇格待ち"}]],
+                "deferred": [],
+            }
+            result = _verify(repo, report, base)
+
+        self.assertEqual(result["ok"], True, result["mismatches"])
+
+    def test_one_off_promoted_by_second_evidence_does_not_mismatch(self) -> None:
+        """T-007 単発の行が 2 件目の根拠を得てページになった run の期待値が食い違わない"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = _init_worktree(Path(tmp), ["item0"], start_one_off=["solo"])
+            base = _base(repo)
+            wiki = repo / "docs" / "wiki"
+            for n in ["item0", "solo"]:
+                _ = (wiki / f"{n}.md").write_text(f"# {n}\n", encoding="utf-8")
+            _ = (wiki / "_candidates.md").write_text(_candidates([]), encoding="utf-8")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): item0, solo を追加/更新")
+
+            report: dict[str, object] = {
+                "commits": [
+                    [
+                        {"name": "item0", "section": "昇格待ち"},
+                        {"name": "solo", "section": "単発"},
+                    ]
+                ],
+                "deferred": [],
+            }
+            result = _verify(repo, report, base)
+
+        self.assertEqual(result["ok"], True, result["mismatches"])
+
+    def test_a_commit_built_from_triage_returned_commits_and_pages_makes_verify_run_return_ok_true(
+        self,
+    ) -> None:
+        """T-009 triage が返した commits と pages から組んだコミットが、verify_run で
+        `ok: true` になる"""
+        patterns: list[Pattern] = [
+            {"name": "alpha", "evidence": ["#1", "#2"], "existing": "none"},
+            {"name": "beta", "evidence": ["#3", "#4"], "existing": "none"},
+        ]
+        report = triage(patterns)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = _init_worktree(Path(tmp), None)
+            base = _base(repo)
+            names = [row["name"] for commit in report["commits"] for row in commit]
+            _commit_pages(repo, [], names)
+
+            # Not verify() directly: SKILL.md step 4 reaches this module through the CLI, so the
+            # seam this asserts is argv + stdin, and `report` goes in as triage()'s own return
+            # value, unmodified.
+            proc = _run_verify(repo, base, cast(dict[str, object], report))
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        result = cast(dict[str, object], json.loads(proc.stdout))
+        self.assertEqual(result["ok"], True, result["mismatches"])
 
 
 if __name__ == "__main__":
