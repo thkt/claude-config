@@ -44,20 +44,6 @@ def _is_apparatus(path: str) -> bool:
     return PurePosixPath(path).as_posix().startswith(APPARATUS_DIR)
 
 
-def _enforcer_rows(root: Path) -> list[dict[str, object]]:
-    """enforcer_map.TARGET_FILES の空行以外の各行を enforcer_map.classify_file で分類した
-    もの。ファイル順、その中では行順。enforcer_map.main() 自身のループが持つファイル存在
-    ガード (対象ファイルが 1 つ (より狭いチェックアウト) 欠けても残りのマッピングを止めない)
-    に倣う。main() は module の CLI エントリポイントで返り値でなく print するため、main() へ
-    委譲するのでなくここで持つ。"""
-    rows: list[dict[str, object]] = []
-    for rel_path in enforcer_map.TARGET_FILES:
-        if not (root / rel_path).is_file():
-            continue
-        rows.extend(enforcer_map.classify_file(root, rel_path))
-    return rows
-
-
 def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, Any]:
     """前段の 4 ユニットを順に呼び、その出力を結線する。
 
@@ -65,9 +51,8 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
     2. arms.ARMS — この ablation 実行が比較するすべてのアーム。
     3. observation ごとの verdict.classify(...) — その observation が報告する要素の
        delete-candidate / needs-human-judgment / unmeasured ラベル。
-    4. enforcer_map.TARGET_FILES の各メンバーごとの enforcer_map.classify_file(...) —
-       常時ロードされる各ファイル自身の行についての delete-candidate / ablation-residue
-       ラベル。
+    4. enforcer_map.map_all(root) — 常時ロードされる各ファイル自身の行についての
+       delete-candidate / ablation-residue ラベル。
 
     レポート文字列でなく素の dict (elements / arms / verdicts / delete_candidates /
     enforcer_rows) を返すため、データだけを必要とする呼び出し側 (このユニットのテスト、
@@ -95,7 +80,7 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
         "arms": list(arms.ARMS),
         "verdicts": verdicts,
         "delete_candidates": sorted(delete_candidates),
-        "enforcer_rows": _enforcer_rows(root),
+        "enforcer_rows": enforcer_map.map_all(root),
     }
 
 

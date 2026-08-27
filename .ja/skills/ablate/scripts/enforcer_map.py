@@ -95,22 +95,25 @@ def classify_file(root: Path, rel_path: str) -> list[dict[str, object]]:
     return results
 
 
+def map_all(root: Path) -> list[dict[str, object]]:
+    """TARGET_FILES 全体の空行以外の各行を、ファイル順・その中では行順に分類する。main() と
+    skills/ablate/scripts/report.py の両方が使うため、ファイル存在ガード (対象ファイルが 1 つ
+    欠けても — 絞り込まれた checkout、rule ファイルの rename — 残りの対応付けを止めない。
+    skills/census/scripts/list-source-files.py の count_lines が読めない source ファイル 1 つ
+    に対して行うのと同じ扱い) を両呼び出し側でなくここ 1 箇所に持つ。"""
+    results: list[dict[str, object]] = []
+    for rel_path in TARGET_FILES:
+        if not (root / rel_path).is_file():
+            continue
+        results.extend(classify_file(root, rel_path))
+    return results
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
         print("usage: enforcer_map.py <repo-root>", file=sys.stderr)
         return 2
-    root = Path(argv[1])
-    results: list[dict[str, object]] = []
-    for rel_path in TARGET_FILES:
-        path = root / rel_path
-        if not path.is_file():
-            # 対象ファイルが 1 つ欠けていても (絞り込まれた checkout、rule ファイルの
-            # rename) 残りの対応付けを止めない
-            # (skills/census/scripts/list-source-files.py の count_lines が読めない
-            # source ファイル 1 つに対して行うのと同じ扱い)。
-            continue
-        results.extend(classify_file(root, rel_path))
-    print(json.dumps(results, ensure_ascii=False))
+    print(json.dumps(map_all(Path(argv[1])), ensure_ascii=False))
     return 0
 
 

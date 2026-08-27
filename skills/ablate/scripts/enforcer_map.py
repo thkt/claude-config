@@ -94,21 +94,25 @@ def classify_file(root: Path, rel_path: str) -> list[dict[str, object]]:
     return results
 
 
+def map_all(root: Path) -> list[dict[str, object]]:
+    """Classifies every non-blank line across TARGET_FILES, file order then line order.
+    Shared by main() and skills/ablate/scripts/report.py so the file-existence guard (a
+    target file missing — a narrower checkout, a renamed rule file — must not stop the
+    mapping for the rest, mirroring skills/census/scripts/list-source-files.py's
+    count_lines for one unreadable source file) lives once rather than in both callers."""
+    results: list[dict[str, object]] = []
+    for rel_path in TARGET_FILES:
+        if not (root / rel_path).is_file():
+            continue
+        results.extend(classify_file(root, rel_path))
+    return results
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
         print("usage: enforcer_map.py <repo-root>", file=sys.stderr)
         return 2
-    root = Path(argv[1])
-    results: list[dict[str, object]] = []
-    for rel_path in TARGET_FILES:
-        path = root / rel_path
-        if not path.is_file():
-            # One target file missing (a narrower checkout, a renamed rule file) must not
-            # stop the mapping for the rest (skills/census/scripts/list-source-files.py's
-            # count_lines does the same for one unreadable source file).
-            continue
-        results.extend(classify_file(root, rel_path))
-    print(json.dumps(results, ensure_ascii=False))
+    print(json.dumps(map_all(Path(argv[1])), ensure_ascii=False))
     return 0
 
 

@@ -44,20 +44,6 @@ def _is_apparatus(path: str) -> bool:
     return PurePosixPath(path).as_posix().startswith(APPARATUS_DIR)
 
 
-def _enforcer_rows(root: Path) -> list[dict[str, object]]:
-    """Every non-blank line of enforcer_map.TARGET_FILES, classified by
-    enforcer_map.classify_file, file order then line order. Mirrors the file-existence guard
-    in enforcer_map.main()'s own loop (a target file absent from a narrower checkout must not
-    stop the mapping for the rest) rather than delegating to main(), which is the module's
-    CLI entry point and prints instead of returning."""
-    rows: list[dict[str, object]] = []
-    for rel_path in enforcer_map.TARGET_FILES:
-        if not (root / rel_path).is_file():
-            continue
-        rows.extend(enforcer_map.classify_file(root, rel_path))
-    return rows
-
-
 def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, Any]:
     """Runs the four preceding units in sequence and wires their outputs together.
 
@@ -66,8 +52,8 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
     2. arms.ARMS — every arm this ablation run compares.
     3. verdict.classify(...), once per observation — the delete-candidate /
        needs-human-judgment / unmeasured label for the element that observation reports on.
-    4. enforcer_map.classify_file(...), once per enforcer_map.TARGET_FILES member — the
-       delete-candidate / ablation-residue label for each always-loaded file's own lines.
+    4. enforcer_map.map_all(root) — the delete-candidate / ablation-residue label for each
+       always-loaded file's own lines.
 
     Returns a plain dict (elements / arms / verdicts / delete_candidates / enforcer_rows)
     rather than a report string, so a caller that only wants the data (this unit's tests; a
@@ -95,7 +81,7 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
         "arms": list(arms.ARMS),
         "verdicts": verdicts,
         "delete_candidates": sorted(delete_candidates),
-        "enforcer_rows": _enforcer_rows(root),
+        "enforcer_rows": enforcer_map.map_all(root),
     }
 
 
