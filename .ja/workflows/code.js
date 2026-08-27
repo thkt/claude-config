@@ -3,7 +3,7 @@ export const meta = {
   description:
     '構造化 plan (units / test_command) を受け取り、unit ごとに script 制御で実装する TDD workflow。test scenario を持つ unit は Red → Green で実装し、tests が空の unit (docs / 設定など検証可能な振る舞いが無いもの) は直接実装 1 段で扱う。TDD の要否は runtime でなく plan が選択する。未確認の Red は anomaly として記録し、最後に実装へ関与していない独立 agent が全 suite + lint + type-check を検証する。commit: true のとき、各 unit は plan の指示を trailer に載せた独立コミットとして着地する。単独でも build からの workflow("code") でも呼べる。',
   whenToUse:
-    "headless の plan 実装。args は {plan, repo, model, commit, issue, untracked_baseline}。plan は units / test_command を持つ構造化 plan (think skill が生成する形)。model (任意) は実装 agent にのみ伝播する (default は sonnet)。commit: true は unit の完了ごとにコミットし、issue / untracked_baseline は commit trailer と never-stage 集合になる。実装 agent は effort high で走る。",
+    'headless の plan 実装。args は {plan, repo, model, commit, issue, untracked_baseline, implementer}。plan は units / test_command を持つ構造化 plan (think skill が生成する形)。model (任意) は実装 agent にのみ伝播する (default は sonnet)。commit: true は unit の完了ごとにコミットし、issue / untracked_baseline は commit trailer と never-stage 集合になる。実装 agent は effort high で走る。implementer (任意、default "claude") は unit を誰が実装するかを選び、"codex-herdr" は herdr の到達性を確認してから実装に入り、届かなければ run を止める。',
   phases: [{ title: "Implement" }, { title: "Verify" }],
 };
 
@@ -52,6 +52,19 @@ const issueRef = String(input.issue || "")
   .replace(/^#/, "")
   .trim();
 const untrackedBaseline = Array.isArray(input.untracked_baseline) ? input.untracked_baseline : [];
+
+// 供給される値の一覧は script 側の定数として持ち、散文の契約には置かない。
+const VALID_IMPLEMENTERS = ["claude", "codex-herdr"];
+const implementer =
+  typeof input.implementer === "string" && input.implementer.trim()
+    ? input.implementer.trim()
+    : "claude";
+if (!VALID_IMPLEMENTERS.includes(implementer)) {
+  return {
+    stopped: "implementer-invalid",
+    why: `args.implementer "${implementer}" は未対応。"claude" か "codex-herdr" を渡すか、省略して既存の Claude 経路を使う。`,
+  };
+}
 
 // plan 由来の値は prompt へ入る前にここで改行を落とす。注入ブロックの fence は行単位で読まれる
 // ので、行を作れる値は fence を偽装できる。\r と U+2028 / U+2029 も \n と同じく行を分ける。
@@ -226,6 +239,46 @@ const stepWithRetry = async (unit, label, schema, ok, prompt, retryPrompt) => {
 
 // ---- Implement: unit ごとに直列で実装 (working tree を共有するため) ----
 phase("Implement");
+
+const HERDR_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["herdr_available", "notes"],
+  properties: {
+    herdr_available: { type: "boolean" },
+    notes: { type: "string" },
+  },
+};
+
+// herdr は Unix socket 越しに話すので sandboxed Bash からは届かず、agent 側で
+// dangerouslyDisableSandbox が要る。assert.js の codex_available と同じ形で、command の
+// 有無と実疎通の両方を確認してから実装に入る。
+if (implementer === "codex-herdr") {
+  const herdr = await agent(
+    anchor(
+      `この run が実装に入る前に herdr の到達性を確認する。\`command -v herdr\` を実行し、` +
+        `見つかったら \`herdr agent get\` を実行する。herdr は Unix socket 越しに話すため、` +
+        `sandboxed Bash からは届かない可能性がある。最初の試行が sandbox 由来の拒否を報告したら、` +
+        `到達不能と結論する前に dangerouslyDisableSandbox を付けて再試行する。` +
+        `両方が成功したときに限り herdr_available: true を返す。失敗したコマンドとその出力を notes に書く。`,
+    ),
+    {
+      label: "herdr-check",
+      phase: "Implement",
+      agentType: "general-purpose",
+      schema: HERDR_SCHEMA,
+      model: "sonnet",
+    },
+  );
+  if (!herdr || !herdr.herdr_available) {
+    return {
+      stopped: "herdr-unreachable",
+      why: herdr
+        ? herdr.notes || "herdr に到達できなかった。"
+        : "herdr の到達性確認 agent が結果を返さなかった。",
+    };
+  }
+}
 
 // contract が引用するのは 1 つの振る舞いなので、plan の参照モジュールが無いと周辺構造が
 // 手組みされ、隣人が既に持つ形から逸れる。

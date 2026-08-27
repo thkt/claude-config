@@ -3,7 +3,7 @@ export const meta = {
   description:
     'TDD workflow that takes a structured plan (units / test_command) and implements per unit under script enforcement. A unit with test scenarios runs Red -> Green; a unit with no tests (docs / config, no verifiable behavior) runs a single direct-implementation step, so whether TDD applies is selected in the plan, not decided at runtime. An unconfirmed Red is recorded as an anomaly, and at the end an independent agent verifies the full suite + lint + type-check. With commit: true each unit lands as its own commit carrying the plan\'s instruction as trailers. Callable standalone or nested from build via workflow("code").',
   whenToUse:
-    "Headless plan implementation. args is {plan, repo, model, commit, issue, untracked_baseline}; plan is a structured plan with units / test_command (as produced by the think skill). model (optional) propagates only to the implementation agents (defaults to sonnet). commit: true commits each unit as it completes; issue / untracked_baseline feed the commit trailers and the never-stage set. The implementation agents run at effort high.",
+    'Headless plan implementation. args is {plan, repo, model, commit, issue, untracked_baseline, implementer}; plan is a structured plan with units / test_command (as produced by the think skill). model (optional) propagates only to the implementation agents (defaults to sonnet). commit: true commits each unit as it completes; issue / untracked_baseline feed the commit trailers and the never-stage set. The implementation agents run at effort high. implementer (optional, default "claude") selects who implements each unit; "codex-herdr" first confirms herdr is reachable before entering implementation and stops the run if it is not.',
   phases: [{ title: "Implement" }, { title: "Verify" }],
 };
 
@@ -50,6 +50,19 @@ const issueRef = String(input.issue || "")
   .replace(/^#/, "")
   .trim();
 const untrackedBaseline = Array.isArray(input.untracked_baseline) ? input.untracked_baseline : [];
+
+// The list of accepted values lives here as a script-side constant, not in prose.
+const VALID_IMPLEMENTERS = ["claude", "codex-herdr"];
+const implementer =
+  typeof input.implementer === "string" && input.implementer.trim()
+    ? input.implementer.trim()
+    : "claude";
+if (!VALID_IMPLEMENTERS.includes(implementer)) {
+  return {
+    stopped: "implementer-invalid",
+    why: `args.implementer "${implementer}" is not supported. Pass "claude" or "codex-herdr", or omit it to keep the existing Claude path.`,
+  };
+}
 
 // Every plan-derived value reaching a prompt loses its line breaks here. The injected blocks
 // are fenced line by line, so a value able to start a line can forge a fence, and \r and
@@ -229,6 +242,46 @@ const stepWithRetry = async (unit, label, schema, ok, prompt, retryPrompt) => {
 
 // ---- Implement: per unit, serial (the working tree is shared) ----
 phase("Implement");
+
+const HERDR_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["herdr_available", "notes"],
+  properties: {
+    herdr_available: { type: "boolean" },
+    notes: { type: "string" },
+  },
+};
+
+// herdr talks over a Unix socket, so a sandboxed Bash call cannot reach it and the agent
+// needs dangerouslyDisableSandbox. Mirrors assert.js's codex_available: confirm both the
+// command's presence and a real round trip before any unit enters implementation.
+if (implementer === "codex-herdr") {
+  const herdr = await agent(
+    anchor(
+      `Confirm herdr is reachable before this run enters implementation. Run \`command -v herdr\`, ` +
+        `then \`herdr agent get\`. herdr talks over a Unix socket, so a sandboxed Bash call may not ` +
+        `reach it; if the first attempt reports a sandbox denial, retry with dangerouslyDisableSandbox ` +
+        `before concluding herdr is unreachable. Set herdr_available: true only when both succeed. ` +
+        `Put the failing command and its output in notes.`,
+    ),
+    {
+      label: "herdr-check",
+      phase: "Implement",
+      agentType: "general-purpose",
+      schema: HERDR_SCHEMA,
+      model: "sonnet",
+    },
+  );
+  if (!herdr || !herdr.herdr_available) {
+    return {
+      stopped: "herdr-unreachable",
+      why: herdr
+        ? herdr.notes || "herdr is unreachable."
+        : "the herdr reachability check returned no result",
+    };
+  }
+}
 
 // A contract cites one behavior, so without the plan's reference module the surrounding
 // structure gets hand-rolled and drifts from the shape its neighbors already have.
