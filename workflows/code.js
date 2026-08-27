@@ -1,9 +1,9 @@
 export const meta = {
   name: "code",
   description:
-    'TDD workflow that takes a structured plan (units / test_command) and implements per unit under script enforcement. A unit with test scenarios runs Red -> Green; a unit with no tests (docs / config, no verifiable behavior) runs a single direct-implementation step, so whether TDD applies is selected in the plan, not decided at runtime. An unconfirmed Red is recorded as an anomaly, and at the end an independent agent verifies the full suite + lint + type-check. With commit: true each unit lands as its own commit carrying the plan\'s instruction as trailers. Callable standalone or nested from build via workflow("code").',
+    'TDD workflow that takes a structured plan (units / test_command) and implements each unit under script enforcement, per the plan\'s own instructions. An unconfirmed Red is recorded as an anomaly, and at the end an independent agent verifies the full suite + lint + type-check. With commit: true each unit lands as its own commit carrying the plan\'s instruction as trailers. Callable standalone or nested from build via workflow("code").',
   whenToUse:
-    "Headless plan implementation. args is {plan, repo, model, commit, issue, untracked_baseline}; plan is a structured plan with units / test_command (as produced by the think skill). model (optional) propagates only to the implementation agents (defaults to sonnet). commit: true commits each unit as it completes; issue / untracked_baseline feed the commit trailers and the never-stage set. The implementation agents run at effort high.",
+    "Headless plan implementation. Pass a structured plan with units / test_command (as produced by the think skill), the target repository, and optionally which model runs the implementation agents (defaults to sonnet). Committing each unit as it completes is opt-in; when enabled, the issue reference and untracked-baseline paths feed the commit trailers and the never-stage set. The implementation agents run at effort high.",
   phases: [{ title: "Implement" }, { title: "Verify" }],
 };
 
@@ -30,7 +30,7 @@ const plan = input.plan;
 if (!plan || !Array.isArray(plan.units) || !plan.units.length) {
   return {
     stopped: "no-plan",
-    why: "Pass a structured plan (units required) as args.plan.",
+    why: "Pass a structured plan (units required).",
   };
 }
 const repo = typeof input.repo === "string" ? input.repo : "";

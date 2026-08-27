@@ -34,6 +34,23 @@ test("build's whenToUse in neither tree contains the identifier args", () => {
   }
 });
 
+// One tree per code.js: the English source under workflows/, and its .ja/ mirror.
+const CODE_TREES = [
+  { label: "en", path: join(here, "..", "..", "code.js") },
+  { label: "ja", path: join(here, "..", "..", "..", ".ja", "workflows", "code.js") },
+];
+
+test("code's whenToUse in neither tree contains the identifier args", () => {
+  for (const { label, path } of CODE_TREES) {
+    const meta = readMeta(path);
+    assert.doesNotMatch(
+      meta.whenToUse,
+      /\bargs\b/,
+      `[${label}] whenToUse names the identifier "args" instead of describing the shape in prose`,
+    );
+  }
+});
+
 // Only the key set matters here: FOCUS's values are reviewer-name arrays that whenToUse's prose
 // never restates.
 const focusKeys = (source) => {
