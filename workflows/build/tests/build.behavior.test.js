@@ -1459,7 +1459,7 @@ test("T-008 a no-plan stop reaches the real record.py as a plan-quality row join
 
 // U-002: record.py's stdout carries the window tally alongside path/run_id. stop() and the
 // final return must relay that same tally rather than dropping it on the way to the caller.
-test("a no-plan stop run through the real record.py returns counts matching the rows on disk", async () => {
+test("T-009 a no-plan stop run through the real record.py returns counts matching the rows on disk", async () => {
   const home = mkdtempSync(join(tmpdir(), "build-record-counts-"));
   try {
     let lastCounts = null;
@@ -1509,7 +1509,7 @@ test("a no-plan stop run through the real record.py returns counts matching the 
 
 // A recorder response missing the tally is a degraded relay (WORKFLOWS.md's fail-open with
 // recorded loss), not a reason to stop a build that is otherwise running fine.
-test("a recorder that returns no counts leaves the build running and logs that the tally is unavailable", async () => {
+test("T-010 a recorder that returns no counts leaves the build running and logs that the tally is unavailable", async () => {
   const { result, logs } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({
@@ -1523,29 +1523,54 @@ test("a recorder that returns no counts leaves the build running and logs that t
   );
 });
 
-// The prompt's JSON example is a human-facing spec of what the caller reads back. Every key
-// record.py's own docstring says it prints must appear there, or a reader trusts a stale example.
-test("the JSON example in the recorder prompt carries every key the real record.py prints", async () => {
+// Not record.py's docstring: the prompt and the docstring can drift together while the real
+// output moves on, and neither side is what the caller reads back. Running the script is the
+// only source that cannot go stale, so both prose copies are held to it.
+test("T-011 the JSON example in the recorder prompt carries every key the real record.py prints", async () => {
+  const home = mkdtempSync(join(tmpdir(), "build-record-keys-"));
+  let printed;
+  try {
+    const res = spawnSync("python3", [recordPy], {
+      input: JSON.stringify({
+        issue: "1",
+        repo: "/abs/repo",
+        branch: "wt/i1",
+        reason: "started",
+        plan_quality: false,
+      }),
+      encoding: "utf8",
+      env: { ...process.env, HOME: home },
+    });
+    assert.equal(res.status, 0, `record.py exits 0 (stderr: ${res.stderr})`);
+    printed = Object.keys(JSON.parse(res.stdout));
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+  assert.ok(printed.length > 0, "record.py prints at least one key");
+
   const recordSource = await readFile(recordPy, "utf8");
   const stdoutLine = recordSource.match(/stdout:\s*one line of JSON,\s*\{([^}]+)\}/);
   assert.ok(stdoutLine, "record.py's docstring states the stdout key set");
-  const keys = stdoutLine[1].split(",").map((k) => k.trim());
-  assert.ok(keys.length > 0, "the docstring names at least one stdout key");
+  assert.deepEqual(
+    new Set(stdoutLine[1].split(",").map((k) => k.trim())),
+    new Set(printed),
+    "record.py's docstring names the keys it actually prints",
+  );
 
   const { calls } = await runWorkflow(buildJs, { args, stubs: makeStubs() });
   const recordPrompt = agentCallsOf(calls, "record")[0].prompt;
-  for (const key of keys) {
+  for (const key of printed) {
     assert.match(
       recordPrompt,
       new RegExp(`"${key}"`),
-      `the recorder prompt's JSON example names "${key}", one of record.py's own stdout keys`,
+      `the recorder prompt's JSON example names "${key}", one of the keys record.py printed`,
     );
   }
 });
 
 // A finished run never calls recordRun again after "started" (T-006), so the only tally it can
 // return is the one its own start row read.
-test("a run that finishes returns the counts its start row read", async () => {
+test("T-012 a run that finishes returns the counts its start row read", async () => {
   const startCounts = { started: 5, stops: 1, trigger_met: false, skipped_lines: 0 };
   const { result } = await runWorkflow(buildJs, {
     args,
