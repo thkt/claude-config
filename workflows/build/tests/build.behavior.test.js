@@ -1257,6 +1257,64 @@ test("T-019 build の args に implementer が無いとき code の呼び出し�
   );
 });
 
+// U-008 seam: code's own pane logic never runs inside this test (workflow("code") is stubbed
+// at the boundary), and run-workflow.js records only the agent's {prompt, opts}. So this
+// verifies build's own return value the way units_completed / unit_commits already are:
+// derived from the stub standing in for code's own return value, both on a normal completion
+// and on a stop, not read off any prompt text.
+test("T-023 build から codex-herdr を渡すと code の返り値に pane id が載り、停止も build に伝わる", async () => {
+  const completedRun = await runWorkflow(buildJs, {
+    args: { issue: "123", repo, implementer: "codex-herdr" },
+    stubs: makeStubs({
+      code: {
+        completed: ["U-001"],
+        skipped: [],
+        anomalies: [],
+        commits: [{ unit: "U-001", subject: "feat: sample subject" }],
+        tests_pass: true,
+        gates_pass: true,
+        verification: "tests+gates",
+        herdr_panes: { tester: "pane-tester-1", coder: "pane-coder-1" },
+      },
+    }),
+  });
+  assert.equal(
+    completedRun.result.herdr_panes?.tester,
+    "pane-tester-1",
+    "the tester pane id code resolved reaches build's own return value on a normal completion",
+  );
+  assert.equal(
+    completedRun.result.herdr_panes?.coder,
+    "pane-coder-1",
+    "the coder pane id code resolved reaches build's own return value too",
+  );
+
+  const stoppedRun = await runWorkflow(buildJs, {
+    args: { issue: "123", repo, implementer: "codex-herdr" },
+    stubs: makeStubs({
+      code: {
+        stopped: "pane-start-failed",
+        why: "the coder pane failed to start.",
+        completed: [],
+        skipped: [],
+        anomalies: [],
+        commits: [],
+        herdr_panes: { tester: "pane-tester-9" },
+      },
+    }),
+  });
+  assert.equal(
+    stoppedRun.result.stopped,
+    "code-failed",
+    "a pane failure inside code still surfaces as build's own stopped reason",
+  );
+  assert.equal(
+    stoppedRun.result.herdr_panes?.tester,
+    "pane-tester-9",
+    "the pane id already resolved before the stop reaches build's own return value, not just nested inside detail",
+  );
+});
+
 // sibling()'s fallback decision rests on the production runtime's wording, so the stub throws in
 // that same shape.
 const unknownWorkflowError = (name) =>

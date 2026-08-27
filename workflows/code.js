@@ -87,7 +87,18 @@ const commits = [];
 // progress.
 const stopUnit = async (stopped, unit, why) => {
   await closeHerdrPanes();
-  return { stopped, unit: unit.id, why, completed, skipped, anomalies, commits };
+  return {
+    stopped,
+    unit: unit.id,
+    why,
+    completed,
+    skipped,
+    anomalies,
+    commits,
+    herdr_panes: herdrPanesResolved,
+    pane_opens: paneOpens,
+    pane_closes: paneCloses,
+  };
 };
 // Decides, in this one function alone, the route (claude / codex-herdr) and the call's
 // destination (no pane, or which of the tester / coder panes). The claude route executes the
@@ -356,6 +367,23 @@ const closePane = (role, paneId) =>
 // The tester / coder pane ids. Stays null for a non-codex-herdr run, so closeHerdrPanes is a
 // no-op there.
 let herdrPanes = null;
+// run-workflow.js's calls.agent records only each agent's {prompt, opts}, which cannot show
+// that the pane id resolved from pane split, or the open/close count, actually reached this
+// workflow's own return value - the value build.js in turn forwards into its own return value.
+// herdrPanesResolved survives closeHerdrPanes nulling herdrPanes out, so the ids stay on every
+// return path after teardown, not just before it.
+let herdrPanesResolved = null;
+let paneOpens = 0;
+let paneCloses = 0;
+
+// Every close (loop-end teardown via closeHerdrPanes, and the early-failure branches below
+// that close a lone already-open tester pane) goes through here, so paneCloses stays the one
+// running count of panes actually closed.
+const closePaneCounted = async (role, paneId) => {
+  const res = await closePane(role, paneId);
+  if (res && res.closed) paneCloses++;
+  return res;
+};
 
 // Called both from stopUnit's early returns and from the normal path after the loop ends, so
 // it clears herdrPanes on entry to avoid closing twice. A close failure does not stop the run;
@@ -365,14 +393,13 @@ const closeHerdrPanes = async () => {
   const panes = herdrPanes;
   herdrPanes = null;
   for (const role of ["tester", "coder"]) {
-    const res = await closePane(role, panes[role]);
-    if (!res || !res.closed) {
-      const why = res
-        ? res.notes || `${role} pane close reported closed: false`
-        : `the ${role} pane-close agent returned no result`;
-      anomalies.push({ unit: "-", kind: "pane-not-closed", notes: why });
-      log(`could not close the herdr ${role} pane (${why}).`);
-    }
+    const res = await closePaneCounted(role, panes[role]);
+    if (res && res.closed) continue;
+    const why = res
+      ? res.notes || `${role} pane close reported closed: false`
+      : `the ${role} pane-close agent returned no result`;
+    anomalies.push({ unit: "-", kind: "pane-not-closed", notes: why });
+    log(`could not close the herdr ${role} pane (${why}).`);
   }
 };
 
@@ -409,7 +436,7 @@ if (implementer === "codex-herdr") {
   // start failed inside it, so close it too when a pane id came back.
   const testerStart = await startPane("tester");
   if (!testerStart || !testerStart.started) {
-    if (testerStart && testerStart.pane_id) await closePane("tester", testerStart.pane_id);
+    if (testerStart && testerStart.pane_id) await closePaneCounted("tester", testerStart.pane_id);
     return {
       stopped: "pane-start-failed",
       why: testerStart
@@ -417,11 +444,12 @@ if (implementer === "codex-herdr") {
         : "the tester pane-start agent returned no result",
     };
   }
+  paneOpens++;
 
   // A coder pane failure closes the tester pane already open before stopping.
   const coderStart = await startPane("coder");
   if (!coderStart || !coderStart.started) {
-    await closePane("tester", testerStart.pane_id);
+    await closePaneCounted("tester", testerStart.pane_id);
     return {
       stopped: "pane-start-failed",
       why: coderStart
@@ -429,9 +457,11 @@ if (implementer === "codex-herdr") {
         : "the coder pane-start agent returned no result",
     };
   }
+  paneOpens++;
 
   // These 2 panes are reused across every unit. closeHerdrPanes (loop end) owns closing them.
   herdrPanes = { tester: testerStart.pane_id, coder: coderStart.pane_id };
+  herdrPanesResolved = herdrPanes;
 }
 
 // A contract cites one behavior, so without the plan's reference module the surrounding
@@ -671,4 +701,9 @@ return {
   tests_pass: verify.tests_pass,
   gates_pass: verify.gates_pass,
   verify_output: verify.output_tail,
+  // Stays null for a claude run (herdrPanesResolved / paneOpens / paneCloses are never touched
+  // there); build.js forwards this trio into its own return value unchanged.
+  herdr_panes: herdrPanesResolved,
+  pane_opens: paneOpens,
+  pane_closes: paneCloses,
 };
