@@ -3,8 +3,11 @@
 Run: python3 skills/scribe/tests/structure_page_test.py
 """
 
+import ast
 import difflib
+import os
 import re
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -16,6 +19,7 @@ sys.path.insert(0, str(HERE.parent / "scripts"))
 from structure_page import find_structure_pages, read_claims  # noqa: E402
 
 WIKI = ROOT / "docs" / "wiki"
+WORKFLOW = ROOT / ".github" / "workflows" / "test.yml"
 
 # The one structure page whose 契約/要求 name workflows/*.js machinery. U-002 cross-checks this
 # page against the workflow scripts it describes, so the page is fixed rather than discovered.
@@ -269,6 +273,98 @@ class StructurePageClaimCoverage(unittest.TestCase):
             _unchecked_claim_rows([control_row], removed),
             [control_row],
             "陽性対照: 検査を取り除くと同じ行が検査漏れとして落ちる",
+        )
+
+
+def _imported_top_level_modules(source: str) -> set[str]:
+    """The module names this source actually imports, read from its parsed `import` /
+    `from ... import` statements rather than a substring search: a substring search over the
+    same text a test's own assertion literal appears in would trivially match itself."""
+    tree = ast.parse(source)
+    modules: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            modules.add(node.module.split(".")[0])
+    return modules
+
+
+def _ci_python_find_command() -> str:
+    """The `find ...` command CI's Python tests step runs, read from
+    .github/workflows/test.yml itself rather than restated here, so a directory or pattern
+    change on that side shows up as a mismatch instead of two copies that happen to agree."""
+    text = WORKFLOW.read_text(encoding="utf-8")
+    match = re.search(r"name: Python tests\n\s*run: (find[^\n]+)\n", text)
+    assert match is not None, "test.yml carries a Python tests step running find"
+    return match.group(1)
+
+
+def _ci_discovered_test_paths() -> list[str]:
+    """Every path CI's own find command discovers, run for real from ROOT (the discovery half
+    of the pipe, before `| xargs ... python3` hands each path off)."""
+    command = _ci_python_find_command().split("|", 1)[0].strip()
+    proc = subprocess.run(command, shell=True, cwd=ROOT, capture_output=True, text=True, check=True)
+    return [line for line in proc.stdout.split("\0") if line]
+
+
+_NESTED_CI_RUN_ENV = "STRUCTURE_PAGE_TEST_NESTED_CI_RUN"
+
+
+def _test_method_count() -> int:
+    """The number of test methods unittest itself would collect from this module, read via the
+    same loader unittest.main() uses rather than counted by hand."""
+    loader = unittest.TestLoader()
+    suite = loader.loadTestsFromModule(sys.modules[__name__])
+    return suite.countTestCases()
+
+
+class CIPythonTestDiscovery(unittest.TestCase):
+    """U-004: the file U-001/U-002/U-003 built this module's tests into rides CI's python-test
+    discovery, so a placement it does not match is caught here rather than silently skipped."""
+
+    def test_the_ci_python_test_discovery_command_finds_this_test_file(self) -> None:
+        """T-008: the CI python-test discovery command finds this test file."""
+        discovered = _ci_discovered_test_paths()
+        this_file = str(Path(__file__).resolve().relative_to(ROOT))
+        self.assertIn(this_file, discovered)
+
+    def test_the_discovered_file_runs_against_the_real_docs_wiki_pages_and_the_real_workflow_scripts_with_no_fixture_standing_in_for_either(  # noqa: E501
+        self,
+    ) -> None:
+        """T-009: the discovered file runs against the real docs/wiki pages and the real
+        workflow scripts, with no fixture standing in for either. Runs this module the same
+        way CI's `xargs ... python3` invokes each discovered path (cwd ROOT, by relative
+        path), then checks that every test method this loader counts, including this one,
+        actually ran to completion, rather than a subset a fixture stood in for. Skips its own
+        body inside the child process it spawns (_NESTED_CI_RUN_ENV), or the same subprocess
+        spawn recurses into itself without end."""
+        if os.environ.get(_NESTED_CI_RUN_ENV):
+            self.skipTest("nested CI-shape run spawned by the outer run of this same scenario")
+            return
+
+        source = Path(__file__).read_text(encoding="utf-8")
+        self.assertNotIn(
+            "tempfile",
+            _imported_top_level_modules(source),
+            "no tempdir fixture stands in for docs/wiki or the workflow scripts this module reads",
+        )
+        self.assertTrue(WIKI.is_dir(), "the real docs/wiki directory this module reads exists")
+
+        this_file = str(Path(__file__).resolve().relative_to(ROOT))
+        proc = subprocess.run(
+            [sys.executable, this_file],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+            env={**os.environ, _NESTED_CI_RUN_ENV: "1"},
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn(
+            f"Ran {_test_method_count()} tests",
+            proc.stderr,
+            "every test method this module carries ran under CI's own invocation shape",
         )
 
 
