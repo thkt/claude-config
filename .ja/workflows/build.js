@@ -1073,8 +1073,11 @@ if (backlogCandidates.length) {
 }
 
 // ---- Ship: commit + draft PR (外向きの操作なので draft = 可逆) ----
-// fact tail は pr-body.py が決定論で描画し、fact 節を黙って落とさせない。追記と
-// gh pr create を && で連結し、レンダラー失敗時は PR 作成前に中断させる。
+// fact tail は pr-body.py が決定論で描画し、fact 節を黙って落とさせない。gh pr
+// create は追記の後段に && で連結し、レンダラー失敗時は PR 作成前に中断させる。
+// MCP の create_pull_request 経路には連結できる shell が無いので、下の手順 (3)
+// は同じ不変条件を prompt の文として言い直す: body ファイルを読み切れたことが
+// 呼び出しの条件になる。
 phase("Ship");
 
 // 情報系セクションの自由記述だけを対象言語へ翻訳 + 圧縮する。安全系の事実と構造化
@@ -1214,9 +1217,13 @@ const ship = await agent(
       `- Related / Closes は書かない (tail が \`Closes #\` を出す)。Scope / Backlog も書かない。スコープ外候補は PR に載せない。\n` +
       `- Design Decisions は実 diff から埋め、読み取れなければ節ごと省略する。plan に出どころは無い。\n` +
       `(2) この JSON をそのまま一時ファイルに書く。\n${JSON.stringify(shipPayload)}\n` +
-      `(3) fact tail の追記と PR 作成を 1 つの \`&&\` チェーンで行い、レンダラー失敗時は PR 作成前に中断させる。リポジトリルートから ` +
-      `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{title}" --body-file {bodyfile}\` を実行する。{title} は手順 (1) で決めたタイトル。\n` +
-      `pr-body.py は payload が壊れているか必須フィールドを欠くと非ゼロで終了する (何も出力しない)。チェーンが失敗したら他の手段で PR を作らない。committed と空の pr_url とエラーを報告する。\n` +
+      `(3) fact tail を追記し、pull request を開く。${ghOrMcpRoute(
+        issueNumber,
+        `追記と \`gh pr create\` を \`&&\` で連結し、レンダラー失敗時は PR 作成前に中断させる。リポジトリルートから ` +
+          `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{title}" --body-file {bodyfile}\` を実行する。{title} は手順 (1) で決めたタイトル。` +
+          `pr-body.py は payload が壊れているか必須フィールドを欠くと非ゼロで終了する (何も出力しない)。チェーンが失敗したら他の手段で PR を作らない。committed と空の pr_url とエラーを報告する。`,
+        `shell の \`&&\` はツール呼び出しへ連結できないので、不変条件は自分で守る: リポジトリルートから \`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile}\` を実行し、続けて {bodyfile} を最後まで読み切る。読み切れなかったら (pr-body.py が非ゼロ終了したか何も書かなかった)、pull request を作らない。committed と空の pr_url とエラーを報告する。読み切れたら mcp__github__create_pull_request ツールを draft: true${baseBranch ? `、base: ${JSON.stringify(baseBranch)}` : ""}、title: {title}、body に body ファイルの全文を指定して呼ぶ。`,
+      )}\n` +
       `committed の状態と PR url を報告する。${guard}`,
   ),
   {

@@ -1328,6 +1328,50 @@ test("with the per-unit commits on, the Ship prompt instructs a remainder commit
   );
 });
 
+// U-003: gh's absence blocks the shell `&&` chain that gates `gh pr create` on pr-body.py
+// succeeding, since the MCP create_pull_request tool cannot join a shell chain. The Ship
+// prompt names both routes and restates the chain's invariant as a prompt sentence instead:
+// a body file the agent cannot read back in full leaves the pull request uncreated.
+test("the Ship prompt names both the gh command and the MCP tool for creating the pull request", async () => {
+  const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const ship = agentCallsOf(run.calls, "ship")[0];
+  assert.ok(ship, "the ship agent ran");
+  assert.match(ship.prompt, /gh pr create/, "the gh path is still named");
+  assert.match(
+    ship.prompt,
+    /mcp__github__create_pull_request/,
+    "the MCP tool is named as the path taken when gh is missing",
+  );
+});
+
+test("the Ship prompt states that a body file it cannot read leaves the pull request uncreated", async () => {
+  const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const ship = agentCallsOf(run.calls, "ship")[0];
+  assert.ok(ship, "the ship agent ran");
+  assert.match(
+    ship.prompt,
+    /cannot read the body file/i,
+    "the invariant names the failure condition, replacing the shell && chain the MCP route cannot join",
+  );
+  assert.match(
+    ship.prompt,
+    /(the pull request is not created|do not create the pull request|leaves the pull request uncreated)/i,
+    "the invariant names the consequence: no pull request gets created",
+  );
+});
+
+test("the Ship prompt keeps the draft flag on both routes", async () => {
+  const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const ship = agentCallsOf(run.calls, "ship")[0];
+  assert.ok(ship, "the ship agent ran");
+  assert.match(ship.prompt, /gh pr create --draft/, "the gh route still opens a draft");
+  assert.match(
+    ship.prompt,
+    /mcp__github__create_pull_request[\s\S]{0,400}draft/i,
+    "the MCP route also opens the pull request as a draft",
+  );
+});
+
 // The mirror runs nowhere, so drift on that side stays invisible until a reader opens the file.
 const jaBuildJs = join(here, "..", "..", "..", ".ja", "workflows", "build.js");
 

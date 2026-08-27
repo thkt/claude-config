@@ -1105,8 +1105,10 @@ if (backlogCandidates.length) {
 
 // ---- Ship: commit + draft PR (outward-facing, so draft = reversible) ----
 // The fact tail is rendered by the deterministic pr-body.py so a fact section is
-// never silently dropped. The append and gh pr create are chained with && so a
-// renderer failure aborts before the PR is created.
+// never silently dropped. gh pr create chains onto the render with && so a renderer
+// failure aborts before the PR is created. The MCP create_pull_request route has no
+// shell to chain into, so step (3) below restates the same invariant as a prompt
+// sentence for that branch: reading the body file back in full gates the call.
 phase("Ship");
 
 // Translate + compress only the informational free-text; safety facts and structured
@@ -1250,9 +1252,13 @@ const ship = await agent(
       `- Skip Related / Closes; the tail emits \`Closes #\`. Skip Scope / Backlog too; out-of-scope candidates do not go in the PR.\n` +
       `- Fill Design Decisions from the actual diff; omit the section when the diff does not carry one rather than inventing. The plan holds no source for it.\n` +
       `(2) write this exact JSON to a temp file.\n${JSON.stringify(shipPayload)}\n` +
-      `(3) append the fact tail and open the PR as one \`&&\` chain, so a renderer failure aborts before the PR is created; from the repository root run ` +
-      `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{title}" --body-file {bodyfile}\`, where {title} is the title you settled in step (1).\n` +
-      `pr-body.py exits non-zero (writing nothing) if the payload is malformed or missing a required field; if the chain fails, do not create the PR by other means. Report committed with an empty pr_url and the error instead.\n` +
+      `(3) append the fact tail, then open the pull request. ${ghOrMcpRoute(
+        issueNumber,
+        `chain the append and \`gh pr create\` with \`&&\` so a renderer failure aborts before the PR is created; from the repository root run ` +
+          `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{title}" --body-file {bodyfile}\`, where {title} is the title you settled in step (1). ` +
+          `pr-body.py exits non-zero (writing nothing) if the payload is malformed or missing a required field; if the chain fails, do not create the PR by other means. Report committed with an empty pr_url and the error instead.`,
+        `shell \`&&\` cannot chain into a tool call, so enforce the invariant yourself: from the repository root run \`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile}\`, then read {bodyfile} back in full. If you cannot read the body file back in full (pr-body.py exited non-zero or wrote nothing), do not create the pull request; report committed with an empty pr_url and the error instead. Otherwise call the mcp__github__create_pull_request tool with draft: true${baseBranch ? `, base: ${JSON.stringify(baseBranch)}` : ""}, title: {title}, and body set to the body file's full contents.`,
+      )}\n` +
       `Report the committed state and the PR url.${guard}`,
   ),
   {
