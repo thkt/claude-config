@@ -14,63 +14,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-# The frontmatter value docs/wiki/README.md names as the marker of a structure page, as
-# opposed to a 共通項 page.
-_KIND_LINE = "kind: structure"
+sys.path.insert(0, str(HERE.parent / "scripts"))
 
-# The fixed order docs/wiki/README.md gives a structure page's sections.
-SECTIONS = ("内容", "境界", "契約", "要求", "参照コード", "由来")
-
-
-def _frontmatter_lines(page: Path) -> list[str]:
-    """The lines between the opening and closing `---` delimiters, found by scanning to the
-    closing delimiter rather than assuming a fixed position."""
-    lines = page.read_text(encoding="utf-8").split("\n")
-    if not lines or lines[0] != "---":
-        return []
-    for i, line in enumerate(lines[1:], start=1):
-        if line == "---":
-            return lines[1:i]
-    return []
-
-
-def find_structure_pages(wiki_dir: Path) -> list[Path]:
-    """Every page under wiki_dir whose frontmatter carries `kind: structure`."""
-    return sorted(
-        page for page in Path(wiki_dir).glob("*.md") if _KIND_LINE in _frontmatter_lines(page)
-    )
-
-
-def _section_body(text: str, heading: str) -> str:
-    """The lines of one `## heading` section, up to the next `## ` heading or the end."""
-    marker = f"\n## {heading}\n"
-    if marker not in text:
-        return ""
-    body = text.split(marker, 1)[1]
-    return body.split("\n## ", 1)[0]
-
-
-def _claims(body: str) -> list[str]:
-    """The claim lines a section body carries, in the section's own format.
-
-    A table section's rows start with `|`: the first two (header, `---` separator) are
-    formatting, so only the rows after them are claims. A bullet section's rows start with
-    `- `. A prose section (内容) has neither, so every non-empty line is a claim."""
-    lines = body.split("\n")
-    table_rows = [line for line in lines if line.startswith("|")]
-    if len(table_rows) >= 2:
-        return table_rows[2:]
-    bullets = [line for line in lines if line.startswith("- ")]
-    if bullets:
-        return bullets
-    return [line for line in lines if line.strip()]
-
-
-def read_claims(page: Path) -> dict[str, list[str]]:
-    """The claims each of a structure page's six sections carries, keyed by section name."""
-    text = page.read_text(encoding="utf-8")
-    return {section: _claims(_section_body(text, section)) for section in SECTIONS}
-
+from structure_page import find_structure_pages, read_claims  # noqa: E402
 
 WIKI = ROOT / "docs" / "wiki"
 WORKFLOW = ROOT / ".github" / "workflows" / "test.yml"
@@ -79,8 +25,8 @@ WORKFLOW = ROOT / ".github" / "workflows" / "test.yml"
 # page against the workflow scripts it describes, so the page is fixed rather than discovered.
 PAGE = WIKI / "workflow-structure.md"
 
-# The frontmatter value docs/wiki/README.md names as the marker of a structure page, as
-# opposed to a 共通項 page. Read once here so both test classes below share the one literal.
+# Spelled out here rather than imported from structure_page: the scan below exists to reach the
+# same answer independently, so borrowing the module's own literal would make the two sides echo.
 _KIND_LINE = "kind: structure"
 
 
