@@ -212,14 +212,10 @@ class MergeCarriesFreshExisting(unittest.TestCase):
     | candidate (fixed)     | page                  | page (fresh wins)      |
     """
 
-    def test_a_fresh_row_reporting_existing_page_for_the_stored_name_makes_the_run_return_action_update(
-        self,
-    ) -> None:
+    def test_fresh_page_over_stored_row_returns_update(self) -> None:
         """T-001 蓄積行と同名で `existing: "page"` の fresh を渡した run は
         `action: "update"` を返す"""
-        store_rows: list[Pattern] = [
-            {"name": "acc", "evidence": ["#1"], "existing": "candidate"}
-        ]
+        store_rows: list[Pattern] = [{"name": "acc", "evidence": ["#1"], "existing": "candidate"}]
         fresh: list[Pattern] = [{"name": "acc", "evidence": ["#2"], "existing": "page"}]
 
         merged = merge(store_rows, fresh)

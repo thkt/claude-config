@@ -16,8 +16,8 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE.parent / "scripts"))
 
-from triage import triage  # noqa: E402
-from verify_run_test import _git, _run_verify  # noqa: E402
+from triage import merge, read_store, triage  # noqa: E402
+from verify_run_test import _git, _report, _rows, _run_verify  # noqa: E402
 
 TRIAGE = HERE.parent / "scripts" / "triage.py"
 
@@ -268,13 +268,21 @@ class SkillContract(unittest.TestCase):
         for lang in LANGS:
             steps = self.phase_6_steps(lang)
             step4 = next(line for line in steps.split("\n") if "verify_run.py" in line)
-            self.assertNotIn(
-                "<start-count>", step4, f"{lang}: step 4 no longer self-reports start-count"
+            # Not an absence check on the old placeholder names: renaming them alone would pass
+            # while the caller still counts both itself. The argument list is what settles it.
+            call = re.search(r"verify_run\.py((?: <[a-z-]+>)*)`", step4)
+            self.assertIsNotNone(call, f"{lang}: step 4 names verify_run.py's argument list")
+            assert call is not None
+            self.assertEqual(
+                call.group(1).split(),
+                ["<worktree>", "<base>"],
+                f"{lang}: step 4 passes the worktree and the base, and nothing it counted itself",
             )
+            self.assertIn("stdin", step4, f"{lang}: step 4 feeds the report on stdin")
             self.assertNotIn(
-                "<expected-commits>",
+                "_candidates.md",
                 step4,
-                f"{lang}: step 4 no longer self-reports expected-commits",
+                f"{lang}: step 4 does not read the store with a raw git command of its own",
             )
 
     def test_triage_commits_length_fed_to_verify_run_is_ok_true_and_a_one_off_shift_is_false(
@@ -284,10 +292,6 @@ class SkillContract(unittest.TestCase):
         1 本ずらすと false になる。この接続自体は U-001/U-002 が済ませているので、この境界テスト
         単体は現状で通る"""
         names = [f"item{i}" for i in range(7)]
-        patterns = [{"name": n, "evidence": ["#1", "#2"], "existing": "candidate"} for n in names]
-        report = triage(patterns)
-        commits = report["commits"]
-        self.assertTrue(commits, "triage splits 7 qualifying patterns into 2+ commits")
 
         def store(waiting: list[str]) -> str:
             rows = "".join(f"- {n} #1 #2\n" for n in waiting)
@@ -298,6 +302,11 @@ class SkillContract(unittest.TestCase):
             wiki = repo / "docs" / "wiki"
             wiki.mkdir(parents=True)
             _ = (wiki / "_candidates.md").write_text(store(names), encoding="utf-8")
+            # The same composition triage.py's own CLI runs: the store rows carry which section
+            # each row waited in, which is what tells a committed row apart from a fresh one.
+            report = triage(merge(read_store(wiki / "_candidates.md"), []))
+            commits = report["commits"]
+            self.assertTrue(commits, "triage splits 7 qualifying patterns into 2+ commits")
             _git(repo, "init", "-q")
             _git(repo, "add", "-A")
             _git(repo, "commit", "-q", "-m", "chore: seed candidates")
@@ -321,15 +330,18 @@ class SkillContract(unittest.TestCase):
                 _git(repo, "add", "-A")
                 _git(repo, "commit", "-q", "-m", f"docs(wiki): {', '.join(committed)} を追加/更新")
 
-            def verify(expected_commits: int) -> tuple[int, dict[str, object]]:
-                proc = _run_verify(repo, len(names), expected_commits, base)
+            def verify(payload: dict[str, object]) -> tuple[int, dict[str, object]]:
+                proc = _run_verify(repo, base, payload)
                 return proc.returncode, cast(dict[str, object], json.loads(proc.stdout))
 
-            code, matched = verify(len(commits))
+            code, matched = verify(cast(dict[str, object], report))
             self.assertEqual(code, 0)
             self.assertEqual(matched["ok"], True)
 
-            code, shifted = verify(len(commits) + 1)
+            # One extra element than the run actually committed, with no name in it, so only the
+            # commit count moves.
+            shifted_report = _report([*cast("list[list[dict[str, object]]]", commits), _rows([])])
+            code, shifted = verify(shifted_report)
             self.assertEqual(code, 1)
             self.assertEqual(shifted["ok"], False)
 
