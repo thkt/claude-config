@@ -24,6 +24,8 @@ jobs:
       contents: write
       issues: write
       pull-requests: read
+      # claude-code-action exchanges an OIDC token even under OAuth auth.
+      id-token: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
