@@ -8,6 +8,7 @@ Run: python3 hooks/edit/tests/rumdl_check_test.py
 """
 
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -43,7 +44,7 @@ class TestRumdlCheck(unittest.TestCase):
 
     def run_hook(
         self, tool: str, path: Path | str, env: dict[str, str] | None = None
-    ) -> "subprocess.CompletedProcess[str]":  # noqa: F821
+    ) -> subprocess.CompletedProcess[str]:
         payload = {"tool_name": tool, "tool_input": {"file_path": str(path)}}
         return hook_harness.checked(HOOK, payload, env)
 
