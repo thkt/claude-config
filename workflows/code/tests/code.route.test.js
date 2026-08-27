@@ -62,7 +62,7 @@ const paneLifecycleStub =
     throw new Error(`unexpected label: ${label}`);
   };
 
-test("T-010 Red の指示が split の結果から解決した tester の pane id 宛に送られる", async () => {
+test("T-010 the Red instruction goes to the tester pane id resolved from the split result", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: tddPlan, repo: "/abs/target-repo", implementer: "codex-herdr" },
     stubs: {
@@ -88,7 +88,7 @@ test("T-010 Red の指示が split の結果から解決した tester の pane i
   assert.equal(red.opts.effort, undefined, "a pane-addressed call carries no effort option");
 });
 
-test("T-011 Green の指示が split の結果から解決した coder の pane id 宛に送られる", async () => {
+test("T-011 the Green instruction goes to the coder pane id resolved from the split result", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: tddPlan, repo: "/abs/target-repo", implementer: "codex-herdr" },
     stubs: {
@@ -114,7 +114,7 @@ test("T-011 Green の指示が split の結果から解決した coder の pane 
   assert.equal(green.opts.effort, undefined, "a pane-addressed call carries no effort option");
 });
 
-test("T-012 テストを持たない unit の直接実装の指示が coder の pane id 宛に送られる", async () => {
+test("T-012 the direct-implementation instruction for a unit with no tests goes to the coder pane id", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: directPlan, repo: "/abs/target-repo", implementer: "codex-herdr" },
     stubs: {
@@ -134,7 +134,7 @@ test("T-012 テストを持たない unit の直接実装の指示が coder の 
   assert.equal(impl.opts.effort, undefined, "a pane-addressed call carries no effort option");
 });
 
-test("T-013 Green retry の指示が Green 初回と同じ pane id 宛に送られる", async () => {
+test("T-013 the Green retry instruction goes to the same pane id as the first Green", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: tddPlan, repo: "/abs/target-repo", implementer: "codex-herdr" },
     stubs: {

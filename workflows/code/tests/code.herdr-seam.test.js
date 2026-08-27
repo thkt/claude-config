@@ -50,7 +50,7 @@ const paneStub = (prompt, opts) => {
   throw new Error(`unexpected label: ${label}`);
 };
 
-test("T-022 codex-herdr で 2 unit の plan を通すと返り値の pane 開閉回数が 1 組になる", async () => {
+test("T-022 a two-unit plan under codex-herdr returns one pane open-and-close pair", async () => {
   const { result } = await runWorkflow(codeJs, {
     args: { plan: twoPlan, repo: "/abs/target-repo", implementer: "codex-herdr" },
     stubs: { agent: paneStub },

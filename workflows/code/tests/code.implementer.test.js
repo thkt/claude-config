@@ -36,7 +36,7 @@ const happyAgentStub = (prompt, opts) => {
   throw new Error(`unexpected label: ${label}`);
 };
 
-test("implementer を渡さないと既存の Claude 経路で実装が進む", async () => {
+test("T-002 a run with no implementer implements through the existing Claude route", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
     args: { plan, repo: "/abs/target-repo" },
     stubs: { agent: happyAgentStub },
@@ -49,7 +49,7 @@ test("implementer を渡さないと既存の Claude 経路で実装が進む", 
   );
 });
 
-test("implementer が codex-herdr で herdr に到達できないとき stopped を返して実装に入らない", async () => {
+test("T-003 implementer codex-herdr with herdr unreachable returns stopped and never starts implementing", async () => {
   const herdrUnreachableStub = (prompt, opts) => {
     const label = opts.label ?? "";
     if (/herdr/i.test(label))
@@ -75,7 +75,7 @@ test("implementer が codex-herdr で herdr に到達できないとき stopped 
   );
 });
 
-test("implementer が claude と codex-herdr のどちらでもない値のとき stopped を返す", async () => {
+test("T-004 an implementer that is neither claude nor codex-herdr returns stopped", async () => {
   const unreachedAgent = () => {
     throw new Error("no agent call is expected for an invalid implementer value");
   };
@@ -93,7 +93,7 @@ test("implementer が claude と codex-herdr のどちらでもない値のと�
   );
 });
 
-test("implementer が claude のとき herdr の可用性チェックを走らせない", async () => {
+test("T-005 implementer claude does not run the herdr availability check", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
     args: { plan, repo: "/abs/target-repo", implementer: "claude" },
     stubs: { agent: happyAgentStub },

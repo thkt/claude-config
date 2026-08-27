@@ -272,7 +272,7 @@ const stepWithRetry = async (unit, label, role, schema, ok, prompt, retryPrompt)
   // realm has no fs, so reading the file back needs a courier agent regardless; the type check
   // is left to the caller (the red_confirmed / green checks below).
   const addressing = dest.paneId
-    ? `Send this instruction to the ${role} pane ${dest.paneId} (the id resolved from herdr pane split via pane-start; never guess it). Tell the codex agent in that pane to write its response as JSON, matching this schema and nothing else, to the file ${responsePath(unit, role)} (repo-relative). You are the courier: you do not do the TDD work yourself. Send the instruction into the pane, then read that file back and return its parsed contents in this schema's shape. If the file is not there once codex is done, do not invent a result: report what you found in notes with a false-shaped result.\n`
+    ? `Send this instruction to the ${role} agent with \`herdr agent prompt ${role} "<the instruction>" --wait --timeout 180000\`, which returns only once that agent reports agent_status "done" (pane ${dest.paneId} is the id resolved from herdr pane split via pane-start; never guess it). Not a bare send: without --wait nothing tells you codex finished, and reading the response file early returns whatever a previous unit left there. Tell the codex agent to write its response as JSON, matching this schema and nothing else, to the file ${responsePath(unit, role)} (repo-relative). You are the courier: you do not do the TDD work yourself. Once the prompt call returns, read that file back and return its parsed contents in this schema's shape. If the call exits non-zero or the file is not there, do not invent a result: report what you found in notes with a false-shaped result.\n`
     : "";
   const opts = (name) => ({
     label: `${name}:${unit.id}`,
@@ -332,7 +332,7 @@ const PANE_CLOSE_SCHEMA = {
 const startPane = (role) =>
   agent(
     anchor(
-      `Start the herdr pane for the ${role} role. Run \`herdr pane split --direction down\` to ` +
+      `Start the herdr pane for the ${role} role. Run \`herdr pane split --current --direction right --no-focus\` to ` +
         `create a new pane, and read the pane id from the response's \`.result.pane.pane_id\` ` +
         `(never guess it). Then run \`herdr agent start ${role} --kind codex --pane <the pane id ` +
         `you read>\` to start a codex agent inside that pane. Set started: true only when both ` +
@@ -429,6 +429,9 @@ if (implementer === "codex-herdr") {
       why: herdr
         ? herdr.notes || "herdr is unreachable."
         : "the herdr reachability check returned no result",
+      herdr_panes: herdrPanesResolved,
+      pane_opens: paneOpens,
+      pane_closes: paneCloses,
     };
   }
 
@@ -442,9 +445,15 @@ if (implementer === "codex-herdr") {
       why: testerStart
         ? testerStart.notes || "the tester pane failed to start."
         : "the tester pane-start agent returned no result",
+      herdr_panes: herdrPanesResolved,
+      pane_opens: paneOpens,
+      pane_closes: paneCloses,
     };
   }
   paneOpens++;
+  // Recorded per pane, not once both are up: a coder-start failure stops between the two, and a
+  // caller chasing a leaked pane needs the tester id the stop already resolved.
+  herdrPanesResolved = { tester: testerStart.pane_id };
 
   // A coder pane failure closes the tester pane already open before stopping.
   const coderStart = await startPane("coder");
@@ -455,6 +464,9 @@ if (implementer === "codex-herdr") {
       why: coderStart
         ? coderStart.notes || "the coder pane failed to start."
         : "the coder pane-start agent returned no result",
+      herdr_panes: herdrPanesResolved,
+      pane_opens: paneOpens,
+      pane_closes: paneCloses,
     };
   }
   paneOpens++;

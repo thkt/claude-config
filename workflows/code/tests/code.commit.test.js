@@ -395,7 +395,7 @@ const herdrCommitStub = (prompt, opts) => {
   throw new Error(`unexpected label: ${label}`);
 };
 
-test("codex-herdr のとき commit trailer に codex-herdr が入る", async () => {
+test("T-020 codex-herdr puts codex-herdr in the commit trailer", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan, repo: "/abs/target-repo", commit: true, implementer: "codex-herdr" },
     stubs: { agent: herdrCommitStub },
@@ -408,7 +408,7 @@ test("codex-herdr のとき commit trailer に codex-herdr が入る", async () 
   );
 });
 
-test("implementer を渡さないとき commit trailer に claude が入る", async () => {
+test("T-021 a run with no implementer puts claude in the commit trailer", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan, repo: "/abs/target-repo", commit: true },
     stubs: { agent: stubWith(committed) },

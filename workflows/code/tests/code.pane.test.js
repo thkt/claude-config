@@ -70,7 +70,7 @@ const paneStub =
     throw new Error(`unexpected label: ${label}`);
   };
 
-test("codex-herdr のとき tester と coder の 2 つの pane を起動する", async () => {
+test("T-006 codex-herdr opens two panes, tester and coder", async () => {
   const { calls } = await runWorkflow(codeJs, {
     args: { plan: onePlan, repo: "/abs/target-repo", implementer: "codex-herdr" },
     stubs: { agent: paneStub() },
@@ -87,7 +87,7 @@ test("codex-herdr のとき tester と coder の 2 つの pane を起動する",
   );
 });
 
-test("全 unit の実装が終わったあと両方の pane を閉じる", async () => {
+test("T-007 both panes close once every unit is implemented", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
     args: { plan: twoPlan, repo: "/abs/target-repo", implementer: "codex-herdr" },
     stubs: { agent: paneStub() },
@@ -113,7 +113,7 @@ test("全 unit の実装が終わったあと両方の pane を閉じる", async
   assert.deepEqual(result.completed, ["U-1", "U-2"], "both units complete before teardown");
 });
 
-test("2 つ目の pane の起動に失敗したとき 1 つ目を閉じてから停止する", async () => {
+test("T-008 a second pane that fails to open closes the first before stopping", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
     args: { plan: onePlan, repo: "/abs/target-repo", implementer: "codex-herdr" },
     stubs: { agent: paneStub({ testerPaneId: "pane-tester-solo", coderStarted: false }) },
@@ -133,6 +133,14 @@ test("2 つ目の pane の起動に失敗したとき 1 つ目を閉じてから
     calls.agent.every((c) => c.opts.label !== "pane-close:coder"),
     "the coder pane never started, so it is never closed",
   );
+  // WORKFLOWS.md § Degradation recording: this is the only failure path that both opened and
+  // closed a pane, so the counts have to reach the caller instead of dying with the stop.
+  assert.equal(result.pane_opens, 1, "the tester pane it opened is counted on the stopped return");
+  assert.equal(result.pane_closes, 1, "the close it performed is counted on the stopped return");
+  assert.ok(
+    result.herdr_panes && result.herdr_panes.tester === "pane-tester-solo",
+    "the resolved pane id reaches the caller on the stopped return",
+  );
   assert.ok(
     calls.agent.every((c) => !/^(red|red2|green|green2|impl|impl2):/.test(c.opts.label ?? "")),
     "no unit ever entered implementation",
@@ -143,7 +151,7 @@ test("2 つ目の pane の起動に失敗したとき 1 つ目を閉じてから
   );
 });
 
-test("2 つ目の unit の実装で 1 つ目と同じ pane を使う", async () => {
+test("T-009 the second unit implements in the same pane as the first", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
     args: { plan: twoPlan, repo: "/abs/target-repo", implementer: "codex-herdr" },
     stubs: { agent: paneStub() },

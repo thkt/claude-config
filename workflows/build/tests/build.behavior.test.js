@@ -1231,7 +1231,7 @@ test("code receives commit: true, issue, and untracked_baseline, and the return 
 
 // U-006: build's own args.implementer reaches the nested code call, so an unattended build keeps
 // its existing Claude route unless the caller opts into codex-herdr.
-test("T-018 build の args の implementer が code の呼び出しに渡る", async () => {
+test("T-018 build's args implementer reaches the code call", async () => {
   const { calls } = await runWorkflow(buildJs, {
     args: { issue: "123", repo, implementer: "codex-herdr" },
     stubs: makeStubs(),
@@ -1244,7 +1244,7 @@ test("T-018 build の args の implementer が code の呼び出しに渡る", a
   );
 });
 
-test("T-019 build の args に implementer が無いとき code の呼び出しに claude が渡る", async () => {
+test("T-019 build's args without an implementer passes claude to the code call", async () => {
   const { calls } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs(),
@@ -1262,7 +1262,7 @@ test("T-019 build の args に implementer が無いとき code の呼び出し�
 // verifies build's own return value the way units_completed / unit_commits already are:
 // derived from the stub standing in for code's own return value, both on a normal completion
 // and on a stop, not read off any prompt text.
-test("T-023 build から codex-herdr を渡すと code の返り値に pane id が載り、停止も build に伝わる", async () => {
+test("T-023 passing codex-herdr from build puts pane ids in code's return value and relays the stop back to build", async () => {
   const completedRun = await runWorkflow(buildJs, {
     args: { issue: "123", repo, implementer: "codex-herdr" },
     stubs: makeStubs({

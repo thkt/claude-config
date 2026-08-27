@@ -269,7 +269,7 @@ const stepWithRetry = async (unit, label, role, schema, ok, prompt, retryPrompt)
   // どのみち courier agent が要るため、型検証は呼び出し元 (下の red_confirmed / green の
   // チェック) に残す。
   const addressing = dest.paneId
-    ? `この指示は ${role} pane ${dest.paneId} 宛に送る (pane-start で herdr pane split から解決済みの id。推測しない)。pane 内の codex agent に、この schema の形に沿った JSON だけをファイル ${responsePath(unit, role)} (repo からの相対パス) へ書かせる。あなたは courier として振る舞う: 自分では TDD の作業をせず、指示を pane へ送ったらそのファイルを読み、パースした中身をこの schema の形で返すだけでよい。codex の作業が終わってもそのファイルが無ければ、結果を捏造せず、見た事実を notes に書いて false 相当の結果を返す。\n`
+    ? `この指示は \`herdr agent prompt ${role} "<指示>" --wait --timeout 180000\` で ${role} agent へ送る。この呼び出しは相手が agent_status "done" を報告してから返る (pane ${dest.paneId} は pane-start で herdr pane split から解決済みの id。推測しない)。ただ送るだけにはしない。--wait が無いと codex が終わったことを知る手段が無く、応答ファイルを早く読むと前の unit が残した内容が返る。pane 内の codex agent には、この schema の形に沿った JSON だけをファイル ${responsePath(unit, role)} (repo からの相対パス) へ書かせる。あなたは courier として振る舞う: 自分では TDD の作業をしない。prompt の呼び出しが返ったらそのファイルを読み、パースした中身をこの schema の形で返す。呼び出しが非ゼロ終了したりファイルが無かったりしたら、結果を捏造せず、見た事実を notes に書いて false 相当の結果を返す。\n`
     : "";
   const opts = (name) => ({
     label: `${name}:${unit.id}`,
@@ -329,7 +329,7 @@ const PANE_CLOSE_SCHEMA = {
 const startPane = (role) =>
   agent(
     anchor(
-      `herdr CLI で ${role} 役の pane を起動する。\`herdr pane split --direction down\` を実行して` +
+      `herdr CLI で ${role} 役の pane を起動する。\`herdr pane split --current --direction right --no-focus\` を実行して` +
         `新しい pane を作り、応答の \`.result.pane.pane_id\` から pane id を読む (推測しない)。続けて` +
         `\`herdr agent start ${role} --kind codex --pane <読んだ pane id>\` を実行し、その pane の中で` +
         `codex エージェントを起動する。両方成功したときに限り started: true を返す。pane_id には` +
@@ -422,6 +422,9 @@ if (implementer === "codex-herdr") {
       why: herdr
         ? herdr.notes || "herdr に到達できなかった。"
         : "herdr の到達性確認 agent が結果を返さなかった。",
+      herdr_panes: herdrPanesResolved,
+      pane_opens: paneOpens,
+      pane_closes: paneCloses,
     };
   }
 
@@ -435,9 +438,15 @@ if (implementer === "codex-herdr") {
       why: testerStart
         ? testerStart.notes || "tester pane の起動に失敗した。"
         : "tester pane-start agent が結果を返さなかった。",
+      herdr_panes: herdrPanesResolved,
+      pane_opens: paneOpens,
+      pane_closes: paneCloses,
     };
   }
   paneOpens++;
+  // 2 つ揃ってからではなく pane ごとに記録する。coder の起動失敗は 2 つの間で止まるので、
+  // 残った pane を追う呼び出し側には、その停止が既に解決している tester の id が要る。
+  herdrPanesResolved = { tester: testerStart.pane_id };
 
   // coder pane の起動に失敗したら、先に開いた tester pane を閉じてから止まる。
   const coderStart = await startPane("coder");
@@ -448,6 +457,9 @@ if (implementer === "codex-herdr") {
       why: coderStart
         ? coderStart.notes || "coder pane の起動に失敗した。"
         : "coder pane-start agent が結果を返さなかった。",
+      herdr_panes: herdrPanesResolved,
+      pane_opens: paneOpens,
+      pane_closes: paneCloses,
     };
   }
   paneOpens++;

@@ -48,7 +48,7 @@ const paneLifecycleStub =
     throw new Error(`unexpected label: ${label}`);
   };
 
-test("codex が書いた JSON を courier agent が読んで RED_SCHEMA を満たす結果を返す", async () => {
+test("T-014 the courier agent reads the JSON codex wrote and returns a result satisfying RED_SCHEMA", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
     args: { plan: tddPlan, repo: "/abs/target-repo", implementer: "codex-herdr" },
     stubs: {
@@ -77,7 +77,7 @@ test("codex が書いた JSON を courier agent が読んで RED_SCHEMA を満�
   );
 });
 
-test("red_confirmed が boolean でない値のとき stopped を返す", async () => {
+test("T-015 a red_confirmed that is not a boolean returns stopped", async () => {
   const { result } = await runWorkflow(codeJs, {
     args: { plan: tddPlan, repo: "/abs/target-repo", implementer: "codex-herdr" },
     stubs: {
@@ -108,7 +108,7 @@ test("red_confirmed が boolean でない値のとき stopped を返す", async 
   );
 });
 
-test("green が boolean でない値のとき stopped を返す", async () => {
+test("T-016 a green that is not a boolean returns stopped", async () => {
   const { result } = await runWorkflow(codeJs, {
     args: { plan: tddPlan, repo: "/abs/target-repo", implementer: "codex-herdr" },
     stubs: {
@@ -138,7 +138,7 @@ test("green が boolean でない値のとき stopped を返す", async () => {
   );
 });
 
-test("指示したパスにファイルが無いとき 1 回だけ書き直しを指示する", async () => {
+test("T-017 a missing file at the instructed path asks for a rewrite exactly once", async () => {
   const { result, calls } = await runWorkflow(codeJs, {
     args: { plan: tddPlan, repo: "/abs/target-repo", implementer: "codex-herdr" },
     stubs: {
