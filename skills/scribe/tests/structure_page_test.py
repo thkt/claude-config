@@ -14,9 +14,63 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-sys.path.insert(0, str(HERE.parent / "scripts"))
+# The frontmatter value docs/wiki/README.md names as the marker of a structure page, as
+# opposed to a 共通項 page.
+_KIND_LINE = "kind: structure"
 
-from structure_page import find_structure_pages, read_claims  # noqa: E402
+# The fixed order docs/wiki/README.md gives a structure page's sections.
+SECTIONS = ("内容", "境界", "契約", "要求", "参照コード", "由来")
+
+
+def _frontmatter_lines(page: Path) -> list[str]:
+    """The lines between the opening and closing `---` delimiters, found by scanning to the
+    closing delimiter rather than assuming a fixed position."""
+    lines = page.read_text(encoding="utf-8").split("\n")
+    if not lines or lines[0] != "---":
+        return []
+    for i, line in enumerate(lines[1:], start=1):
+        if line == "---":
+            return lines[1:i]
+    return []
+
+
+def find_structure_pages(wiki_dir: Path) -> list[Path]:
+    """Every page under wiki_dir whose frontmatter carries `kind: structure`."""
+    return sorted(
+        page for page in Path(wiki_dir).glob("*.md") if _KIND_LINE in _frontmatter_lines(page)
+    )
+
+
+def _section_body(text: str, heading: str) -> str:
+    """The lines of one `## heading` section, up to the next `## ` heading or the end."""
+    marker = f"\n## {heading}\n"
+    if marker not in text:
+        return ""
+    body = text.split(marker, 1)[1]
+    return body.split("\n## ", 1)[0]
+
+
+def _claims(body: str) -> list[str]:
+    """The claim lines a section body carries, in the section's own format.
+
+    A table section's rows start with `|`: the first two (header, `---` separator) are
+    formatting, so only the rows after them are claims. A bullet section's rows start with
+    `- `. A prose section (内容) has neither, so every non-empty line is a claim."""
+    lines = body.split("\n")
+    table_rows = [line for line in lines if line.startswith("|")]
+    if len(table_rows) >= 2:
+        return table_rows[2:]
+    bullets = [line for line in lines if line.startswith("- ")]
+    if bullets:
+        return bullets
+    return [line for line in lines if line.strip()]
+
+
+def read_claims(page: Path) -> dict[str, list[str]]:
+    """The claims each of a structure page's six sections carries, keyed by section name."""
+    text = page.read_text(encoding="utf-8")
+    return {section: _claims(_section_body(text, section)) for section in SECTIONS}
+
 
 WIKI = ROOT / "docs" / "wiki"
 WORKFLOW = ROOT / ".github" / "workflows" / "test.yml"
@@ -183,6 +237,13 @@ class StructurePageContractRequirement(unittest.TestCase):
             inline = 'stopped: "no-repo"' in source
             via_helper = re.search(r'stop\(\s*["\']no-repo["\']', source) is not None
             self.assertTrue(inline or via_helper, f"{name}: reaches a no-repo stop")
+            # The claim is `{ stopped: "<理由>", why }`, so the second key is checked too.
+            # Without this the row reads as covered while only half of it is.
+            self.assertRegex(
+                source,
+                r'why:\s*[`"\']',
+                f"{name}: the stop carries why alongside stopped, as `{{ stopped, why }}` states",
+            )
 
     def test_renaming_the_constant_in_the_script_makes_the_check_fail(self) -> None:
         """T-005: mutates a copy of the referenced script's source, renaming UNIT_CAPS, and
@@ -209,13 +270,42 @@ class StructurePageContractRequirement(unittest.TestCase):
 _MIN_ANCHOR_LEN = 10
 
 
+def checkable_source(test_source: str) -> str:
+    """`test_source` with its docstrings and comments removed. Not the whole file: a docstring
+    quoting a claim reads as coverage while asserting nothing, which is the same false positive
+    the nesting grep hit on a comment and two description strings (issue #501)."""
+    tree = ast.parse(test_source)
+    spans: list[tuple[int, int]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        doc = node.body[0] if node.body else None
+        if (
+            isinstance(doc, ast.Expr)
+            and isinstance(doc.value, ast.Constant)
+            and isinstance(doc.value.value, str)
+            and doc.lineno is not None
+            and doc.end_lineno is not None
+        ):
+            spans.append((doc.lineno, doc.end_lineno))
+    lines = test_source.split("\n")
+    dropped = {n for lo, hi in spans for n in range(lo, hi + 1)}
+    kept = [
+        line.split("#", 1)[0] if line.lstrip().startswith("#") else line
+        for i, line in enumerate(lines, start=1)
+        if i not in dropped
+    ]
+    return "\n".join(kept)
+
+
 def _is_claim_checked(row: str, test_source: str) -> bool:
     """Whether some run of at least _MIN_ANCHOR_LEN characters in `row` also occurs verbatim
-    in `test_source`. A test that names a claim row copies a fragment of it, in code or in its
-    own docstring (T-003's `` `build` の unit ``, T-004's docstring quoting the literal
-    `{ stopped: "<理由>", why }`), so the longest run the two texts share is the signal."""
-    matcher = difflib.SequenceMatcher(None, row, test_source, autojunk=False)
-    match = matcher.find_longest_match(0, len(row), 0, len(test_source))
+    in the checkable part of `test_source`. A test that checks a claim row carries a fragment
+    of it in what it compares (T-003's `` `build` の unit ``), so the longest run the row and
+    that part share is the signal."""
+    checkable = checkable_source(test_source)
+    matcher = difflib.SequenceMatcher(None, row, checkable, autojunk=False)
+    match = matcher.find_longest_match(0, len(row), 0, len(checkable))
     return match.size >= _MIN_ANCHOR_LEN
 
 
@@ -227,7 +317,7 @@ def _unchecked_claim_rows(rows: list[str], test_source: str) -> list[str]:
 
 
 class StructurePageClaimCoverage(unittest.TestCase):
-    """U-003: 契約/要求 の主張のうち、このファイルのどのテストからも検査されていない行を、
+    """U-003: 境界/契約/要求 の主張のうち、このファイルのどのテストからも検査されていない行を、
     件数ではなく行の全文で名指しする。不在を見る検査には陽性対照を常設する
     (docs/wiki/zero-hit-positive-control.md)。"""
 
@@ -236,13 +326,12 @@ class StructurePageClaimCoverage(unittest.TestCase):
         本体にも現れない行を、_unchecked_claim_rows は件数ではなく行そのもので返す。
         すでに T-003/T-004 が検査している行は結果に含まれない。"""
         claims = read_claims(PAGE)
-        rows = claims["契約"] + claims["要求"]
+        rows = claims["境界"] + claims["契約"] + claims["要求"]
         test_source = Path(__file__).read_text(encoding="utf-8")
 
         unchecked = _unchecked_claim_rows(rows, test_source)
 
         self.assertIsInstance(unchecked, list, "unchecked は件数ではなく行の一覧で返る")
-        self.assertTrue(unchecked, "workflow-structure.md はまだ検査されていない行を持つ")
         for row in unchecked:
             self.assertIn(row, rows, "報告される要素は主張行そのもの")
 
