@@ -20,25 +20,43 @@ const workflowTrees = (name) => [
 
 const TREES = workflowTrees("audit");
 
-// Full-tree sweep, following reference-notation.test.js's readdirSync pattern: every
-// <name>.js directly under workflows/ and its .ja/ mirror. Supersedes a per-name loop, since it
-// covers every workflow rather than a hardcoded subset that drifts as workflows are added.
+// The workflows this slice and the ones before it named. Each gets its own test below, so a
+// failure names the workflow rather than a file position inside a sweep.
+const NAMED_WORKFLOWS = ["adrift", "assert", "audit", "build", "code", "polish", "shake"];
+
+// One entry per tree root, following reference-notation.test.js's readdirSync pattern.
 const WORKFLOW_TREE_DIRS = [
   { label: "en", dir: join(here, "..", "..") },
   { label: "ja", dir: join(here, "..", "..", "..", ".ja", "workflows") },
 ];
 
-test("no whenToUse under either tree contains the identifier args", () => {
-  for (const { label, dir } of WORKFLOW_TREE_DIRS) {
-    const scripts = readdirSync(dir).filter((name) => name.endsWith(".js"));
-    for (const name of scripts) {
-      const meta = readMeta(join(dir, name));
+for (const name of NAMED_WORKFLOWS) {
+  test(`${name}'s whenToUse in neither tree contains the identifier args`, () => {
+    for (const { label, path } of workflowTrees(name)) {
+      const meta = readMeta(path);
       assert.doesNotMatch(
         meta.whenToUse,
         /\bargs\b/,
-        `[${label}/${name}] whenToUse names the identifier "args" instead of describing the shape in prose`,
+        `[${label}] whenToUse names the identifier "args" instead of describing the shape in prose`,
       );
     }
+  });
+}
+
+// Not a second sweep asserting the same property: the per-name tests above already read every
+// whenToUse. This one holds the list itself to the tree, so a workflow added later fails here
+// until it is named rather than slipping past unchecked.
+test("no whenToUse under either tree contains the identifier args", () => {
+  for (const { label, dir } of WORKFLOW_TREE_DIRS) {
+    const scripts = readdirSync(dir)
+      .filter((name) => name.endsWith(".js"))
+      .map((name) => name.replace(/\.js$/, ""))
+      .sort();
+    assert.deepEqual(
+      scripts,
+      [...NAMED_WORKFLOWS].sort(),
+      `[${label}] every workflow carries a named whenToUse test; this tree holds one that does not`,
+    );
   }
 });
 
@@ -120,13 +138,3 @@ test("the mode values in polish's whenToUse match the MODES entries extracted fr
   }
 });
 
-test("polish's whenToUse in neither tree contains the identifier args", () => {
-  for (const { label, path } of POLISH_TREES) {
-    const meta = readMeta(path);
-    assert.doesNotMatch(
-      meta.whenToUse,
-      /\bargs\b/,
-      `[${label}] whenToUse names the identifier "args" instead of describing the shape in prose`,
-    );
-  }
-});
