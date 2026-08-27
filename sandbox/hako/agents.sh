@@ -9,9 +9,9 @@ set -euo pipefail
 SHARED_ALLOWLIST="github.com api.github.com registry.npmjs.org"
 
 # claude 固有の api.anthropic.com は guest 内の疎通で確定した値。
-# codex 固有の chatgpt.com / api.openai.com は openai/codex 公式ドキュメント (Codex の
-# model sampling/streaming は wss://chatgpt.com、API キー認証は api.openai.com 宛て) から
-# 確定した値。guest 内の疎通による確認は対象外 (#490 Testing Decisions)。
+# codex 固有の chatgpt.com / api.openai.com は openai/codex 公式ドキュメント (model
+# sampling/streaming が wss://chatgpt.com、API キー認証が api.openai.com 宛て) の値。
+# guest 内の疎通では未確認 (rules/development/SOURCING.md)。
 AGENT_TABLE=(
   "claude|claude --dangerously-skip-permissions|/home/node/.claude|api.anthropic.com"
   "codex|codex --dangerously-bypass-approvals-and-sandbox|/home/node/.codex|chatgpt.com api.openai.com"
