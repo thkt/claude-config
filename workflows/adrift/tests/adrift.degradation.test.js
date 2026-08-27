@@ -5,6 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkWorkflowSyntax, runWorkflow } from "../../_lib/run-workflow.js";
@@ -621,3 +622,135 @@ test("T-006 every adrift prompt names the repository given in args.repo", async 
     assert.match(c.prompt, /cd \/abs\/target-repo &&/, `${c.opts.label ?? "?"} carries the pin`);
   }
 });
+
+// A DR whose status has expired (rejected / deprecated / superseded, etc.) is a decision this
+// run should not spend a reviewer fan-out verifying: nothing it says about the code is still the
+// live contract. The check sits in the stage 2 callback, ahead of the
+// `!ex.verifiable || !ex.candidates.length` branch, and the exact spelling of an expired status
+// lives in adrift.js as EXPIRED_STATUSES -- read from source here exactly as
+// audit.routing.test.js's parseRoutingLikeConst reads ROUTING/FOCUS, so this test never hand
+// copies the spelling.
+const parseStringArrayConst = (source, name) => {
+  const marker = `const ${name} = [`;
+  const idx = source.indexOf(marker);
+  if (idx === -1) return null;
+  const start = idx + marker.length - 1; // position of the opening "["
+  let depth = 0;
+  let end = -1;
+  for (let i = start; i < source.length; i++) {
+    if (source[i] === "[") depth++;
+    else if (source[i] === "]") {
+      depth--;
+      if (depth === 0) {
+        end = i + 1;
+        break;
+      }
+    }
+  }
+  if (end === -1) return null;
+  return [...source.slice(start + 1, end - 1).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+};
+
+// candidates is non-empty and verifiable is true, so absent the new expired-status check this
+// DR would already clear the `!ex.verifiable || !ex.candidates.length` branch and reach the
+// reviewer fan-out today.
+const expiredStatusStub = (status) => (prompt, opts) => {
+  const label = opts && opts.label;
+  if (label === "detect") return detectResult();
+  if (label === "extract:0001") return extractResult({ status });
+  if (label === "reviewer-design:0001") {
+    return {
+      findings: [
+        { file: "src/a.ts", line: 3, summary: "drift", direction: "code-fix", priority: "M" },
+      ],
+    };
+  }
+  if (label === "report") return { written: false, report_path: "" };
+  return undefined;
+};
+
+const reviewerRan = (calls) =>
+  calls.agent.some((c) => c.opts && (c.opts.label || "").startsWith("reviewer-"));
+
+test("T-101 every status the expired-status constant lists keeps the DR out of the reviewer fan-out", async () => {
+  const source = readFileSync(adriftJs, "utf8");
+  const expiredStatuses = parseStringArrayConst(source, "EXPIRED_STATUSES");
+  assert.ok(
+    expiredStatuses && expiredStatuses.length > 0,
+    "EXPIRED_STATUSES is extractable from adrift.js",
+  );
+
+  for (const status of expiredStatuses) {
+    const { calls } = await runWorkflow(adriftJs, {
+      args: { repo: "/abs/target-repo" },
+      stubs: { agent: expiredStatusStub(status) },
+    });
+    assert.equal(reviewerRan(calls), false, `status "${status}" does not reach the reviewer fan-out`);
+  }
+});
+
+test("T-102 an expired DR keeps its Per-DR row and its note states that it was not scanned", async () => {
+  const source = readFileSync(adriftJs, "utf8");
+  const expiredStatuses = parseStringArrayConst(source, "EXPIRED_STATUSES");
+  assert.ok(
+    expiredStatuses && expiredStatuses.length > 0,
+    "EXPIRED_STATUSES is extractable from adrift.js",
+  );
+  const [status] = expiredStatuses;
+
+  const { result, calls } = await runWorkflow(adriftJs, {
+    args: { repo: "/abs/target-repo" },
+    stubs: { agent: expiredStatusStub(status) },
+  });
+
+  assert.equal(result.drs_scanned, 1, "the expired DR still counts toward drs_scanned");
+  const reportCall = calls.agent.find((c) => c.opts && c.opts.label === "report");
+  assert.ok(reportCall, "the Report stage still ran");
+  const matched = reportCall.prompt.match(
+    /per-DR results are as follows\.\n([\s\S]*?)\n\nThe external DR references/,
+  );
+  assert.ok(matched, "the report prompt carries the serialized per-DR results");
+  const perDr = JSON.parse(matched[1]);
+  const entry = perDr.find((d) => d.id === "0001");
+  assert.ok(entry, "the expired DR keeps its Per-DR row in the exhaustive listing");
+  assert.match(entry.note, /not scanned/i, "the note states that the DR was not scanned");
+});
+
+test("T-103 an expired DR returns an empty findings array", async () => {
+  const source = readFileSync(adriftJs, "utf8");
+  const expiredStatuses = parseStringArrayConst(source, "EXPIRED_STATUSES");
+  assert.ok(
+    expiredStatuses && expiredStatuses.length > 0,
+    "EXPIRED_STATUSES is extractable from adrift.js",
+  );
+  const [status] = expiredStatuses;
+
+  const { result } = await runWorkflow(adriftJs, {
+    args: { repo: "/abs/target-repo" },
+    stubs: { agent: expiredStatusStub(status) },
+  });
+
+  assert.deepEqual(result.findings, [], "an expired DR contributes no findings");
+});
+
+test("T-104 a DR whose status is accepted, empty, or unrecognised reaches the reviewer fan-out", async () => {
+  const source = readFileSync(adriftJs, "utf8");
+  const expiredStatuses = parseStringArrayConst(source, "EXPIRED_STATUSES");
+  assert.ok(
+    expiredStatuses && expiredStatuses.length > 0,
+    "EXPIRED_STATUSES is extractable from adrift.js",
+  );
+
+  for (const status of ["Accepted", "", "TotallyUnrecognisedStatus"]) {
+    assert.ok(
+      !expiredStatuses.some((s) => s.toLowerCase() === status.toLowerCase()),
+      `"${status}" is not among the expired statuses`,
+    );
+    const { calls } = await runWorkflow(adriftJs, {
+      args: { repo: "/abs/target-repo" },
+      stubs: { agent: expiredStatusStub(status) },
+    });
+    assert.equal(reviewerRan(calls), true, `status "${status}" reaches the reviewer fan-out`);
+  }
+});
+

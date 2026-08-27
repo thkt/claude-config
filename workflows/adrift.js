@@ -329,6 +329,14 @@ log(
   }), manifest=${manifest} -> ${reviewers.join(" + ")}, external_refs=${externalRefs.length}`,
 );
 
+// A DR whose status has expired no longer holds the live contract, so spending a reviewer
+// fan-out on it verifies against a decision nothing still follows. The spelling here is the one
+// source adrift.degradation.test.js reads via readFileSync, mirroring how
+// audit.routing.test.js's parseRoutingLikeConst reads ROUTING/FOCUS from audit.js.
+const EXPIRED_STATUSES = ["rejected", "deprecated", "superseded"];
+const isExpiredStatus = (status) =>
+  EXPIRED_STATUSES.some((s) => s.toLowerCase() === String(status || "").toLowerCase());
+
 // ---- Scan: per DR, run extract -> reviewer matching independently ----
 const perDr = await pipeline(
   targets,
@@ -355,6 +363,17 @@ const perDr = await pipeline(
     if (!ex) {
       // an extract stall stays in the Per-DR listing as unverifiable (fail-close)
       return perDrRow(a, { note: "extract agent stall" });
+    }
+    if (isExpiredStatus(ex.status)) {
+      // an expired DR is no longer the live contract, so it skips the reviewer fan-out
+      // entirely while keeping its Per-DR row (fail-close, same as the other early returns here)
+      return perDrRow(a, {
+        status: ex.status,
+        superseded_by: ex.superseded_by || "",
+        verifiable: false,
+        note: `status "${ex.status}" is expired; not scanned`,
+        findings: [],
+      });
     }
     if (!ex.verifiable || !ex.candidates.length) {
       return perDrRow(a, {
