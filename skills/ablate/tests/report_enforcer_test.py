@@ -1,12 +1,7 @@
-"""Tests for report.py's enforcer-map integration (this unit's T-004/T-005).
+"""Tests for report.py's enforcer-map integration.
 
-skills/ablate/scripts/enforcer_map.py (the preceding unit) maps each always-loaded line to
-its enforcer, or reports it as ablation residue when no enforcer covers it. This is the seam
-test for wiring that module into report.py's call sequence: it calls the real enforcer_map
-module the same way report.py must, and cross-checks report.py's output against what
-enforcer_map independently returns for the same root — the
-skills/ablate/tests/report_test.py / skills/census/tests/verdict-and-paths.test.js
-read-both-sides-and-cross-check shape applied to this module boundary.
+Each case cross-checks report.py's output against what enforcer_map independently returns
+for the same root, so a change to enforcer_map.py cannot pass here unseen.
 
 Run: python3 skills/ablate/tests/report_enforcer_test.py
 """
@@ -35,13 +30,10 @@ def _write(root: Path, rel: str, content: str) -> Path:
     return path
 
 
-# A line an existing enforcer already covers, mirroring
-# skills/ablate/tests/enforcer_map_test.py's DeleteCandidate fixture rather than inventing a
-# new one.
+# Taken from enforcer_map_test.py's own fixtures rather than invented here, so both files
+# exercise the same two shapes.
 COVERED_LINE = "never use --no-verify"
 SAMPLE_ENFORCER = "hooks/pre-commit-block-no-verify.py"
-
-# A line with no matching enforcer, mirroring the same test file's AblationResidue fixture.
 UNCOVERED_LINE = "always ask before deleting a branch"
 
 
@@ -61,8 +53,6 @@ class EnforcerMapIntegration(unittest.TestCase):
                     patch.object(enforcer_map, "target_files", lambda _root: ["rules/sample.md"]),
                     patch.object(enforcer_map, "ENFORCER_TABLE", {COVERED_LINE: SAMPLE_ENFORCER}),
                 ):
-                    # Cross-check against the real enforcer_map module instead of a
-                    # hand-copied fixture: a change to enforcer_map.py must be visible here.
                     expected_rows = enforcer_map.classify_file(root, "rules/sample.md")
 
                     result = report.build_report(root, observations=[])
@@ -72,8 +62,8 @@ class EnforcerMapIntegration(unittest.TestCase):
 
             self.assertEqual(result["enforcer_rows"], expected_rows)
             self.assertIn("## Always-Loaded Elements", content)
-            # SAMPLE_ENFORCER appears nowhere else in the report, so its presence here is
-            # specific to the enforcer_map row having actually reached the written output.
+            # SAMPLE_ENFORCER appears nowhere else in the report, so finding it proves the
+            # row reached the written output rather than some other section carrying it.
             self.assertIn(SAMPLE_ENFORCER, content)
 
 
@@ -103,9 +93,8 @@ class AblationResidueInReport(unittest.TestCase):
 
             self.assertEqual(result["enforcer_rows"], expected_rows)
             self.assertIn("## Always-Loaded Elements", content)
-            # ABLATION_RESIDUE ("ablation-residue") is not any other section's verdict
-            # string (verdict.py only ever emits delete-candidate / needs-human-judgment /
-            # unmeasured), so its presence here is specific to this row.
+            # verdict.py never emits ablation-residue, so finding it proves the row reached
+            # the written output rather than some other section carrying it.
             self.assertIn(enforcer_map.ABLATION_RESIDUE, content)
 
 
@@ -113,19 +102,16 @@ REPO_ROOT = HERE.parent.parent.parent
 
 
 class OnePopulationPerReport(unittest.TestCase):
-    """One report holds the always-loaded population twice: build_report enumerates it for
-    the Harness Elements section, and enforcer_map walks it again for the enforcer rows. The
-    two ran from separate spellings until this test, and the hand-copied one was missing
-    rules/development/TOOLS.md — the enforcer section silently covered 8 of the 9 files while
-    the elements section listed all 9."""
+    """One report reaches the always-loaded population twice, through build_report's own
+    enumeration and through enforcer_map. A second spelling of that population covered 8 of
+    the 9 files while the elements section listed all 9."""
 
     def test_the_enforcer_rows_cover_every_always_loaded_element_the_report_lists(
         self,
     ) -> None:
         """T-006 the enforcer rows cover every always-loaded element the report lists"""
-        # The real repository root, nothing patched: a tempdir fixture holds whatever files
-        # the test itself wrote, so it agrees with any population and would have passed on
-        # the 8-file tuple.
+        # The real repository root, nothing patched: a tempdir fixture holds only what the
+        # test wrote, so it agrees with any population and catches no divergence.
         result = report.build_report(REPO_ROOT, observations=[])
 
         listed = {

@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
 """ablate skill のためのレポート組み立て。
 
-CLI のエントリポイントではない。skills/ablate/SKILL.md はこのモジュールを script として
-呼ぶのでなく、下の `build_report` と `write_report` を import して使う
-(docs/wiki/deterministic-script-judgment.md 「入力から一意に決まる判定は script に置く」—
-列挙・アーム一覧・verdict 分類・常時ロード / enforcer 対応づけはすでにそれぞれの script が
-持っており、このモジュール自身の仕事はその 4 つを順に呼んで結果を呼び出し側へ渡すことだけで、
-それらの定数をここで再導出しない。これは verdict.py の `from arms import UNMEASURED` という
-兄弟 import の形に倣う)。
+CLI のエントリポイントではない。skills/ablate/SKILL.md は script として呼ぶのでなく
+`build_report` と `write_report` を import して使う。このモジュールがまとめる判定はすでに
+それぞれの script が持つ (docs/wiki/deterministic-script-judgment.md「入力から一意に決まる
+判定は script に置く」) ため、それらの定数をここで再導出しない。
 
-呼び出し側の契約: 呼び出し側 (現在は skills/ablate/tests/report_test.py と
-skills/ablate/tests/report_enforcer_test.py、いずれ skills/ablate/SKILL.md) が、このモジュール
-のディレクトリと skills/_lib を import 前に sys.path へ入れる。harness_elements.py と
-verdict.py がそれぞれのテストから import されるのと同じ形であり、report.py 自身は sys.path
-を操作しない。
+このモジュールのディレクトリと skills/_lib を import 前に sys.path へ入れるのは呼び出し側。
+report.py 自身は sys.path を操作しない。
 """
 
 from __future__ import annotations
@@ -45,19 +39,10 @@ def _is_apparatus(path: str) -> bool:
 
 
 def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, Any]:
-    """前段の 4 ユニットを順に呼び、その出力を結線する。
+    """前段の各ユニットの script を順に呼び、その出力を結線する。
 
-    1. harness_elements.enumerate_elements(root) — harness の全母集団と各要素の分類。
-    2. arms.ARMS — この ablation 実行が比較するすべてのアーム。
-    3. observation ごとの verdict.classify(...) — その observation が報告する要素の
-       delete-candidate / needs-human-judgment / unmeasured ラベル。
-    4. enforcer_map.map_all(root) — 常時ロードされる各ファイル自身の行についての
-       delete-candidate / ablation-residue ラベル。
-
-    レポート文字列でなく素の dict (elements / arms / verdicts / delete_candidates /
-    enforcer_rows) を返すため、データだけを必要とする呼び出し側 (このユニットのテスト、
-    いずれ U-009 から U-011 が足す DR ゲートの結線) は write_report の出力から Markdown を
-    読み戻さずに済む。
+    レポート文字列でなく素の dict を返すため、データだけを必要とする呼び出し側は
+    write_report の出力から Markdown を読み戻さずに済む。
     """
     elements = harness_elements.enumerate_elements(root)
 
