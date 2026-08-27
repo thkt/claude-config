@@ -27,6 +27,23 @@
 - Python の共有コードは同ディレクトリ sibling import・tree 配下の _lib + sys.path.insert・skills/_lib の CLI 分離の 3 階層で置き場が決まる (research)
 - agentType の bare name 解決は plugin-only install で失敗し、workflow() の sibling 相当のフォールバックが無い (research)
 - build.js の Ship stage は plan スコープ外の tracked file 変更も無条件で commit に含める (research)
+- workflow script は import/export で値を共有できず、定数一致はソーステキスト比較テストでのみ担保する #548
+- severity ランクの引き算は NaN フォールスルーで || チェーンを素通りする #548
+- sort の fixture は補助属性の順がソートキーと偶然一致するとフォールスルー欠陥を検出し損ねる #548
+- issue の Alternatives が却下した粒度に実装が逆戻りし、独立した適合性レビューで検出される #547
+- スキル共有 (DRY) 判断は消費者数でなく content-fit で検証する (research)
+- hook の永続化は Stop で専用ファイルへ、注入は SessionStart で additionalContext へ分離し prompt cache を守る (research)
+- HTML から採取した workflow YAML は text@text 形式が Cloudflare のメール難読化で壊れる (research)
+- 壊れた workflow YAML は GitHub API 上 name が file path へ fallback する (research)
+- API 削除 PR はコード呼び出し元だけでなく ADR/docstring の名指し参照も棚卸しする (research)
+- UI 確認はスクショだけでなく確認観点を先に列挙してから検証する (research)
+- 見た目修正 issue は画像だけでなく色・サイズ等をテキストで明記する (research)
+- 不具合調査は最初の見え方でなく操作後の状態遷移で切り分けてから修正に入る (research)
+- 危険度の高い変更はレビュー観点を明文化し品質ゲート化する (research)
+- 外部システム挙動の claim は一次ソース検証必須で、未検証なら disconfirmation の根拠に使えない (research)
+- bug の root cause 特定後は同一生成工程の兄弟 artifact を洗い出し同種欠陥を検証する (research)
+- 自作 CLI は --help 使用例・JSON 出力・--dry-run が揃って欠ける (research)
+- skill に tool を書いて許可するだけでは使われず、既存手段を明示的に禁止する enforcement 文が要る (research)
 
 ## 棄却
 
