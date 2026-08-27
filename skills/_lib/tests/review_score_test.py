@@ -71,6 +71,31 @@ class Scoring(unittest.TestCase):
         self.assertEqual(report["unknownVerdicts"], ["full_hit"])
         self.assertNotIn("full_hit", VERDICTS)
 
+    def test_a_results_entry_carrying_the_new_verdict_is_counted_under_its_own_key_not_folded_into_hit_or_below_severity(
+        self,
+    ) -> None:
+        report = score(
+            [flagged("v1")],
+            [{"file": "v1", "verdict": "below_min_findings"}],
+        )
+        self.assertEqual(report["counts"]["below_min_findings"], 1)
+        self.assertEqual(report["counts"]["hit"], 0)
+        self.assertEqual(report["counts"]["below_severity"], 0)
+
+    def test_the_closed_set_check_accepts_the_new_verdict_and_still_rejects_a_verdict_outside_the_set(
+        self,
+    ) -> None:
+        report = score(
+            [flagged("v1"), flagged("v2")],
+            [
+                {"file": "v1", "verdict": "below_min_findings"},
+                {"file": "v2", "verdict": "totally_unknown"},
+            ],
+        )
+        self.assertIn("below_min_findings", VERDICTS)
+        self.assertNotIn("below_min_findings", report["unknownVerdicts"])
+        self.assertIn("totally_unknown", report["unknownVerdicts"])
+
     def test_per_category_recall_splits_the_strict_hits(self) -> None:
         report = score(
             [flagged("v1", "A03"), flagged("v2", "A03"), flagged("v3", "LLM01")],
