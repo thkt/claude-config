@@ -329,6 +329,16 @@ log(
   }), manifest=${manifest} -> ${reviewers.join(" + ")}, external_refs=${externalRefs.length}`,
 );
 
+// A DR whose status has expired no longer holds the live contract, so spending a reviewer
+// fan-out on it verifies against a decision nothing still follows. The spelling here is the one
+// source adrift.degradation.test.js reads via readFileSync, mirroring how
+// audit.routing.test.js's parseRoutingLikeConst reads ROUTING/FOCUS from audit.js.
+const EXPIRED_STATUSES = ["rejected", "deprecated", "superseded"];
+// Not an equality test: docs/decisions/ front matter writes `status: "Superseded by DR-0055"`,
+// carrying the successor's id in the same string, so an exact match reads it as live.
+const isExpiredStatus = (status) =>
+  EXPIRED_STATUSES.some((s) => String(status || "").toLowerCase().startsWith(s.toLowerCase()));
+
 // ---- Scan: per DR, run extract -> reviewer matching independently ----
 const perDr = await pipeline(
   targets,
@@ -355,6 +365,19 @@ const perDr = await pipeline(
     if (!ex) {
       // an extract stall stays in the Per-DR listing as unverifiable (fail-close)
       return perDrRow(a, { note: "extract agent stall" });
+    }
+    // A DR the caller named by focus is scanned whatever its status: targets is already
+    // filtered by matchesFocus above, so a non-empty focus means every target was asked for.
+    if (!focus.length && isExpiredStatus(ex.status)) {
+      // skips the reviewer fan-out entirely while keeping its Per-DR row (fail-close, same
+      // as the other early returns here)
+      return perDrRow(a, {
+        status: ex.status,
+        superseded_by: ex.superseded_by || "",
+        verifiable: false,
+        note: `status "${ex.status}" is expired; not scanned`,
+        findings: [],
+      });
     }
     if (!ex.verifiable || !ex.candidates.length) {
       return perDrRow(a, {

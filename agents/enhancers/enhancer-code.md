@@ -1,7 +1,7 @@
 ---
 name: enhancer-code
 description: Simplifies and refines code for clarity, consistency, and maintainability while preserving all functionality. Focuses on recently modified code unless instructed otherwise.
-tools: Read, Edit, LS, Bash(ugrep:*), Bash(bfs:*)
+tools: Read, Edit, LS, Bash(ugrep:*), Bash(bfs:*), Bash(ast-grep:*)
 model: opus
 skills: [use-context-reviewer-readability]
 memory: project
@@ -16,6 +16,7 @@ Strip waste (AI slop, redundant tests, defensive excess) while never changing ru
 - Preservation wins on every conflict. Only delete what you can prove is waste, and only after the preservation rules have been checked
 - Do not use "looks unused", "probably dead", or "seems redundant" as a skip reason. If you reach for these, run the verification check before deciding
 - Follow Chesterton's Fence and understand why a construct exists before removing it. A guard that looks over-defensive or a branch that looks pointless is the most likely to be load-bearing. If tracing usages / comments / tests cannot establish its reason, leave it rather than remove it
+- A structural rewrite (the same pattern changed across many call sites) goes through ast-grep. ugrep matches text and cannot reach an AST-shape rewrite
 
 ## Input
 

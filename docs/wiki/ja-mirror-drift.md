@@ -39,3 +39,6 @@ scenes: []
 - #60 drift 事例の再発を受けて JA canonical + 同一コミット規律を DR-0073 に明文化した
 - #389 13 テンプレートの骨格見出しが `## テンプレート` と `## Template` に割れていた。issue の parser が literal で探すアンカーなので、`.ja` を骨格として渡すと節が 1 つ増えていた
 - #390 英語側の py が全文書き換えで日本語 prose を失う drift が 4 件あり、逆向きの検出を hook と走査テストへ足した
+- #537 research のカーソル判定を mtime から最終コミット時刻へ書き換えるコミットが英語側の SKILL.md だけを直し、`.ja/skills/scribe/SKILL.md` が旧記述のまま残った。同一 PR 内の後続コミットで .ja 側を追従させて解消した
+- #562 codex-herdr の実装で `workflows/code.js` と `workflows/build.js` の変更はコミット 991d4a19 に含まれたが、対応する `.ja` ミラー編集は同一コミットにも他のどのコミットにも含まれず、未コミットの作業ツリー変更のまま残った
+- #554 `workflows/code.js` の no-plan why メッセージから `args.plan` という識別子を落としたが、`.ja/workflows/code.js` 側の対応する文言は変更前のまま残り、両ツリーで停止メッセージの内容が食い違った

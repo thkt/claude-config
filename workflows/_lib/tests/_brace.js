@@ -38,3 +38,27 @@ export const parseRoutingLikeConst = (source, name) => {
   }
   return result;
 };
+
+// A `const <name> = [ "a", "b", ... ]` string-array constant, read the same way as
+// parseRoutingLikeConst above: brace/bracket depth-counted from source, not eval. Shared so
+// adrift.degradation.test.js's expired-status check has the same non-eval oracle as ROUTING/FOCUS.
+export const parseStringArrayConst = (source, name) => {
+  const marker = `const ${name} = [`;
+  const idx = source.indexOf(marker);
+  if (idx === -1) return null;
+  const start = idx + marker.length - 1; // position of the opening "["
+  let depth = 0;
+  let end = -1;
+  for (let i = start; i < source.length; i++) {
+    if (source[i] === "[") depth++;
+    else if (source[i] === "]") {
+      depth--;
+      if (depth === 0) {
+        end = i + 1;
+        break;
+      }
+    }
+  }
+  if (end === -1) return null;
+  return [...source.slice(start + 1, end - 1).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+};
