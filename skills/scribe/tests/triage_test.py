@@ -15,7 +15,7 @@ HERE = Path(__file__).resolve().parent
 SCRIPT = HERE.parent / "scripts" / "triage.py"
 sys.path.insert(0, str(SCRIPT.parent))
 
-from triage import Pattern, Triaged, triage  # noqa: E402
+from triage import Pattern, Triaged, merge, triage  # noqa: E402
 
 # The same three values triage branches on. A plain str here widens the literal and the helper
 # stops building the shape the function accepts.
@@ -200,6 +200,60 @@ class StoreMerge(unittest.TestCase):
         self.assertEqual([r["name"] for r in rows], [SHARED])
         self.assertEqual(sorted(rows[0]["evidence"]), ["#167", "#168", "#390"])
         self.assertEqual(rows[0]["count"], 3)
+
+
+class MergeCarriesFreshExisting(unittest.TestCase):
+    """merge() keeps a store row's front position but must stop trusting the fixed
+    `existing: "candidate"` read_store hands it: fresh's own `existing` for the same name is
+    what the row actually is now.
+
+    | store row's existing | fresh row's existing | merged row's existing |
+    | --------------------- | --------------------- | ---------------------- |
+    | candidate (fixed)     | page                  | page (fresh wins)      |
+    """
+
+    def test_a_fresh_row_reporting_existing_page_for_the_stored_name_makes_the_run_return_action_update(
+        self,
+    ) -> None:
+        """T-001 蓄積行と同名で `existing: "page"` の fresh を渡した run は
+        `action: "update"` を返す"""
+        store_rows: list[Pattern] = [
+            {"name": "acc", "evidence": ["#1"], "existing": "candidate"}
+        ]
+        fresh: list[Pattern] = [{"name": "acc", "evidence": ["#2"], "existing": "page"}]
+
+        merged = merge(store_rows, fresh)
+        report = triage(merged)
+
+        rows = report["pages"] + report["candidates"] + report["deferred"]
+        self.assertEqual([r["action"] for r in rows if r["name"] == "acc"], ["update"])
+
+    def test_the_accumulated_row_stays_first_and_keeps_fresh_existing_even_tied_with_another_row(
+        self,
+    ) -> None:
+        """T-002 蓄積行の位置は merge の後も先頭のままで、根拠数が同じ fresh に
+        押し出されない"""
+        store_rows: list[Pattern] = [
+            {"name": "acc", "evidence": ["#1", "#2"], "existing": "candidate"}
+        ]
+        fresh: list[Pattern] = [
+            {"name": "acc", "evidence": ["#3"], "existing": "page"},
+            {"name": "z", "evidence": ["#4", "#5", "#6"], "existing": "none"},
+        ]
+
+        merged = merge(store_rows, fresh)
+
+        self.assertEqual(merged[0]["name"], "acc")
+        self.assertEqual(merged[0]["existing"], "page")
+
+    def test_which_heading_the_accumulated_row_came_from_is_readable_on_the_triaged_output(
+        self,
+    ) -> None:
+        """T-003 蓄積行がどの節に居たかが出力から読める"""
+        report = run_cli([], store([], [f"- {ONE_OFF} #59"]))
+
+        row = next(c for c in report["candidates"] if c["name"] == ONE_OFF)
+        self.assertEqual(row.get("section"), "単発")
 
 
 class Commits(unittest.TestCase):
