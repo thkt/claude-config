@@ -67,10 +67,17 @@ def _confirmed_unmet(dr_text: str) -> bool:
 
 
 def gate(path: str, verdict: str, root: Path) -> str:
-    """Pass `verdict` through unchanged unless it is DELETE_CANDIDATE and `path` traces to
-    a DR whose Reassessment Triggers carry no confirmation record, in which case return
-    HELD. A non-DELETE_CANDIDATE verdict, or a path with no governing DR, always passes
-    through unchanged — this gate only ever holds a delete candidate back."""
+    """Read top to bottom; take the first row that matches, the same shape verdict.py carries
+    from skills/census/SKILL.md Phase 4 Step 1. This gate only ever holds a delete candidate
+    back; every other verdict passes through untouched.
+
+    | Condition                                                   | Result   |
+    | ----------------------------------------------------------- | -------- |
+    | verdict is not DELETE_CANDIDATE                             | verdict  |
+    | no DR governs path                                          | verdict  |
+    | the governing DR records its triggers confirmed unmet       | verdict  |
+    | Anything else (a live DR governs the path)                  | HELD     |
+    """
     if verdict != DELETE_CANDIDATE:
         return verdict
     found = _find_governing_dr(path, root)

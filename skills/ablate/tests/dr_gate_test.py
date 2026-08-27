@@ -28,9 +28,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "scripts"))
 
-from verdict import DELETE_CANDIDATE  # noqa: E402
-
 import dr_gate  # noqa: E402
+from verdict import DELETE_CANDIDATE  # noqa: E402
 
 
 def _write(root: Path, rel: str, content: str) -> Path:
@@ -92,10 +91,9 @@ Chosen option governs `skills/other/scripts/unrelated.py`.
 
 
 class Held(unittest.TestCase):
-    def test_a_delete_candidate_traceable_to_a_dr_is_held_when_no_reassessment_triggers_record_is_present(
-        self,
-    ) -> None:
-        """T-001 A delete candidate traceable to a DR is held when no Reassessment Triggers record is present"""
+    def test_held_without_a_triggers_record(self) -> None:
+        """T-001 A delete candidate traceable to a DR is held when no Reassessment Triggers
+        record is present"""
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(root, CANDIDATE_PATH, "# stand-in source\n")
@@ -110,7 +108,8 @@ class Passes(unittest.TestCase):
     def test_a_delete_candidate_traceable_to_a_dr_passes_when_the_triggers_are_recorded_as_unmet(
         self,
     ) -> None:
-        """T-002 A delete candidate traceable to a DR passes when the triggers are recorded as unmet"""
+        """T-002 A delete candidate traceable to a DR passes when the triggers are recorded
+        as unmet"""
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(root, CANDIDATE_PATH, "# stand-in source\n")

@@ -75,7 +75,8 @@ class PassesThroughTheGateBeforeWriting(unittest.TestCase):
     def test_report_py_passes_the_verdict_output_through_the_dr_gate_before_writing_the_report(
         self,
     ) -> None:
-        """T-004 report.py passes the verdict output through the DR gate before writing the report"""
+        """T-004 report.py passes the verdict output through the DR gate before writing the
+        report"""
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(root, CANDIDATE_PATH, "# stand-in source\n")
@@ -112,7 +113,8 @@ class HeldCandidateAbsentFromReport(unittest.TestCase):
     def test_a_delete_candidate_held_by_the_dr_gate_is_absent_from_the_reports_delete_candidates(
         self,
     ) -> None:
-        """T-005 a delete candidate held by the DR gate is absent from the report's delete candidates"""
+        """T-005 a delete candidate held by the DR gate is absent from the report's delete
+        candidates"""
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write(root, CANDIDATE_PATH, "# stand-in source\n")

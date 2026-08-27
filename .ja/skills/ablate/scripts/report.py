@@ -108,6 +108,12 @@ def _render(result: dict[str, Any]) -> str:
             ("Arms", str(len(result["arms"]))),
             ("Elements observed", str(len(result["verdicts"]))),
             ("Delete candidates", str(len(result["delete_candidates"]))),
+            # census のレポートが DR で除外した候補に専用の Summary 行を与えるのと同じく、
+            # 別に数える。無いと Verdicts の表を held の文字列で走査しないと件数が分からない。
+            (
+                "Held by a live DR",
+                str(sum(1 for v in result["verdicts"].values() if v == dr_gate.HELD)),
+            ),
         ],
     )
     lines += [""]

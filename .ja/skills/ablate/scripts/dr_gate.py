@@ -67,10 +67,17 @@ def _confirmed_unmet(dr_text: str) -> bool:
 
 
 def gate(path: str, verdict: str, root: Path) -> str:
-    """`verdict` が DELETE_CANDIDATE で、かつ `path` が確認記録の無い Reassessment
-    Triggers を持つ DR に紐づくときだけ HELD を返し、それ以外は `verdict` をそのまま返す。
-    DELETE_CANDIDATE 以外の verdict、または支配する DR の無いパスは常にそのまま通す —
-    このゲートは削除候補を保留に落とすことしかしない。"""
+    """上から読んで最初に当たった行を採る。verdict.py が skills/census/SKILL.md Phase 4
+    Step 1 から写しているのと同じ形。このゲートは削除候補を保留に落とすことしかせず、
+    それ以外の verdict はそのまま通す。
+
+    | 条件                                             | 結果    |
+    | ------------------------------------------------ | ------- |
+    | verdict が DELETE_CANDIDATE でない               | verdict |
+    | path を支配する DR が無い                        | verdict |
+    | 支配する DR が trigger を未達と記録している      | verdict |
+    | それ以外 (生きている DR が path を支配する)      | HELD    |
+    """
     if verdict != DELETE_CANDIDATE:
         return verdict
     found = _find_governing_dr(path, root)

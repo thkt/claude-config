@@ -110,6 +110,13 @@ def _render(result: dict[str, Any]) -> str:
             ("Arms", str(len(result["arms"]))),
             ("Elements observed", str(len(result["verdicts"]))),
             ("Delete candidates", str(len(result["delete_candidates"]))),
+            # Counted apart, the way census's report gives the DR-excluded candidates their own
+            # Summary row: without it the number is only reachable by scanning the Verdicts table
+            # for the held literal.
+            (
+                "Held by a live DR",
+                str(sum(1 for v in result["verdicts"].values() if v == dr_gate.HELD)),
+            ),
         ],
     )
     lines += [""]
