@@ -47,6 +47,27 @@ def phase_4_steps_naming_the_store(lang: str) -> str:
     return "\n".join(step for step in steps if "_candidates.md" in step)
 
 
+def phase_4_steps(lang: str) -> list[str]:
+    """Every numbered Phase 4 step line, in order."""
+    doc = skill(lang)
+    phase4 = doc[doc.index("## Phase 4") : doc.index("## Phase 5")]
+    return [line for line in phase4.split("\n") if re.match(r"^\d+\. ", line)]
+
+
+# The words that name a structure page and a broken reference, per language. The Phase 4 table
+# row "Does a structure page match the current implementation?" must be drawn by a step that
+# fires regardless of whether a reference is broken, so a step that only fires under a broken
+# reference does not satisfy T-001.
+STRUCTURE_PAGE_WORD = {"ja": "構造ページ", "en": "structure page"}
+BROKEN_REFERENCE_WORD = {"ja": "壊れ", "en": "broken"}
+
+# The three structure-page section headings the cross-check must name, per language.
+STRUCTURE_ROW_WORDS = {
+    "ja": ("境界", "契約", "要求"),
+    "en": ("boundary", "contract", "requirement"),
+}
+
+
 class SkillContract(unittest.TestCase):
     def test_the_existing_values_the_skill_names_are_the_ones_triage_branches_on(self) -> None:
         """A value only one side knows falls to the none branch, filing an existing page as new."""
@@ -106,6 +127,39 @@ class SkillContract(unittest.TestCase):
             steps = phase_4_steps_naming_the_store(lang)
             self.assertIn("_candidates.md", steps, f"{lang}: a Phase 4 step names the store")
             self.assertIn(moves[lang], steps, f"{lang}: that step moves the line")
+
+    def test_phase_4_carries_a_structure_page_cross_check_independent_of_broken_references(
+        self,
+    ) -> None:
+        """T-001: both trees' Phase 4 carries a step that cross-checks a structure page's rows
+        without depending on a broken reference."""
+        for lang in LANGS:
+            steps = phase_4_steps(lang)
+            hits = [step for step in steps if STRUCTURE_PAGE_WORD[lang] in step]
+            self.assertTrue(
+                hits, f"{lang}: Phase 4 carries a step naming a structure page"
+            )
+            self.assertFalse(
+                any(BROKEN_REFERENCE_WORD[lang] in step for step in hits),
+                f"{lang}: the structure-page step must not gate on a broken reference",
+            )
+
+    def test_phase_4_structure_page_step_names_the_boundary_contract_requirement_rows(
+        self,
+    ) -> None:
+        """T-002: both trees' Phase 4 step names the boundary, contract, and requirement rows
+        as what gets cross-checked."""
+        for lang in LANGS:
+            steps = phase_4_steps(lang)
+            hits = [step for step in steps if STRUCTURE_PAGE_WORD[lang] in step]
+            self.assertTrue(
+                hits, f"{lang}: Phase 4 carries a step naming a structure page"
+            )
+            step_text = "\n".join(hits)
+            for word in STRUCTURE_ROW_WORDS[lang]:
+                self.assertIn(
+                    word, step_text, f"{lang}: the structure-page step names {word}"
+                )
 
     def test_the_line_phase_4_moves_carries_why_it_was_dropped(self) -> None:
         """The 棄却 section is outside what read_store ranks, so a line landing there without a

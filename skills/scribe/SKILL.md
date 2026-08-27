@@ -11,14 +11,14 @@ The patterns worth picking up are procedures that recur as a routine or a conven
 
 ## Invariants
 
-| Condition                 | Content                                                                                                                                                        |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Via PR                    | Never commit or push directly to the default branch                                                                                                            |
-| Progress record           | The cursor is the mergedAt of the last merged scribe PR. For a research file, compare that mergedAt against its last commit time                               |
-| Where the threshold lives | `scripts/triage.py` decides whether a pattern becomes a page or a candidate; this skill does not judge it                                                      |
-| Facts only                | Write only facts stated in PRs / issues and research files, plus facts verified in the current code. No guessing                                               |
-| No research paths         | Never write `.claude/workspace/research/` file paths under `docs/wiki/`. The wiki carries the distilled pattern, and a path would send the reader back to the raw report                            |
-| Worktree isolation        | Edit and commit inside an isolated worktree; never touch the user's working tree. The worktree is created in Phase 6, so Phase 6 is the only Phase that writes |
+| Condition                 | Content                                                                                                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Via PR                    | Never commit or push directly to the default branch                                                                                                                      |
+| Progress record           | The cursor is the mergedAt of the last merged scribe PR. For a research file, compare that mergedAt against its last commit time                                         |
+| Where the threshold lives | `scripts/triage.py` decides whether a pattern becomes a page or a candidate; this skill does not judge it                                                                |
+| Facts only                | Write only facts stated in PRs / issues and research files, plus facts verified in the current code. No guessing                                                         |
+| No research paths         | Never write `.claude/workspace/research/` file paths under `docs/wiki/`. The wiki carries the distilled pattern, and a path would send the reader back to the raw report |
+| Worktree isolation        | Edit and commit inside an isolated worktree; never touch the user's working tree. The worktree is created in Phase 6, so Phase 6 is the only Phase that writes           |
 
 ## Phase 1: Preconditions and onboarding
 
@@ -58,8 +58,9 @@ Before creating, promoting, or updating a page, cross-check each pattern against
 1. For each item that holds, add the current-code location as reference code, written as `path` + symbol name. Write no line numbers
 2. Settle the globs of the implementation files the rule bears on, and settle its scenes from `find_wiki_rule.py`'s `SCENES` constant. The two are independent judgments: globs name implementation files, scenes name situations, and a rule confined to filing or PR practice carries an empty globs array with whatever scenes hold
 3. Sweep the reference code of every page under `docs/wiki/*.md`, existing pages unrelated to this run's scope included. Mechanically verify that the file exists and that the symbol name greps within it
-4. For a broken reference, reread the current code. The table below settles what to write
-5. When a dropped item holds a line in `_candidates.md`, move that line into the 棄却 section and write the reason it was dropped on the next line, indented. This takes priority over the removal Phase 3 step 7 prepared
+4. For each structure page, cross-check the rows its boundary, contract, and requirement sections list against the current code. Run every target page each time, independent of reference-code state. When they drift, settle the wording that matches the current code. Do not drop it
+5. For a broken reference, reread the current code. The table below settles what to write
+6. When a dropped item holds a line in `_candidates.md`, move that line into the 棄却 section and write the reason it was dropped on the next line, indented. This takes priority over the removal Phase 3 step 7 prepared
 
 | Check                                                         | What to settle when it fails                                                 |
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------- |
