@@ -37,24 +37,46 @@ def _git(repo: Path, *args: str) -> None:
     )
 
 
-def _candidates(waiting: list[str], rejected: list[str] | None = None) -> str:
+def _candidates(
+    waiting: list[str], rejected: list[str] | None = None, one_off: list[str] | None = None
+) -> str:
     rows = [f"- {n}" for n in waiting]
     dropped = [f"- {n}" for n in rejected or []]
+    solo = [f"- {n}" for n in one_off or []]
     return "\n".join(
-        ["# candidates", "", "## 昇格待ち", "", *rows, "", "## 単発", "", "## 棄却", "", *dropped]
+        [
+            "# candidates",
+            "",
+            "## 昇格待ち",
+            "",
+            *rows,
+            "",
+            "## 単発",
+            "",
+            *solo,
+            "",
+            "## 棄却",
+            "",
+            *dropped,
+        ]
     )
 
 
-def _init_worktree(root: Path, start_waiting: list[str] | None) -> Path:
+def _init_worktree(
+    root: Path, start_waiting: list[str] | None, start_one_off: list[str] | None = None
+) -> Path:
     """The baseline carries a `docs(wiki):` commit of its own, because every branch point in
     this repository already holds earlier scribe runs. `start_waiting=None` leaves the store
-    out, which is the branch point a first run starts from."""
+    out, which is the branch point a first run starts from. `start_one_off` seeds 単発 rows for
+    a scenario where a row crosses sections during the run."""
     repo = root / "worktree"
     wiki = repo / "docs" / "wiki"
     wiki.mkdir(parents=True)
     _git(repo, "init", "-q")
     if start_waiting is not None:
-        _ = (wiki / "_candidates.md").write_text(_candidates(start_waiting), encoding="utf-8")
+        _ = (wiki / "_candidates.md").write_text(
+            _candidates(start_waiting, one_off=start_one_off), encoding="utf-8"
+        )
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", "chore: seed candidates")
     _ = (wiki / "an-earlier-page.md").write_text("# earlier\n", encoding="utf-8")
@@ -300,6 +322,123 @@ class StoreAtFailures(unittest.TestCase):
             repo = _init_worktree(Path(tmp), ["item0"])
             with self.assertRaises(subprocess.CalledProcessError):
                 _ = verify_run._store_at(repo, "deadbeef" * 5)
+
+
+def _verify(
+    repo: Path, report: dict[str, object], base: str, created: int = 0
+) -> dict[str, object]:
+    """`verify` is expected to grow a `report` parameter carrying triage's own output (`commits`,
+    `deferred`) and stop taking `start_count`/`expected_commits` as self-reported ints -- it
+    derives both from `base`'s store and `report` instead."""
+    return cast(
+        dict[str, object],
+        verify_run.verify(repo, report=report, base=base, created=created),
+    )
+
+
+class DerivedFromBaseAndTriage(unittest.TestCase):
+    """`section_rows` already counts a heading's rows, and `_store_at` already reads `base`'s
+    `_candidates.md` unchanged. `verify` is expected to compose the two into `start_count`
+    itself, and to read `expected_commits` off `report["commits"]` rather than trust either as
+    an argument."""
+
+    def test_a_run_that_does_not_pass_start_count_counts_the_base_waiting_rows_itself(
+        self,
+    ) -> None:
+        """T-004 `start_count` を渡さない run が base 時点の昇格待ち行数を自分で数える"""
+        with tempfile.TemporaryDirectory() as tmp:
+            start = [f"item{i}" for i in range(5)]
+            repo = _init_worktree(Path(tmp), start)
+            base = _base(repo)
+            _commit_pages(repo, start, ["item0", "item1", "item2"])
+
+            report: dict[str, object] = {
+                "commits": [
+                    [{"name": n, "section": "昇格待ち"} for n in ("item0", "item1", "item2")]
+                ],
+                "deferred": [],
+            }
+            result = _verify(repo, report, base)
+
+        self.assertEqual(result["ok"], True, result["mismatches"])
+
+    def test_a_run_where_deferred_enters_waiting_grows_the_expected_value_by_the_inflow(
+        self,
+    ) -> None:
+        """T-005 `deferred` が昇格待ちへ入る run の期待値が、流入分だけ増える"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = _init_worktree(Path(tmp), ["item0", "item1"], start_one_off=["solo"])
+            base = _base(repo)
+            wiki = repo / "docs" / "wiki"
+            for n in ["item0", "item1"]:
+                _ = (wiki / f"{n}.md").write_text(f"# {n}\n", encoding="utf-8")
+            # solo now carries a second piece of evidence and is promotion-worthy, but this
+            # run's commit cap leaves it uncommitted, so it moves into 昇格待ち to wait.
+            _ = (wiki / "_candidates.md").write_text(_candidates(["solo"]), encoding="utf-8")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): item0, item1 を追加/更新")
+
+            report: dict[str, object] = {
+                "commits": [[{"name": n, "section": "昇格待ち"} for n in ("item0", "item1")]],
+                "deferred": [{"name": "solo", "section": "単発"}],
+            }
+            result = _verify(repo, report, base)
+
+        self.assertEqual(result["ok"], True, result["mismatches"])
+
+    def test_a_run_that_updates_an_existing_page_with_status_m_and_clears_its_row_returns_ok_true(
+        self,
+    ) -> None:
+        """T-006 既存ページを M で更新し昇格待ち行を消した run が `ok: true` を返す"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = _init_worktree(Path(tmp), ["some-topic"])
+            wiki = repo / "docs" / "wiki"
+            # some-topic already has a page before base, so this run's write lands on git as
+            # status M (modify), never A (add).
+            _ = (wiki / "some-topic.md").write_text("# some-topic\n", encoding="utf-8")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): some-topic を追加/更新")
+            base = _base(repo)
+
+            _ = (wiki / "some-topic.md").write_text("# some-topic\n\nmore.\n", encoding="utf-8")
+            _ = (wiki / "_candidates.md").write_text(_candidates([]), encoding="utf-8")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): some-topic を追加/更新")
+
+            report: dict[str, object] = {
+                "commits": [[{"name": "some-topic", "section": "昇格待ち"}]],
+                "deferred": [],
+            }
+            result = _verify(repo, report, base)
+
+        self.assertEqual(result["ok"], True, result["mismatches"])
+
+    def test_a_one_off_row_that_gains_a_second_piece_of_evidence_and_becomes_a_page_does_not_mismatch(
+        self,
+    ) -> None:
+        """T-007 単発の行が 2 件目の根拠を得てページになった run の期待値が食い違わない"""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = _init_worktree(Path(tmp), ["item0"], start_one_off=["solo"])
+            base = _base(repo)
+            wiki = repo / "docs" / "wiki"
+            for n in ["item0", "solo"]:
+                _ = (wiki / f"{n}.md").write_text(f"# {n}\n", encoding="utf-8")
+            _ = (wiki / "_candidates.md").write_text(_candidates([]), encoding="utf-8")
+            _git(repo, "add", "-A")
+            _git(repo, "commit", "-q", "-m", "docs(wiki): item0, solo を追加/更新")
+
+            report: dict[str, object] = {
+                "commits": [
+                    [
+                        {"name": "item0", "section": "昇格待ち"},
+                        {"name": "solo", "section": "単発"},
+                    ]
+                ],
+                "deferred": [],
+            }
+            result = _verify(repo, report, base)
+
+        self.assertEqual(result["ok"], True, result["mismatches"])
 
 
 if __name__ == "__main__":

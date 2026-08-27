@@ -24,6 +24,9 @@ WIKI_DIR = "docs/wiki"
 
 WAITING = "## 昇格待ち"
 REJECTED = "## 棄却"
+# triage の行自身が持つ section フィールドの素の値。上の WAITING/REJECTED は store の見出しに
+# 合わせる "## " 付きの値を持つので、それとは別に用意する。
+WAITING_SECTION = WAITING.removeprefix("## ")
 
 USAGE = "usage: verify_run.py <worktree> <start-count> <expected-commits> <base> <created>"
 
@@ -37,6 +40,21 @@ class Mismatch(TypedDict):
 class Report(TypedDict):
     ok: bool
     mismatches: list[Mismatch]
+
+
+class TriageRow(TypedDict, total=False):
+    """triage.py の Triaged 行のうち、このモジュールが読む部分だけを持つ。triage.py 自身の
+    Row と同じく、この run が新規に抽出した行では section が無い。"""
+
+    name: str
+    section: str
+
+
+class TriageReport(TypedDict):
+    """triage.py の Report のうち、このモジュールが読む部分だけを持つ。"""
+
+    commits: list[list[TriageRow]]
+    deferred: list[TriageRow]
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -108,7 +126,11 @@ def rejected_added(repo: Path, base: str) -> int:
     return section_rows(_store(repo), REJECTED) - section_rows(_store_at(repo, base), REJECTED)
 
 
-def verify(repo: Path, start_count: int, expected_commits: int, base: str, created: int) -> Report:
+def _verify_reported(
+    repo: Path, start_count: int, expected_commits: int, base: str, created: int
+) -> Report:
+    """CLI 自身は今も start_count/expected_commits を自己申告で受け取る。下の main だけが
+    この関数を呼ぶ。導出値へ切り替えた新しい呼び出し側は verify を使う。"""
     commits = run_commits(repo, base)
     actual_commits = len(commits)
     committed_pages = sum(pages_added(repo, c) for c in commits)
@@ -116,6 +138,50 @@ def verify(repo: Path, start_count: int, expected_commits: int, base: str, creat
     # 1 件多く読むことになる。
     promoted = committed_pages - created
     expected_remaining = start_count - promoted - rejected_added(repo, base)
+    actual_remaining = section_rows(_store(repo), WAITING)
+
+    mismatches: list[Mismatch] = []
+    if actual_commits != expected_commits:
+        mismatches.append(
+            {"field": "commits", "expected": expected_commits, "actual": actual_commits}
+        )
+    if actual_remaining != expected_remaining:
+        mismatches.append(
+            {"field": "remaining", "expected": expected_remaining, "actual": actual_remaining}
+        )
+
+    return {"ok": not mismatches, "mismatches": mismatches}
+
+
+def verify(repo: Path, report: TriageReport, base: str, created: int = 0) -> Report:
+    """start_count と expected_commits は、もう呼び出し側の自己申告から受け取らない。数え
+    間違えた呼び出し側や、古い値を読んだ呼び出し側がどちらかを取り違えても、この関数には
+    それを見抜く手立てがなかった。start_count は _store_at(repo, base) から、expected_commits
+    は len(report["commits"]) から、それぞれこのモジュールが既に持っている記録か triage が
+    既に出力した値を読んで得る。
+
+    created は受け取るが使わない。上の自己申告版と違い、行自身の section フィールドが
+    「昇格待ち から出てコミットされた行（候補行を 1 本消す）」と「消す候補行を元々持って
+    いなかった行」を既に見分けられるので、この式には要らない。"""
+    expected_commits = len(report["commits"])
+    actual_commits = len(run_commits(repo, base))
+
+    start_count = section_rows(_store_at(repo, base), WAITING)
+    # 昇格待ち から出てコミットされた行は、その行が持っていた候補行を消す。それ以外の節
+    # (単発、あるいはこの run が新規に抽出した行では section 自体が無い) から出た行は、
+    # 元々 昇格待ち に候補行を持っていない。
+    cleared = sum(
+        1
+        for commit in report["commits"]
+        for row in commit
+        if row.get("section") == WAITING_SECTION
+    )
+    # commit の上限に押し出されて deferred に残った行も、昇格に値することに変わりはないので、
+    # store は次の run を待つ間 昇格待ち にその行を置く。他の節 (単発、あるいは新規) から
+    # 来た行だけがその節に新しく加わり、元々 昇格待ち にいた行は start_count で既に 1 回
+    # 数えたままで動かない。
+    inflow = sum(1 for row in report["deferred"] if row.get("section") != WAITING_SECTION)
+    expected_remaining = start_count - cleared + inflow - rejected_added(repo, base)
     actual_remaining = section_rows(_store(repo), WAITING)
 
     mismatches: list[Mismatch] = []
@@ -144,7 +210,7 @@ def main() -> None:
     except ValueError as exc:
         print(f"{USAGE}\n{exc}", file=sys.stderr)
         sys.exit(2)
-    report = verify(repo, start_count, expected_commits, base, created)
+    report = _verify_reported(repo, start_count, expected_commits, base, created)
     print(json.dumps(report, ensure_ascii=False))
     sys.exit(0 if report["ok"] else 1)
 
