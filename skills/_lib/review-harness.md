@@ -37,7 +37,7 @@ These seven, and nothing else. Earlier logs each invented their own wording (`tr
 | `miss`               | No finding on the file                                  |
 | `pass`               | A clean case that drew no finding                       |
 | `false_positive`     | A clean case that drew a finding                        |
-| `below_min_findings` | The expected finding, reported below min_findings       |
+| `below_min_findings` | Fewer findings than min_findings, each at severity_min or above |
 
 ## expected.json schema
 

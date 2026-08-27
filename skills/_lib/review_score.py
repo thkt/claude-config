@@ -20,7 +20,7 @@ VERDICTS = {
     "miss": "no finding on the file",
     "pass": "a clean case that drew no finding",
     "false_positive": "a clean case that drew a finding",
-    "below_min_findings": "the expected finding, reported below min_findings",
+    "below_min_findings": "fewer findings than min_findings, each at severity_min or above",
 }
 
 

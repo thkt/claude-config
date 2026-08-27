@@ -37,7 +37,7 @@ dispatch prompt にラベル、期待値、ヒントを含めると Recall が�
 | `miss`               | ファイルに finding が出なかった                       |
 | `pass`               | clean ケースで finding が出なかった                   |
 | `false_positive`     | clean ケースで finding が出た                         |
-| `below_min_findings` | 期待した finding を報告したが min_findings に届かない |
+| `below_min_findings` | min_findings に届かない件数だが、報告された指摘は severity_min 以上 |
 
 ## expected.json スキーマ
 

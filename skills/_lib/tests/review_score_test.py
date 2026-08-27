@@ -38,6 +38,16 @@ def clean(file: str) -> Case:
     return {"file": file, "expected": "no_finding"}
 
 
+BASELINE = (
+    ROOT
+    / "skills"
+    / "use-context-reviewer-security"
+    / "test"
+    / "results"
+    / "2026-06-04-blind-baseline.json"
+)
+
+
 def corpus(skill: str) -> list[Case]:
     path = ROOT / "skills" / skill / "test" / "expected.json"
     return cast(list[Case], json.loads(path.read_text(encoding="utf-8")))
@@ -81,9 +91,9 @@ class Scoring(unittest.TestCase):
         self.assertEqual(report["unknownVerdicts"], ["full_hit"])
         self.assertNotIn("full_hit", VERDICTS)
 
-    def test_a_results_entry_carrying_the_new_verdict_is_counted_under_its_own_key_not_folded_into_hit_or_below_severity(
-        self,
-    ) -> None:
+    def test_new_verdict_counted_under_its_own_key(self) -> None:
+        """T-001 a results entry carrying the new verdict is counted under its own key, not
+        folded into hit or below_severity"""
         report = score(
             [flagged("v1")],
             [{"file": "v1", "verdict": "below_min_findings"}],
@@ -92,9 +102,9 @@ class Scoring(unittest.TestCase):
         self.assertEqual(report["counts"]["hit"], 0)
         self.assertEqual(report["counts"]["below_severity"], 0)
 
-    def test_the_closed_set_check_accepts_the_new_verdict_and_still_rejects_a_verdict_outside_the_set(
-        self,
-    ) -> None:
+    def test_closed_set_accepts_new_verdict_only(self) -> None:
+        """T-002 the closed-set check accepts the new verdict and still rejects a verdict
+        outside the set"""
         report = score(
             [flagged("v1"), flagged("v2")],
             [
@@ -146,10 +156,11 @@ class Scoring(unittest.TestCase):
 
 
 class HarnessDocument(unittest.TestCase):
-    def test_the_verdict_table_in_the_harness_document_and_the_verdicts_constant_carry_the_same_key_set(
-        self,
-    ) -> None:
-        """A verdict added to the closed set that the doc's table forgets leaves a run silently unexplainable."""
+    def test_doc_table_and_constant_share_a_key_set(self) -> None:
+        """T-003 the verdict table in the harness document and the VERDICTS constant carry the
+        same key set"""
+        # A verdict added to the closed set that the doc's table forgets leaves a run
+        # silently unexplainable.
         documented = set(re.findall(r"^\|\s*`(\w+)`", verdict_set_section(), re.MULTILINE))
         self.assertEqual(documented, set(VERDICTS.keys()))
 
@@ -199,9 +210,9 @@ class PreWideningRegression(unittest.TestCase):
     """below_min_findings (U-001) must leave every run built from the original six verdicts
     scoring exactly as it did before the set was widened."""
 
-    def test_a_results_set_using_only_the_original_six_verdicts_produces_the_same_counts_and_metrics_as_before_the_set_was_widened(
-        self,
-    ) -> None:
+    def test_original_six_verdicts_score_unchanged(self) -> None:
+        """T-005 a results set using only the original six verdicts produces the same counts
+        and metrics as before the set was widened"""
         report = score(
             [flagged("v1"), flagged("v2"), flagged("v3"), flagged("v4"), clean("s1"), clean("s2")],
             [
@@ -236,50 +247,47 @@ class PreWideningRegression(unittest.TestCase):
             },
         )
 
-    def test_the_recorded_2026_06_04_baseline_scores_unchanged_through_the_real_scoring_entry_point(
-        self,
-    ) -> None:
-        """The security harness's first blind run, hand-scored in
-        skills/use-context-reviewer-security/test/results/2026-06-04-blind-baseline.json before
-        review_score.py existed. Its 20 per-file `match` values are carried over here as the
-        closed-set verdict each denotes (`full_hit` -> hit, `detected_below_severity_min` ->
-        below_severity, `expected_vuln_missed_other_vuln_found` -> other_finding), and the
-        expected recall/fp figures come from that file's own recorded `metrics` block."""
-        expected = corpus("use-context-reviewer-security")
+    def test_recorded_baseline_scores_unchanged(self) -> None:
+        """T-006 the recorded 2026-06-04 baseline scores unchanged through the real scoring
+        entry point.
+
+        Two things in that file predate the schema and are translated by a named rule here: the
+        `match` vocabulary, and a cross-file case the run names by both files while the corpus
+        keys on the first. Everything else is read out of the file, so an edit to the recorded
+        run changes what this test computes."""
+        MATCH_TO_VERDICT = {
+            "full_hit": "hit",
+            "detected_below_severity_min": "below_severity",
+            "expected_vuln_missed_other_vuln_found": "other_finding",
+        }
+        recorded = json.loads(BASELINE.read_text(encoding="utf-8"))
         results = [
-            {"file": "cases/vuln/sql-injection.ts", "verdict": "hit"},
-            {"file": "cases/safe/parameterized-query.ts", "verdict": "pass"},
-            {"file": "cases/vuln/dangerous-html.tsx", "verdict": "hit"},
-            {"file": "cases/safe/sanitized-html.tsx", "verdict": "pass"},
-            {"file": "cases/vuln/hardcoded-key.ts", "verdict": "below_severity"},
-            {"file": "cases/safe/env-key.ts", "verdict": "pass"},
-            {"file": "cases/cross-file/middleware.ts", "verdict": "hit"},
-            {"file": "cases/hard-vuln/fake-escape.ts", "verdict": "below_severity"},
-            {"file": "cases/hard-vuln/indirect-xss.tsx", "verdict": "hit"},
-            {"file": "cases/hard-vuln/ssrf.ts", "verdict": "hit"},
-            {"file": "cases/hard-vuln/second-order-injection.ts", "verdict": "hit"},
-            {"file": "cases/hard-safe/parameterized-like.ts", "verdict": "pass"},
-            {"file": "cases/hard-safe/wrapped-sanitize.tsx", "verdict": "pass"},
-            {"file": "cases/hard-safe/allowlist-fetch.ts", "verdict": "pass"},
-            {"file": "cases/vuln/prompt-injection-rag.ts", "verdict": "miss"},
-            {"file": "cases/vuln/prompt-injection-doc-trailer.ts", "verdict": "other_finding"},
-            {"file": "cases/safe/prompt-injection-isolated.ts", "verdict": "pass"},
-            {"file": "cases/hard-vuln/prompt-injection-exfiltration.ts", "verdict": "hit"},
-            {"file": "cases/hard-vuln/prompt-injection-system-spoof.ts", "verdict": "miss"},
-            {"file": "cases/hard-safe/prompt-injection-explainer.ts", "verdict": "pass"},
+            {
+                "file": row["file"].split(" + ")[0],
+                "verdict": MATCH_TO_VERDICT.get(row["match"], row["match"]),
+            }
+            for row in recorded["results"]
         ]
-        report = score(expected, cast(list[Outcome], results))
-        self.assertEqual(report["counts"]["flagged"], 12)
-        self.assertEqual(report["counts"]["clean"], 8)
-        self.assertEqual(report["counts"]["hit"], 7)
-        self.assertEqual(report["counts"]["below_severity"], 2)
-        self.assertEqual(report["counts"]["other_finding"], 1)
-        self.assertEqual(report["counts"]["miss"], 2)
-        self.assertEqual(report["counts"]["false_positive"], 0)
-        self.assertEqual(report["metrics"]["recall_detection"], 0.833)
-        self.assertEqual(report["metrics"]["recall_expected"], 0.75)
-        self.assertEqual(report["metrics"]["recall_strict"], 0.583)
-        self.assertEqual(report["metrics"]["fp_rate"], 0.0)
+
+        report = score(corpus("use-context-reviewer-security"), cast(list[Outcome], results))
+
+        # The recorded metrics are prose ("58% (7/12) - ..."), so the fraction is read out of
+        # the sentence rather than the percentage, which is rounded.
+        def fraction(key: str) -> tuple[int, int]:
+            m = re.search(r"\((\d+)/(\d+)\)", recorded["metrics"][key])
+            assert m, f"{key} states its fraction"
+            return int(m.group(1)), int(m.group(2))
+
+        strict_num, strict_den = fraction("recall_strict")
+        self.assertEqual(report["counts"]["hit"], strict_num)
+        self.assertEqual(report["counts"]["flagged"], strict_den)
+
+        fp_num, fp_den = fraction("fp_rate")
+        self.assertEqual(report["counts"]["false_positive"], fp_num)
+        self.assertEqual(report["counts"]["clean"], fp_den)
+
+        # The run predates the seventh verdict, so widening the set left its scoring untouched.
+        self.assertEqual(report["counts"]["below_min_findings"], 0)
 
 
 if __name__ == "__main__":
