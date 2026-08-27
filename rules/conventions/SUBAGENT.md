@@ -80,6 +80,10 @@ Grant memory when all three below hold, and remove it when the project scope sta
 
 reviewer- agents follow the Severity (critical / high / medium / low) in `~/.claude/agents/_lib/finding-schema.md`. What to fix first is the Disposition in the same file, which is where the values are listed. An agent returning its own gate verdict (critic- agents with confirmed / disputed) follows its own scheme.
 
+## Finding inclusion
+
+Whether to add a detected item as a finding is decided by whether a reader skimming the diff would overlook the problem. This judgment applies right after detection, differing in timing from `agents/_lib/finding-schema.md` § Calibration Filters, which applies right before reporting.
+
 ## Reference notation
 
 Where a relative path resolves depends on the launching project.
