@@ -497,7 +497,7 @@ const plan = await agent(
       `preconditions is the list of {path, pattern} of existing code the plan presupposes; backlog_candidates are out-of-scope candidates written in the issue. Empty arrays if absent from the body.\n` +
       `rules holds the ### Rules (### 決まりごと) section as {source, quote} pairs, where source is the document path on the line and quote is the text after the colon, verbatim. Empty array when the section is absent.\n` +
       `seam is true only for a unit the body marks \`seam: true\`; every other unit is false. Do not infer it from the unit's content.\n` +
-      `reference_module: the body writes it as \`null (reason)\` prose. Turn that into an object rather than a bare null, pick kind per its enum description, and copy the reason verbatim. When kind is module, copy path/files/instances/conventions from the body too. Emit a bare null only when the body's reference_module carries no reason at all. Omit the field when the body has no reference_module line.\n` +
+      `reference_module: the body writes it as an object \`{kind, reason}\` (kind: module/no-module/new-shape), with path/files/instances/conventions added only when kind is module. Copy kind and reason verbatim, and path/files/instances/conventions too when kind is module. A legacy body may still write it as \`null (reason)\` prose instead; turn that into the same object shape rather than leaving it a bare null. Emit a bare null only when the body's reference_module carries no reason at all. Omit the field when the body has no reference_module line.\n` +
       `root_cause: copy verbatim if the body states one (e.g. a Root Cause / 原因 line). Omit the field if the body states none.\n\n${fencedBody}`,
   ),
   {
@@ -511,6 +511,49 @@ const plan = await agent(
 );
 if (!plan) {
   return await stop("extraction-failed", { why: "The extract agent returned no plan." });
+}
+
+// Deterministic fallback for reference_module.kind/reason: the extract prompt above still
+// trails skills/think, which now writes the object form per DR-0093, so an extraction that has
+// not caught up can still drop kind or reason a body states plainly. Recovers them the same way
+// bodyUnitIds/bodyTestIds above recover ids: a line-anchored regex scoped to planSection, not
+// the whole fencedBody, so a template quotation used as prose elsewhere is never counted as a
+// hit. Fills only when planSection carries exactly one reference_module line, and only
+// kind/reason - it never fabricates path.
+// Both quoted and bare: `/think` writes the line as `{ kind: no-module, reason: ... }` with no
+// quotes, so a quoted-only pattern fills nothing on the very bodies this fallback exists for.
+// reason runs to the closing brace because it carries prose, commas and all.
+const REFERENCE_MODULE_KIND_RE = /kind:\s*"?([A-Za-z][\w-]*)"?/;
+const REFERENCE_MODULE_REASON_RE = /reason:\s*"?([\s\S]*?)"?\s*\}?\s*$/;
+const REFERENCE_MODULE_LINE_RE = /^reference_module:[ \t]*(.+)$/gm;
+const refModuleLines = [...planSection.matchAll(REFERENCE_MODULE_LINE_RE)];
+if (refModuleLines.length === 1) {
+  const refModuleLine = refModuleLines[0][1].trim();
+  const kindMatch = refModuleLine.match(REFERENCE_MODULE_KIND_RE);
+  const reasonMatch = refModuleLine.match(REFERENCE_MODULE_REASON_RE);
+  // Legacy compat (DR-0093): the pre-split body writes `null (reason)` prose with no kind at
+  // all; "no-module" is the closest reading of a plan that only ever recorded a reason.
+  const legacyMatch = kindMatch ? null : refModuleLine.match(/^null\s*\(([\s\S]*)\)$/);
+  const filledKind = kindMatch ? kindMatch[1] : legacyMatch ? "no-module" : undefined;
+  const filledReason = reasonMatch ? reasonMatch[1] : legacyMatch ? legacyMatch[1] : undefined;
+  if (filledKind !== undefined || filledReason !== undefined) {
+    const existingRefModule =
+      plan.reference_module &&
+      typeof plan.reference_module === "object" &&
+      !Array.isArray(plan.reference_module)
+        ? plan.reference_module
+        : {};
+    const hasKind = typeof existingRefModule.kind === "string" && existingRefModule.kind.trim();
+    const hasReason =
+      typeof existingRefModule.reason === "string" && existingRefModule.reason.trim();
+    if (!hasKind || !hasReason) {
+      plan.reference_module = {
+        ...existingRefModule,
+        ...(!hasKind && filledKind !== undefined ? { kind: filledKind } : {}),
+        ...(!hasReason && filledReason !== undefined ? { reason: filledReason } : {}),
+      };
+    }
+  }
 }
 
 // A Bug issue carries a `[Bug]` prefix in its title. fetch omits title when it could not read
