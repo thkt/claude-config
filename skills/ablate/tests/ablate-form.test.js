@@ -118,14 +118,15 @@ test("T-005 report.py runs the usage counter and writes the fire counts and last
 
 test("T-006 the skill document names one invocation route and no threshold of its own", () =>
   eachLanguage(skills, (doc, lang) => {
-    // Named once: the reader learns report.write_report also runs the usage counter from a
-    // single sentence. Named twice would mean a second call site exists somewhere for the
-    // same script, which is the two-invocation-route drift this contract rules out.
-    const mentions = (doc.match(/usage_counts/g) || []).length;
+    // Counted from the first phase heading down, not over the whole document: the criteria
+    // registry above the phases points at the same script on purpose. A second mention among
+    // the phases is a second call site for it, which is the drift this contract rules out.
+    const phaseBody = doc.slice(doc.search(/^## Phase 1:/m));
+    const mentions = (phaseBody.match(/usage_counts/g) || []).length;
     assert.equal(
       mentions,
       1,
-      `${lang}: usage_counts is named exactly once in the body (found ${mentions})`,
+      `${lang}: usage_counts is named exactly once among the phases (found ${mentions})`,
     );
 
     // A phase added just for the usage counter would be a second invocation route running

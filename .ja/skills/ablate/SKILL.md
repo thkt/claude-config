@@ -15,7 +15,7 @@ argument-hint: "[要素のパス]"
 
 ## 判定と閾値の所在
 
-アームの一覧、1 アームあたりの実行回数、通過閾値はすべて `${CLAUDE_SKILL_DIR}/scripts/arms.py` の定数が持つ。分類の基準は `${CLAUDE_SKILL_DIR}/scripts/verdict.py` が持つ。この本文に数値を書き写さない (`docs/wiki/deterministic-script-judgment.md`)。
+アームの一覧、1 アームあたりの実行回数、通過閾値はすべて `${CLAUDE_SKILL_DIR}/scripts/arms.py` の定数が持つ。分類の基準は `${CLAUDE_SKILL_DIR}/scripts/verdict.py` が持つ。計測窓と rare-by-design の集合は `${CLAUDE_SKILL_DIR}/scripts/usage_counts.py` が持つ。この本文に数値を書き写さない (`docs/wiki/deterministic-script-judgment.md`)。
 
 ## Phase 1: 列挙
 

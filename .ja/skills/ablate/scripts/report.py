@@ -12,7 +12,7 @@ report.py 自身は sys.path を操作しない。
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -41,7 +41,18 @@ def _is_apparatus(path: str) -> bool:
     return PurePosixPath(path).as_posix().startswith(APPARATUS_DIR)
 
 
-def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, Any]:
+def _usage_verdict(path: str, usage_elements: dict[str, Any], today: date) -> str:
+    """1 つのパスの usage verdict。transcript に記録の無い要素は一度も発火していないため、
+    飛ばさず発火 0 回として classify へ渡す。"""
+    entry = usage_elements.get(path, {})
+    return usage_counts.classify(
+        path, fires=entry.get("fires", 0), last_used=entry.get("last_used"), now=today
+    )
+
+
+def build_report(
+    root: Path, observations: list[dict[str, Any]], *, now: date | None = None
+) -> dict[str, Any]:
     """前段の各ユニットの script を順に呼び、その出力を結線する。
 
     usage_counts は `observations` からでなくセッションのトランスクリプトを読むため、
@@ -50,6 +61,7 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
     レポート文字列でなく素の dict を返すため、データだけを必要とする呼び出し側は
     write_report の出力から Markdown を読み戻さずに済む。
     """
+    today = now or datetime.now(timezone.utc).date()
     elements = harness_elements.enumerate_elements(root)
     usage = usage_counts.count_usage(TRANSCRIPTS_ROOT)
 
@@ -61,18 +73,30 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
             complies=observation.get("complies"),
         )
 
+    usage_verdicts = {
+        path: _usage_verdict(path, usage["elements"], today)
+        for path in {element["path"] for element in elements} | set(verdicts)
+    }
+
     delete_candidates = [
         path
         for path in verdicts
-        if verdicts[path] == verdict.DELETE_CANDIDATE and not _is_apparatus(path)
+        if verdicts[path] == verdict.DELETE_CANDIDATE
+        and usage_verdicts[path] == verdict.DELETE_CANDIDATE
+        and not _is_apparatus(path)
     ]
 
     return {
         "elements": elements,
         "arms": list(arms.ARMS),
         "verdicts": verdicts,
+        "usage_verdicts": usage_verdicts,
         "delete_candidates": sorted(delete_candidates),
         "usage": usage["elements"],
+        "transcripts": {
+            "count": usage["transcript_count"],
+            "date_range": usage["date_range"],
+        },
     }
 
 
@@ -85,6 +109,13 @@ def _table(headers: tuple[str, ...], rows: list[tuple[str, ...]]) -> list[str]:
     lines = [f"| {' | '.join(headers)} |", f"| {' | '.join('---' for _ in headers)} |"]
     lines += [f"| {' | '.join(row)} |" for row in rows]
     return lines
+
+
+def _date_range(date_range: dict[str, str | None]) -> str:
+    """解析した transcript の日付範囲を 1 セルにする。発火を 1 件も持たない実行には範囲が
+    無いため、空セル 2 つでなく "none" と描画する。"""
+    start, end = date_range.get("start"), date_range.get("end")
+    return f"{start} - {end}" if start and end else "none"
 
 
 def _render(result: dict[str, Any]) -> str:
@@ -102,6 +133,8 @@ def _render(result: dict[str, Any]) -> str:
             ("Arms", str(len(result["arms"]))),
             ("Elements observed", str(len(result["verdicts"]))),
             ("Delete candidates", str(len(result["delete_candidates"]))),
+            ("Transcripts parsed", str(result["transcripts"]["count"])),
+            ("Transcript date range", _date_range(result["transcripts"]["date_range"])),
         ],
     )
     lines += [""]
@@ -109,13 +142,14 @@ def _render(result: dict[str, Any]) -> str:
     lines += ["## Harness Elements", ""]
     usage = result.get("usage", {})
     lines += _table(
-        ("Path", "Classification", "Fires", "Last Used"),
+        ("Path", "Classification", "Fires", "Last Used", "Usage Verdict"),
         [
             (
                 element["path"],
                 element["classification"],
                 str(element_usage.get("fires", 0)),
                 element_usage.get("last_used") or "never",
+                result["usage_verdicts"][element["path"]],
             )
             for element in result["elements"]
             for element_usage in [usage.get(element["path"], {})]

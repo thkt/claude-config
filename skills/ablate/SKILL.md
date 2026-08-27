@@ -15,7 +15,7 @@ argument-hint: "[element path]"
 
 ## Where the criteria and thresholds live
 
-The arm list, the run count per arm, and the pass threshold are all constants in `${CLAUDE_SKILL_DIR}/scripts/arms.py`. The classification criteria live in `${CLAUDE_SKILL_DIR}/scripts/verdict.py`. Do not copy a number into this body (`docs/wiki/deterministic-script-judgment.md`).
+The arm list, the run count per arm, and the pass threshold are all constants in `${CLAUDE_SKILL_DIR}/scripts/arms.py`. The classification criteria live in `${CLAUDE_SKILL_DIR}/scripts/verdict.py`. The measurement window and the rare-by-design set live in `${CLAUDE_SKILL_DIR}/scripts/usage_counts.py`. Do not copy a number into this body (`docs/wiki/deterministic-script-judgment.md`).
 
 ## Phase 1: Enumerate
 
