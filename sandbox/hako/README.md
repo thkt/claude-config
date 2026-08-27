@@ -15,11 +15,11 @@ hako.sh login <agent-name>
 
 | File               | Role                                                                                                                                |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `agents.sh`        | Single source of truth for the per-agent table: exec command, auth directory, allowlist domains (U-001)                             |
-| `hako.sh`          | Host-side CLI; assembles the `container run` invocation (U-005) and the `login` session (U-006)                                     |
-| `Dockerfile`       | Vendored from anthropics/claude-code's `.devcontainer/Dockerfile` (U-004), installs every onboarded agent's CLI                     |
-| `entrypoint.sh`    | Container root ENTRYPOINT: applies the firewall, then demotes to `node` and execs the agent (U-003)                                 |
-| `init-firewall.sh` | Guest-side allowlist firewall, adapted from anthropics/claude-code's `init-firewall.sh` for apple/container's guest network (U-002) |
+| `agents.sh`        | Single source of truth for the per-agent table: exec command, auth directory, allowlist domains                             |
+| `hako.sh`          | Host-side CLI; assembles the `container run` invocation and the `login` session                                     |
+| `Dockerfile`       | Vendored from anthropics/claude-code's `.devcontainer/Dockerfile`, installs every onboarded agent's CLI                     |
+| `entrypoint.sh`    | Container root ENTRYPOINT: applies the firewall, then demotes to `node` and execs the agent                                 |
+| `init-firewall.sh` | Guest-side allowlist firewall, adapted from anthropics/claude-code's `init-firewall.sh` for apple/container's guest network |
 
 `entrypoint.sh`, `hako.sh`, and `init-firewall.sh` all read `agents.sh` as a sibling subprocess (`agents.sh exec|auth-dir|allowlist <name>`) rather than sourcing it in-process, so none of the three names an agent literally; adding or changing an agent never touches them.
 
