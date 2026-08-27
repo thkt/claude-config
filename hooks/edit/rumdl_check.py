@@ -33,5 +33,6 @@ except FileNotFoundError:
 # Not `if result.stdout`: rumdl prints "Success: No issues found in 1 file" on a clean file
 # too, and forwarding that would put a line on every .md edit. The exit code is the only
 # signal that separates the two.
-if result.returncode != 0:
-    print(result.stdout.strip())
+output = result.stdout.strip()
+if result.returncode != 0 and output:
+    print(output)
