@@ -20,8 +20,8 @@ const workflowTrees = (name) => [
 
 const TREES = workflowTrees("audit");
 
-test("whenToUse in neither tree names the identifier args, for audit/build/code", () => {
-  for (const name of ["audit", "build", "code"]) {
+for (const name of ["audit", "build", "code"]) {
+  test(`${name}'s whenToUse in neither tree contains the identifier args`, () => {
     for (const { label, path } of workflowTrees(name)) {
       const meta = readMeta(path);
       assert.doesNotMatch(
@@ -30,8 +30,8 @@ test("whenToUse in neither tree names the identifier args, for audit/build/code"
         `[${label}] whenToUse names the identifier "args" instead of describing the shape in prose`,
       );
     }
-  }
-});
+  });
+}
 
 // Only the key set matters here: FOCUS's values are reviewer-name arrays that whenToUse's prose
 // never restates.

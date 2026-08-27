@@ -30,7 +30,7 @@ const plan = input.plan;
 if (!plan || !Array.isArray(plan.units) || !plan.units.length) {
   return {
     stopped: "no-plan",
-    why: "Pass a structured plan (units required).",
+    why: "Pass a structured plan (units required) as args.plan.",
   };
 }
 const repo = typeof input.repo === "string" ? input.repo : "";
