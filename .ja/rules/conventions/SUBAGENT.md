@@ -80,6 +80,12 @@ memory は次の 3 つをすべて満たすとき付与し、project スコー�
 
 reviewer- 系は `~/.claude/agents/_lib/finding-schema.md` の Severity (critical/high/medium/low) に従う。何を先に直すかは同ファイルの Disposition が持ち、値の一覧はそこにある。独自のゲート判定を返すエージェント (critic- 系の confirmed/disputed など) は自分の方式に従う。
 
+## 検出項目の追加可否
+
+検出項目を reviewer に持たせるのは、出力を読み流す人がその項目の捉える問題を見落とすときにする。読み流しても同じ問題に行き着くなら持たせない。
+
+この判断は reviewer が何を持つかを決めるもので、項目ごとに 1 回、定義を書く時点でかかる。`agents/_lib/finding-schema.md` § Calibration Filters は run が出した finding のどれを報告するかを決めるもので、finding ごとに 1 回、reviewer が走る時点でかかる。
+
 ## 参照記法
 
 相対パスの解決先は起動プロジェクトに依存する。

@@ -23,3 +23,4 @@ PR の verify でテストが失敗したとき、その PR の変更に起因�
 - #220「失敗 1 件は ADR0085_MANUAL_ACCEPTANCE 環境変数を要求する既存の manual gate」と How to Test に明記した
 - #222 verify 出力に「deliberate manual-acceptance gate、not a code defect、no fix was attempted」と記録した
 - #226「fail 2 件は EN/JA 同一の manual acceptance gate で、変更前から赤」と明記した
+- #548 #549 pyright の全リポジトリ実行が対象ブランチと無関係な既存 11 件のエラーで exit 1 になることを、対象外ファイルの列挙とともに verify 節で明示した

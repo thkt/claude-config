@@ -100,6 +100,7 @@ def read_store(path: Path) -> list[Pattern]:
     if not path.is_file():
         return []
     rows: list[Pattern] = []
+    dropped: list[str] = []
     inside = False
     for line in path.read_text(encoding="utf-8").split("\n"):
         if line.startswith("## "):
@@ -112,6 +113,13 @@ def read_store(path: Path) -> list[Pattern]:
         name = EVIDENCE.sub("", body).strip()
         if name:
             rows.append({"name": name, "evidence": evidence, "existing": "candidate"})
+        else:
+            dropped.append(line)
+    # stdout には出さない。あちらは skill が解析する 4 キー固定の報告。
+    if dropped:
+        print(f"triage.py: 本文の無い候補行を {len(dropped)} 行読み飛ばした", file=sys.stderr)
+        for line in dropped:
+            print(f"  {line}", file=sys.stderr)
     return rows
 
 

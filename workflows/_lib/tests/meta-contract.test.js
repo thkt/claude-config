@@ -69,3 +69,55 @@ test("the focus values in audit's whenToUse match the FOCUS keys extracted from 
   }
 });
 
+// One tree per polish.js: the English source under workflows/, and its .ja/ mirror.
+const POLISH_TREES = [
+  { label: "en", path: join(here, "..", "..", "polish.js") },
+  { label: "ja", path: join(here, "..", "..", "..", ".ja", "workflows", "polish.js") },
+];
+
+// Only the key set matters here: MODES's values are null placeholders that whenToUse's prose
+// never restates.
+const modeKeys = (source) => {
+  const modes = parseRoutingLikeConst(source, "MODES");
+  return modes && Object.keys(modes);
+};
+
+// Not the spelling copied into the test: extracting the list from the prose lets either side
+// drift alone and still be caught.
+const modeValuesInWhenToUse = (whenToUse) => {
+  const m = /mode \(([^)]+)\)/.exec(whenToUse);
+  if (!m) return null;
+  return m[1].split("/").map((s) => s.trim());
+};
+
+test("the mode values in polish's whenToUse match the MODES entries extracted from polish.js in both trees", () => {
+  for (const { label, path } of POLISH_TREES) {
+    const source = readFileSync(path, "utf8");
+    const keys = modeKeys(source);
+    assert.ok(keys, `[${label}] MODES is extractable from ${path}`);
+
+    const meta = readMeta(path);
+    const proseValues = modeValuesInWhenToUse(meta.whenToUse);
+    assert.ok(
+      proseValues,
+      `[${label}] whenToUse names its valid mode values as "mode (a / b / ...)"`,
+    );
+
+    assert.deepEqual(
+      new Set(proseValues),
+      new Set(keys),
+      `[${label}] whenToUse's mode values and polish.js's MODES keys diverge`,
+    );
+  }
+});
+
+test("polish's whenToUse in neither tree contains the identifier args", () => {
+  for (const { label, path } of POLISH_TREES) {
+    const meta = readMeta(path);
+    assert.doesNotMatch(
+      meta.whenToUse,
+      /\bargs\b/,
+      `[${label}] whenToUse names the identifier "args" instead of describing the shape in prose`,
+    );
+  }
+});

@@ -3,7 +3,7 @@ export const meta = {
   description:
     'TDD workflow that takes a structured plan (units / test_command) and implements each unit under script enforcement, per the plan\'s own instructions. An unconfirmed Red is recorded as an anomaly, and at the end an independent agent verifies the full suite + lint + type-check. With commit: true each unit lands as its own commit carrying the plan\'s instruction as trailers. Callable standalone or nested from build via workflow("code").',
   whenToUse:
-    "Headless plan implementation. Pass a structured plan with units / test_command (as produced by the think skill), the target repository, and optionally which model runs the implementation agents (defaults to sonnet). Committing each unit as it completes is opt-in; when enabled, the issue reference and untracked-baseline paths feed the commit trailers and the never-stage set. The implementation agents run at effort high.",
+    "Headless plan implementation. Pass a structured plan with units / test_command (as produced by the think skill), the target repository, and optionally which model runs the implementation agents (defaults to sonnet). Committing each unit as it completes is opt-in; when enabled, the issue reference and untracked-baseline paths feed the commit trailers and the never-stage set. The implementation agents run at effort high. Who implements each unit is selectable (default claude): codex-herdr first confirms herdr is reachable, then starts 2 herdr panes (tester, coder) reused across every unit and closed once implementation ends, and stops the run if reachability or either pane-start fails.",
   phases: [{ title: "Implement" }, { title: "Verify" }],
 };
 
@@ -51,6 +51,19 @@ const issueRef = String(input.issue || "")
   .trim();
 const untrackedBaseline = Array.isArray(input.untracked_baseline) ? input.untracked_baseline : [];
 
+// The list of accepted values lives here as a script-side constant, not in prose.
+const VALID_IMPLEMENTERS = ["claude", "codex-herdr"];
+const implementer =
+  typeof input.implementer === "string" && input.implementer.trim()
+    ? input.implementer.trim()
+    : "claude";
+if (!VALID_IMPLEMENTERS.includes(implementer)) {
+  return {
+    stopped: "implementer-invalid",
+    why: `args.implementer "${implementer}" is not supported. Pass "claude" or "codex-herdr", or omit it to keep the existing Claude path.`,
+  };
+}
+
 // Every plan-derived value reaching a prompt loses its line breaks here. The injected blocks
 // are fenced line by line, so a value able to start a line can forge a fence, and \r and
 // U+2028 / U+2029 separate lines the same way \n does.
@@ -72,19 +85,28 @@ const anomalies = [];
 const commits = [];
 // The run-level arrays are closed over, so a mid-loop stop still hands the caller its partial
 // progress.
-const stopUnit = (stopped, unit, why) => ({
-  stopped,
-  unit: unit.id,
-  why,
-  completed,
-  skipped,
-  anomalies,
-  commits,
-});
-// Implementation executes the plan's contract / tests, so sonnet suffices; repeated failure
-// here signals a defective plan rather than a model too small. effort stays high because an
-// implementation agent's wall-clock is dominated by generating thinking tokens.
-const implementOpts = { model: input.model || "sonnet", effort: "high" };
+const stopUnit = async (stopped, unit, why) => {
+  await closeHerdrPanes();
+  return {
+    stopped,
+    unit: unit.id,
+    why,
+    completed,
+    skipped,
+    anomalies,
+    commits,
+    herdr_panes: herdrPanesResolved,
+    pane_opens: paneOpens,
+    pane_closes: paneCloses,
+  };
+};
+// Decides the route and the destination in this one function alone. herdrPanes is declared
+// with let further below, but every call this function receives happens inside the for loop,
+// after that assignment runs.
+const implementDestination = (role) =>
+  implementer === "codex-herdr"
+    ? { opts: {}, paneId: herdrPanes ? herdrPanes[role] : undefined }
+    : { opts: { model: input.model || "sonnet", effort: "high" }, paneId: undefined };
 
 const RED_SCHEMA = {
   type: "object",
@@ -158,6 +180,7 @@ const commitBody = (unit, tests) =>
     `Contract: ${flatten(unit.contract)}`,
     ...(tests.length ? [`Tests: ${tests.map((t) => t.id).join(", ")}`] : []),
     `Seam: ${unit.seam === true}`,
+    `Implementer: ${implementer}`,
     ...(issueRef ? [`Issue: #${issueRef}`] : []),
   ].join("\n");
 
@@ -202,6 +225,18 @@ const commitUnit = async (unit, tests, testFiles) => {
   log(`${unit.id}: not committed (${why}). Left in the working tree.`);
 };
 
+// The agent tool's schema only guarantees shape: a courier reading codex's response file can
+// hand back `{"red_confirmed": "false"}` as a string and still satisfy RED_SCHEMA's declared
+// properties. The type is checked here, right before a caller trusts it via truthiness.
+const boolMismatch = (result, field) => !!result && typeof result[field] !== "boolean";
+
+const courierTypeStop = (unit, result, field) =>
+  stopUnit(
+    "courier-type-mismatch",
+    unit,
+    `the courier returned ${field} as ${typeof result[field]} instead of boolean (value: ${JSON.stringify(result[field])}).`,
+  );
+
 // The agent's self-report becomes an anomaly in the script, so a silently narrowed
 // implementation cannot ship green with code_anomalies: 0.
 const recordDeferred = (unit, result) => {
@@ -211,24 +246,221 @@ const recordDeferred = (unit, result) => {
   }
 };
 
-// What a still-failing result means belongs to the caller: an unconfirmed Red is recorded as
-// an anomaly, while a failing impl / Green stops the run. A null first result skips the retry,
-// so a dead agent is not asked twice.
-const stepWithRetry = async (unit, label, schema, ok, prompt, retryPrompt) => {
+// codex-herdr writes its JSON here. Read-back needs an agent regardless (the workflow realm has
+// no fs), so unit + role settle on one file reused across the first attempt and its retry.
+const responsePath = (unit, role) => `.codex-response/${unit.id}-${role}.json`;
+
+// role is "tester" for the Red step and "coder" for Green / direct implementation. What a
+// still-failing result means belongs to the caller: an unconfirmed Red is recorded as an
+// anomaly, while a failing impl / Green stops the run. A null first result skips the retry, so
+// a dead agent is not asked twice.
+const stepWithRetry = async (unit, label, role, schema, ok, prompt, retryPrompt) => {
+  const dest = implementDestination(role);
+  // Prepended to both the first prompt and the retry prompt, so a codex-herdr retry addresses
+  // the same pane and the same response file as its first attempt.
+  const addressing = dest.paneId
+    ? `Send this instruction to the ${role} agent with \`herdr agent prompt ${role} "<the instruction>" --wait --timeout 180000\`, which returns only once that agent reports agent_status "done" (pane ${dest.paneId} was resolved at pane-start). Not a bare send: without --wait nothing tells you codex finished, and reading the response file early returns whatever a previous unit left there. Tell the codex agent to write its response as JSON, matching this schema and nothing else, to the file ${responsePath(unit, role)} (repo-relative). You are the courier: you do not do the TDD work yourself. Once the prompt call returns, read that file back and return its parsed contents in this schema's shape. If the call exits non-zero or the file is not there, do not invent a result: report what you found in notes with a false-shaped result.\n`
+    : "";
   const opts = (name) => ({
     label: `${name}:${unit.id}`,
     phase: `Unit ${unit.id}`,
     agentType: "general-purpose",
     schema,
-    ...implementOpts,
+    ...dest.opts,
   });
-  const first = await agent(anchor(prompt), opts(label));
+  const first = await agent(anchor(addressing + prompt), opts(label));
   if (!first || ok(first)) return first;
-  return await agent(anchor(retryPrompt(first)), opts(`${label}2`));
+  return await agent(anchor(addressing + retryPrompt(first)), opts(`${label}2`));
 };
 
 // ---- Implement: per unit, serial (the working tree is shared) ----
 phase("Implement");
+
+const HERDR_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["herdr_available", "notes"],
+  properties: {
+    herdr_available: { type: "boolean" },
+    notes: { type: "string" },
+  },
+};
+
+const PANE_START_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["pane_id", "started", "notes"],
+  properties: {
+    pane_id: {
+      type: "string",
+      description:
+        "the `.result.pane.pane_id` from `herdr pane split`'s response. Never guess it. Write the id read from split even when `agent start` failed",
+    },
+    started: { type: "boolean" },
+    notes: { type: "string" },
+  },
+};
+
+const PANE_CLOSE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["closed", "notes"],
+  properties: {
+    closed: { type: "boolean" },
+    notes: { type: "string" },
+  },
+};
+
+// From the herdr CLI reference (https://herdr.dev/ja/docs/cli-reference/, fetched 2026-08-27):
+// `pane split`'s response carries the new pane's id at `.result.pane.pane_id`. `agent start
+// <name> --kind KIND --pane ID` targets an existing shell pane; name must match
+// `[a-z][a-z0-9_-]{0,31}`. A blocked detection state returns `agent_not_ready` immediately.
+// `pane close <pane_id>` takes the same id read from split.
+const startPane = (role) =>
+  agent(
+    anchor(
+      `Start the herdr pane for the ${role} role. Run \`herdr pane split --current --direction right --no-focus\` to ` +
+        `create a new pane, and read the pane id from the response's \`.result.pane.pane_id\` ` +
+        `(never guess it). Then run \`herdr agent start ${role} --kind codex --pane <the pane id ` +
+        `you read>\` to start a codex agent inside that pane. Set started: true only when both ` +
+        `succeed. Put the id read from split in pane_id (even when start failed, as long as split ` +
+        `succeeded). Put the failing command and its output in notes.`,
+    ),
+    {
+      label: `pane-start:${role}`,
+      phase: "Implement",
+      agentType: "general-purpose",
+      schema: PANE_START_SCHEMA,
+      model: "sonnet",
+    },
+  );
+
+const closePane = (role, paneId) =>
+  agent(
+    anchor(
+      `Run \`herdr pane close ${paneId}\` to close the ${role} role's pane. This is the pane id ` +
+        `read from pane split — never a guessed value. Report closed: true only when the command ` +
+        `succeeds.`,
+    ),
+    {
+      label: `pane-close:${role}`,
+      phase: "Implement",
+      agentType: "general-purpose",
+      schema: PANE_CLOSE_SCHEMA,
+      model: "sonnet",
+    },
+  );
+
+// Stays null for a non-codex-herdr run, so closeHerdrPanes is a no-op there.
+let herdrPanes = null;
+// run-workflow.js's calls.agent records only each agent's {prompt, opts}, which cannot show
+// that the pane id resolved from pane split, or the open/close count, actually reached this
+// workflow's own return value - the value build.js in turn forwards into its own return value.
+// herdrPanesResolved survives closeHerdrPanes nulling herdrPanes out, so the ids stay on every
+// return path after teardown, not just before it.
+let herdrPanesResolved = null;
+let paneOpens = 0;
+let paneCloses = 0;
+
+// Every close (loop-end teardown via closeHerdrPanes, and the early-failure branches below
+// that close a lone already-open tester pane) goes through here, so paneCloses stays the one
+// running count of panes actually closed.
+const closePaneCounted = async (role, paneId) => {
+  const res = await closePane(role, paneId);
+  if (res && res.closed) paneCloses++;
+  return res;
+};
+
+// Called both from stopUnit's early returns and from the normal path after the loop ends, so
+// it clears herdrPanes on entry to avoid closing twice. A close failure does not stop the run;
+// it is recorded as an anomaly instead.
+const closeHerdrPanes = async () => {
+  if (!herdrPanes) return;
+  const panes = herdrPanes;
+  herdrPanes = null;
+  for (const role of ["tester", "coder"]) {
+    const res = await closePaneCounted(role, panes[role]);
+    if (res && res.closed) continue;
+    const why = res
+      ? res.notes || `${role} pane close reported closed: false`
+      : `the ${role} pane-close agent returned no result`;
+    anomalies.push({ unit: "-", kind: "pane-not-closed", notes: why });
+    log(`could not close the herdr ${role} pane (${why}).`);
+  }
+};
+
+// herdr talks over a Unix socket, so a sandboxed Bash call cannot reach it and the agent
+// needs dangerouslyDisableSandbox. Mirrors assert.js's codex_available: confirm both the
+// command's presence and a real round trip before any unit enters implementation.
+if (implementer === "codex-herdr") {
+  const herdr = await agent(
+    anchor(
+      `Confirm herdr is reachable before this run enters implementation. Run \`command -v herdr\`, ` +
+        `then \`herdr agent get\`. herdr talks over a Unix socket, so a sandboxed Bash call may not ` +
+        `reach it; if the first attempt reports a sandbox denial, retry with dangerouslyDisableSandbox ` +
+        `before concluding herdr is unreachable. Set herdr_available: true only when both succeed. ` +
+        `Put the failing command and its output in notes.`,
+    ),
+    {
+      label: "herdr-check",
+      phase: "Implement",
+      agentType: "general-purpose",
+      schema: HERDR_SCHEMA,
+      model: "sonnet",
+    },
+  );
+  if (!herdr || !herdr.herdr_available) {
+    return {
+      stopped: "herdr-unreachable",
+      why: herdr
+        ? herdr.notes || "herdr is unreachable."
+        : "the herdr reachability check returned no result",
+      herdr_panes: herdrPanesResolved,
+      pane_opens: paneOpens,
+      pane_closes: paneCloses,
+    };
+  }
+
+  // Start the tester pane first. A failed start can still have split a real pane before agent
+  // start failed inside it, so close it too when a pane id came back.
+  const testerStart = await startPane("tester");
+  if (!testerStart || !testerStart.started) {
+    if (testerStart && testerStart.pane_id) await closePaneCounted("tester", testerStart.pane_id);
+    return {
+      stopped: "pane-start-failed",
+      why: testerStart
+        ? testerStart.notes || "the tester pane failed to start."
+        : "the tester pane-start agent returned no result",
+      herdr_panes: herdrPanesResolved,
+      pane_opens: paneOpens,
+      pane_closes: paneCloses,
+    };
+  }
+  paneOpens++;
+  // Recorded per pane, not once both are up: a coder-start failure stops between the two, and a
+  // caller chasing a leaked pane needs the tester id the stop already resolved.
+  herdrPanesResolved = { tester: testerStart.pane_id };
+
+  // A coder pane failure closes the tester pane already open before stopping.
+  const coderStart = await startPane("coder");
+  if (!coderStart || !coderStart.started) {
+    await closePaneCounted("tester", testerStart.pane_id);
+    return {
+      stopped: "pane-start-failed",
+      why: coderStart
+        ? coderStart.notes || "the coder pane failed to start."
+        : "the coder pane-start agent returned no result",
+      herdr_panes: herdrPanesResolved,
+      pane_opens: paneOpens,
+      pane_closes: paneCloses,
+    };
+  }
+  paneOpens++;
+
+  // These 2 panes are reused across every unit. closeHerdrPanes (loop end) owns closing them.
+  herdrPanes = { tester: testerStart.pane_id, coder: coderStart.pane_id };
+  herdrPanesResolved = herdrPanes;
+}
 
 // A contract cites one behavior, so without the plan's reference module the surrounding
 // structure gets hand-rolled and drifts from the shape its neighbors already have.
@@ -313,6 +545,7 @@ for (const [index, unit] of units.entries()) {
     const impl = await stepWithRetry(
       unit,
       "impl",
+      "coder",
       GREEN_SCHEMA,
       (r) => r.green,
       `Direct implementation step. ${ctx}` +
@@ -324,12 +557,14 @@ for (const [index, unit] of units.entries()) {
         rulesCtx() +
         `Last time the suite did not pass. The reason was ${prev.notes}.\nIdentify the cause, fix the implementation, and make the suite pass. Weakening tests is forbidden.`,
     );
-    if (!impl || !impl.green) {
-      return stopUnit(
-        "unit-failed",
-        unit,
-        (impl && impl.notes) || "the implement agent returned no result",
-      );
+    if (!impl) {
+      return stopUnit("unit-failed", unit, "the implement agent returned no result");
+    }
+    if (boolMismatch(impl, "green")) {
+      return courierTypeStop(unit, impl, "green");
+    }
+    if (!impl.green) {
+      return stopUnit("unit-failed", unit, impl.notes || "the implement agent returned no result");
     }
     recordDeferred(unit, impl);
     completed.push(unit.id);
@@ -343,6 +578,7 @@ for (const [index, unit] of units.entries()) {
   const red = await stepWithRetry(
     unit,
     "red",
+    "tester",
     RED_SCHEMA,
     (r) => r.red_confirmed,
     `TDD Red step. ${ctx}` +
@@ -357,6 +593,9 @@ for (const [index, unit] of units.entries()) {
       `If after scrutiny the tests still pass, judge the behavior as already implemented and keep red_confirmed=false. notes carries the conclusion alone, one sentence; what the scrutiny looked at goes in evidence, one fact per element.`,
   );
   if (!red) return stopUnit("red-failed", unit, "the red agent returned no result");
+  if (boolMismatch(red, "red_confirmed")) {
+    return courierTypeStop(unit, red, "red_confirmed");
+  }
   if (!red.red_confirmed) {
     anomalies.push({
       unit: unit.id,
@@ -374,6 +613,7 @@ for (const [index, unit] of units.entries()) {
   const green = await stepWithRetry(
     unit,
     "green",
+    "coder",
     GREEN_SCHEMA,
     (r) => r.green,
     `TDD Green step. ${ctx}` +
@@ -387,18 +627,24 @@ for (const [index, unit] of units.entries()) {
       rulesCtx() +
       `Last time the tests did not pass. The reason was ${prev.notes}.\nIdentify the cause, fix the implementation, and make the unit's tests pass. Weakening tests is forbidden.`,
   );
-  if (!green || !green.green) {
-    return stopUnit(
-      "unit-failed",
-      unit,
-      (green && green.notes) || "the green agent returned no result",
-    );
+  if (!green) {
+    return stopUnit("unit-failed", unit, "the green agent returned no result");
+  }
+  if (boolMismatch(green, "green")) {
+    return courierTypeStop(unit, green, "green");
+  }
+  if (!green.green) {
+    return stopUnit("unit-failed", unit, green.notes || "the green agent returned no result");
   }
   recordDeferred(unit, green);
   completed.push(unit.id);
   log(`${unit.id}: Red -> Green done (${completed.length}/${units.length}).`);
   await commitUnit(unit, tests, red.test_files || []);
 }
+
+// Every unit's implementation is done, so close the panes opened for codex-herdr. herdrPanes
+// stays null for a claude run, so this is a no-op there.
+await closeHerdrPanes();
 
 const VERIFY_SCHEMA = {
   type: "object",
@@ -453,4 +699,9 @@ return {
   tests_pass: verify.tests_pass,
   gates_pass: verify.gates_pass,
   verify_output: verify.output_tail,
+  // Stays null for a claude run (herdrPanesResolved / paneOpens / paneCloses are never touched
+  // there); build.js forwards this trio into its own return value unchanged.
+  herdr_panes: herdrPanesResolved,
+  pane_opens: paneOpens,
+  pane_closes: paneCloses,
 };
