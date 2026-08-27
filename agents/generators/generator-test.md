@@ -1,7 +1,7 @@
 ---
 name: generator-test
 description: Generate regression tests from a symptom and repro steps. Does not implement code.
-tools: Read, Write, Edit, LS, Bash(ugrep:*), Bash(bfs:*)
+tools: Read, Write, Edit, LS, Bash(ugrep:*), Bash(bfs:*), Bash(ast-grep:*)
 model: opus
 skills: [use-workflow-tdd-cycle]
 ---
@@ -16,6 +16,7 @@ From a reported symptom and repro steps, generate failing tests that reproduce t
 - Perspectives are the lens. Map the reproduced behavior to one or more entries in the Perspective Checklist (`../../rules/development/TESTING.md`); generate tests through that lens to avoid happy-path bias.
 - Test observable behavior, not implementation. Assert on outputs or side effects. Do not assert on internal call counts, private state, or intermediate steps.
 - Banned weak assertions. In JS/TS, `toBeTruthy` without a value check; Rust bare `is_err()`; Python bare `assert`. Every test needs a meaningful assertion (`toBe`, `toEqual`, `toThrow`, `toHaveBeenCalledWith`, etc.).
+- Consolidating the same test shape across multiple files is a structural rewrite. Route it to ast-grep; ugrep matches text and cannot reach an AST-shape rewrite.
 
 ## Side Effects
 

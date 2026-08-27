@@ -1,9 +1,9 @@
 export const meta = {
   name: "polish",
   description:
-    'Codex review + cleanup を決定論的に行う workflow。Codex の findings は critic-audit の challenge を必ず通り、triage (confirmed / disputed / downgraded / needs_context) は script が判定するため、fact 扱いの集約や challenge の skip が起きない。fix 後は critic-audit が post-fix diff で resolved / still_open を再判定し、still_open は reopened として結果に出る。単体で呼ぶ。入れ子で呼ぶ workflow は無い。',
+    "Codex review + cleanup を決定論的に行う workflow。Codex の findings は critic-audit の challenge を必ず通り、triage (confirmed / disputed / downgraded / needs_context) は script が判定するため、fact 扱いの集約や challenge の skip が起きない。fix 後は critic-audit が post-fix diff で resolved / still_open を再判定し、still_open は reopened として結果に出る。単体で呼ぶ。入れ子で呼ぶ workflow は無い。",
   whenToUse:
-    "diff の外部レンズ review と AI slop 除去を headless に行う。args は scope 文字列、または {scope, repo, mode, base}。scope 省略時は uncommitted な変更、無ければ base branch (既定 main) より先行する commit の diff (push 済み branch diff) を対象とする。mode: full (既定) は review -> fix -> rejudge -> cleanup、review は challenge 済み findings を返すだけ (fix しない)、cleanup は simplify + enhancer-code + テスト検証のみ。内部 reviewer の深い audit は audit workflow を使う。",
+    "diff の外部レンズ review と AI slop 除去を headless に行う。scope 文字列、または scope, repo, mode, base を持つ object を渡す。scope 省略時は uncommitted な変更、無ければ base branch (既定 main) より先行する commit の diff (push 済み branch diff) を対象とする。mode (full / review / cleanup): full (既定) は review -> fix -> rejudge -> cleanup、review は challenge 済み findings を返すだけ (fix しない)、cleanup は simplify + enhancer-code + テスト検証のみ。内部 reviewer の深い audit は audit workflow を使う。",
   phases: [
     { title: "Review" },
     { title: "Challenge" },
@@ -41,7 +41,21 @@ if (!repo) {
     why: `対象リポジトリを args.repo に絶対パスで渡す: Workflow({name: "polish", args: {repo: "/abs/path"}})。`,
   };
 }
-const mode = opts.mode === "review" || opts.mode === "cleanup" ? opts.mode : "full";
+// audit.js の FOCUS メンバーシップ検査と同じ形。MODES の外を渡した mode は以前は黙って
+// "full" に落ちていた (typo が気づかれない) ので、テストが抽出できる named const に出す。
+// inline 三項のままにはしない。
+const MODES = {
+  review: null,
+  cleanup: null,
+  full: null,
+};
+const mode = typeof opts.mode === "string" ? opts.mode : "full";
+if (!(mode in MODES)) {
+  return {
+    stopped: "invalid-mode",
+    why: `Mode "${mode}" は有効な値ではない。次のいずれかを渡す: ${Object.keys(MODES).join(", ")}。`,
+  };
+}
 const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 
 const anchor = (p) =>
@@ -174,13 +188,22 @@ const CLEANUP_SCHEMA = {
   },
 };
 
-let codex = { available: false, has_changes: true, diff_kind: "", findings: [] };
+let codex = {
+  available: false,
+  has_changes: true,
+  diff_kind: "",
+  findings: [],
+  review_note: "cleanup 専用実行のため Review 段をスキップ",
+};
 let verdicts = [];
 let survivors = [];
 let needsContext = [];
 let fix = null;
 let reopened = [];
 let rejudgeNotes = "";
+// Review agent の呼び出し自体が結果を返さなかった (異常終了 / timeout) ときだけ立てる。
+// available: false で答えた場合 (codex CLI なしという確定した結論) には立てない。
+let reviewDied = false;
 
 if (mode !== "cleanup") {
   // ---- Review: 外部 Codex レンズ ----
@@ -188,7 +211,7 @@ if (mode !== "cleanup") {
   const detectNote = scope
     ? `まず \`git status\` と \`git diff HEAD\` で polish 対象の変更が存在するか確認する。無ければ has_changes: false、diff_kind 空で返す。あれば diff_kind: uncommitted とする。`
     : `まず対象 diff の種類を判定する。\`git status --porcelain\` に出力があれば diff_kind: uncommitted。無ければ \`git rev-list --count ${base}..HEAD\` が 1 以上で diff_kind: branch (push 済み branch diff)。どちらにも該当しなければ has_changes: false、diff_kind 空で返す。`;
-  codex = (await agent(
+  const codexResult = await agent(
     anchor(
       `外部 Codex review stage。${detectNote}\n` +
         `次に \`which codex\` を確認する。無ければ available: false、findings 空で返す。\n` +
@@ -206,14 +229,29 @@ if (mode !== "cleanup") {
       schema: CODEX_SCHEMA,
       model: "sonnet",
     },
-  )) || { available: false, has_changes: true, diff_kind: "", findings: [] };
+  );
+  reviewDied = !codexResult;
+  // CODEX_SCHEMA に review_note は無い (additionalProperties: false) ため、検証を通った
+  // codexResult がこの値を自分で持つことは無い。ここで確定させる。
+  if (codexResult) {
+    codex = codexResult;
+    codex.review_note = codex.available ? "Review 完了" : "codex CLI なし";
+  } else {
+    codex = {
+      available: false,
+      has_changes: true,
+      diff_kind: "",
+      findings: [],
+      review_note: "Review agent が結果を返さなかった",
+    };
+  }
   if (!codex.has_changes) {
     return { mode, polished: false, why: "diff に変更が無く polish 対象なし" };
   }
   log(
     codex.available
       ? `Codex findings ${codex.findings.length} 件。`
-      : "codex CLI なし。findings なしで cleanup へ。",
+      : `${codex.review_note}。findings なしで cleanup へ。`,
   );
 
   // ---- Challenge: critic-audit による false positive 除去 ----
@@ -269,6 +307,7 @@ if (mode !== "cleanup") {
     return {
       mode,
       codex_available: codex.available,
+      review_note: codex.review_note,
       diff_kind: codex.diff_kind,
       survivors,
       needs_context: needsContext,
@@ -381,9 +420,24 @@ const cleanup = (await agent(
   notes: "validate agent が結果を返さなかった",
 };
 
+// WORKFLOWS.md § Degradation recording: Review agent が死んで findings が [] のままだと
+// Challenge (challenge する finding が無い) と Fix (fix する survivor が無い) も走らない。
+// これは本物の「きれいな diff」ではなく agent が死んだ結果に過ぎない。3 段の名前と、
+// それに伴って diff_kind: "" -> cleanupTarget が fallback したことをここへ載せ、
+// 本当に何もすることが無かった run と区別できるようにする。
+const unverified = reviewDied
+  ? [
+      codex.review_note,
+      "Challenge は未実施: Review agent が結果を返さず challenge する finding が無かった",
+      "Fix は未実施: Review agent が結果を返さず fix する survivor が無かった",
+      "Cleanup 対象は「現在の diff」へ fallback した: Review agent が結果を返さず diff_kind が空のままだった",
+    ]
+  : [];
+
 return {
   mode,
   codex_available: codex.available,
+  review_note: codex.review_note,
   diff_kind: codex.diff_kind,
   findings: codex.findings.length,
   survivors: survivors.length,
@@ -392,5 +446,6 @@ return {
   reopened,
   rejudge_notes: rejudgeNotes,
   needs_context: needsContext,
+  unverified,
   cleanup,
 };

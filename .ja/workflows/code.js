@@ -3,7 +3,7 @@ export const meta = {
   description:
     '構造化 plan (units / test_command) を受け取り、unit ごとに script 制御で実装する TDD workflow。test scenario を持つ unit は Red → Green で実装し、tests が空の unit (docs / 設定など検証可能な振る舞いが無いもの) は直接実装 1 段で扱う。TDD の要否は runtime でなく plan が選択する。未確認の Red は anomaly として記録し、最後に実装へ関与していない独立 agent が全 suite + lint + type-check を検証する。commit: true のとき、各 unit は plan の指示を trailer に載せた独立コミットとして着地する。単独でも build からの workflow("code") でも呼べる。',
   whenToUse:
-    "headless の plan 実装。args は {plan, repo, model, commit, issue, untracked_baseline}。plan は units / test_command を持つ構造化 plan (think skill が生成する形)。model (任意) は実装 agent にのみ伝播する (default は sonnet)。commit: true は unit の完了ごとにコミットし、issue / untracked_baseline は commit trailer と never-stage 集合になる。実装 agent は effort high で走る。",
+    'headless の plan 実装。args は {plan, repo, model, commit, issue, untracked_baseline, implementer}。plan は units / test_command を持つ構造化 plan (think skill が生成する形)。model (任意) は実装 agent にのみ伝播する (default は sonnet)。commit: true は unit の完了ごとにコミットし、issue / untracked_baseline は commit trailer と never-stage 集合になる。実装 agent は effort high で走る。implementer (任意、default "claude") は unit を誰が実装するかを選び、"codex-herdr" は herdr の到達性を確認したあと tester / coder の 2 pane を起動して全 unit で使い回し、実装が終わったら閉じる。到達性またはどちらかの pane 起動が失敗すれば run を止める。',
   phases: [{ title: "Implement" }, { title: "Verify" }],
 };
 
@@ -53,6 +53,19 @@ const issueRef = String(input.issue || "")
   .trim();
 const untrackedBaseline = Array.isArray(input.untracked_baseline) ? input.untracked_baseline : [];
 
+// 供給される値の一覧は script 側の定数として持ち、散文の契約には置かない。
+const VALID_IMPLEMENTERS = ["claude", "codex-herdr"];
+const implementer =
+  typeof input.implementer === "string" && input.implementer.trim()
+    ? input.implementer.trim()
+    : "claude";
+if (!VALID_IMPLEMENTERS.includes(implementer)) {
+  return {
+    stopped: "implementer-invalid",
+    why: `args.implementer "${implementer}" は未対応。"claude" か "codex-herdr" を渡すか、省略して既存の Claude 経路を使う。`,
+  };
+}
+
 // plan 由来の値は prompt へ入る前にここで改行を落とす。注入ブロックの fence は行単位で読まれる
 // ので、行を作れる値は fence を偽装できる。\r と U+2028 / U+2029 も \n と同じく行を分ける。
 const flatten = (value) => String(value ?? "").replace(/[\r\n\u2028\u2029]+/g, " ");
@@ -71,19 +84,27 @@ const skipped = [];
 const anomalies = [];
 const commits = [];
 // run 級の配列を閉じ込めるので、途中終了でも呼び出し元は部分進捗を受け取る。
-const stopUnit = (stopped, unit, why) => ({
-  stopped,
-  unit: unit.id,
-  why,
-  completed,
-  skipped,
-  anomalies,
-  commits,
-});
-// 実装は plan の contract / tests を実行する段なので sonnet で足りる。ここで失敗が続くのは
-// model が小さいのでなく plan の欠陥シグナル。effort を high に保つのは、実装 agent 1 体の
-// wall-clock を thinking tokens の生成が支配するため。
-const implementOpts = { model: input.model || "sonnet", effort: "high" };
+const stopUnit = async (stopped, unit, why) => {
+  await closeHerdrPanes();
+  return {
+    stopped,
+    unit: unit.id,
+    why,
+    completed,
+    skipped,
+    anomalies,
+    commits,
+    herdr_panes: herdrPanesResolved,
+    pane_opens: paneOpens,
+    pane_closes: paneCloses,
+  };
+};
+// 経路と呼び先をこの 1 関数だけで決める。herdrPanes は下で let 宣言されるが、この関数の
+// 呼び出しはすべて for loop の中、その代入より後に起きる。
+const implementDestination = (role) =>
+  implementer === "codex-herdr"
+    ? { opts: {}, paneId: herdrPanes ? herdrPanes[role] : undefined }
+    : { opts: { model: input.model || "sonnet", effort: "high" }, paneId: undefined };
 
 const RED_SCHEMA = {
   type: "object",
@@ -156,6 +177,7 @@ const commitBody = (unit, tests) =>
     `Contract: ${flatten(unit.contract)}`,
     ...(tests.length ? [`Tests: ${tests.map((t) => t.id).join(", ")}`] : []),
     `Seam: ${unit.seam === true}`,
+    `Implementer: ${implementer}`,
     ...(issueRef ? [`Issue: #${issueRef}`] : []),
   ].join("\n");
 
@@ -199,6 +221,19 @@ const commitUnit = async (unit, tests, testFiles) => {
   log(`${unit.id}: 未コミット (${why})。作業ツリーに残す。`);
 };
 
+// agent tool の schema は形しか保証しない: courier が読んだ codex のファイルが
+// `{"red_confirmed": "false"}` のように文字列で書かれていても RED_SCHEMA の宣言する
+// プロパティ自体は満たしてしまう。呼び出し側が truthy 判定でそれを信頼する直前、ここで実際の
+// 型を検査する。
+const boolMismatch = (result, field) => !!result && typeof result[field] !== "boolean";
+
+const courierTypeStop = (unit, result, field) =>
+  stopUnit(
+    "courier-type-mismatch",
+    unit,
+    `courier が返した ${field} が boolean ではなく ${typeof result[field]} だった (値: ${JSON.stringify(result[field])})。`,
+  );
+
 // agent の自己申告を script が anomaly 化するので、無断で狭めた実装が code_anomalies: 0 の
 // まま緑で ship されることはない。
 const recordDeferred = (unit, result) => {
@@ -208,24 +243,216 @@ const recordDeferred = (unit, result) => {
   }
 };
 
-// まだ失敗している結果をどう扱うかは呼び出し元が持つ。Red 未確認は anomaly に記録し、
-// impl / Green の失敗は run を止める。1 回目が null なら retry しないので、死んだ agent を
-// 2 度叩かない。
-const stepWithRetry = async (unit, label, schema, ok, prompt, retryPrompt) => {
+// codex-herdr 経路で codex が JSON を書き込む先。read-back には agent が要るので (workflow
+// realm に fs が無い)、unit と role が決まれば同じ 1 ファイルを初回・retry で使い回す。
+const responsePath = (unit, role) => `.codex-response/${unit.id}-${role}.json`;
+
+// role は Red step が "tester"、Green / 直接実装が "coder"。まだ失敗している結果をどう
+// 扱うかは呼び出し元が持つ。Red 未確認は anomaly に記録し、impl / Green の失敗は run を止める。
+// 1 回目が null なら retry しないので、死んだ agent を 2 度叩かない。
+const stepWithRetry = async (unit, label, role, schema, ok, prompt, retryPrompt) => {
+  const dest = implementDestination(role);
+  // 初回と retry の両方の prompt へ前置くので、codex-herdr の retry も初回と同じ pane・同じ
+  // 応答ファイル宛になる。
+  const addressing = dest.paneId
+    ? `この指示は \`herdr agent prompt ${role} "<指示>" --wait --timeout 180000\` で ${role} agent へ送る。この呼び出しは相手が agent_status "done" を報告してから返る (pane ${dest.paneId} は pane-start で解決済み)。ただ送るだけにはしない。--wait が無いと codex が終わったことを知る手段が無く、応答ファイルを早く読むと前の unit が残した内容が返る。pane 内の codex agent には、この schema の形に沿った JSON だけをファイル ${responsePath(unit, role)} (repo からの相対パス) へ書かせる。あなたは courier として振る舞う: 自分では TDD の作業をしない。prompt の呼び出しが返ったらそのファイルを読み、パースした中身をこの schema の形で返す。呼び出しが非ゼロ終了したりファイルが無かったりしたら、結果を捏造せず、見た事実を notes に書いて false 相当の結果を返す。\n`
+    : "";
   const opts = (name) => ({
     label: `${name}:${unit.id}`,
     phase: `Unit ${unit.id}`,
     agentType: "general-purpose",
     schema,
-    ...implementOpts,
+    ...dest.opts,
   });
-  const first = await agent(anchor(prompt), opts(label));
+  const first = await agent(anchor(addressing + prompt), opts(label));
   if (!first || ok(first)) return first;
-  return await agent(anchor(retryPrompt(first)), opts(`${label}2`));
+  return await agent(anchor(addressing + retryPrompt(first)), opts(`${label}2`));
 };
 
 // ---- Implement: unit ごとに直列で実装 (working tree を共有するため) ----
 phase("Implement");
+
+const HERDR_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["herdr_available", "notes"],
+  properties: {
+    herdr_available: { type: "boolean" },
+    notes: { type: "string" },
+  },
+};
+
+const PANE_START_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["pane_id", "started", "notes"],
+  properties: {
+    pane_id: {
+      type: "string",
+      description:
+        "`herdr pane split` 応答の `.result.pane.pane_id`。推測しない。`agent start` が失敗した場合も split で読めた値を書く",
+    },
+    started: { type: "boolean" },
+    notes: { type: "string" },
+  },
+};
+
+const PANE_CLOSE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["closed", "notes"],
+  properties: {
+    closed: { type: "boolean" },
+    notes: { type: "string" },
+  },
+};
+
+// herdr CLI リファレンス (https://herdr.dev/ja/docs/cli-reference/, 2026-08-27 取得) より:
+// `pane split` の応答は新しい pane id を `.result.pane.pane_id` に持つ。`agent start <name>
+// --kind KIND --pane ID` は既存のシェル pane を起動対象にし、name は `[a-z][a-z0-9_-]{0,31}` に
+// 一致する必要がある。検出状態が blocked だと即座に `agent_not_ready` を返す。`pane close
+// <pane_id>` は pane split で読んだ id をそのまま渡す。
+const startPane = (role) =>
+  agent(
+    anchor(
+      `herdr CLI で ${role} 役の pane を起動する。\`herdr pane split --current --direction right --no-focus\` を実行して` +
+        `新しい pane を作り、応答の \`.result.pane.pane_id\` から pane id を読む (推測しない)。続けて` +
+        `\`herdr agent start ${role} --kind codex --pane <読んだ pane id>\` を実行し、その pane の中で` +
+        `codex エージェントを起動する。両方成功したときに限り started: true を返す。pane_id には` +
+        `split で読んだ id を書く (start が失敗した場合も、split が成功していれば書く)。失敗した` +
+        `コマンドとその出力は notes に書く。`,
+    ),
+    {
+      label: `pane-start:${role}`,
+      phase: "Implement",
+      agentType: "general-purpose",
+      schema: PANE_START_SCHEMA,
+      model: "sonnet",
+    },
+  );
+
+const closePane = (role, paneId) =>
+  agent(
+    anchor(
+      `\`herdr pane close ${paneId}\` を実行し、${role} 役の pane を閉じる。この pane id は pane split で` +
+        `読んだ値で、推測した値を使わない。コマンドが成功したときに限り closed: true を返す。`,
+    ),
+    {
+      label: `pane-close:${role}`,
+      phase: "Implement",
+      agentType: "general-purpose",
+      schema: PANE_CLOSE_SCHEMA,
+      model: "sonnet",
+    },
+  );
+
+// codex-herdr でない run では null のままで、closeHerdrPanes は何もしない。
+let herdrPanes = null;
+// run-workflow.js の calls.agent は各 agent の {prompt, opts} しか記録しないので、pane split
+// から解決した pane id や開閉回数がこの workflow 自身の返り値 (build.js がさらに自分の返り値へ
+// 転送する値) に実際に届いたことをそこからは示せない。herdrPanesResolved は closeHerdrPanes が
+// herdrPanes を null に戻したあとも id を保つので、後片付けの前後どちらの返り値にも id が残る。
+let herdrPanesResolved = null;
+let paneOpens = 0;
+let paneCloses = 0;
+
+// 後片付け (loop 終端の closeHerdrPanes と、下の起動失敗時に開いた tester pane 1 つだけを閉じる
+// 分岐の両方) の close は必ずここを通すので、paneCloses は実際に閉じた pane 数の唯一の集計になる。
+const closePaneCounted = async (role, paneId) => {
+  const res = await closePane(role, paneId);
+  if (res && res.closed) paneCloses++;
+  return res;
+};
+
+// stopUnit 経由の早期 return と loop 終端後の正常終了のどちらからも呼ぶので、呼び出しの都度
+// null に戻して二重 close を防ぐ。close が失敗しても run 自体は止めず、anomaly に記録する。
+const closeHerdrPanes = async () => {
+  if (!herdrPanes) return;
+  const panes = herdrPanes;
+  herdrPanes = null;
+  for (const role of ["tester", "coder"]) {
+    const res = await closePaneCounted(role, panes[role]);
+    if (res && res.closed) continue;
+    const why = res
+      ? res.notes || `${role} pane の close が closed: false を返した`
+      : `${role} pane の close agent が結果を返さなかった`;
+    anomalies.push({ unit: "-", kind: "pane-not-closed", notes: why });
+    log(`herdr ${role} pane を閉じられなかった (${why})。`);
+  }
+};
+
+// herdr は Unix socket 越しに話すので sandboxed Bash からは届かず、agent 側で
+// dangerouslyDisableSandbox が要る。assert.js の codex_available と同じ形で、command の
+// 有無と実疎通の両方を確認してから実装に入る。
+if (implementer === "codex-herdr") {
+  const herdr = await agent(
+    anchor(
+      `この run が実装に入る前に herdr の到達性を確認する。\`command -v herdr\` を実行し、` +
+        `見つかったら \`herdr agent get\` を実行する。herdr は Unix socket 越しに話すため、` +
+        `sandboxed Bash からは届かない可能性がある。最初の試行が sandbox 由来の拒否を報告したら、` +
+        `到達不能と結論する前に dangerouslyDisableSandbox を付けて再試行する。` +
+        `両方が成功したときに限り herdr_available: true を返す。失敗したコマンドとその出力を notes に書く。`,
+    ),
+    {
+      label: "herdr-check",
+      phase: "Implement",
+      agentType: "general-purpose",
+      schema: HERDR_SCHEMA,
+      model: "sonnet",
+    },
+  );
+  if (!herdr || !herdr.herdr_available) {
+    return {
+      stopped: "herdr-unreachable",
+      why: herdr
+        ? herdr.notes || "herdr に到達できなかった。"
+        : "herdr の到達性確認 agent が結果を返さなかった。",
+      herdr_panes: herdrPanesResolved,
+      pane_opens: paneOpens,
+      pane_closes: paneCloses,
+    };
+  }
+
+  // tester pane を先に起動する。start が失敗しても split 自体は成功して pane が実在すること
+  // があるので、pane id が返っていればそれも閉じる。
+  const testerStart = await startPane("tester");
+  if (!testerStart || !testerStart.started) {
+    if (testerStart && testerStart.pane_id) await closePaneCounted("tester", testerStart.pane_id);
+    return {
+      stopped: "pane-start-failed",
+      why: testerStart
+        ? testerStart.notes || "tester pane の起動に失敗した。"
+        : "tester pane-start agent が結果を返さなかった。",
+      herdr_panes: herdrPanesResolved,
+      pane_opens: paneOpens,
+      pane_closes: paneCloses,
+    };
+  }
+  paneOpens++;
+  // 2 つ揃ってからではなく pane ごとに記録する。coder の起動失敗は 2 つの間で止まるので、
+  // 残った pane を追う呼び出し側には、その停止が既に解決している tester の id が要る。
+  herdrPanesResolved = { tester: testerStart.pane_id };
+
+  // coder pane の起動に失敗したら、先に開いた tester pane を閉じてから止まる。
+  const coderStart = await startPane("coder");
+  if (!coderStart || !coderStart.started) {
+    await closePaneCounted("tester", testerStart.pane_id);
+    return {
+      stopped: "pane-start-failed",
+      why: coderStart
+        ? coderStart.notes || "coder pane の起動に失敗した。"
+        : "coder pane-start agent が結果を返さなかった。",
+      herdr_panes: herdrPanesResolved,
+      pane_opens: paneOpens,
+      pane_closes: paneCloses,
+    };
+  }
+  paneOpens++;
+
+  // 全 unit を通してこの 2 pane を使い回す。close は loop 終端 (closeHerdrPanes) が担う。
+  herdrPanes = { tester: testerStart.pane_id, coder: coderStart.pane_id };
+  herdrPanesResolved = herdrPanes;
+}
 
 // contract が引用するのは 1 つの振る舞いなので、plan の参照モジュールが無いと周辺構造が
 // 手組みされ、隣人が既に持つ形から逸れる。
@@ -302,6 +529,7 @@ for (const [index, unit] of units.entries()) {
     const impl = await stepWithRetry(
       unit,
       "impl",
+      "coder",
       GREEN_SCHEMA,
       (r) => r.green,
       `直接実装 step。${ctx}` +
@@ -314,12 +542,14 @@ for (const [index, unit] of units.entries()) {
         `前回 suite が pass しなかった。理由は ${prev.notes}。\n原因を特定して実装を直し、suite を pass させる。テストの弱体化は禁止。`,
     );
 
-    if (!impl || !impl.green) {
-      return stopUnit(
-        "unit-failed",
-        unit,
-        (impl && impl.notes) || "implement agent が結果を返さなかった",
-      );
+    if (!impl) {
+      return stopUnit("unit-failed", unit, "implement agent が結果を返さなかった");
+    }
+    if (boolMismatch(impl, "green")) {
+      return courierTypeStop(unit, impl, "green");
+    }
+    if (!impl.green) {
+      return stopUnit("unit-failed", unit, impl.notes || "implement agent が結果を返さなかった");
     }
 
     recordDeferred(unit, impl);
@@ -337,6 +567,7 @@ for (const [index, unit] of units.entries()) {
   const red = await stepWithRetry(
     unit,
     "red",
+    "tester",
     RED_SCHEMA,
     (r) => r.red_confirmed,
     `TDD Red step。${ctx}` +
@@ -352,6 +583,9 @@ for (const [index, unit] of units.entries()) {
   );
 
   if (!red) return stopUnit("red-failed", unit, "red agent が結果を返さなかった");
+  if (boolMismatch(red, "red_confirmed")) {
+    return courierTypeStop(unit, red, "red_confirmed");
+  }
 
   if (!red.red_confirmed) {
     anomalies.push({
@@ -370,6 +604,7 @@ for (const [index, unit] of units.entries()) {
   const green = await stepWithRetry(
     unit,
     "green",
+    "coder",
     GREEN_SCHEMA,
     (r) => r.green,
     `TDD Green step。${ctx}` +
@@ -384,18 +619,24 @@ for (const [index, unit] of units.entries()) {
       `前回テストが pass しなかった。理由は ${prev.notes}。\n原因を特定して実装を直し、unit のテストを pass させる。テストの弱体化は禁止。`,
   );
 
-  if (!green || !green.green) {
-    return stopUnit(
-      "unit-failed",
-      unit,
-      (green && green.notes) || "green agent が結果を返さなかった",
-    );
+  if (!green) {
+    return stopUnit("unit-failed", unit, "green agent が結果を返さなかった");
+  }
+  if (boolMismatch(green, "green")) {
+    return courierTypeStop(unit, green, "green");
+  }
+  if (!green.green) {
+    return stopUnit("unit-failed", unit, green.notes || "green agent が結果を返さなかった");
   }
   recordDeferred(unit, green);
   completed.push(unit.id);
   log(`${unit.id}: Red → Green done (${completed.length}/${units.length})。`);
   await commitUnit(unit, tests, red.test_files || []);
 }
+
+// 全 unit の実装が終わったので、codex-herdr で開いた pane を閉じる。implementer が claude の
+// run では herdrPanes が null のままで、ここは何もしない。
+await closeHerdrPanes();
 
 const VERIFY_SCHEMA = {
   type: "object",
@@ -450,4 +691,9 @@ return {
   tests_pass: verify.tests_pass,
   gates_pass: verify.gates_pass,
   verify_output: verify.output_tail,
+  // claude の run では herdrPanesResolved / paneOpens / paneCloses に一切触れないので null の
+  // まま。build.js はこの 3 つをそのまま自分の返り値へ転送する。
+  herdr_panes: herdrPanesResolved,
+  pane_opens: paneOpens,
+  pane_closes: paneCloses,
 };
