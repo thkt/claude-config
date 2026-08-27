@@ -56,7 +56,7 @@ jobs:
       # glob でなく find なのは、bash 3.2 に globstar が無く ** の階層解釈が版で割れるため。
       # Python tests と同じ形で、階層が増えても suite を落とさない。-t が実行行を stderr へ出す。
       - name: Shell tests
-        run: find hooks -name '*.test.sh' -print0 | xargs -0 -r -n1 -t bash
+        run: find hooks sandbox -name '*.test.sh' -print0 | xargs -0 -r -n1 -t bash
 
       # 3 つとも hook か手元でしか走っておらず、指摘が溜まっても誰も気付かなかった。
       # oxlint と textlint は devDependency なので、上の Install がそのまま入れる。
