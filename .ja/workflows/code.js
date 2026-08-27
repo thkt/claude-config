@@ -3,7 +3,7 @@ export const meta = {
   description:
     '構造化 plan (units / test_command) を受け取り、unit ごとに script 制御で実装する TDD workflow。test scenario を持つ unit は Red → Green で実装し、tests が空の unit (docs / 設定など検証可能な振る舞いが無いもの) は直接実装 1 段で扱う。TDD の要否は runtime でなく plan が選択する。未確認の Red は anomaly として記録し、最後に実装へ関与していない独立 agent が全 suite + lint + type-check を検証する。commit: true のとき、各 unit は plan の指示を trailer に載せた独立コミットとして着地する。単独でも build からの workflow("code") でも呼べる。',
   whenToUse:
-    'headless の plan 実装。args は {plan, repo, model, commit, issue, untracked_baseline, implementer}。plan は units / test_command を持つ構造化 plan (think skill が生成する形)。model (任意) は実装 agent にのみ伝播する (default は sonnet)。commit: true は unit の完了ごとにコミットし、issue / untracked_baseline は commit trailer と never-stage 集合になる。実装 agent は effort high で走る。implementer (任意、default "claude") は unit を誰が実装するかを選び、"codex-herdr" は herdr の到達性を確認してから実装に入り、届かなければ run を止める。',
+    'headless の plan 実装。args は {plan, repo, model, commit, issue, untracked_baseline, implementer}。plan は units / test_command を持つ構造化 plan (think skill が生成する形)。model (任意) は実装 agent にのみ伝播する (default は sonnet)。commit: true は unit の完了ごとにコミットし、issue / untracked_baseline は commit trailer と never-stage 集合になる。実装 agent は effort high で走る。implementer (任意、default "claude") は unit を誰が実装するかを選び、"codex-herdr" は herdr の到達性を確認したあと tester / coder の 2 pane を起動して全 unit で使い回し、実装が終わったら閉じる。到達性またはどちらかの pane 起動が失敗すれば run を止める。',
   phases: [{ title: "Implement" }, { title: "Verify" }],
 };
 
@@ -84,15 +84,10 @@ const skipped = [];
 const anomalies = [];
 const commits = [];
 // run 級の配列を閉じ込めるので、途中終了でも呼び出し元は部分進捗を受け取る。
-const stopUnit = (stopped, unit, why) => ({
-  stopped,
-  unit: unit.id,
-  why,
-  completed,
-  skipped,
-  anomalies,
-  commits,
-});
+const stopUnit = async (stopped, unit, why) => {
+  await closeHerdrPanes();
+  return { stopped, unit: unit.id, why, completed, skipped, anomalies, commits };
+};
 // 実装は plan の contract / tests を実行する段なので sonnet で足りる。ここで失敗が続くのは
 // model が小さいのでなく plan の欠陥シグナル。effort を high に保つのは、実装 agent 1 体の
 // wall-clock を thinking tokens の生成が支配するため。
@@ -250,6 +245,92 @@ const HERDR_SCHEMA = {
   },
 };
 
+const PANE_START_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["pane_id", "started", "notes"],
+  properties: {
+    pane_id: {
+      type: "string",
+      description:
+        "`herdr pane split` 応答の `.result.pane.pane_id`。推測しない。`agent start` が失敗した場合も split で読めた値を書く",
+    },
+    started: { type: "boolean" },
+    notes: { type: "string" },
+  },
+};
+
+const PANE_CLOSE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["closed", "notes"],
+  properties: {
+    closed: { type: "boolean" },
+    notes: { type: "string" },
+  },
+};
+
+// herdr CLI リファレンス (https://herdr.dev/ja/docs/cli-reference/, 2026-08-27 取得) より:
+// `pane split` の応答は新しい pane id を `.result.pane.pane_id` に持つ。`agent start <name>
+// --kind KIND --pane ID` は既存のシェル pane を起動対象にし、name は `[a-z][a-z0-9_-]{0,31}` に
+// 一致する必要がある。検出状態が blocked だと即座に `agent_not_ready` を返す。`pane close
+// <pane_id>` は pane split で読んだ id をそのまま渡す。
+const startPane = (role) =>
+  agent(
+    anchor(
+      `herdr CLI で ${role} 役の pane を起動する。\`herdr pane split --direction down\` を実行して` +
+        `新しい pane を作り、応答の \`.result.pane.pane_id\` から pane id を読む (推測しない)。続けて` +
+        `\`herdr agent start ${role} --kind codex --pane <読んだ pane id>\` を実行し、その pane の中で` +
+        `codex エージェントを起動する。両方成功したときに限り started: true を返す。pane_id には` +
+        `split で読んだ id を書く (start が失敗した場合も、split が成功していれば書く)。失敗した` +
+        `コマンドとその出力は notes に書く。`,
+    ),
+    {
+      label: `pane-start:${role}`,
+      phase: "Implement",
+      agentType: "general-purpose",
+      schema: PANE_START_SCHEMA,
+      model: "sonnet",
+    },
+  );
+
+const closePane = (role, paneId) =>
+  agent(
+    anchor(
+      `\`herdr pane close ${paneId}\` を実行し、${role} 役の pane を閉じる。この pane id は pane split で` +
+        `読んだ値で、推測した値を使わない。コマンドが成功したときに限り closed: true を返す。`,
+    ),
+    {
+      label: `pane-close:${role}`,
+      phase: "Implement",
+      agentType: "general-purpose",
+      schema: PANE_CLOSE_SCHEMA,
+      model: "sonnet",
+    },
+  );
+
+// tester / coder 両 pane の id。codex-herdr でない run では null のままで、closeHerdrPanes は
+// 何もしない。
+let herdrPanes = null;
+
+// stopUnit 経由の早期 return と loop 終端後の正常終了のどちらからも呼ぶので、呼び出しの都度
+// null に戻して二重 close を防ぐ。close が失敗しても run 自体は止めず、anomaly に記録する。
+const closeHerdrPanes = async () => {
+  if (!herdrPanes) return;
+  const panes = herdrPanes;
+  herdrPanes = null;
+  for (const role of ["tester", "coder"]) {
+    const res = await closePane(role, panes[role]);
+    if (!res || !res.closed) {
+      const why = res
+        ? res.notes || `${role} pane の close が closed: false を返した`
+        : `${role} pane の close agent が結果を返さなかった`;
+      anomalies.push({ unit: "-", kind: "pane-not-closed", notes: why });
+      log(`herdr ${role} pane を閉じられなかった (${why})。`);
+    }
+  }
+};
+
 // herdr は Unix socket 越しに話すので sandboxed Bash からは届かず、agent 側で
 // dangerouslyDisableSandbox が要る。assert.js の codex_available と同じ形で、command の
 // 有無と実疎通の両方を確認してから実装に入る。
@@ -278,6 +359,34 @@ if (implementer === "codex-herdr") {
         : "herdr の到達性確認 agent が結果を返さなかった。",
     };
   }
+
+  // tester pane を先に起動する。start が失敗しても split 自体は成功して pane が実在すること
+  // があるので、pane id が返っていればそれも閉じる。
+  const testerStart = await startPane("tester");
+  if (!testerStart || !testerStart.started) {
+    if (testerStart && testerStart.pane_id) await closePane("tester", testerStart.pane_id);
+    return {
+      stopped: "pane-start-failed",
+      why: testerStart
+        ? testerStart.notes || "tester pane の起動に失敗した。"
+        : "tester pane-start agent が結果を返さなかった。",
+    };
+  }
+
+  // coder pane の起動に失敗したら、先に開いた tester pane を閉じてから止まる。
+  const coderStart = await startPane("coder");
+  if (!coderStart || !coderStart.started) {
+    await closePane("tester", testerStart.pane_id);
+    return {
+      stopped: "pane-start-failed",
+      why: coderStart
+        ? coderStart.notes || "coder pane の起動に失敗した。"
+        : "coder pane-start agent が結果を返さなかった。",
+    };
+  }
+
+  // 全 unit を通してこの 2 pane を使い回す。close は loop 終端 (closeHerdrPanes) が担う。
+  herdrPanes = { tester: testerStart.pane_id, coder: coderStart.pane_id };
 }
 
 // contract が引用するのは 1 つの振る舞いなので、plan の参照モジュールが無いと周辺構造が
@@ -449,6 +558,10 @@ for (const [index, unit] of units.entries()) {
   log(`${unit.id}: Red → Green done (${completed.length}/${units.length})。`);
   await commitUnit(unit, tests, red.test_files || []);
 }
+
+// 全 unit の実装が終わったので、codex-herdr で開いた pane を閉じる。implementer が claude の
+// run では herdrPanes が null のままで、ここは何もしない。
+await closeHerdrPanes();
 
 const VERIFY_SCHEMA = {
   type: "object",

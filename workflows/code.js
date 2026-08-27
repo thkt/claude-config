@@ -3,7 +3,7 @@ export const meta = {
   description:
     'TDD workflow that takes a structured plan (units / test_command) and implements per unit under script enforcement. A unit with test scenarios runs Red -> Green; a unit with no tests (docs / config, no verifiable behavior) runs a single direct-implementation step, so whether TDD applies is selected in the plan, not decided at runtime. An unconfirmed Red is recorded as an anomaly, and at the end an independent agent verifies the full suite + lint + type-check. With commit: true each unit lands as its own commit carrying the plan\'s instruction as trailers. Callable standalone or nested from build via workflow("code").',
   whenToUse:
-    'Headless plan implementation. args is {plan, repo, model, commit, issue, untracked_baseline, implementer}; plan is a structured plan with units / test_command (as produced by the think skill). model (optional) propagates only to the implementation agents (defaults to sonnet). commit: true commits each unit as it completes; issue / untracked_baseline feed the commit trailers and the never-stage set. The implementation agents run at effort high. implementer (optional, default "claude") selects who implements each unit; "codex-herdr" first confirms herdr is reachable before entering implementation and stops the run if it is not.',
+    'Headless plan implementation. args is {plan, repo, model, commit, issue, untracked_baseline, implementer}; plan is a structured plan with units / test_command (as produced by the think skill). model (optional) propagates only to the implementation agents (defaults to sonnet). commit: true commits each unit as it completes; issue / untracked_baseline feed the commit trailers and the never-stage set. The implementation agents run at effort high. implementer (optional, default "claude") selects who implements each unit; "codex-herdr" first confirms herdr is reachable, then starts 2 herdr panes (tester, coder) reused across every unit and closed once implementation ends, and stops the run if reachability or either pane-start fails.',
   phases: [{ title: "Implement" }, { title: "Verify" }],
 };
 
@@ -85,15 +85,10 @@ const anomalies = [];
 const commits = [];
 // The run-level arrays are closed over, so a mid-loop stop still hands the caller its partial
 // progress.
-const stopUnit = (stopped, unit, why) => ({
-  stopped,
-  unit: unit.id,
-  why,
-  completed,
-  skipped,
-  anomalies,
-  commits,
-});
+const stopUnit = async (stopped, unit, why) => {
+  await closeHerdrPanes();
+  return { stopped, unit: unit.id, why, completed, skipped, anomalies, commits };
+};
 // Implementation executes the plan's contract / tests, so sonnet suffices; repeated failure
 // here signals a defective plan rather than a model too small. effort stays high because an
 // implementation agent's wall-clock is dominated by generating thinking tokens.
@@ -253,6 +248,94 @@ const HERDR_SCHEMA = {
   },
 };
 
+const PANE_START_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["pane_id", "started", "notes"],
+  properties: {
+    pane_id: {
+      type: "string",
+      description:
+        "the `.result.pane.pane_id` from `herdr pane split`'s response. Never guess it. Write the id read from split even when `agent start` failed",
+    },
+    started: { type: "boolean" },
+    notes: { type: "string" },
+  },
+};
+
+const PANE_CLOSE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["closed", "notes"],
+  properties: {
+    closed: { type: "boolean" },
+    notes: { type: "string" },
+  },
+};
+
+// From the herdr CLI reference (https://herdr.dev/ja/docs/cli-reference/, fetched 2026-08-27):
+// `pane split`'s response carries the new pane's id at `.result.pane.pane_id`. `agent start
+// <name> --kind KIND --pane ID` targets an existing shell pane; name must match
+// `[a-z][a-z0-9_-]{0,31}`. A blocked detection state returns `agent_not_ready` immediately.
+// `pane close <pane_id>` takes the same id read from split.
+const startPane = (role) =>
+  agent(
+    anchor(
+      `Start the herdr pane for the ${role} role. Run \`herdr pane split --direction down\` to ` +
+        `create a new pane, and read the pane id from the response's \`.result.pane.pane_id\` ` +
+        `(never guess it). Then run \`herdr agent start ${role} --kind codex --pane <the pane id ` +
+        `you read>\` to start a codex agent inside that pane. Set started: true only when both ` +
+        `succeed. Put the id read from split in pane_id (even when start failed, as long as split ` +
+        `succeeded). Put the failing command and its output in notes.`,
+    ),
+    {
+      label: `pane-start:${role}`,
+      phase: "Implement",
+      agentType: "general-purpose",
+      schema: PANE_START_SCHEMA,
+      model: "sonnet",
+    },
+  );
+
+const closePane = (role, paneId) =>
+  agent(
+    anchor(
+      `Run \`herdr pane close ${paneId}\` to close the ${role} role's pane. This is the pane id ` +
+        `read from pane split — never a guessed value. Report closed: true only when the command ` +
+        `succeeds.`,
+    ),
+    {
+      label: `pane-close:${role}`,
+      phase: "Implement",
+      agentType: "general-purpose",
+      schema: PANE_CLOSE_SCHEMA,
+      model: "sonnet",
+    },
+  );
+
+// The tester / coder pane ids. Stays null for a non-codex-herdr run, so closeHerdrPanes is a
+// no-op there.
+let herdrPanes = null;
+
+// Called both from stopUnit's early returns and from the normal path after the loop ends, so
+// it clears herdrPanes on entry to avoid closing twice. A close failure does not stop the run;
+// it is recorded as an anomaly instead.
+const closeHerdrPanes = async () => {
+  if (!herdrPanes) return;
+  const panes = herdrPanes;
+  herdrPanes = null;
+  for (const role of ["tester", "coder"]) {
+    const res = await closePane(role, panes[role]);
+    if (!res || !res.closed) {
+      const why = res
+        ? res.notes || `${role} pane close reported closed: false`
+        : `the ${role} pane-close agent returned no result`;
+      anomalies.push({ unit: "-", kind: "pane-not-closed", notes: why });
+      log(`could not close the herdr ${role} pane (${why}).`);
+    }
+  }
+};
+
 // herdr talks over a Unix socket, so a sandboxed Bash call cannot reach it and the agent
 // needs dangerouslyDisableSandbox. Mirrors assert.js's codex_available: confirm both the
 // command's presence and a real round trip before any unit enters implementation.
@@ -281,6 +364,34 @@ if (implementer === "codex-herdr") {
         : "the herdr reachability check returned no result",
     };
   }
+
+  // Start the tester pane first. A failed start can still have split a real pane before agent
+  // start failed inside it, so close it too when a pane id came back.
+  const testerStart = await startPane("tester");
+  if (!testerStart || !testerStart.started) {
+    if (testerStart && testerStart.pane_id) await closePane("tester", testerStart.pane_id);
+    return {
+      stopped: "pane-start-failed",
+      why: testerStart
+        ? testerStart.notes || "the tester pane failed to start."
+        : "the tester pane-start agent returned no result",
+    };
+  }
+
+  // A coder pane failure closes the tester pane already open before stopping.
+  const coderStart = await startPane("coder");
+  if (!coderStart || !coderStart.started) {
+    await closePane("tester", testerStart.pane_id);
+    return {
+      stopped: "pane-start-failed",
+      why: coderStart
+        ? coderStart.notes || "the coder pane failed to start."
+        : "the coder pane-start agent returned no result",
+    };
+  }
+
+  // These 2 panes are reused across every unit. closeHerdrPanes (loop end) owns closing them.
+  herdrPanes = { tester: testerStart.pane_id, coder: coderStart.pane_id };
 }
 
 // A contract cites one behavior, so without the plan's reference module the surrounding
@@ -452,6 +563,10 @@ for (const [index, unit] of units.entries()) {
   log(`${unit.id}: Red -> Green done (${completed.length}/${units.length}).`);
   await commitUnit(unit, tests, red.test_files || []);
 }
+
+// Every unit's implementation is done, so close the panes opened for codex-herdr. herdrPanes
+// stays null for a claude run, so this is a no-op there.
+await closeHerdrPanes();
 
 const VERIFY_SCHEMA = {
   type: "object",
