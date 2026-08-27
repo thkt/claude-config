@@ -204,12 +204,11 @@ const VERBATIM_TITLE_BODY = "both verbatim; do not summarize or reformat either"
 // each of the 2 call sites lets them drift, so it is held as one script constant instead
 // (docs/wiki/harness-production-divergence.md). ghStep / mcpStep are each call site's own
 // continuation once the route is decided.
-const ghOrMcpRoute = (issueNumber, ghStep, mcpStep) =>
+const ghOrMcpRoute = (ghStep, mcpStep) =>
   `check \`which gh\`. When gh is found, ${ghStep} When gh is missing, ${mcpStep}`;
 const fetched = await agent(
   anchor(
     `First ${ghOrMcpRoute(
-      issueNumber,
       `run exactly \`gh issue view ${issueNumber} --json title,body\` and return its title field as title and its body field as body, ${VERBATIM_TITLE_BODY}. If the command exits non-zero (issue not found / fetch failed), return found: false.`,
       `call the mcp__github__issue_read tool for issue ${issueNumber} in this repository instead, and return its title and body fields the same way, ${VERBATIM_TITLE_BODY}. If the tool call fails or the issue is not found, return found: false.`,
     )}`,
@@ -981,7 +980,6 @@ const [diff, testPresence, conformance, structure] = await parallel([
       anchor(
         `Conformance review against the originating issue. The spec is GitHub issue #${issueNumber}. ` +
           `${ghOrMcpRoute(
-            issueNumber,
             `run \`gh issue view ${issueNumber}\` and read its output as the spec.`,
             `call the mcp__github__issue_read tool for issue ${issueNumber} in this repository instead, and read its returned body as the spec.`,
           )} ` +
@@ -1253,7 +1251,6 @@ const ship = await agent(
       `- Fill Design Decisions from the actual diff; omit the section when the diff does not carry one rather than inventing. The plan holds no source for it.\n` +
       `(2) write this exact JSON to a temp file.\n${JSON.stringify(shipPayload)}\n` +
       `(3) append the fact tail, then open the pull request. ${ghOrMcpRoute(
-        issueNumber,
         `chain the append and \`gh pr create\` with \`&&\` so a renderer failure aborts before the PR is created; from the repository root run ` +
           `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{title}" --body-file {bodyfile}\`, where {title} is the title you settled in step (1). ` +
           `pr-body.py exits non-zero (writing nothing) if the payload is malformed or missing a required field; if the chain fails, do not create the PR by other means. Report committed with an empty pr_url and the error instead.`,

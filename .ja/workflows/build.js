@@ -199,12 +199,11 @@ const VERBATIM_TITLE_BODY = "いずれも逐語で返す。要約や整形をし
 // では同じ判定をしなければならない。2 箇所が読む経路の判定文を呼び出し元ごとに書き直すと
 // 食い違うので、1 つの script 定数として持つ (docs/wiki/harness-production-divergence.md)。
 // ghStep / mcpStep は経路が決まった後の各呼び出し元固有の続き。
-const ghOrMcpRoute = (issueNumber, ghStep, mcpStep) =>
+const ghOrMcpRoute = (ghStep, mcpStep) =>
   `\`which gh\` を確認する。gh があれば、${ghStep}gh が無ければ、${mcpStep}`;
 const fetched = await agent(
   anchor(
     `まず ${ghOrMcpRoute(
-      issueNumber,
       `\`gh issue view ${issueNumber} --json title,body\` を正確に実行し、その title フィールドを title として、body フィールドを body として、${VERBATIM_TITLE_BODY}。コマンドが非ゼロで終了した場合 (issue が無い / 取得失敗) は found: false を返す。`,
       `代わりに issue ${issueNumber} に対して mcp__github__issue_read ツールを呼び、同じように title と body を、${VERBATIM_TITLE_BODY}。ツール呼び出しが失敗するか issue が見つからない場合は found: false を返す。`,
     )}`,
@@ -956,7 +955,6 @@ const [diff, testPresence, conformance, structure] = await parallel([
       anchor(
         `起点 issue に対する conformance review。spec は GitHub issue #${issueNumber}。` +
           `${ghOrMcpRoute(
-            issueNumber,
             `\`gh issue view ${issueNumber}\` を実行し、その出力を spec として読む。`,
             `代わりに issue ${issueNumber} に対して mcp__github__issue_read ツールを呼び、返ってきた body を spec として読む。`,
           )} ` +
@@ -1218,7 +1216,6 @@ const ship = await agent(
       `- Design Decisions は実 diff から埋め、読み取れなければ節ごと省略する。plan に出どころは無い。\n` +
       `(2) この JSON をそのまま一時ファイルに書く。\n${JSON.stringify(shipPayload)}\n` +
       `(3) fact tail を追記し、pull request を開く。${ghOrMcpRoute(
-        issueNumber,
         `追記と \`gh pr create\` を \`&&\` で連結し、レンダラー失敗時は PR 作成前に中断させる。リポジトリルートから ` +
           `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{title}" --body-file {bodyfile}\` を実行する。{title} は手順 (1) で決めたタイトル。` +
           `pr-body.py は payload が壊れているか必須フィールドを欠くと非ゼロで終了する (何も出力しない)。チェーンが失敗したら他の手段で PR を作らない。committed と空の pr_url とエラーを報告する。`,
