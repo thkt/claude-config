@@ -47,22 +47,34 @@ ensure_agent_volume() {
   container volume create "$volume_name" >/dev/null 2>&1 || true
 }
 
-# Assembles and runs the ordinary (non-interactive) container invocation for a known agent
-# name (U-005).
-run_agent() {
-  local agent_name="$1" live_flag="${2:-}"
-  local auth_dir volume_name workspace_src
+# Shared by run_agent and run_login: resolves the agent's auth volume and issues `container
+# run` for it against the given workspace source, with any interactive-mode flags the caller
+# prepends. Keeping both callers' -v/--cap-add arguments in one place means a mount change
+# only has to be made once.
+run_container() {
+  local agent_name="$1" workspace_src="$2"
+  shift 2
+  local auth_dir volume_name
   auth_dir="$("$AGENTS" auth-dir "$agent_name")"
   volume_name="hako-${agent_name}-auth"
-  workspace_src="$(resolve_workspace_src "$live_flag")"
 
   ensure_agent_volume "$volume_name"
 
   container run \
+    "$@" \
     --cap-add NET_ADMIN \
     -v "$workspace_src:/workspace" \
     -v "$volume_name:$auth_dir" \
     "$IMAGE" "$agent_name"
+}
+
+# Assembles and runs the ordinary (non-interactive) container invocation for a known agent
+# name (U-005).
+run_agent() {
+  local agent_name="$1" live_flag="${2:-}"
+  local workspace_src
+  workspace_src="$(resolve_workspace_src "$live_flag")"
+  run_container "$agent_name" "$workspace_src"
 }
 
 # U-006: `hako.sh login <agent-name>` opens an interactive session so the agent's own login
@@ -73,20 +85,9 @@ run_agent() {
 # flag.
 run_login() {
   local agent_name="$1"
-  local auth_dir volume_name workspace_src
-  auth_dir="$("$AGENTS" auth-dir "$agent_name")"
-  volume_name="hako-${agent_name}-auth"
+  local workspace_src
   workspace_src="$(resolve_workspace_src "")"
-
-  ensure_agent_volume "$volume_name"
-
-  container run \
-    --interactive \
-    --tty \
-    --cap-add NET_ADMIN \
-    -v "$workspace_src:/workspace" \
-    -v "$volume_name:$auth_dir" \
-    "$IMAGE" "$agent_name"
+  run_container "$agent_name" "$workspace_src" --interactive --tty
 }
 
 main() {
