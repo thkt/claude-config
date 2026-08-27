@@ -18,6 +18,7 @@ from typing import Any
 
 import arms
 import dr_gate
+import enforcer_map
 import harness_elements
 import usage_counts
 import verdict
@@ -103,18 +104,17 @@ def build_report(
             "count": usage["transcript_count"],
             "date_range": usage["date_range"],
         },
+        "enforcer_rows": enforcer_map.map_all(root),
     }
 
 
 def _table(headers: tuple[str, ...], rows: list[tuple[str, ...]]) -> list[str]:
-    """The header + separator + data lines of an N-column Markdown table, factored out
-    because _render builds three of these (Summary, Harness Elements, Verdicts) from
-    differently-shaped inputs — one column pairing changed here changes all three. Column
-    count is read from `headers` alone, so Harness Elements' four columns (Path,
-    Classification, Fires, Last Used) and the other two-column tables share this one
-    renderer."""
-    lines = [f"| {' | '.join(headers)} |", f"| {' | '.join('---' for _ in headers)} |"]
-    lines += [f"| {' | '.join(row)} |" for row in rows]
+    """The header + separator + data lines of a Markdown table, factored out because _render
+    builds every section's table from differently-shaped inputs — one row-joining rule
+    changed here changes all of them. Column count comes from `headers`, so a two-column
+    caller and a wider one share the same rendering."""
+    lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
+    lines += ["| " + " | ".join(row) + " |" for row in rows]
     return lines
 
 
@@ -140,6 +140,7 @@ def _render(result: dict[str, Any]) -> str:
             ("Arms", str(len(result["arms"]))),
             ("Elements observed", str(len(result["verdicts"]))),
             ("Delete candidates", str(len(result["delete_candidates"]))),
+            ("Always-loaded lines mapped", str(len(result["enforcer_rows"]))),
             # Counted apart, since without this row the number is only reachable by
             # scanning the Verdicts table for the held literal.
             (
@@ -148,6 +149,21 @@ def _render(result: dict[str, Any]) -> str:
             ),
             ("Transcripts parsed", str(result["transcripts"]["count"])),
             ("Transcript date range", _date_range(result["transcripts"]["date_range"])),
+        ],
+    )
+    lines += [""]
+
+    lines += ["## Always-Loaded Elements", ""]
+    lines += _table(
+        ("File", "Line", "Verdict", "Enforcer"),
+        [
+            (
+                row["file"],
+                str(row["line_number"]),
+                row["verdict"],
+                row.get("enforcer", ""),
+            )
+            for row in result["enforcer_rows"]
         ],
     )
     lines += [""]
