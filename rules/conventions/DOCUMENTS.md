@@ -23,12 +23,11 @@ Settle which document a newly written thing goes into. Four documents divide the
 
 1. The rule itself goes to `rules/`. The rationale for choosing that rule goes to a decision record
 2. A decision record declares `scope:` in its frontmatter
-3. When a same-scope cluster spans repositories and is still open, write the common directive into `rules/` and cross-link it from the source records. The source records stay in place as the historical rationale, which keeps decision records immutable
-4. Project-specific state goes to `CLAUDE.md`. State that generalizes across projects is promoted to a decision record or to `rules/`
-5. The wiki states the present shape a decision produced. It writes down neither the record's rationale nor its alternatives, and names the record in the 由来 section instead
-6. A wiki page names a record in 由来 only when the counterfactual test holds: were that record replaced, would this page need rewriting? Only Yes adds the link
-7. When a record is replaced, the pages naming it in 由来 are rewritten in the same change unit. Relinking is not enough; check whether the body still holds
-8. The wiki's 共通項 pages are extracted from past PRs and issues. A `kind: structure` page covers one glob-able contract group, raised from the decision records and the code, then reviewed by a human
+3. Project-specific state goes to `CLAUDE.md`. State that generalizes across projects is promoted to a decision record or to `rules/`
+4. The wiki states the present shape a decision produced. It writes down neither the record's rationale nor its alternatives, and names the record in the 由来 section instead
+5. A wiki page names a record in 由来 only when the counterfactual test holds: were that record replaced, would this page need rewriting? Only Yes adds the link
+6. When a record is replaced, the pages naming it in 由来 are rewritten in the same change unit. Relinking is not enough; check whether the body still holds
+7. The wiki's 共通項 pages are extracted from past PRs and issues. A `kind: structure` page covers one glob-able contract group, raised from the decision records and the code, then reviewed by a human
 
 ## When two documents overlap
 
