@@ -4,9 +4,10 @@
 CLI のエントリポイントではない。skills/ablate/SKILL.md はこのモジュールを script として
 呼ぶのでなく、下の `build_report` と `write_report` を import して使う
 (docs/wiki/deterministic-script-judgment.md 「入力から一意に決まる判定は script に置く」—
-列挙・アーム一覧・verdict 分類はすでにそれぞれの script が持っており、このモジュール自身の
-仕事はその 3 つを順に呼んで結果を呼び出し側へ渡すことだけで、それらの定数をここで再導出
-しない。これは verdict.py の `from arms import UNMEASURED` という兄弟 import の形に倣う)。
+列挙・アーム一覧・verdict 分類・usage 集計はすでにそれぞれの script が持っており、この
+モジュール自身の仕事はその 4 つを順に呼んで結果を呼び出し側へ渡すことだけで、それらの定数を
+ここで再導出しない。これは verdict.py の `from arms import UNMEASURED` という兄弟 import
+の形に倣う)。
 
 呼び出し側の契約: 呼び出し側 (現在は skills/ablate/tests/report_test.py、いずれ
 skills/ablate/SKILL.md) が、このモジュールのディレクトリと skills/_lib を import 前に
@@ -22,7 +23,13 @@ from typing import Any
 
 import arms
 import harness_elements
+import usage_counts
 import verdict
+
+# usage_counts.py 自身の docstring は自らの transcripts root を「実行側の `projects/`
+# ディレクトリ」とだけ名指し、パスそのものは書かない。ここがそのパスで、build_report と
+# 将来のどの呼び出し側もこの 1 箇所を読むだけで済むよう、ここに 1 度だけ持つ。
+TRANSCRIPTS_ROOT = Path.home() / ".claude" / "projects"
 
 # ablation apparatus 自身の script tree。ここ配下のパスは観測を生成したコードそのものであり
 # 検査対象の harness 要素ではないため、delete_candidates に決して現れてはならない —
@@ -42,18 +49,23 @@ def _is_apparatus(path: str) -> bool:
 
 
 def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, Any]:
-    """前段の 3 ユニットを順に呼び、その出力を結線する。
+    """前段の 4 ユニットを順に呼び、その出力を結線する。
 
     1. harness_elements.enumerate_elements(root) — harness の全母集団と各要素の分類。
     2. arms.ARMS — この ablation 実行が比較するすべてのアーム。
     3. observation ごとの verdict.classify(...) — その observation が報告する要素の
        delete-candidate / needs-human-judgment / unmeasured ラベル。
+    4. usage_counts.count_usage(TRANSCRIPTS_ROOT) — 各要素の実際の発火回数と最終発火日を、
+       `observations` からでなくセッションのトランスクリプトから読む (このユニットの契約:
+       ablation アームを走らせなくても読み手がレポートから usage を読める)。
 
-    レポート文字列でなく素の dict (elements / arms / verdicts / delete_candidates) を返す
-    ため、データだけを必要とする呼び出し側 (このユニットのテスト、いずれ U-009 から U-011 が
-    足す enforcer / DR ゲートの結線) は write_report の出力から Markdown を読み戻さずに済む。
+    レポート文字列でなく素の dict (elements / arms / verdicts / delete_candidates / usage)
+    を返すため、データだけを必要とする呼び出し側 (このユニットのテスト、いずれ U-009 から
+    U-011 が足す enforcer / DR ゲートの結線) は write_report の出力から Markdown を読み戻さ
+    ずに済む。
     """
     elements = harness_elements.enumerate_elements(root)
+    usage = usage_counts.count_usage(TRANSCRIPTS_ROOT)
 
     verdicts: dict[str, str] = {}
     for observation in observations:
@@ -74,20 +86,23 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
         "arms": list(arms.ARMS),
         "verdicts": verdicts,
         "delete_candidates": sorted(delete_candidates),
+        "usage": usage["elements"],
     }
 
 
-def _table(headers: tuple[str, str], rows: list[tuple[str, str]]) -> list[str]:
-    """2 列 Markdown 表の見出し行、区切り行、データ行。_render がこの形の表を 3 つ
+def _table(headers: tuple[str, ...], rows: list[tuple[str, ...]]) -> list[str]:
+    """N 列 Markdown 表の見出し行、区切り行、データ行。_render がこの形の表を 3 つ
     (Summary、Harness Elements、Verdicts) 別々の入力から組むので切り出した。ここで
-    列の組み方を 1 箇所変えると 3 つとも変わる。"""
-    lines = [f"| {headers[0]} | {headers[1]} |", "| --- | --- |"]
-    lines += [f"| {a} | {b} |" for a, b in rows]
+    列の組み方を 1 箇所変えると 3 つとも変わる。列数は `headers` だけから読むため、
+    Harness Elements の 4 列 (Path、Classification、Fires、Last Used) も他の 2 列の表も
+    この 1 つの描画関数を共有する。"""
+    lines = [f"| {' | '.join(headers)} |", f"| {' | '.join('---' for _ in headers)} |"]
+    lines += [f"| {' | '.join(row)} |" for row in rows]
     return lines
 
 
 def _render(result: dict[str, Any]) -> str:
-    """`build_report` の結果を Markdown として描画する。build_report が返す 4 つの key
+    """`build_report` の結果を Markdown として描画する。build_report が返す 5 つの key
     だけを読み、呼び出し側が渡した生の `observations` は決して読まないため、observation が
     自分の由来を示すために持つフィールド (実行に使われた settings のスナップショットなど) が
     書き出されたレポートに (逐語的にであれ) 混入することはない (T-014)。"""
@@ -106,9 +121,18 @@ def _render(result: dict[str, Any]) -> str:
     lines += [""]
 
     lines += ["## Harness Elements", ""]
+    usage = result.get("usage", {})
     lines += _table(
-        ("Path", "Classification"),
-        [(element["path"], element["classification"]) for element in result["elements"]],
+        ("Path", "Classification", "Fires", "Last Used"),
+        [
+            (
+                element["path"],
+                element["classification"],
+                str(usage.get(element["path"], {}).get("fires", 0)),
+                usage.get(element["path"], {}).get("last_used") or "never",
+            )
+            for element in result["elements"]
+        ],
     )
     lines += [""]
 

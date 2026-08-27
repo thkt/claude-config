@@ -81,9 +81,8 @@ class LabelFires(unittest.TestCase):
         self,
     ) -> None:
         """T-007 A fire whose command is a label rather than a path is left out of the tally"""
-        # "formatter" and "gates changed" are command values this session measured in real
-        # transcripts. Neither names a harness element, so counting them would put a key in
-        # the tally that no element in harness_elements' population can ever join to.
+        # "formatter" is a command value measured in real transcripts. It names no harness
+        # element, so counting it would put a key in the tally that nothing can join to.
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_transcript(
@@ -114,9 +113,8 @@ class RareByDesign(unittest.TestCase):
     ) -> None:
         """T-002 An element flagged rare-by-design is not reported as a delete candidate at
         zero fires"""
-        # rules/PRINCIPLES.md Reuse Ordering / docs/wiki/harness-production-divergence.md:
-        # the rare-by-design set is a script constant, so this test patches it rather than
-        # relying on whatever paths usage_counts.py ships with.
+        # Patched rather than read from whatever paths the module ships with, so shipping a
+        # different set cannot silently turn this case into a no-op.
         rare_path = "hooks/security/rm_to_trash.py"
         with patch.object(usage_counts, "RARE_BY_DESIGN", frozenset({rare_path})):
             verdict = usage_counts.classify(
@@ -132,10 +130,8 @@ class MeasurementWindow(unittest.TestCase):
     ) -> None:
         """T-003 An element last used outside the measurement window is reported as
         unmeasured"""
-        # Lowering MEASUREMENT_WINDOW_DAYS must change which elements this reports as
-        # unmeasured (issue #487 Testing Decisions: "計測窓の定数を動かすと、未計測として
-        # 報告される要素が変わることを固定する"), so the window is patched rather than
-        # hand-picked to already exceed whatever default the module ships with.
+        # Patched rather than hand-picking a date that already exceeds the shipped default,
+        # so moving the constant is what decides the verdict.
         with patch.object(usage_counts, "MEASUREMENT_WINDOW_DAYS", 30):
             stale_last_used = date(2026, 1, 1).isoformat()  # outside a 30-day window
             verdict = usage_counts.classify(

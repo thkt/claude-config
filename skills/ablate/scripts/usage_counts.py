@@ -5,10 +5,8 @@ Reads every session transcript under the transcripts root the caller passes (the
 side's `projects/` directory) and counts, per harness element, how many PreToolUse/PostToolUse
 hook fires named it and the most recent date one did.
 
-Not a CLI entry point: skills/ablate/SKILL.md imports this module for the constants and
-functions below, mirroring arms.py / verdict.py's own docstring convention
-(docs/wiki/deterministic-script-judgment.md — thresholds and the required set live here as
-script constants, not as prose in SKILL.md).
+The measurement window and the rare-by-design set live here as script constants, never as
+prose in SKILL.md (docs/wiki/deterministic-script-judgment.md).
 """
 
 from __future__ import annotations
@@ -24,22 +22,13 @@ from typing import TypedDict
 from arms import UNMEASURED
 from verdict import DELETE_CANDIDATE, NEEDS_HUMAN_JUDGMENT
 
-# A real transcript records one hook fire as a top-level "attachment" object whose
-# hookEvent names the event and whose command names the fired script (confirmed by reading
-# a live transcript under the running side's projects/ directory in this session:
-# attachment.type
-# "hook_success", attachment.hookEvent "PreToolUse", attachment.command
-# "${CLAUDE_PLUGIN_ROOT}/hooks/context-gate.sh", sibling top-level "timestamp"). The
-# contract also names "hookSpecificOutput" records; no attachment sampled in this session
-# carried that key, so reading it is deferred rather than guessed at (see this unit's
-# reported deferred list).
+# The plan's contract also names "hookSpecificOutput" records. No attachment sampled in this
+# session carried that key, so reading it is deferred rather than guessed at.
 FIRE_EVENTS = frozenset({"PreToolUse", "PostToolUse"})
 
-# A transcript's `command` is the string the harness invoked: either a path running through
-# the .claude directory (a tilde- or $HOME-anchored one, spelled out in this module's tests)
-# or one starting from an unexpanded plugin variable ("${CLAUDE_PLUGIN_ROOT}/hooks/
-# context-gate.sh"), both measured in this session. A harness element is named by its
-# repo-root-relative path. Without dropping the lead-in, neither RARE_BY_DESIGN nor
+# A `command` carries the lead-in the harness invoked it through: a path running through the
+# .claude directory, or one starting from an unexpanded plugin variable. A harness element is
+# named repo-root-relative, so without dropping that lead-in neither RARE_BY_DESIGN nor
 # harness_elements' population matches a single key.
 _CLAUDE_DIR_MARKER = "/.claude/"
 _VARIABLE_PREFIX_RE = re.compile(r"^\$\{[A-Z_]+\}/")
@@ -49,19 +38,13 @@ _VARIABLE_PREFIX_RE = re.compile(r"^\$\{[A-Z_]+\}/")
 # and a label names no harness element, so it stays out of the tally.
 ELEMENT_SUFFIXES = frozenset({".py", ".sh", ".js"})
 
-# Elements expected to fire rarely by their own design — a safety net exercised only on an
-# uncommon input, not a frequently-run path — held as a script constant per
-# docs/wiki/harness-production-divergence.md so the set is read, not hand-copied. Zero
-# fires here must not read as "unused" (T-002). hooks/security/rm_to_trash.py fires only
-# when a destructive command is attempted (skills/ablate/scripts/../../hooks/security/
-# rm_to_trash.py: "Failure mode: fail-closed (security enforcement)"), so most sessions
-# never trigger it.
+# Safety nets exercised only on an uncommon input, where zero fires must not read as unused.
+# hooks/security/rm_to_trash.py fires only when a destructive command is attempted ("Failure
+# mode: fail-closed (security enforcement)"), so most sessions never trigger it.
 RARE_BY_DESIGN: frozenset[str] = frozenset({"hooks/security/rm_to_trash.py"})
 
 # How many days back from `now` a most-recent fire still counts as observed. Past this
-# window, an element reports as unmeasured rather than keeping a stale last-used date alive
-# (T-003; issue #487 Testing Decisions asks that moving this constant change which elements
-# report as unmeasured, which is why the test patches it rather than picking a stale date).
+# window an element reports as unmeasured, rather than keeping a stale last-used date alive.
 MEASUREMENT_WINDOW_DAYS = 90
 
 
@@ -79,12 +62,8 @@ class UsageResult(TypedDict):
 
 def element_path(command: str) -> str | None:
     """The repo-root-relative path of the element `command` fired, or None when it names no
-    element.
-
-    Drops the prefix, then treats the remainder as a path only when it carries an
-    ELEMENT_SUFFIXES suffix. An absolute path, or one still leading with an unexpanded
-    variable, has no repo-root-relative form, so it returns None.
-    """
+    element. An absolute path, or one still leading with an unexpanded variable, has no
+    repo-root-relative form, so it too returns None."""
     text = command.strip()
     cut = text.find(_CLAUDE_DIR_MARKER)
     text = text[cut + len(_CLAUDE_DIR_MARKER) :] if cut != -1 else _VARIABLE_PREFIX_RE.sub("", text)
@@ -107,10 +86,9 @@ def _parse_date(timestamp: str) -> date | None:
 
 def _iter_fires(path: Path) -> Iterator[tuple[str, date]]:
     """Yields (element_path, fire_date) once per PreToolUse/PostToolUse fire record in one
-    transcript file. A line that fails to parse, or an attachment missing hookEvent /
-    command / timestamp, contributes nothing rather than raising — a transcript is written
-    by another process while this reads it, so a partial last line is expected, not
-    exceptional."""
+    transcript file. A malformed or incomplete record contributes nothing rather than
+    raising: another process writes the transcript while this reads it, so a partial last
+    line is expected."""
     with path.open(encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
@@ -151,8 +129,7 @@ def count_usage(root: Path) -> UsageResult:
         try:
             fires = list(_iter_fires(transcript))
         except OSError:
-            # One unreadable transcript (permissions, mid-write removal) must not stop the
-            # count over the rest (list-source-files.py's own one-bad-file tolerance).
+            # One unreadable transcript must not stop the count over the rest.
             continue
         for element, fire_date in fires:
             entry = elements.setdefault(element, {"fires": 0, "last_used": None})
@@ -176,13 +153,11 @@ def count_usage(root: Path) -> UsageResult:
     }
 
 
-# Read top to bottom; take the first row that matches, mirroring verdict.py's own table
-# shape. RARE_BY_DESIGN is checked before the fire count so a rare element never reaches
-# DELETE_CANDIDATE through the zero-fires row below it. The window check sits under
-# `fires > 0`, never under `fires == 0`: zero fires always pairs with last_used=None (only a
-# fire sets last_used), so a "last_used is None" row above the zero-fires row would swallow
-# every zero-fire element into UNMEASURED and make DELETE_CANDIDATE unreachable — caught by
-# this unit's own break-the-implementation pass on T-002 (docs/wiki/brittle-test-removal.md).
+# Read top to bottom; take the first row that matches. The order is load-bearing twice over:
+# RARE_BY_DESIGN sits above the zero-fires row so a rare element never reaches
+# DELETE_CANDIDATE, and the last_used check sits under `fires > 0` because zero fires always
+# pairs with last_used=None, which a row above would swallow into UNMEASURED and leave
+# DELETE_CANDIDATE unreachable.
 #
 # | Condition | Verdict |
 # | --- | --- |
@@ -192,11 +167,9 @@ def count_usage(root: Path) -> UsageResult:
 # | fires > 0 and last_used falls inside MEASUREMENT_WINDOW_DAYS | NEEDS_HUMAN_JUDGMENT |
 # | fires == 0 | DELETE_CANDIDATE |
 def classify(path: str, *, fires: int, last_used: str | None, now: date) -> str:
-    """Assigns one element's usage observation to DELETE_CANDIDATE, NEEDS_HUMAN_JUDGMENT,
-    or UNMEASURED, per the table above. Reads RARE_BY_DESIGN and MEASUREMENT_WINDOW_DAYS
-    from the module namespace (not captured defaults) so patching either at runtime changes
-    the verdict this returns, the same shape arms.measurement_status relies on for
-    RUN_COUNT."""
+    """Assigns one element's usage observation a verdict, per the table above. Reads
+    RARE_BY_DESIGN and MEASUREMENT_WINDOW_DAYS from the module namespace rather than as
+    captured defaults, so patching either at run time changes the verdict returned."""
     if path in RARE_BY_DESIGN:
         return NEEDS_HUMAN_JUDGMENT
     if fires > 0:
