@@ -18,6 +18,7 @@ from typing import Any
 
 import arms
 import dr_gate
+import enforcer_map
 import harness_elements
 import verdict
 
@@ -70,20 +71,24 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
         "arms": list(arms.ARMS),
         "verdicts": verdicts,
         "delete_candidates": sorted(delete_candidates),
+        "enforcer_rows": enforcer_map.map_all(root),
     }
 
 
-def _table(headers: tuple[str, str], rows: list[tuple[str, str]]) -> list[str]:
-    """The header + separator + data lines of a two-column Markdown table, factored out
-    because _render builds three of these (Summary, Harness Elements, Verdicts) from
-    differently-shaped inputs — one column pairing changed here changes all three."""
-    lines = [f"| {headers[0]} | {headers[1]} |", "| --- | --- |"]
-    lines += [f"| {a} | {b} |" for a, b in rows]
+def _table(headers: tuple[str, ...], rows: list[tuple[str, ...]]) -> list[str]:
+    """The header + separator + data lines of a Markdown table, factored out because
+    _render builds five of these (Summary, Harness Elements, Verdicts, Always-Loaded
+    Elements, and — via the two-column callers above — every other section) from
+    differently-shaped inputs — one row-joining rule changed here changes all of them.
+    Column count comes from `headers`, so a 2-column caller and this unit's 4-column
+    Always-Loaded Elements table share the same rendering."""
+    lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
+    lines += ["| " + " | ".join(row) + " |" for row in rows]
     return lines
 
 
 def _render(result: dict[str, Any]) -> str:
-    """Renders `build_report`'s result as Markdown. Reads only the four keys build_report
+    """Renders `build_report`'s result as Markdown. Reads only the keys build_report
     returns — never the raw `observations` a caller passed in — so a field an observation
     carries for its own provenance (such as the settings snapshot a run used) can never
     reach the written report, verbatim or otherwise (T-014)."""
@@ -97,12 +102,28 @@ def _render(result: dict[str, Any]) -> str:
             ("Arms", str(len(result["arms"]))),
             ("Elements observed", str(len(result["verdicts"]))),
             ("Delete candidates", str(len(result["delete_candidates"]))),
+            ("Always-loaded lines mapped", str(len(result["enforcer_rows"]))),
             # Counted apart, since without this row the number is only reachable by
             # scanning the Verdicts table for the held literal.
             (
                 "Held by a live DR",
                 str(sum(1 for v in result["verdicts"].values() if v == dr_gate.HELD)),
             ),
+        ],
+    )
+    lines += [""]
+
+    lines += ["## Always-Loaded Elements", ""]
+    lines += _table(
+        ("File", "Line", "Verdict", "Enforcer"),
+        [
+            (
+                row["file"],
+                str(row["line_number"]),
+                row["verdict"],
+                row.get("enforcer", ""),
+            )
+            for row in result["enforcer_rows"]
         ],
     )
     lines += [""]

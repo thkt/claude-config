@@ -18,6 +18,7 @@ from typing import Any
 
 import arms
 import dr_gate
+import enforcer_map
 import harness_elements
 import verdict
 
@@ -70,21 +71,24 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
         "arms": list(arms.ARMS),
         "verdicts": verdicts,
         "delete_candidates": sorted(delete_candidates),
+        "enforcer_rows": enforcer_map.map_all(root),
     }
 
 
-def _table(headers: tuple[str, str], rows: list[tuple[str, str]]) -> list[str]:
-    """2 列 Markdown 表の見出し行、区切り行、データ行。_render がこの形の表を 3 つ
-    (Summary、Harness Elements、Verdicts) 別々の入力から組むので切り出した。ここで
-    列の組み方を 1 箇所変えると 3 つとも変わる。"""
-    lines = [f"| {headers[0]} | {headers[1]} |", "| --- | --- |"]
-    lines += [f"| {a} | {b} |" for a, b in rows]
+def _table(headers: tuple[str, ...], rows: list[tuple[str, ...]]) -> list[str]:
+    """Markdown 表の見出し行、区切り行、データ行。_render がこの形の表を 5 つ
+    (Summary、Harness Elements、Verdicts、Always-Loaded Elements、そして上の 2 列呼び出し側
+    経由で他のすべての節) 別々の入力から組むので切り出した。ここで行の連結ルールを 1 箇所
+    変えるとそのすべてが変わる。列数は `headers` から決まるため、2 列の呼び出し側とこの
+    ユニットの 4 列 Always-Loaded Elements 表が同じ描画を共有する。"""
+    lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
+    lines += ["| " + " | ".join(row) + " |" for row in rows]
     return lines
 
 
 def _render(result: dict[str, Any]) -> str:
-    """`build_report` の結果を Markdown として描画する。build_report が返す 4 つの key
-    だけを読み、呼び出し側が渡した生の `observations` は決して読まないため、observation が
+    """`build_report` の結果を Markdown として描画する。build_report が返す key だけを
+    読み、呼び出し側が渡した生の `observations` は決して読まないため、observation が
     自分の由来を示すために持つフィールド (実行に使われた settings のスナップショットなど) が
     書き出されたレポートに (逐語的にであれ) 混入することはない (T-014)。"""
     lines: list[str] = ["# Ablation Report", ""]
@@ -97,12 +101,28 @@ def _render(result: dict[str, Any]) -> str:
             ("Arms", str(len(result["arms"]))),
             ("Elements observed", str(len(result["verdicts"]))),
             ("Delete candidates", str(len(result["delete_candidates"]))),
+            ("Always-loaded lines mapped", str(len(result["enforcer_rows"]))),
             # 別に数える。この行が無いと、Verdicts の表を held の文字列で走査しない限り
             # 件数が分からない。
             (
                 "Held by a live DR",
                 str(sum(1 for v in result["verdicts"].values() if v == dr_gate.HELD)),
             ),
+        ],
+    )
+    lines += [""]
+
+    lines += ["## Always-Loaded Elements", ""]
+    lines += _table(
+        ("File", "Line", "Verdict", "Enforcer"),
+        [
+            (
+                row["file"],
+                str(row["line_number"]),
+                row["verdict"],
+                row.get("enforcer", ""),
+            )
+            for row in result["enforcer_rows"]
         ],
     )
     lines += [""]
