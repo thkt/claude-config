@@ -63,6 +63,15 @@ const PLAN_QUALITY = {
   "plan-drift": true,
   "code-failed": false,
 };
+// record.py の stdout が path/run_id と並べて持つ window tally の key。型をここで 1 度だけ
+// 名付け、下の RECORD_SCHEMA の properties をそこから導くことで、key の追加・改名・型変更で
+// 両者がずれるのを防ぐ。
+const RECORD_COUNT_TYPES = {
+  started: "number",
+  stops: "number",
+  trigger_met: "boolean",
+  skipped_lines: "number",
+};
 // このブロックは obj() より前に置くので、schema は組み立てずに直に書く。
 const RECORD_SCHEMA = {
   type: "object",
@@ -71,11 +80,20 @@ const RECORD_SCHEMA = {
   properties: {
     path: { type: "string", description: "record.py の stdout JSON の path をそのまま" },
     run_id: { type: "string", description: "record.py の stdout JSON の run_id をそのまま" },
+    // window tally の 4 key は optional。RUNS_PATH を読み返せない run では 4 つとも
+    // 揃って落ちる (record.py の count_plan_quality_stops の docstring)。
+    ...Object.fromEntries(
+      Object.entries(RECORD_COUNT_TYPES).map(([key, type]) => [
+        key,
+        { type, description: `record.py の stdout JSON の ${key} をそのまま、存在すれば` },
+      ]),
+    ),
   },
 };
 // workflow script は時計を持たず、乱数も引けない (rules/conventions/WORKFLOWS.md § Script
 // evaluation form) ので、runId は record.py が発行する。
 let runId = "";
+let recordedCounts = {};
 // anchor より上の gate は行を残さずに返る。plan 品質の信号ではなく、記録の agent を固定する
 // リポジトリも無い。
 let recordable = false;
@@ -95,8 +113,8 @@ const recordRun = async (reason, fields = {}) => {
     anchor(
       `build の 1 実行を記録する。値を判断・要約・編集しない。手順は、(1) この JSON をそのまま一時ファイルへ書く。` +
         `(2) \`python3 ${bundled("workflows/build/record.py")} < <tempfile>\` を実行する。` +
-        `(3) script の stdout の run_id と path をそのまま返す。` +
-        `script は {"path":...,"run_id":...} を出力する。\n` +
+        `(3) script の stdout の path、run_id、started、stops、trigger_met、skipped_lines をそのまま返す。後ろの 4 つは stdout に無ければ省く。` +
+        `script は {"path":...,"run_id":...,"started":...,"stops":...,"trigger_met":...,"skipped_lines":...} を出力する。\n` +
         `入力 JSON は次のとおり。\n${JSON.stringify(payload)}`,
     ),
     {
@@ -115,11 +133,22 @@ const recordRun = async (reason, fields = {}) => {
     return;
   }
   runId = id;
+  recordedCounts = {};
+  for (const [key, type] of Object.entries(RECORD_COUNT_TYPES))
+    if (typeof written[key] === type) recordedCounts[key] = written[key];
+  // skipped_lines は構造化された返り値の件数として loss granularity を既に持つので、
+  // 0 でなくても log() への複写は要らない (WORKFLOWS.md § Degradation recording)。
+  // tally がまるごと無い、つまり記録側 agent の relay 失敗だけを run log に残す。
+  if (Object.keys(recordedCounts).length === 0) {
+    log(
+      `"${reason}" の行の window tally が record.py から届かなかったので、この run の返り値に started/stops/trigger_met/skipped_lines は無い。`,
+    );
+  }
 };
 // stopped の返り値はここでしか組み立てない。行を残さずに抜ける停止を作れない。
 const stop = async (reason, fields = {}, recordFields = {}) => {
   if (recordable) await recordRun(reason, recordFields);
-  return { stopped: reason, ...fields };
+  return { stopped: reason, ...recordedCounts, ...fields };
 };
 
 if (!issueRef || !issueNumber) {
@@ -1220,6 +1249,9 @@ const ship = await agent(
 return {
   issue: issueNumber,
   branch,
+  // 同じ window tally を stop() のすべての stopped 返り値にも spread している。finished
+  // run は recordRun をもう一度呼ばないので、自分の start row が読んだ件数をそのまま返す。
+  ...recordedCounts,
   units_completed: code.completed.length,
   code_anomalies: (code.anomalies || []).length,
   code_verified: code.tests_pass && code.gates_pass,

@@ -142,6 +142,77 @@ class CliTest(unittest.TestCase):
             self.assertEqual(result.stdout, "")
             self.assertFalse((Path(home) / ".claude" / "history" / "build-runs.jsonl").exists())
 
+    def _seed_history(self, home: str, lines: list[str]) -> Path:
+        """Write raw lines straight to build-runs.jsonl, bypassing the CLI, so a test can
+        control exactly what the script finds on its next read."""
+        path = Path(home) / ".claude" / "history" / "build-runs.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _ = path.write_text("".join(f"{line}\n" for line in lines))
+        return path
+
+    def _row(self, run_id: str, reason: str, plan_quality: bool = False) -> str:
+        return json.dumps({"run_id": run_id, "reason": reason, "plan_quality": plan_quality})
+
+    def test_window_counts_plan_quality_stops_among_last_20_started_runs(self) -> None:
+        """T-004: the stdout counts the plan-quality stops among the last 20 started runs
+        and reports trigger_met true at three."""
+        with tempfile.TemporaryDirectory() as home:
+            # run-old sits before the 20-row window: it carries a plan-quality stop that
+            # must NOT be counted once 20 more recent started rows have pushed it out.
+            lines = [self._row("run-old", "started"), self._row("run-old", "no-plan", True)]
+            for i in range(19):
+                run_id = f"run-{i}"
+                lines.append(self._row(run_id, "started"))
+                if i < 3:
+                    lines.append(self._row(run_id, "no-plan", True))
+            self._seed_history(home, lines)
+
+            # The appended row is the window's 20th started run (run-old plus these 19,
+            # plus this one, with run-old aged out).
+            result = self._run({**PAYLOAD, "reason": "started", "plan_quality": False}, home)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            row = loaded(result.stdout)
+            self.assertEqual(row["started"], 20)
+            self.assertEqual(row["stops"], 3)
+            self.assertIs(row["trigger_met"], True)
+
+    def test_first_started_row_reports_zero_stops_and_trigger_not_met(self) -> None:
+        """T-005: a history whose only row is the started row just appended reports one
+        started run, zero stops, and trigger_met false."""
+        with tempfile.TemporaryDirectory() as home:
+            result = self._run({**PAYLOAD, "reason": "started", "plan_quality": False}, home)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            row = loaded(result.stdout)
+            self.assertEqual(row["started"], 1)
+            self.assertEqual(row["stops"], 0)
+            self.assertIs(row["trigger_met"], False)
+
+    def test_unparseable_line_is_excluded_from_counts_and_raises_skipped_lines(self) -> None:
+        """T-006: a line that does not parse as JSON stays out of the counts and raises
+        skipped_lines by one."""
+        with tempfile.TemporaryDirectory() as home:
+            self._seed_history(home, ["{not valid json", self._row("run-pre", "started")])
+            result = self._run({**PAYLOAD, "reason": "started", "plan_quality": False}, home)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            row = loaded(result.stdout)
+            # 2, not 3: the malformed line is skipped rather than miscounted as a started row.
+            self.assertEqual(row["started"], 2)
+            self.assertEqual(row["skipped_lines"], 1)
+
+    def test_unreadable_history_still_reports_path_and_run_id(self) -> None:
+        """T-007: a history the script cannot read still prints path and run_id and exits 0."""
+        with tempfile.TemporaryDirectory() as home:
+            path = self._seed_history(home, [self._row("run-pre", "started")])
+            path.chmod(0o200)  # write-only: append still works, read-back for counting cannot
+            try:
+                result = self._run({**PAYLOAD, "reason": "started", "plan_quality": False}, home)
+            finally:
+                path.chmod(0o600)  # restore so TemporaryDirectory cleanup can remove it
+            self.assertEqual(result.returncode, 0, result.stderr)
+            row = loaded(result.stdout)
+            self.assertEqual(row["path"], str(path))
+            self.assertTrue(row["run_id"])
+
 
 if __name__ == "__main__":
     _ = unittest.main()
