@@ -520,12 +520,17 @@ if (!plan) {
 // the whole fencedBody, so a template quotation used as prose elsewhere is never counted as a
 // hit. Fills only when planSection carries exactly one reference_module line, and only
 // kind/reason - it never fabricates path.
+// Both quoted and bare: `/think` writes the line as `{ kind: no-module, reason: ... }` with no
+// quotes, so a quoted-only pattern fills nothing on the very bodies this fallback exists for.
+// reason runs to the closing brace because it carries prose, commas and all.
+const REFERENCE_MODULE_KIND_RE = /kind:\s*"?([A-Za-z][\w-]*)"?/;
+const REFERENCE_MODULE_REASON_RE = /reason:\s*"?([\s\S]*?)"?\s*\}?\s*$/;
 const REFERENCE_MODULE_LINE_RE = /^reference_module:[ \t]*(.+)$/gm;
 const refModuleLines = [...planSection.matchAll(REFERENCE_MODULE_LINE_RE)];
 if (refModuleLines.length === 1) {
   const refModuleLine = refModuleLines[0][1].trim();
-  const kindMatch = refModuleLine.match(/kind:\s*"([^"]*)"/);
-  const reasonMatch = refModuleLine.match(/reason:\s*"([^"]*)"/);
+  const kindMatch = refModuleLine.match(REFERENCE_MODULE_KIND_RE);
+  const reasonMatch = refModuleLine.match(REFERENCE_MODULE_REASON_RE);
   // Legacy compat (DR-0093): the pre-split body writes `null (reason)` prose with no kind at
   // all; "no-module" is the closest reading of a plan that only ever recorded a reason.
   const legacyMatch = kindMatch ? null : refModuleLine.match(/^null\s*\(([\s\S]*)\)$/);

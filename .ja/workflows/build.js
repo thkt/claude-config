@@ -504,12 +504,17 @@ if (!plan) {
 // 絞った行頭アンカー付き正規表現で、本文中の他所にあるテンプレート引用を一致に数えない。
 // planSection に reference_module 行がちょうど1件あるときだけ補完し、補完するのは
 // kind/reason だけで path は作らない。
+// クォートの有無どちらも取る。`/think` はこの行を `{ kind: no-module, reason: ... }` と
+// クォート無しで書くので、クォート前提の式ではこの補完が存在する理由である本文で何も埋まらない。
+// reason は散文でコンマを含むため、閉じ波括弧まで取る。
+const REFERENCE_MODULE_KIND_RE = /kind:\s*"?([A-Za-z][\w-]*)"?/;
+const REFERENCE_MODULE_REASON_RE = /reason:\s*"?([\s\S]*?)"?\s*\}?\s*$/;
 const REFERENCE_MODULE_LINE_RE = /^reference_module:[ \t]*(.+)$/gm;
 const refModuleLines = [...planSection.matchAll(REFERENCE_MODULE_LINE_RE)];
 if (refModuleLines.length === 1) {
   const refModuleLine = refModuleLines[0][1].trim();
-  const kindMatch = refModuleLine.match(/kind:\s*"([^"]*)"/);
-  const reasonMatch = refModuleLine.match(/reason:\s*"([^"]*)"/);
+  const kindMatch = refModuleLine.match(REFERENCE_MODULE_KIND_RE);
+  const reasonMatch = refModuleLine.match(REFERENCE_MODULE_REASON_RE);
   // 旧形式との互換 (DR-0093): 分割前の本文は kind を持たない `null (理由)` の散文で書く。
   // reason しか記録していなかった plan の読み替えとして "no-module" が最も近い。
   const legacyMatch = kindMatch ? null : refModuleLine.match(/^null\s*\(([\s\S]*)\)$/);

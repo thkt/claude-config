@@ -469,6 +469,31 @@ test("the fill reads kind and reason off the body line when the extraction omits
   );
 });
 
+// Every fixture above quotes the values, but /think writes the line bare
+// (`{ kind: no-module, reason: ... }`) and issue #535's own repro is in that form. A
+// quoted-only pattern fills nothing on exactly the bodies this fallback exists for.
+test("the fill reads an unquoted kind and reason, the form /think writes", async () => {
+  const reason = "lint 適合の機械的修正で、複製すべき既存モジュールの層構成が無い";
+  const body = bodyWithRefModule(`reference_module: { kind: no-module, reason: ${reason} }`);
+  const { calls, result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ body, plan: makePlan({ reference_module: {} }) }),
+  });
+  assert.notEqual(result.stopped, "invalid-plan");
+  const codeCall = calls.workflow.find((c) => c.name === "code");
+  assert.ok(codeCall, "the code workflow runs");
+  assert.equal(
+    codeCall.args.plan.reference_module.kind,
+    "no-module",
+    "kind is filled from the unquoted body line",
+  );
+  assert.equal(
+    codeCall.args.plan.reference_module.reason,
+    reason,
+    "reason is filled from the unquoted body line, commas and prose intact",
+  );
+});
+
 test("the legacy `reference_module: null (reason)` form fills a kind rather than being left absent", async () => {
   const reason = "adds one line to an existing skill; no new module needed";
   const body = bodyWithRefModule(`reference_module: null (${reason})`);
