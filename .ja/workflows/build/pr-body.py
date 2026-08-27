@@ -106,6 +106,16 @@ def fail(message: str) -> NoReturn:
     sys.exit(1)
 
 
+# _tag が読む severity と同じ綴り。並べ替えの対象は conformance のみで、structure は
+# payload の順のまま描画する。
+SEVERITY_RANK = {"high": 0, "medium": 1, "low": 2}
+
+
+def _severity_rank(f: object) -> int:
+    """RANK に無い severity (欠落 / 未知の綴り) は最下位へ落とす。"""
+    return SEVERITY_RANK.get(cast("str", _mapping(f).get("severity")), len(SEVERITY_RANK))
+
+
 def _tag(f: dict[str, object]) -> str:
     """severity を持つ finding は、high と些細な指摘が一目で分かれる。"""
     severity = f.get("severity")
@@ -167,7 +177,9 @@ def render(payload: Mapping[str, object]) -> str:
     scope = _list(payload.get("scope_deviations"))
     untouched = _list(payload.get("untouched_plan_files"))
     missing = _list(payload.get("missing_tests"))
-    conformance = _list(payload.get("conformance"))
+    # sorted の安定性で同 severity 内は payload の順を保つ。structure はここでは
+    # 並べ替えない (対象は conformance のみ)。
+    conformance = sorted(_list(payload.get("conformance")), key=_severity_rank)
     structure = _list(payload.get("structure"))
     raw_lang = payload.get("language")
     lang = raw_lang.lower() if isinstance(raw_lang, str) and raw_lang else "english"

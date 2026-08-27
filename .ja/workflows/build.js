@@ -500,13 +500,10 @@ log(
   `Plan 抽出: ${plan.units.length} unit / ${planTestIds.size} test scenario、id クロスチェック pass。`,
 );
 
-// 決定論 Python verifier (revalidate.py / verify-tests.py) への relay prompt。agent は
-// payload を流し込んで stdout を返すだけで、判定を LLM が下すことはない。
-const relayVerifier = ({ what, script, shape, payload, count }) =>
+const relayVerifier = ({ what, script, payload, count }) =>
   `${what}を決定論 verifier で検証する。判定を自分で下さない。手順は、(1) この JSON をそのまま一時ファイルに書く。` +
   `(2) リポジトリルートから \`python3 ${bundled(script)} < <tempfile>\` を実行する。` +
-  `(3) verifier の stdout の "results" 配列を、全 ${count} 件そのまま返す。追加 / 削除 / 編集をしない。` +
-  `verifier は ${shape} を出力する。\n` +
+  `(3) verifier の stdout の "results" 配列を、全 ${count} 件そのまま返す。追加 / 削除 / 編集をしない。\n` +
   `入力 JSON は以下。\n${JSON.stringify(payload)}`;
 
 const REVALIDATE_SCHEMA = obj(["results"], {
@@ -573,7 +570,6 @@ const [reval, branchRes, baseline] = await parallel([
             relayVerifier({
               what: "plan の前提",
               script: "workflows/build/revalidate.py",
-              shape: '{"results":[{path,pattern,exists,matches}]}',
               payload: revalidationTargets,
               count: revalidationTargets.length,
             }),
@@ -673,7 +669,6 @@ if (revalidationTargets.length) {
         relayVerifier({
           what: "plan の前提 (前回の relay で欠落した分。コード以外の資産パスも 1 件も省略しない)",
           script: "workflows/build/revalidate.py",
-          shape: '{"results":[{path,pattern,exists,matches}]}',
           payload: unreported,
           count: unreported.length,
         }),
@@ -924,7 +919,6 @@ const [diff, testPresence, conformance, structure] = await parallel([
             relayVerifier({
               what: "plan のテスト言明",
               script: "workflows/build/verify-tests.py",
-              shape: '{"results":[{name,found}]}',
               payload: testChecks,
               count: allTestNames.length,
             }),
