@@ -193,9 +193,7 @@ let reopened = [];
 let rejudgeNotes = "";
 // Set only when the Review agent call itself returns nothing (crashed / timed out),
 // never when it answers with available: false (codex CLI missing is a verified
-// conclusion, not a degradation). Challenge/Fix finding zero findings/survivors is
-// indistinguishable on their own return values from a genuinely clean diff, so this
-// flag is what lets the final return tell the two readings apart.
+// conclusion, not a degradation).
 let reviewDied = false;
 
 if (mode !== "cleanup") {

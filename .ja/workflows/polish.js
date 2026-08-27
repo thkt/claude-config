@@ -189,8 +189,6 @@ let reopened = [];
 let rejudgeNotes = "";
 // Review agent の呼び出し自体が結果を返さなかった (異常終了 / timeout) ときだけ立てる。
 // available: false で答えた場合 (codex CLI なしという確定した結論) には立てない。
-// Challenge / Fix が finding / survivor 0 件で終わることは、それ単体では純粋に
-// diff がきれいだった場合と区別が付かないため、このフラグで最終返り値の両者を分ける。
 let reviewDied = false;
 
 if (mode !== "cleanup") {
