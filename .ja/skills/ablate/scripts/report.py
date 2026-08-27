@@ -119,10 +119,10 @@ def _date_range(date_range: dict[str, str | None]) -> str:
 
 
 def _render(result: dict[str, Any]) -> str:
-    """`build_report` の結果を Markdown として描画する。build_report が返す 5 つの key
-    だけを読み、呼び出し側が渡した生の `observations` は決して読まないため、observation が
-    自分の由来を示すために持つフィールド (実行に使われた settings のスナップショットなど) が
-    書き出されたレポートに (逐語的にであれ) 混入することはない (T-014)。"""
+    """`build_report` の結果を Markdown として描画する。その結果だけを読み、呼び出し側が
+    渡した生の `observations` は決して読まないため、observation が自分の由来を示すために
+    持つフィールド (実行に使われた settings のスナップショットなど) が書き出されたレポート
+    に (逐語的にであれ) 混入することはない (T-014)。"""
     lines: list[str] = ["# Ablation Report", ""]
 
     lines += ["## Summary", ""]

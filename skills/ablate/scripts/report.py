@@ -120,10 +120,10 @@ def _date_range(date_range: dict[str, str | None]) -> str:
 
 
 def _render(result: dict[str, Any]) -> str:
-    """Renders `build_report`'s result as Markdown. Reads only the five keys build_report
-    returns — never the raw `observations` a caller passed in — so a field an observation
-    carries for its own provenance (such as the settings snapshot a run used) can never
-    reach the written report, verbatim or otherwise (T-014)."""
+    """Renders `build_report`'s result as Markdown. Reads that result alone, never the raw
+    `observations` a caller passed in, so a field an observation carries for its own
+    provenance (such as the settings snapshot a run used) can never reach the written
+    report, verbatim or otherwise (T-014)."""
     lines: list[str] = ["# Ablation Report", ""]
 
     lines += ["## Summary", ""]
