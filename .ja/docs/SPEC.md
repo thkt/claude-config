@@ -28,6 +28,7 @@
 | skill / agent / workflow 定義               | `skills/`, `agents/`, `workflows/`      | 本リポジトリ                    |
 | `guardrails`, `formatter`, `gates`, `assay` | Rust バイナリ                           | `brew install thkt/tap/{tool}`  |
 | `scout`, `recall`, `sae`, `xr`              | Rust CLI                                | `brew install thkt/tap/{tool}`  |
+| `ast-grep`                                  | Rust バイナリ                           | `brew install ast-grep`         |
 | `codegraph`                                 | mise shim 経由のバイナリ                | mise                            |
 | `hooks/herdr-agent-state.sh`                | herdr が生成したファイル                | herdr (再インストールで上書き) |
 | `textlint`, `oxlint`, `oxfmt`               | devDependencies                         | `bun install`                   |
@@ -40,7 +41,7 @@
 
 | ディレクトリ  | 責務                                       | 実行主体             |
 | ------------- | ------------------------------------------ | -------------------- |
-| `rules/`      | 常時読み込みの規約と原則                   | Claude 本体          |
+| `rules/`      | 規約と原則。読み込むファイルは `paths:` frontmatter が決める | Claude 本体          |
 | `skills/`     | 手順と知識のモジュール                     | Skill tool / モデル  |
 | `agents/`     | fork 実行される専門エージェント定義        | Agent tool           |
 | `workflows/`  | 決定論的なオーケストレーション スクリプト  | Workflow tool        |

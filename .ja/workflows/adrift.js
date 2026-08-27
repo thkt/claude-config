@@ -330,6 +330,16 @@ log(
   }), manifest=${manifest} -> ${reviewers.join(" + ")}, external_refs=${externalRefs.length}`,
 );
 
+// 失効した status の DR はもう生きている契約ではないので、reviewer fan-out を費やしても
+// 誰も従っていない決定を検証するだけになる。綴りはここが唯一の出典で、
+// adrift.degradation.test.js が readFileSync で読む。audit.routing.test.js の
+// parseRoutingLikeConst が audit.js の ROUTING/FOCUS を読むのと同じ形。
+const EXPIRED_STATUSES = ["rejected", "deprecated", "superseded"];
+// Not an equality test: docs/decisions/ front matter writes `status: "Superseded by DR-0055"`,
+// carrying the successor's id in the same string, so an exact match reads it as live.
+const isExpiredStatus = (status) =>
+  EXPIRED_STATUSES.some((s) => String(status || "").toLowerCase().startsWith(s.toLowerCase()));
+
 // ---- Scan: DR ごとに extract -> reviewer 照合を独立に流す ----
 const perDr = await pipeline(
   targets,
@@ -356,6 +366,19 @@ const perDr = await pipeline(
     if (!ex) {
       // extract stall は unverifiable として Per-DR 列挙に残す (fail-close)
       return perDrRow(a, { note: "extract agent stall" });
+    }
+    // A DR the caller named by focus is scanned whatever its status: targets is already
+    // filtered by matchesFocus above, so a non-empty focus means every target was asked for.
+    if (!focus.length && isExpiredStatus(ex.status)) {
+      // Per-DR 行は残したまま reviewer fan-out をまるごと飛ばす (この関数の他の早期
+      // return と同じ fail-close)
+      return perDrRow(a, {
+        status: ex.status,
+        superseded_by: ex.superseded_by || "",
+        verifiable: false,
+        note: `status "${ex.status}" は失効しているため未走査`,
+        findings: [],
+      });
     }
     if (!ex.verifiable || !ex.candidates.length) {
       return perDrRow(a, {

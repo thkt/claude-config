@@ -113,6 +113,16 @@ def fail(message: str) -> NoReturn:
     sys.exit(1)
 
 
+# The same spelling _tag reads from severity. Only conformance is ranked; structure
+# renders in whatever order the payload gave it.
+SEVERITY_RANK = {"high": 0, "medium": 1, "low": 2}
+
+
+def _severity_rank(f: object) -> int:
+    """A severity absent from RANK (missing, or an unknown spelling) sorts last."""
+    return SEVERITY_RANK.get(cast("str", _mapping(f).get("severity")), len(SEVERITY_RANK))
+
+
 def _tag(f: dict[str, object]) -> str:
     """With a severity present, high and trivial findings separate at a glance."""
     severity = f.get("severity")
@@ -174,7 +184,9 @@ def render(payload: Mapping[str, object]) -> str:
     scope = _list(payload.get("scope_deviations"))
     untouched = _list(payload.get("untouched_plan_files"))
     missing = _list(payload.get("missing_tests"))
-    conformance = _list(payload.get("conformance"))
+    # sorted's stability keeps same-severity items in the payload's order. structure
+    # is not ranked here (only conformance is).
+    conformance = sorted(_list(payload.get("conformance")), key=_severity_rank)
     structure = _list(payload.get("structure"))
     raw_lang = payload.get("language")
     lang = raw_lang.lower() if isinstance(raw_lang, str) and raw_lang else "english"
