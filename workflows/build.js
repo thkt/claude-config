@@ -519,15 +519,11 @@ log(
   `Plan extracted: ${plan.units.length} unit(s), ${planTestIds.size} test scenario(s), id cross-check pass.`,
 );
 
-// Relay prompt for the deterministic Python verifiers (revalidate.py /
-// verify-tests.py): the agent pipes the payload in and echoes stdout back; the
-// verdict never comes from LLM judgment.
-const relayVerifier = ({ what, script, shape, payload, count }) =>
+const relayVerifier = ({ what, script, payload, count }) =>
   `Run the deterministic verifier for ${what}; do not judge the verdict yourself. ` +
   `The steps are, (1) write this exact JSON to a temp file; (2) from the repository root run ` +
   `\`python3 ${bundled(script)} < <tempfile>\`; ` +
-  `(3) return the verifier's stdout "results" array verbatim, all ${count} entries; add, drop, or edit none. ` +
-  `The verifier prints ${shape}.\n` +
+  `(3) return the verifier's stdout "results" array verbatim, all ${count} entries; add, drop, or edit none.\n` +
   `The input JSON is as follows.\n${JSON.stringify(payload)}`;
 
 const REVALIDATE_SCHEMA = obj(["results"], {
@@ -594,7 +590,6 @@ const [reval, branchRes, baseline] = await parallel([
             relayVerifier({
               what: "the plan's preconditions",
               script: "workflows/build/revalidate.py",
-              shape: '{"results":[{path,pattern,exists,matches}]}',
               payload: revalidationTargets,
               count: revalidationTargets.length,
             }),
@@ -696,7 +691,6 @@ if (revalidationTargets.length) {
         relayVerifier({
           what: "the plan's preconditions dropped by the previous relay (omit none, including non-code asset paths)",
           script: "workflows/build/revalidate.py",
-          shape: '{"results":[{path,pattern,exists,matches}]}',
           payload: unreported,
           count: unreported.length,
         }),
@@ -948,7 +942,6 @@ const [diff, testPresence, conformance, structure] = await parallel([
             relayVerifier({
               what: "the plan's test statements",
               script: "workflows/build/verify-tests.py",
-              shape: '{"results":[{name,found}]}',
               payload: testChecks,
               count: allTestNames.length,
             }),
