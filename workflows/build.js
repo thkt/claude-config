@@ -66,11 +66,39 @@ const RECORD_SCHEMA = {
   properties: {
     path: { type: "string", description: "path from record.py's stdout JSON, verbatim" },
     run_id: { type: "string", description: "run_id from record.py's stdout JSON, verbatim" },
+    // The four window-tally keys are optional: record.py omits all four together when it
+    // cannot read RUNS_PATH back (see its count_plan_quality_stops docstring).
+    started: {
+      type: "number",
+      description: "started count from record.py's stdout JSON, verbatim, when present",
+    },
+    stops: {
+      type: "number",
+      description: "stops count from record.py's stdout JSON, verbatim, when present",
+    },
+    trigger_met: {
+      type: "boolean",
+      description: "trigger_met from record.py's stdout JSON, verbatim, when present",
+    },
+    skipped_lines: {
+      type: "number",
+      description: "skipped_lines count from record.py's stdout JSON, verbatim, when present",
+    },
   },
 };
 // record.py mints runId, because a workflow script has neither a clock nor a random source
 // (rules/conventions/WORKFLOWS.md § Script evaluation form).
 let runId = "";
+// The window-tally keys record.py's stdout carries alongside path/run_id (its own docstring).
+// record.py omits all four together when it cannot read RUNS_PATH back, so recordedCounts
+// holds either every key or none; the caller reads their presence as one unit.
+const RECORD_COUNT_TYPES = {
+  started: "number",
+  stops: "number",
+  trigger_met: "boolean",
+  skipped_lines: "number",
+};
+let recordedCounts = {};
 // The gates ahead of anchor return without a row: neither is a plan-quality signal, and the
 // recorder's agent would have no repository to be anchored to.
 let recordable = false;
@@ -90,8 +118,8 @@ const recordRun = async (reason, fields = {}) => {
     anchor(
       `Record one build run; do not judge, summarize, or edit any value. The steps are, (1) write this exact JSON to a temp file; ` +
         `(2) run \`python3 ${bundled("workflows/build/record.py")} < <tempfile>\`; ` +
-        `(3) return the script's stdout run_id and path verbatim. ` +
-        `The script prints {"path":...,"run_id":...}.\n` +
+        `(3) return the script's stdout path, run_id, started, stops, trigger_met, and skipped_lines verbatim, omitting any of the last four the stdout does not carry. ` +
+        `The script prints {"path":...,"run_id":...,"started":...,"stops":...,"trigger_met":...,"skipped_lines":...}.\n` +
         `The input JSON is as follows.\n${JSON.stringify(payload)}`,
     ),
     {
@@ -110,11 +138,22 @@ const recordRun = async (reason, fields = {}) => {
     return;
   }
   runId = id;
+  recordedCounts = {};
+  for (const [key, type] of Object.entries(RECORD_COUNT_TYPES))
+    if (typeof written[key] === type) recordedCounts[key] = written[key];
+  // skipped_lines already carries its own loss granularity as a count on the structured
+  // return value, so a non-zero value needs no separate log() (WORKFLOWS.md § Degradation
+  // recording). Only a wholly missing tally, an agent relay failure, needs the run log.
+  if (Object.keys(recordedCounts).length === 0) {
+    log(
+      `record.py's window tally for the "${reason}" row is unavailable, so this run's return value carries no started/stops/trigger_met/skipped_lines.`,
+    );
+  }
 };
 // Every stopped return is assembled here, so no stop can leave without its row.
 const stop = async (reason, fields = {}, recordFields = {}) => {
   if (recordable) await recordRun(reason, recordFields);
-  return { stopped: reason, ...fields };
+  return { stopped: reason, ...recordedCounts, ...fields };
 };
 
 if (!issueRef || !issueNumber) {
@@ -1248,6 +1287,9 @@ const ship = await agent(
 return {
   issue: issueNumber,
   branch,
+  // The same window tally stop() spreads into every stopped return; a run that finishes
+  // reports the count its own start row read, since a finished run never calls recordRun again.
+  ...recordedCounts,
   units_completed: code.completed.length,
   code_anomalies: (code.anomalies || []).length,
   code_verified: code.tests_pass && code.gates_pass,

@@ -1457,6 +1457,129 @@ test("T-008 a no-plan stop reaches the real record.py as a plan-quality row join
   }
 });
 
+// U-002: record.py's stdout carries the window tally alongside path/run_id. stop() and the
+// final return must relay that same tally rather than dropping it on the way to the caller.
+test("a no-plan stop run through the real record.py returns counts matching the rows on disk", async () => {
+  const home = mkdtempSync(join(tmpdir(), "build-record-counts-"));
+  try {
+    let lastCounts = null;
+    const { result } = await runWorkflow(buildJs, {
+      args,
+      stubs: makeStubs({
+        body: "An issue body with no Plan heading.\n\n## Context\n\nExplanation only.",
+        record: (prompt) => {
+          const payload = prompt.trim().split("\n").pop();
+          const res = spawnSync("python3", [recordPy], {
+            input: payload,
+            encoding: "utf8",
+            env: { ...process.env, HOME: home },
+          });
+          assert.equal(res.status, 0, `record.py exits 0 (stderr: ${res.stderr})`);
+          lastCounts = JSON.parse(res.stdout);
+          return lastCounts;
+        },
+      }),
+    });
+    assert.equal(result.stopped, "no-plan");
+    assert.ok(lastCounts, "record.py ran at least once");
+    assert.equal(
+      result.started,
+      lastCounts.started,
+      "the stopped return's started count matches what record.py read off the rows on disk",
+    );
+    assert.equal(
+      result.stops,
+      lastCounts.stops,
+      "the stopped return's stops count matches what record.py read off the rows on disk",
+    );
+    assert.equal(
+      result.trigger_met,
+      lastCounts.trigger_met,
+      "the stopped return's trigger_met matches record.py's own verdict",
+    );
+    assert.equal(
+      result.skipped_lines,
+      lastCounts.skipped_lines,
+      "the stopped return's skipped_lines matches record.py's own count",
+    );
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+// A recorder response missing the tally is a degraded relay (WORKFLOWS.md's fail-open with
+// recorded loss), not a reason to stop a build that is otherwise running fine.
+test("a recorder that returns no counts leaves the build running and logs that the tally is unavailable", async () => {
+  const { result, logs } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      record: { path: "/home/sample/.claude/history/build-runs.jsonl", run_id: RECORDED_RUN_ID },
+    }),
+  });
+  assert.equal(result.stopped, undefined, "a missing tally does not stop the build");
+  assert.ok(
+    logs.some((m) => /tally/i.test(m) && /unavailable/i.test(m)),
+    "the run log names the tally as unavailable",
+  );
+});
+
+// The prompt's JSON example is a human-facing spec of what the caller reads back. Every key
+// record.py's own docstring says it prints must appear there, or a reader trusts a stale example.
+test("the JSON example in the recorder prompt carries every key the real record.py prints", async () => {
+  const recordSource = await readFile(recordPy, "utf8");
+  const stdoutLine = recordSource.match(/stdout:\s*one line of JSON,\s*\{([^}]+)\}/);
+  assert.ok(stdoutLine, "record.py's docstring states the stdout key set");
+  const keys = stdoutLine[1].split(",").map((k) => k.trim());
+  assert.ok(keys.length > 0, "the docstring names at least one stdout key");
+
+  const { calls } = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const recordPrompt = agentCallsOf(calls, "record")[0].prompt;
+  for (const key of keys) {
+    assert.match(
+      recordPrompt,
+      new RegExp(`"${key}"`),
+      `the recorder prompt's JSON example names "${key}", one of record.py's own stdout keys`,
+    );
+  }
+});
+
+// A finished run never calls recordRun again after "started" (T-006), so the only tally it can
+// return is the one its own start row read.
+test("a run that finishes returns the counts its start row read", async () => {
+  const startCounts = { started: 5, stops: 1, trigger_met: false, skipped_lines: 0 };
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      record: {
+        path: "/home/sample/.claude/history/build-runs.jsonl",
+        run_id: RECORDED_RUN_ID,
+        ...startCounts,
+      },
+    }),
+  });
+  assert.equal(result.stopped, undefined, "a finished run returns no stopped");
+  assert.equal(
+    result.started,
+    startCounts.started,
+    "the return value carries the start row's started count",
+  );
+  assert.equal(
+    result.stops,
+    startCounts.stops,
+    "the return value carries the start row's stops count",
+  );
+  assert.equal(
+    result.trigger_met,
+    startCounts.trigger_met,
+    "the return value carries the start row's trigger_met verdict",
+  );
+  assert.equal(
+    result.skipped_lines,
+    startCounts.skipped_lines,
+    "the return value carries the start row's skipped_lines count",
+  );
+});
+
 // T-004: one literal `stopped:` remains, and it sits in the helper. A return that assembles its
 // own stopped object skips the recording, and the run then never reaches the jsonl.
 test("T-004 build.js and its .ja mirror return stopped only from the stop helper", async () => {
