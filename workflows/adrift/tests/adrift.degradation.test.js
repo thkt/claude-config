@@ -5,9 +5,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkWorkflowSyntax, runWorkflow } from "../../_lib/run-workflow.js";
+import { parseStringArrayConst } from "../../_lib/tests/_brace.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..", "..");
@@ -620,4 +622,142 @@ test("T-006 every adrift prompt names the repository given in args.repo", async 
   for (const c of calls.agent) {
     assert.match(c.prompt, /cd \/abs\/target-repo &&/, `${c.opts.label ?? "?"} carries the pin`);
   }
+});
+
+// A DR whose status has expired (rejected / deprecated / superseded, etc.) is a decision this
+// run should not spend a reviewer fan-out verifying: nothing it says about the code is still the
+// live contract. The check sits in the stage 2 callback, ahead of the
+// `!ex.verifiable || !ex.candidates.length` branch, and the exact spelling of an expired status
+// lives in adrift.js as EXPIRED_STATUSES -- read from source via the shared parseStringArrayConst
+// (_brace.js), exactly as audit.routing.test.js's parseRoutingLikeConst reads ROUTING/FOCUS, so
+// this test never hand copies the spelling.
+
+// candidates is non-empty and verifiable is true, so absent the new expired-status check this
+// DR would already clear the `!ex.verifiable || !ex.candidates.length` branch and reach the
+// reviewer fan-out today.
+const expiredStatusStub = (status) => (prompt, opts) => {
+  const label = opts && opts.label;
+  if (label === "detect") return detectResult();
+  if (label === "extract:0001") return extractResult({ status });
+  if (label === "reviewer-design:0001") {
+    return {
+      findings: [
+        { file: "src/a.ts", line: 3, summary: "drift", direction: "code-fix", priority: "M" },
+      ],
+    };
+  }
+  if (label === "report") return { written: false, report_path: "" };
+  return undefined;
+};
+
+const reviewerRan = (calls) => reviewerLabels(calls).length > 0;
+
+test("T-101 every status the expired-status constant lists keeps the DR out of the reviewer fan-out", async () => {
+  const source = readFileSync(adriftJs, "utf8");
+  const expiredStatuses = parseStringArrayConst(source, "EXPIRED_STATUSES");
+  assert.ok(
+    expiredStatuses && expiredStatuses.length > 0,
+    "EXPIRED_STATUSES is extractable from adrift.js",
+  );
+
+  for (const status of expiredStatuses) {
+    const { calls } = await runWorkflow(adriftJs, {
+      args: { repo: "/abs/target-repo" },
+      stubs: { agent: expiredStatusStub(status) },
+    });
+    assert.equal(
+      reviewerRan(calls),
+      false,
+      `status "${status}" does not reach the reviewer fan-out`,
+    );
+  }
+});
+
+test("T-102 an expired DR keeps its Per-DR row and its note states that it was not scanned", async () => {
+  const source = readFileSync(adriftJs, "utf8");
+  const expiredStatuses = parseStringArrayConst(source, "EXPIRED_STATUSES");
+  assert.ok(
+    expiredStatuses && expiredStatuses.length > 0,
+    "EXPIRED_STATUSES is extractable from adrift.js",
+  );
+  const [status] = expiredStatuses;
+
+  const { result, calls } = await runWorkflow(adriftJs, {
+    args: { repo: "/abs/target-repo" },
+    stubs: { agent: expiredStatusStub(status) },
+  });
+
+  assert.equal(result.drs_scanned, 1, "the expired DR still counts toward drs_scanned");
+  const reportCall = calls.agent.find((c) => c.opts && c.opts.label === "report");
+  assert.ok(reportCall, "the Report stage still ran");
+  const matched = reportCall.prompt.match(
+    /per-DR results are as follows\.\n([\s\S]*?)\n\nThe external DR references/,
+  );
+  assert.ok(matched, "the report prompt carries the serialized per-DR results");
+  const perDr = JSON.parse(matched[1]);
+  const entry = perDr.find((d) => d.id === "0001");
+  assert.ok(entry, "the expired DR keeps its Per-DR row in the exhaustive listing");
+  assert.match(entry.note, /not scanned/i, "the note states that the DR was not scanned");
+});
+
+test("T-103 an expired DR returns an empty findings array", async () => {
+  const source = readFileSync(adriftJs, "utf8");
+  const expiredStatuses = parseStringArrayConst(source, "EXPIRED_STATUSES");
+  assert.ok(
+    expiredStatuses && expiredStatuses.length > 0,
+    "EXPIRED_STATUSES is extractable from adrift.js",
+  );
+  const [status] = expiredStatuses;
+
+  const { result } = await runWorkflow(adriftJs, {
+    args: { repo: "/abs/target-repo" },
+    stubs: { agent: expiredStatusStub(status) },
+  });
+
+  assert.deepEqual(result.findings, [], "an expired DR contributes no findings");
+});
+
+test("T-104 a DR whose status is accepted, empty, or unrecognised reaches the reviewer fan-out", async () => {
+  const source = readFileSync(adriftJs, "utf8");
+  const expiredStatuses = parseStringArrayConst(source, "EXPIRED_STATUSES");
+  assert.ok(
+    expiredStatuses && expiredStatuses.length > 0,
+    "EXPIRED_STATUSES is extractable from adrift.js",
+  );
+
+  for (const status of ["Accepted", "", "TotallyUnrecognisedStatus"]) {
+    assert.ok(
+      !expiredStatuses.some((s) => s.toLowerCase() === status.toLowerCase()),
+      `"${status}" is not among the expired statuses`,
+    );
+    const { calls } = await runWorkflow(adriftJs, {
+      args: { repo: "/abs/target-repo" },
+      stubs: { agent: expiredStatusStub(status) },
+    });
+    assert.equal(reviewerRan(calls), true, `status "${status}" reaches the reviewer fan-out`);
+  }
+});
+
+// docs/decisions/ front matter writes the successor's id into the same string
+// (`status: "Superseded by DR-0055"`), so the check has to be a case-insensitive prefix match.
+// T-101 feeds the bare constant values, which an equality test also passes.
+test("T-105 a status carrying the successor id after the expired word keeps the DR out of the fan-out", async () => {
+  for (const status of ["Superseded by DR-0055", "DEPRECATED as of 2026-01", "Rejected (see #12)"]) {
+    const { calls } = await runWorkflow(adriftJs, {
+      args: { repo: "/abs/target-repo" },
+      stubs: { agent: expiredStatusStub(status) },
+    });
+    assert.equal(reviewerRan(calls), false, `status "${status}" stays out of the fan-out`);
+  }
+});
+
+// The caller asked for this DR by id. Skipping it on status returns a run that scanned nothing
+// while reporting success, so the expired check yields to an explicit focus.
+test("T-106 a DR named by focus is scanned even when its status is expired", async () => {
+  const { calls } = await runWorkflow(adriftJs, {
+    args: { repo: "/abs/target-repo", focus: "0001" },
+    stubs: { agent: expiredStatusStub("Superseded by DR-0055") },
+  });
+
+  assert.equal(reviewerRan(calls), true, "the focus-named DR reaches the reviewer fan-out");
 });

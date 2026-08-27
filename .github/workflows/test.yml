@@ -48,6 +48,11 @@ jobs:
           "skills/**/tests/*.test.js"
           "workflows/**/tests/*.test.js"
 
+      # hooks/edit/tests/rumdl_check_test.py runs the real binary. The rumdl step below
+      # reaches it through `pipx run`, which puts nothing on PATH for this step.
+      - name: Install rumdl
+        run: pipx install rumdl==0.2.58
+
       # Not unittest discovery: it cannot recurse from the root, where the test
       # directories are not packages.
       - name: Python tests
