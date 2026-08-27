@@ -783,17 +783,73 @@ test("think SKILL.md requires a seam unit to carry the file that makes the conne
     /seam unit の files には.{0,30}非テストファイル/,
     "ja: the non-test file is required",
   );
-  assert.match(ja, /seam unit を置かず/, "ja: the replacing operation");
+  assert.match(
+    ja,
+    /非テストファイルを持つ unit .{0,20}(いない|ない場合).{0,30}切り直/,
+    "ja: the replacing operation",
+  );
   assert.match(ja, /配線を作る unit の tests/, "ja: where the assertion goes instead");
 
   const en = read(skills.en);
   assert.match(en, /at least one non-test file/i, "en: the non-test file is required");
-  assert.match(en, /place no seam unit/i, "en: the replacing operation");
+  assert.match(
+    en,
+    /no unit carries a non-test file.{0,40}re-cut the units/i,
+    "en: the replacing operation",
+  );
   assert.match(
     en,
     /tests of the unit that makes the wiring/i,
     "en: where the assertion goes instead",
   );
+});
+
+// Step 11 requires exactly one seam unit last once 2+ units carry tests. Step 12's old exception
+// let a plan skip the seam unit entirely, which contradicts step 11 for the same plan. Replacing
+// the exception with a unit re-cut keeps step 11 an actual guarantee instead of a conditional one.
+const step12 = (doc) => steps(doc).find((line) => line.startsWith("12. "));
+
+test("both trees' step 12 carries no branch that places no seam unit", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const step = step12(doc);
+    assert.ok(step, `${lang}: step 12 exists`);
+    assert.doesNotMatch(
+      step,
+      lang === "ja" ? /seam unit を置かず/ : /place no seam unit/i,
+      `${lang}: step 12 carries no branch skipping the seam unit`,
+    );
+  }
+});
+
+test("both trees' step 12 makes the unit carrying the non-test file the seam", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const step = step12(doc);
+    assert.ok(step, `${lang}: step 12 exists`);
+    assert.match(
+      step,
+      lang === "ja"
+        ? /非テストファイルを持つ unit .{0,10}seam/
+        : /unit carrying the non-test file .{0,20}seam/i,
+      `${lang}: step 12 makes the unit carrying the non-test file the seam`,
+    );
+  }
+});
+
+test("both trees' step 12 says to re-cut the units when no unit carries a non-test file", () => {
+  for (const [lang, path] of Object.entries(skills)) {
+    const doc = read(path);
+    const step = step12(doc);
+    assert.ok(step, `${lang}: step 12 exists`);
+    assert.match(
+      step,
+      lang === "ja"
+        ? /非テストファイルを持つ unit .{0,20}(いない|ない場合).{0,30}切り直/
+        : /no unit carries a non-test file.{0,40}re-cut the units/i,
+      `${lang}: step 12 says to re-cut the units when none carries a non-test file`,
+    );
+  }
 });
 
 // A step inserted mid-list leaves a duplicate number behind unless the tail is renumbered, and the
