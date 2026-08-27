@@ -3,7 +3,7 @@ export const meta = {
   description:
     "Deterministic, independent outcome-based assertion workflow. Codex verifies independently in an isolated worktree, running alongside the audit workflow (reviewer -> challenge -> verify -> integrate). The script applies the ternary gate rule (Ready / Ready (caveat) / NotReady), so lenient self-reported gates and skipped dynamic evidence cannot happen.",
   whenToUse:
-    "When you want an independent verdict on merge readiness from static + dynamic evidence. Use the polish workflow for a light code review, the audit workflow for static-only auditing. args is a scope string (file / directory for target mode) or {scope, base, repo}. Omitted: diff mode (uncommitted changes, else diff against the base branch).",
+    "When you want an independent verdict on merge readiness from static + dynamic evidence. Use the polish workflow for a light code review, the audit workflow for static-only auditing. Name the target repository. Narrow the target with scope (a file or directory); when omitted, the target is the uncommitted changes, else the diff against base (default main).",
   phases: [
     { title: "Bootstrap" },
     { title: "Evidence" },

@@ -15,7 +15,7 @@ argument-hint: "[element path]"
 
 ## Where the criteria and thresholds live
 
-The arm list, the run count per arm, and the pass threshold are all constants in `${CLAUDE_SKILL_DIR}/scripts/arms.py`. The classification criteria live in `${CLAUDE_SKILL_DIR}/scripts/verdict.py`. Do not copy a number into this body (`docs/wiki/deterministic-script-judgment.md`).
+The arm list, the run count per arm, and the pass threshold are all constants in `${CLAUDE_SKILL_DIR}/scripts/arms.py`. The classification criteria live in `${CLAUDE_SKILL_DIR}/scripts/verdict.py`. The DR-gate criteria, the confirmed-unmet marker and where the records are read from, live in `${CLAUDE_SKILL_DIR}/scripts/dr_gate.py`. Do not copy a number into this body (`docs/wiki/deterministic-script-judgment.md`).
 
 ## Phase 1: Enumerate
 
@@ -37,7 +37,7 @@ For each element Phase 1 returned, and each arm in `arms.ARMS`, assemble the com
 
 ## Phase 3: Report
 
-Call `report.write_report(root, observations)`. It writes to `docs/audit/` by default, naming the file `<YYYY-MM-DD>-<HHMMSS>-ablate.md` in UTC.
+Call `report.write_report(root, observations)`. Before a delete candidate reaches the report, `dr_gate.gate` reads `docs/decisions/` and holds back any element a live record governs, so the Summary counts them apart. It writes to `docs/audit/` by default, naming the file `<YYYY-MM-DD>-<HHMMSS>-ablate.md` in UTC.
 
 ```bash
 python3 -c 'import sys; sys.path.insert(0, "skills/ablate/scripts"); sys.path.insert(0, "skills/_lib"); import report, json, pathlib; print(report.write_report(pathlib.Path("."), json.load(sys.stdin)))' < <observations.json>

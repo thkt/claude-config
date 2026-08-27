@@ -17,6 +17,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import arms
+import dr_gate
 import enforcer_map
 import harness_elements
 import verdict
@@ -41,6 +42,9 @@ def _is_apparatus(path: str) -> bool:
 def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, Any]:
     """前段の各ユニットの script を順に呼び、その出力を結線する。
 
+    dr_gate.gate は verdict.classify の片側判定の後、結果が write_report へ渡る前に走る
+    ため、差し止められた候補は下の delete_candidates に決して現れない。
+
     レポート文字列でなく素の dict を返すため、データだけを必要とする呼び出し側は
     write_report の出力から Markdown を読み戻さずに済む。
     """
@@ -48,11 +52,13 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
 
     verdicts: dict[str, str] = {}
     for observation in observations:
-        verdicts[observation["path"]] = verdict.classify(
+        path = observation["path"]
+        raw_verdict = verdict.classify(
             trigger_task=observation.get("trigger_task"),
             task_set=observation.get("task_set"),
             complies=observation.get("complies"),
         )
+        verdicts[path] = dr_gate.gate(path=path, verdict=raw_verdict, root=root)
 
     delete_candidates = [
         path
@@ -96,6 +102,12 @@ def _render(result: dict[str, Any]) -> str:
             ("Elements observed", str(len(result["verdicts"]))),
             ("Delete candidates", str(len(result["delete_candidates"]))),
             ("Always-loaded lines mapped", str(len(result["enforcer_rows"]))),
+            # 別に数える。この行が無いと、Verdicts の表を held の文字列で走査しない限り
+            # 件数が分からない。
+            (
+                "Held by a live DR",
+                str(sum(1 for v in result["verdicts"].values() if v == dr_gate.HELD)),
+            ),
         ],
     )
     lines += [""]

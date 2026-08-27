@@ -17,6 +17,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 import arms
+import dr_gate
 import enforcer_map
 import harness_elements
 import verdict
@@ -41,6 +42,9 @@ def _is_apparatus(path: str) -> bool:
 def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, Any]:
     """Calls each preceding unit's script in turn and wires their outputs together.
 
+    dr_gate.gate runs after verdict.classify's one-sided judgment and before the result
+    reaches write_report, so a held candidate never enters delete_candidates below.
+
     Returns a plain dict rather than a report string, so a caller that only wants the data
     does not have to parse Markdown back out of write_report's output.
     """
@@ -48,11 +52,13 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
 
     verdicts: dict[str, str] = {}
     for observation in observations:
-        verdicts[observation["path"]] = verdict.classify(
+        path = observation["path"]
+        raw_verdict = verdict.classify(
             trigger_task=observation.get("trigger_task"),
             task_set=observation.get("task_set"),
             complies=observation.get("complies"),
         )
+        verdicts[path] = dr_gate.gate(path=path, verdict=raw_verdict, root=root)
 
     delete_candidates = [
         path
@@ -97,6 +103,12 @@ def _render(result: dict[str, Any]) -> str:
             ("Elements observed", str(len(result["verdicts"]))),
             ("Delete candidates", str(len(result["delete_candidates"]))),
             ("Always-loaded lines mapped", str(len(result["enforcer_rows"]))),
+            # Counted apart, since without this row the number is only reachable by
+            # scanning the Verdicts table for the held literal.
+            (
+                "Held by a live DR",
+                str(sum(1 for v in result["verdicts"].values() if v == dr_gate.HELD)),
+            ),
         ],
     )
     lines += [""]
