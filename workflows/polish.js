@@ -1,9 +1,9 @@
 export const meta = {
   name: "polish",
   description:
-    'Deterministic Codex review + cleanup. Codex findings always pass through a critic-audit challenge, and the triage (confirmed / disputed / downgraded / needs_context) is decided by the script, so findings are never aggregated as facts and the challenge cannot be skipped. After the fix, critic-audit rejudges each survivor against the post-fix diff as resolved / still_open, and still_open surfaces as reopened in the result. Callable standalone; no workflow nests it.',
+    "Deterministic Codex review + cleanup. Codex findings always pass through a critic-audit challenge, and the triage (confirmed / disputed / downgraded / needs_context) is decided by the script, so findings are never aggregated as facts and the challenge cannot be skipped. After the fix, critic-audit rejudges each survivor against the post-fix diff as resolved / still_open, and still_open surfaces as reopened in the result. Callable standalone; no workflow nests it.",
   whenToUse:
-    "Headless external-lens review of a diff plus AI-slop removal. args is a scope string, or {scope, repo, mode, base}. When scope is omitted, the target is the uncommitted changes, else the diff of commits ahead of the base branch (default main) — the pushed branch diff. mode: full (default) runs review -> fix -> rejudge -> cleanup; review returns the challenged findings without fixing; cleanup runs only simplify + enhancer-code + test validation. For a deep internal-reviewer audit use the audit workflow.",
+    "Headless external-lens review of a diff plus AI-slop removal. Pass a scope string, or an object carrying scope, repo, mode, and base. When scope is omitted, the target is the uncommitted changes, else the diff of commits ahead of the base branch (default main) — the pushed branch diff. mode (full / review / cleanup): full (default) runs review -> fix -> rejudge -> cleanup; review returns the challenged findings without fixing; cleanup runs only simplify + enhancer-code + test validation. For a deep internal-reviewer audit use the audit workflow.",
   phases: [
     { title: "Review" },
     { title: "Challenge" },
@@ -42,7 +42,21 @@ if (!repo) {
     why: `Pass the target repository as args.repo (absolute path): Workflow({name: "polish", args: {repo: "/abs/path"}}).`,
   };
 }
-const mode = opts.mode === "review" || opts.mode === "cleanup" ? opts.mode : "full";
+// Mirrors audit.js's FOCUS membership check: a mode outside this set stopped the run silently
+// (a typo fell through to "full") instead of surfacing the mistake, so the set is a named const
+// tests can extract, not an inline ternary.
+const MODES = {
+  review: null,
+  cleanup: null,
+  full: null,
+};
+const mode = typeof opts.mode === "string" ? opts.mode : "full";
+if (!(mode in MODES)) {
+  return {
+    stopped: "invalid-mode",
+    why: `Mode "${mode}" is not a valid value. Pass one of: ${Object.keys(MODES).join(", ")}.`,
+  };
+}
 const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 
 const anchor = (p) =>
@@ -178,13 +192,23 @@ const CLEANUP_SCHEMA = {
   },
 };
 
-let codex = { available: false, has_changes: true, diff_kind: "", findings: [] };
+let codex = {
+  available: false,
+  has_changes: true,
+  diff_kind: "",
+  findings: [],
+  review_note: "Review stage skipped: cleanup-only run",
+};
 let verdicts = [];
 let survivors = [];
 let needsContext = [];
 let fix = null;
 let reopened = [];
 let rejudgeNotes = "";
+// Set only when the Review agent call itself returns nothing (crashed / timed out),
+// never when it answers with available: false (codex CLI missing is a verified
+// conclusion, not a degradation).
+let reviewDied = false;
 
 if (mode !== "cleanup") {
   // ---- Review: external Codex lens ----
@@ -192,7 +216,7 @@ if (mode !== "cleanup") {
   const detectNote = scope
     ? `First check with \`git status\` and \`git diff HEAD\` whether changes to polish exist. If not, return has_changes: false with an empty diff_kind. If they do, set diff_kind: uncommitted.`
     : `First determine the kind of target diff. If \`git status --porcelain\` prints anything, diff_kind: uncommitted. Otherwise, if \`git rev-list --count ${base}..HEAD\` is 1 or more, diff_kind: branch (the pushed branch diff). If neither applies, return has_changes: false with an empty diff_kind.`;
-  codex = (await agent(
+  const codexResult = await agent(
     anchor(
       `External Codex review stage. ${detectNote}\n` +
         `Then check \`which codex\`. If missing, return available: false with empty findings.\n` +
@@ -210,7 +234,22 @@ if (mode !== "cleanup") {
       schema: CODEX_SCHEMA,
       model: "sonnet",
     },
-  )) || { available: false, has_changes: true, diff_kind: "", findings: [] };
+  );
+  reviewDied = !codexResult;
+  // CODEX_SCHEMA has no review_note property (additionalProperties: false), so a
+  // codexResult that passed validation never carries one; derive it here directly.
+  if (codexResult) {
+    codex = codexResult;
+    codex.review_note = codex.available ? "Review complete" : "codex CLI missing";
+  } else {
+    codex = {
+      available: false,
+      has_changes: true,
+      diff_kind: "",
+      findings: [],
+      review_note: "Review agent returned nothing",
+    };
+  }
   if (!codex.has_changes) {
     return {
       mode,
@@ -221,7 +260,7 @@ if (mode !== "cleanup") {
   log(
     codex.available
       ? `${codex.findings.length} Codex finding(s).`
-      : "codex CLI missing; proceeding to cleanup with no findings.",
+      : `${codex.review_note}; proceeding to cleanup with no findings.`,
   );
 
   // ---- Challenge: critic-audit filters false positives ----
@@ -278,6 +317,7 @@ if (mode !== "cleanup") {
     return {
       mode,
       codex_available: codex.available,
+      review_note: codex.review_note,
       diff_kind: codex.diff_kind,
       survivors,
       needs_context: needsContext,
@@ -391,9 +431,24 @@ const cleanup = (await agent(
   notes: "validate agent returned nothing",
 };
 
+// WORKFLOWS.md § Degradation recording: a dead Review agent leaves findings at
+// [], so Challenge (nothing to challenge) and Fix (no survivors) never run -- but
+// that is a consequence of the agent dying, not of a genuinely clean diff. Naming
+// all three here (plus the diff_kind: "" -> cleanupTarget fallback it also forces)
+// keeps that reading distinct from a real "nothing to do" run.
+const unverified = reviewDied
+  ? [
+      codex.review_note,
+      "Challenge did not run: Review agent returned nothing, so there were no findings to challenge",
+      "Fix did not run: Review agent returned nothing, so there were no survivors to fix",
+      `Cleanup target fell back to "the current diff": diff_kind stayed empty because the Review agent returned nothing`,
+    ]
+  : [];
+
 return {
   mode,
   codex_available: codex.available,
+  review_note: codex.review_note,
   diff_kind: codex.diff_kind,
   findings: codex.findings.length,
   survivors: survivors.length,
@@ -402,5 +457,6 @@ return {
   reopened,
   rejudge_notes: rejudgeNotes,
   needs_context: needsContext,
+  unverified,
   cleanup,
 };
