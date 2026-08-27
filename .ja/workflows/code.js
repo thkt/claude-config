@@ -86,7 +86,18 @@ const commits = [];
 // run 級の配列を閉じ込めるので、途中終了でも呼び出し元は部分進捗を受け取る。
 const stopUnit = async (stopped, unit, why) => {
   await closeHerdrPanes();
-  return { stopped, unit: unit.id, why, completed, skipped, anomalies, commits };
+  return {
+    stopped,
+    unit: unit.id,
+    why,
+    completed,
+    skipped,
+    anomalies,
+    commits,
+    herdr_panes: herdrPanesResolved,
+    pane_opens: paneOpens,
+    pane_closes: paneCloses,
+  };
 };
 // 経路 (claude / codex-herdr) と呼び先 (pane が無いか、tester / coder どちらの pane か) を
 // この 1 関数だけで決める。claude 経路は実装が plan の contract / tests を実行する段なので
@@ -352,6 +363,21 @@ const closePane = (role, paneId) =>
 // tester / coder 両 pane の id。codex-herdr でない run では null のままで、closeHerdrPanes は
 // 何もしない。
 let herdrPanes = null;
+// run-workflow.js の calls.agent は各 agent の {prompt, opts} しか記録しないので、pane split
+// から解決した pane id や開閉回数がこの workflow 自身の返り値 (build.js がさらに自分の返り値へ
+// 転送する値) に実際に届いたことをそこからは示せない。herdrPanesResolved は closeHerdrPanes が
+// herdrPanes を null に戻したあとも id を保つので、後片付けの前後どちらの返り値にも id が残る。
+let herdrPanesResolved = null;
+let paneOpens = 0;
+let paneCloses = 0;
+
+// 後片付け (loop 終端の closeHerdrPanes と、下の起動失敗時に開いた tester pane 1 つだけを閉じる
+// 分岐の両方) の close は必ずここを通すので、paneCloses は実際に閉じた pane 数の唯一の集計になる。
+const closePaneCounted = async (role, paneId) => {
+  const res = await closePane(role, paneId);
+  if (res && res.closed) paneCloses++;
+  return res;
+};
 
 // stopUnit 経由の早期 return と loop 終端後の正常終了のどちらからも呼ぶので、呼び出しの都度
 // null に戻して二重 close を防ぐ。close が失敗しても run 自体は止めず、anomaly に記録する。
@@ -360,14 +386,13 @@ const closeHerdrPanes = async () => {
   const panes = herdrPanes;
   herdrPanes = null;
   for (const role of ["tester", "coder"]) {
-    const res = await closePane(role, panes[role]);
-    if (!res || !res.closed) {
-      const why = res
-        ? res.notes || `${role} pane の close が closed: false を返した`
-        : `${role} pane の close agent が結果を返さなかった`;
-      anomalies.push({ unit: "-", kind: "pane-not-closed", notes: why });
-      log(`herdr ${role} pane を閉じられなかった (${why})。`);
-    }
+    const res = await closePaneCounted(role, panes[role]);
+    if (res && res.closed) continue;
+    const why = res
+      ? res.notes || `${role} pane の close が closed: false を返した`
+      : `${role} pane の close agent が結果を返さなかった`;
+    anomalies.push({ unit: "-", kind: "pane-not-closed", notes: why });
+    log(`herdr ${role} pane を閉じられなかった (${why})。`);
   }
 };
 
@@ -404,7 +429,7 @@ if (implementer === "codex-herdr") {
   // があるので、pane id が返っていればそれも閉じる。
   const testerStart = await startPane("tester");
   if (!testerStart || !testerStart.started) {
-    if (testerStart && testerStart.pane_id) await closePane("tester", testerStart.pane_id);
+    if (testerStart && testerStart.pane_id) await closePaneCounted("tester", testerStart.pane_id);
     return {
       stopped: "pane-start-failed",
       why: testerStart
@@ -412,11 +437,12 @@ if (implementer === "codex-herdr") {
         : "tester pane-start agent が結果を返さなかった。",
     };
   }
+  paneOpens++;
 
   // coder pane の起動に失敗したら、先に開いた tester pane を閉じてから止まる。
   const coderStart = await startPane("coder");
   if (!coderStart || !coderStart.started) {
-    await closePane("tester", testerStart.pane_id);
+    await closePaneCounted("tester", testerStart.pane_id);
     return {
       stopped: "pane-start-failed",
       why: coderStart
@@ -424,9 +450,11 @@ if (implementer === "codex-herdr") {
         : "coder pane-start agent が結果を返さなかった。",
     };
   }
+  paneOpens++;
 
   // 全 unit を通してこの 2 pane を使い回す。close は loop 終端 (closeHerdrPanes) が担う。
   herdrPanes = { tester: testerStart.pane_id, coder: coderStart.pane_id };
+  herdrPanesResolved = herdrPanes;
 }
 
 // contract が引用するのは 1 つの振る舞いなので、plan の参照モジュールが無いと周辺構造が
@@ -666,4 +694,9 @@ return {
   tests_pass: verify.tests_pass,
   gates_pass: verify.gates_pass,
   verify_output: verify.output_tail,
+  // claude の run では herdrPanesResolved / paneOpens / paneCloses に一切触れないので null の
+  // まま。build.js はこの 3 つをそのまま自分の返り値へ転送する。
+  herdr_panes: herdrPanesResolved,
+  pane_opens: paneOpens,
+  pane_closes: paneCloses,
 };

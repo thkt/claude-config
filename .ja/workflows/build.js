@@ -761,7 +761,13 @@ const code =
 if (!code || code.stopped) {
   // nested_reason が無いと、code の内側で起きた plan 起因の停止は code-failed としか数えられない。
   const nested = String((code && code.stopped) || "");
-  return await stop("code-failed", { detail: code }, nested ? { nested_reason: nested } : {});
+  // codex-herdr の pane が code 自身の停止 (loop 途中の stopUnit など) より前に解決済みなら、
+  // その pane id は detail の中だけでなく build の返り値にもそのまま届く。
+  return await stop(
+    "code-failed",
+    { detail: code, herdr_panes: code && code.herdr_panes },
+    nested ? { nested_reason: nested } : {},
+  );
 }
 if (!code.tests_pass || !code.gates_pass)
   log(
@@ -1250,4 +1256,7 @@ return {
   // Ship が意図して置き去りにしたもの。prompt がこれを求めるのは、stage すると仕様書・調査
   // メモ・ローカル設定が PR へ漏れるため。返り値に無いと、何が残ったか誰も見られない。
   unstaged: Array.isArray(ship.unstaged) ? ship.unstaged : [],
+  // code 自身の返り値をそのまま転送する (claude の run では undefined)。codex-herdr の build の
+  // pane lifecycle が、停止時に detail を開かなくても見える。
+  herdr_panes: code.herdr_panes,
 };
