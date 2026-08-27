@@ -11,43 +11,25 @@ import { parseRoutingLikeConst } from "./_brace.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-// One tree per audit.js: the English source under workflows/, and its .ja/ mirror.
-const TREES = [
-  { label: "en", path: join(here, "..", "..", "audit.js") },
-  { label: "ja", path: join(here, "..", "..", "..", ".ja", "workflows", "audit.js") },
+// One entry per <name>.js, in both the English source under workflows/ and its .ja/ mirror.
+// Shared by the focus-values test (audit only) and the no-args-identifier check (all three).
+const workflowTrees = (name) => [
+  { label: `${name}/en`, path: join(here, "..", "..", `${name}.js`) },
+  { label: `${name}/ja`, path: join(here, "..", "..", "..", ".ja", "workflows", `${name}.js`) },
 ];
 
-// One tree per build.js: the English source under workflows/, and its .ja/ mirror.
-const BUILD_TREES = [
-  { label: "en", path: join(here, "..", "..", "build.js") },
-  { label: "ja", path: join(here, "..", "..", "..", ".ja", "workflows", "build.js") },
-];
+const TREES = workflowTrees("audit");
 
-test("build's whenToUse in neither tree contains the identifier args", () => {
-  for (const { label, path } of BUILD_TREES) {
-    const meta = readMeta(path);
-    assert.doesNotMatch(
-      meta.whenToUse,
-      /\bargs\b/,
-      `[${label}] whenToUse names the identifier "args" instead of describing the shape in prose`,
-    );
-  }
-});
-
-// One tree per code.js: the English source under workflows/, and its .ja/ mirror.
-const CODE_TREES = [
-  { label: "en", path: join(here, "..", "..", "code.js") },
-  { label: "ja", path: join(here, "..", "..", "..", ".ja", "workflows", "code.js") },
-];
-
-test("code's whenToUse in neither tree contains the identifier args", () => {
-  for (const { label, path } of CODE_TREES) {
-    const meta = readMeta(path);
-    assert.doesNotMatch(
-      meta.whenToUse,
-      /\bargs\b/,
-      `[${label}] whenToUse names the identifier "args" instead of describing the shape in prose`,
-    );
+test("whenToUse in neither tree names the identifier args, for audit/build/code", () => {
+  for (const name of ["audit", "build", "code"]) {
+    for (const { label, path } of workflowTrees(name)) {
+      const meta = readMeta(path);
+      assert.doesNotMatch(
+        meta.whenToUse,
+        /\bargs\b/,
+        `[${label}] whenToUse names the identifier "args" instead of describing the shape in prose`,
+      );
+    }
   }
 });
 
@@ -87,13 +69,3 @@ test("the focus values in audit's whenToUse match the FOCUS keys extracted from 
   }
 });
 
-test("audit's whenToUse in neither tree contains the identifier args", () => {
-  for (const { label, path } of TREES) {
-    const meta = readMeta(path);
-    assert.doesNotMatch(
-      meta.whenToUse,
-      /\bargs\b/,
-      `[${label}] whenToUse names the identifier "args" instead of describing the shape in prose`,
-    );
-  }
-});
