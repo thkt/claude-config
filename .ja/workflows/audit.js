@@ -930,10 +930,23 @@ const consolidatedDisposition = (sourceIds) =>
     if (!d) return strongest;
     return !strongest || DISPOSITION_RANK[d] > DISPOSITION_RANK[strongest] ? d : strongest;
   }, null) || DEFAULT_DISPOSITION;
-const finalFindings = integratedFindings.map((f) => ({
-  ...f,
-  disposition: consolidatedDisposition(f.source_ids),
-}));
+// ソートは workflows/assert.js の mergeIssues をそのまま踏襲する。SEVERITY_RANK 降順、
+// 次に file 昇順(localeCompare)、次に line 昇順。ここ 1 箇所で適用するので、返り値の
+// findings と下の snapshot の findings は同じ並びになる。severity を持たない finding は
+// SEVERITY_RANK に該当キーが無く引き算が NaN になる。比較関数は NaN を 0(等しい)として
+// 扱うため、drop されず全ての severity 付き finding の後ろに並ぶ。
+const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1 };
+const finalFindings = integratedFindings
+  .map((f) => ({
+    ...f,
+    disposition: consolidatedDisposition(f.source_ids),
+  }))
+  .sort(
+    (a, b) =>
+      SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] ||
+      String(a.file || "").localeCompare(String(b.file || "")) ||
+      (a.line || 0) - (b.line || 0),
+  );
 const snapshot = await writeSnapshot({
   preFlight,
   rawFindings,
