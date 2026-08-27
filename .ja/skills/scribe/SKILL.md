@@ -14,10 +14,10 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 | 条件                | 内容                                                                                                                                         |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | PR 経由             | デフォルトブランチへ直接コミット / プッシュしない                                                                                            |
-| 進捗の記録          | cursor は最後にマージされた scribe PR の mergedAt。research ファイルはその mergedAt と最終コミット時刻を比べる                                        |
+| 進捗の記録          | cursor は最後にマージされた scribe PR の mergedAt。research ファイルはその mergedAt と最終コミット時刻を比べる                               |
 | 閾値の所在          | ページにするか候補に置くかの判定は `scripts/triage.py` が持ち、この skill は判定しない                                                       |
 | 事実のみ            | PR / issue と research ファイルに書かれた事実、および現在のコードで確認できた事実のみ書く。推測で埋めない                                    |
-| research は引かない | `.claude/workspace/research/` のファイルパスを `docs/wiki/` 配下に書かない。wiki は蒸留した共通項を置く場所で、パスは読者を原資料へ送り返す                    |
+| research は引かない | `.claude/workspace/research/` のファイルパスを `docs/wiki/` 配下に書かない。wiki は蒸留した共通項を置く場所で、パスは読者を原資料へ送り返す  |
 | worktree 隔離       | 編集 / commit は隔離 worktree 内で行い、ユーザーの作業ツリーを動かさない。worktree を作るのは Phase 6 なので、書き込む Phase は Phase 6 だけ |
 
 ## Phase 1: 前提確認とオンボーディング
@@ -58,8 +58,9 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 1. 成立を確認した項目に、現行コードの位置を参照コードとして `path` + シンボル名で付記する。行番号は書かない
 2. その決まりごとが効く実装ファイルの glob と、`find_wiki_rule.py` の `SCENES` 定数から選ぶ scenes を決める。両者は独立した判定になる。glob は実装ファイルを、scenes は場面を指し、起票や PR の運用に閉じる決まりごとは glob が空配列のまま scenes を持つ
 3. 今回のスコープに関係しない既存ページも含め、`docs/wiki/*.md` 全ページの参照コードを掃除する。ファイルの存在と、ファイル内でのシンボル名の grep 一致を機械的に確認する
-4. 壊れていた参照は現行コードを読み直す。決める内容は下表による
-5. 落とした項目が `_candidates.md` に行を持つとき、その行を「棄却」節へ移し、次の行に落とした理由をインデントして書く。Phase 3 手順 7 が用意した削除より優先する
+4. 構造ページごとに、境界・契約・要求の各節が挙げる行を現行コードと突き合わせる。参照コードの状態とは独立に、対象のページを毎回すべて行う。ずれがあれば現行コードに合わせて書き直す文面を決める。落とさない
+5. 壊れていた参照は現行コードを読み直す。決める内容は下表による
+6. 落とした項目が `_candidates.md` に行を持つとき、その行を「棄却」節へ移し、次の行に落とした理由をインデントして書く。Phase 3 手順 7 が用意した削除より優先する
 
 | 確認                                                | 不成立のときに決める内容                         |
 | --------------------------------------------------- | ------------------------------------------------ |
@@ -76,10 +77,10 @@ allowed-tools: Bash(git:*) Bash(gh:*) Bash(find:*) Bash(python3:*) Read Write Ed
 
 ## Phase 6: PR 作成
 
-扱うページは Phase 3 の `pages` に限り、`deferred` は PR 本文に残しとして明記する。参照修理と由来修理は上限の外なので、`pages` が 0 件でも実施する。候補への追記だけでも PR を作り、変更が何も無いときだけ作らない。
+扱うページは Phase 3 の `pages` に限り、`deferred` は PR 本文に残しとして明記する。参照修理と由来修理、そして Phase 4 手順 4 が決めた構造ページの書き直しは上限の外なので、`pages` が 0 件でも実施する。候補への追記だけでも PR を作り、変更が何も無いときだけ作らない。
 
 1. `git fetch origin <デフォルトブランチ>` の後、`origin/<デフォルトブランチ>` から隔離 worktree とブランチ `scribe/<yyyymmdd-HHMMSS>` を作る
-2. worktree 内で Phase 3-5 が決めた内容を書き込む。ページは ${CLAUDE_SKILL_DIR}/templates/page.md の骨格に従い、候補行は Phase 3 手順 7 の形で `_candidates.md` へ、参照修理と由来修理は Phase 4-5 が決めた張り替え先で書く
+2. worktree 内で Phase 3-5 が決めた内容を書き込む。骨格は書き込みの種類で選ぶ。`pages` の項目は ${CLAUDE_SKILL_DIR}/templates/page.md の共通項の骨格に従う。Phase 4 手順 4 が書き直しを決めた構造ページは、同ファイルの構造ページの骨格に従い、既存ページの当該行だけを差し替える。候補行は Phase 3 手順 7 の形で `_candidates.md` へ、参照修理と由来修理は Phase 4-5 が決めた張り替え先で書く
 3. `commits` の要素を先頭から順にコミットする。1 コミット目は自分が含むページに加え `_candidates.md` の更新と参照修理・由来修理も `git add` し、残りの要素は自分が含むページだけを `git add` する。要素ごとにメッセージ `docs(wiki): <要素内の共通項名, ...> を追加/更新` で 1 要素 1 コミットする
 4. `python3 ${CLAUDE_SKILL_DIR}/scripts/verify_run.py <worktree> <base>` を実行し、Phase 3 の report JSON を stdin へ渡す。`<base>` は手順 1 で分岐した `origin/<デフォルトブランチ>`。昇格待ちの行数と期待コミット数は script が report から読むので、自分で数えない。`ok` が true であることを確認し、false なら手順 5 へ進まない
 5. push して `gh pr create --base <デフォルトブランチ>` を実行する。タイトル `[scribe] <共通項名, ...> を追加/更新`、ラベル scribe。本文には追加/昇格/更新したページをコミットごとに分けて並べ、候補への追記、参照修理/由来修理したページ、読んだ PR/issue の範囲と research の件数、検証で落とした項目、打ち切った残しを書く
