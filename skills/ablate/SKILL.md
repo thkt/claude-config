@@ -51,3 +51,5 @@ python3 -c 'import sys; sys.path.insert(0, "skills/ablate/scripts"); sys.path.in
 | Delete candidates | The report's Delete Candidates section, or that there are none    |
 | Measured count    | Rows in Verdicts that are not `unmeasured`                        |
 | Usage             | Each element's fire count and last-used date, in Harness Elements |
+
+Removing anything the report names is a separate run: hand the delete candidates to `docs/wiki/retire-rename-procedure.md`, which owns the detection layer a retirement loses and the trigger for reviving it. This skill stops at the verdict.
