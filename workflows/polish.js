@@ -50,14 +50,13 @@ const MODES = {
   cleanup: null,
   full: null,
 };
-const modeInput = typeof opts.mode === "string" ? opts.mode : "full";
-if (!(modeInput in MODES)) {
+const mode = typeof opts.mode === "string" ? opts.mode : "full";
+if (!(mode in MODES)) {
   return {
     stopped: "invalid-mode",
-    why: `Mode "${modeInput}" is not a valid value. Pass one of: ${Object.keys(MODES).join(", ")}.`,
+    why: `Mode "${mode}" is not a valid value. Pass one of: ${Object.keys(MODES).join(", ")}.`,
   };
 }
-const mode = modeInput;
 const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 
 const anchor = (p) =>
