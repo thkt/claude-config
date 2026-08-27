@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkWorkflowSyntax, runWorkflow } from "../../_lib/run-workflow.js";
+import { parseStringArrayConst } from "../../_lib/tests/_brace.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..", "..");
@@ -627,29 +628,9 @@ test("T-006 every adrift prompt names the repository given in args.repo", async 
 // run should not spend a reviewer fan-out verifying: nothing it says about the code is still the
 // live contract. The check sits in the stage 2 callback, ahead of the
 // `!ex.verifiable || !ex.candidates.length` branch, and the exact spelling of an expired status
-// lives in adrift.js as EXPIRED_STATUSES -- read from source here exactly as
-// audit.routing.test.js's parseRoutingLikeConst reads ROUTING/FOCUS, so this test never hand
-// copies the spelling.
-const parseStringArrayConst = (source, name) => {
-  const marker = `const ${name} = [`;
-  const idx = source.indexOf(marker);
-  if (idx === -1) return null;
-  const start = idx + marker.length - 1; // position of the opening "["
-  let depth = 0;
-  let end = -1;
-  for (let i = start; i < source.length; i++) {
-    if (source[i] === "[") depth++;
-    else if (source[i] === "]") {
-      depth--;
-      if (depth === 0) {
-        end = i + 1;
-        break;
-      }
-    }
-  }
-  if (end === -1) return null;
-  return [...source.slice(start + 1, end - 1).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
-};
+// lives in adrift.js as EXPIRED_STATUSES -- read from source via the shared parseStringArrayConst
+// (_brace.js), exactly as audit.routing.test.js's parseRoutingLikeConst reads ROUTING/FOCUS, so
+// this test never hand copies the spelling.
 
 // candidates is non-empty and verifiable is true, so absent the new expired-status check this
 // DR would already clear the `!ex.verifiable || !ex.candidates.length` branch and reach the
@@ -669,8 +650,7 @@ const expiredStatusStub = (status) => (prompt, opts) => {
   return undefined;
 };
 
-const reviewerRan = (calls) =>
-  calls.agent.some((c) => c.opts && (c.opts.label || "").startsWith("reviewer-"));
+const reviewerRan = (calls) => reviewerLabels(calls).length > 0;
 
 test("T-101 every status the expired-status constant lists keeps the DR out of the reviewer fan-out", async () => {
   const source = readFileSync(adriftJs, "utf8");
@@ -685,7 +665,11 @@ test("T-101 every status the expired-status constant lists keeps the DR out of t
       args: { repo: "/abs/target-repo" },
       stubs: { agent: expiredStatusStub(status) },
     });
-    assert.equal(reviewerRan(calls), false, `status "${status}" does not reach the reviewer fan-out`);
+    assert.equal(
+      reviewerRan(calls),
+      false,
+      `status "${status}" does not reach the reviewer fan-out`,
+    );
   }
 });
 
@@ -753,4 +737,3 @@ test("T-104 a DR whose status is accepted, empty, or unrecognised reaches the re
     assert.equal(reviewerRan(calls), true, `status "${status}" reaches the reviewer fan-out`);
   }
 });
-
