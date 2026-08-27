@@ -32,6 +32,12 @@ if (typeof argsValue === "string" && argsValue.trim().startsWith("{")) {
   }
 }
 const input = typeof argsValue === "object" && argsValue ? argsValue : {};
+// implementer は code.js へそのまま転送する。有効値の一覧は code.js 側の定数
+// (VALID_IMPLEMENTERS) が持ち、ここでは文字列の有無だけを見て既定値を決める。
+const implementer =
+  typeof input.implementer === "string" && input.implementer.trim()
+    ? input.implementer.trim()
+    : "claude";
 const issueRef = String(typeof argsValue === "string" ? argsValue : input.issue || "").trim();
 // 受け付けるのは数字単体 / #数字 / issue URL のみ。数字を含むだけの自由記述
 // ("a11y" など) を issue 参照と読まない。
@@ -747,6 +753,7 @@ const code =
     // 実装は plan の contract / tests を実行する段で、設計判断は plan 側 (think /
     // critic-design) が済ませている。code.js の default 変更を暗黙に追従しない。
     model: "sonnet",
+    implementer,
     commit: perUnitCommits,
     issue: issueNumber,
     untracked_baseline: baselineUntracked,

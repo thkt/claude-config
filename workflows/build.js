@@ -33,6 +33,12 @@ if (typeof argsValue === "string" && argsValue.trim().startsWith("{")) {
   }
 }
 const input = typeof argsValue === "object" && argsValue ? argsValue : {};
+// implementer rides through to code.js unchanged. The valid-value list lives as code.js's
+// own constant (VALID_IMPLEMENTERS); here only presence decides the default.
+const implementer =
+  typeof input.implementer === "string" && input.implementer.trim()
+    ? input.implementer.trim()
+    : "claude";
 const issueRef = String(typeof argsValue === "string" ? argsValue : input.issue || "").trim();
 // Accept only a bare number, #number, or an issue URL. A freeform description that
 // merely contains digits (e.g. "a11y") must not be read as an issue reference.
@@ -771,6 +777,7 @@ const code =
     // happened on the plan side (think / critic-design). Do not silently track
     // code.js's default.
     model: "sonnet",
+    implementer,
     commit: perUnitCommits,
     issue: issueNumber,
     untracked_baseline: baselineUntracked,

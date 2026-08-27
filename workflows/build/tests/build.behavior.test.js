@@ -1229,6 +1229,34 @@ test("code receives commit: true, issue, and untracked_baseline, and the return 
   assert.equal(result.unit_commits, 1, "the return value's unit_commits carries the commit count");
 });
 
+// U-006: build's own args.implementer reaches the nested code call, so an unattended build keeps
+// its existing Claude route unless the caller opts into codex-herdr.
+test("T-018 build の args の implementer が code の呼び出しに渡る", async () => {
+  const { calls } = await runWorkflow(buildJs, {
+    args: { issue: "123", repo, implementer: "codex-herdr" },
+    stubs: makeStubs(),
+  });
+  const codeArgs = calls.workflow.find((c) => c.name === "code").args;
+  assert.equal(
+    codeArgs.implementer,
+    "codex-herdr",
+    "args.implementer rides the nested code call unchanged",
+  );
+});
+
+test("T-019 build の args に implementer が無いとき code の呼び出しに claude が渡る", async () => {
+  const { calls } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs(),
+  });
+  const codeArgs = calls.workflow.find((c) => c.name === "code").args;
+  assert.equal(
+    codeArgs.implementer,
+    "claude",
+    "an omitted args.implementer still explicitly passes claude to code, not code.js's own default",
+  );
+});
+
 // sibling()'s fallback decision rests on the production runtime's wording, so the stub throws in
 // that same shape.
 const unknownWorkflowError = (name) =>
