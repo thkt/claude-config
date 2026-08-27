@@ -32,6 +32,12 @@ if (typeof argsValue === "string" && argsValue.trim().startsWith("{")) {
   }
 }
 const input = typeof argsValue === "object" && argsValue ? argsValue : {};
+// implementer は code.js へそのまま転送する。有効値の一覧は code.js 側の定数
+// (VALID_IMPLEMENTERS) が持ち、ここでは文字列の有無だけを見て既定値を決める。
+const implementer =
+  typeof input.implementer === "string" && input.implementer.trim()
+    ? input.implementer.trim()
+    : "claude";
 const issueRef = String(typeof argsValue === "string" ? argsValue : input.issue || "").trim();
 // 受け付けるのは数字単体 / #数字 / issue URL のみ。数字を含むだけの自由記述
 // ("a11y" など) を issue 参照と読まない。
@@ -742,6 +748,7 @@ const code =
     // 実装は plan の contract / tests を実行する段で、設計判断は plan 側 (think /
     // critic-design) が済ませている。code.js の default 変更を暗黙に追従しない。
     model: "sonnet",
+    implementer,
     commit: perUnitCommits,
     issue: issueNumber,
     untracked_baseline: baselineUntracked,
@@ -749,7 +756,13 @@ const code =
 if (!code || code.stopped) {
   // nested_reason が無いと、code の内側で起きた plan 起因の停止は code-failed としか数えられない。
   const nested = String((code && code.stopped) || "");
-  return await stop("code-failed", { detail: code }, nested ? { nested_reason: nested } : {});
+  // codex-herdr の pane が code 自身の停止 (loop 途中の stopUnit など) より前に解決済みなら、
+  // その pane id は detail の中だけでなく build の返り値にもそのまま届く。
+  return await stop(
+    "code-failed",
+    { detail: code, herdr_panes: code && code.herdr_panes },
+    nested ? { nested_reason: nested } : {},
+  );
 }
 if (!code.tests_pass || !code.gates_pass)
   log(
@@ -1237,4 +1250,5 @@ return {
   // Ship が意図して置き去りにしたもの。prompt がこれを求めるのは、stage すると仕様書・調査
   // メモ・ローカル設定が PR へ漏れるため。返り値に無いと、何が残ったか誰も見られない。
   unstaged: Array.isArray(ship.unstaged) ? ship.unstaged : [],
+  herdr_panes: code.herdr_panes,
 };
