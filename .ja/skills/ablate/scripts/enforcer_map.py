@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
-"""常時ロードされる 8 ファイルの enforcer 対応表。
+"""常時ロードされる harness ファイルの enforcer 対応表。
 
-Usage: enforcer_map.py <repo-root>
-Output: TARGET_FILES 全体の空行以外の各行につき {file, line_number, verdict, enforcer?} を
-1 要素とする JSON 配列を標準出力へ。ファイル順、その中では行順。
+Usage: enforcer_map.py <repo-root>。skills/_lib を PYTHONPATH に置いて実行する。
+Output: 常時ロードされる各ファイルの空行以外の各行につき
+{file, line_number, verdict, enforcer?} を 1 要素とする JSON 配列を標準出力へ。
+ファイル順、その中では行順。
 
-skills/census/scripts/list-source-files.py の形に倣う (対象集合と判定を module の定数として
-持ち、その集合を辿って要素ごとに 1 行出力する薄い main()) — ゼロから別のスクリプト構成を
+skills/census/scripts/list-source-files.py の形に倣う (判定を module の定数として持ち、
+対象集合を辿って要素ごとに 1 行出力する薄い main()) — ゼロから別のスクリプト構成を
 組み立てない。
+
+呼び出し側との取り決め: import の前に skills/_lib を sys.path へ置くのは呼び出し側
+(skills/ablate/tests/enforcer_map_test.py、skills/ablate/tests/report_enforcer_test.py、
+skills/ablate/scripts/report.py 経由の呼び出し)。このモジュール自身は sys.path を触らない。
 
 テスト実行時は CLI エントリポイントとして動かない: skills/ablate/tests/enforcer_map_test.py は
 このモジュールを shell out せず import し、classify_line と 2 つの verdict 定数を使う
@@ -20,22 +25,7 @@ import json
 import sys
 from pathlib import Path
 
-# このリポジトリの harness が、すべてのセッションのコンテキストへ常時ロードする 8 ファイル:
-# ルートの CLAUDE.md と、frontmatter を持たない rules/**/*.md ファイルすべて
-# (skills/_lib/harness_elements.py の classify() が定める ALWAYS_LOADED の条件 — frontmatter
-# を持たない rules/**/*.md または CLAUDE.md)。SKILL.md の散文へ手で書き写すのでなく、この
-# module の定数として持つ (docs/wiki/harness-production-divergence.md「供給の一覧を実行側の
-# 定数として持つ」)。
-TARGET_FILES = (
-    "CLAUDE.md",
-    "rules/PRINCIPLES.md",
-    "rules/core/PREFLIGHT.md",
-    "rules/core/BOUNDARIES.md",
-    "rules/core/OUTCOME.md",
-    "rules/core/OPERATION.md",
-    "rules/conventions/PROSE.md",
-    "rules/conventions/MIRROR.md",
-)
+import harness_elements
 
 DELETE_CANDIDATE = "delete-candidate"
 ABLATION_RESIDUE = "ablation-residue"
@@ -95,16 +85,25 @@ def classify_file(root: Path, rel_path: str) -> list[dict[str, object]]:
     return results
 
 
+def target_files(root: Path) -> list[str]:
+    """`root` の harness が、すべてのセッションのコンテキストへ常時ロードするファイルの
+    repo ルート相対 path。実行時に harness_elements から導出する。tuple へ手で書き写すと、
+    あとから追加された rules/**/*.md が黙って対応表から落ちる。skills/ablate/scripts/report.py
+    は同じ集合を自分の enumerate_elements 呼び出しから描画するので、綴りが 2 つあると
+    1 つのレポートに食い違う 2 つの一覧が載る
+    (docs/wiki/harness-production-divergence.md「供給の一覧を実行側の定数として持つ」)。"""
+    return [
+        element["path"]
+        for element in harness_elements.enumerate_elements(root)
+        if element["classification"] == harness_elements.ALWAYS_LOADED
+    ]
+
+
 def map_all(root: Path) -> list[dict[str, object]]:
-    """TARGET_FILES 全体の空行以外の各行を、ファイル順・その中では行順に分類する。main() と
-    skills/ablate/scripts/report.py の両方が使うため、ファイル存在ガード (対象ファイルが 1 つ
-    欠けても — 絞り込まれた checkout、rule ファイルの rename — 残りの対応付けを止めない。
-    skills/census/scripts/list-source-files.py の count_lines が読めない source ファイル 1 つ
-    に対して行うのと同じ扱い) を両呼び出し側でなくここ 1 箇所に持つ。"""
+    """常時ロードされる各ファイルの空行以外の各行を、ファイル順・その中では行順に分類する。
+    main() と skills/ablate/scripts/report.py の両方が使う。"""
     results: list[dict[str, object]] = []
-    for rel_path in TARGET_FILES:
-        if not (root / rel_path).is_file():
-            continue
+    for rel_path in target_files(root):
         results.extend(classify_file(root, rel_path))
     return results
 

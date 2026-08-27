@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
-"""Enforcer correspondence for the 8 always-loaded harness files.
+"""Enforcer correspondence for the always-loaded harness files.
 
-Usage: enforcer_map.py <repo-root>
+Usage: enforcer_map.py <repo-root>, run with skills/_lib on PYTHONPATH.
 Output: JSON array of {file, line_number, verdict, enforcer?} to stdout, one entry per
-non-blank line across TARGET_FILES, file order then line order.
+non-blank line across the always-loaded files, file order then line order.
 
-Follows skills/census/scripts/list-source-files.py's shape (population + judgment held as
-module constants, a thin main() that walks the population and prints one line of output per
-member) rather than a from-scratch script layout.
+Follows skills/census/scripts/list-source-files.py's shape (judgment held as a module
+constant, a thin main() that walks the population and prints one line of output per member)
+rather than a from-scratch script layout.
+
+Caller contract: the caller puts skills/_lib on sys.path before importing this module
+(skills/ablate/tests/enforcer_map_test.py, skills/ablate/tests/report_enforcer_test.py, and
+whoever imports skills/ablate/scripts/report.py). This module does not manipulate sys.path
+itself.
 
 Not a CLI entry point during a test run: skills/ablate/tests/enforcer_map_test.py imports this
 module for classify_line and the two verdict constants rather than shelling out to it
@@ -20,22 +25,7 @@ import json
 import sys
 from pathlib import Path
 
-# The 8 files this repo's harness always loads into every session's context: the root
-# CLAUDE.md and every rules/**/*.md file that carries no frontmatter
-# (skills/_lib/harness_elements.py's classify() ALWAYS_LOADED rule — a rules/**/*.md file or
-# CLAUDE.md with no frontmatter block). Held here as a module constant, not copied by hand
-# into SKILL.md prose (docs/wiki/harness-production-divergence.md "供給の一覧を実行側の定数
-# として持つ").
-TARGET_FILES = (
-    "CLAUDE.md",
-    "rules/PRINCIPLES.md",
-    "rules/core/PREFLIGHT.md",
-    "rules/core/BOUNDARIES.md",
-    "rules/core/OUTCOME.md",
-    "rules/core/OPERATION.md",
-    "rules/conventions/PROSE.md",
-    "rules/conventions/MIRROR.md",
-)
+import harness_elements
 
 DELETE_CANDIDATE = "delete-candidate"
 ABLATION_RESIDUE = "ablation-residue"
@@ -94,16 +84,25 @@ def classify_file(root: Path, rel_path: str) -> list[dict[str, object]]:
     return results
 
 
+def target_files(root: Path) -> list[str]:
+    """The repo-root-relative paths `root`'s harness always loads into every session's
+    context. Derived from harness_elements at run time. A tuple copied out by hand silently
+    drops a rules/**/*.md file added later, and skills/ablate/scripts/report.py renders the
+    same population from its own enumerate_elements call, so a second spelling puts two
+    disagreeing lists in one report (docs/wiki/harness-production-divergence.md
+    "供給の一覧を実行側の定数として持つ")."""
+    return [
+        element["path"]
+        for element in harness_elements.enumerate_elements(root)
+        if element["classification"] == harness_elements.ALWAYS_LOADED
+    ]
+
+
 def map_all(root: Path) -> list[dict[str, object]]:
-    """Classifies every non-blank line across TARGET_FILES, file order then line order.
-    Shared by main() and skills/ablate/scripts/report.py so the file-existence guard (a
-    target file missing — a narrower checkout, a renamed rule file — must not stop the
-    mapping for the rest, mirroring skills/census/scripts/list-source-files.py's
-    count_lines for one unreadable source file) lives once rather than in both callers."""
+    """Classifies every non-blank line across the always-loaded files, file order then line
+    order. Shared by main() and skills/ablate/scripts/report.py."""
     results: list[dict[str, object]] = []
-    for rel_path in TARGET_FILES:
-        if not (root / rel_path).is_file():
-            continue
+    for rel_path in target_files(root):
         results.extend(classify_file(root, rel_path))
     return results
 

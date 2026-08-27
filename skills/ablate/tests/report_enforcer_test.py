@@ -24,6 +24,7 @@ sys.path.insert(0, str(HERE.parent / "scripts"))
 sys.path.insert(0, str(HERE.parent.parent / "_lib"))
 
 import enforcer_map  # noqa: E402
+import harness_elements  # noqa: E402
 import report  # noqa: E402
 
 
@@ -57,10 +58,8 @@ class EnforcerMapIntegration(unittest.TestCase):
                 out_dir = Path(out_tmp)
 
                 with (
-                    patch.object(enforcer_map, "TARGET_FILES", ("rules/sample.md",)),
-                    patch.object(
-                        enforcer_map, "ENFORCER_TABLE", {COVERED_LINE: SAMPLE_ENFORCER}
-                    ),
+                    patch.object(enforcer_map, "target_files", lambda _root: ["rules/sample.md"]),
+                    patch.object(enforcer_map, "ENFORCER_TABLE", {COVERED_LINE: SAMPLE_ENFORCER}),
                 ):
                     # Cross-check against the real enforcer_map module instead of a
                     # hand-copied fixture: a change to enforcer_map.py must be visible here.
@@ -91,13 +90,11 @@ class AblationResidueInReport(unittest.TestCase):
                 out_dir = Path(out_tmp)
 
                 with (
-                    patch.object(enforcer_map, "TARGET_FILES", ("rules/sample.md",)),
+                    patch.object(enforcer_map, "target_files", lambda _root: ["rules/sample.md"]),
                     patch.object(enforcer_map, "ENFORCER_TABLE", {}),
                 ):
                     expected_rows = enforcer_map.classify_file(root, "rules/sample.md")
-                    self.assertEqual(
-                        expected_rows[0]["verdict"], enforcer_map.ABLATION_RESIDUE
-                    )
+                    self.assertEqual(expected_rows[0]["verdict"], enforcer_map.ABLATION_RESIDUE)
 
                     result = report.build_report(root, observations=[])
                     report_path = report.write_report(root, [], out_dir=out_dir)
@@ -110,6 +107,36 @@ class AblationResidueInReport(unittest.TestCase):
             # string (verdict.py only ever emits delete-candidate / needs-human-judgment /
             # unmeasured), so its presence here is specific to this row.
             self.assertIn(enforcer_map.ABLATION_RESIDUE, content)
+
+
+REPO_ROOT = HERE.parent.parent.parent
+
+
+class OnePopulationPerReport(unittest.TestCase):
+    """One report holds the always-loaded population twice: build_report enumerates it for
+    the Harness Elements section, and enforcer_map walks it again for the enforcer rows. The
+    two ran from separate spellings until this test, and the hand-copied one was missing
+    rules/development/TOOLS.md — the enforcer section silently covered 8 of the 9 files while
+    the elements section listed all 9."""
+
+    def test_the_enforcer_rows_cover_every_always_loaded_element_the_report_lists(
+        self,
+    ) -> None:
+        """T-006 the enforcer rows cover every always-loaded element the report lists"""
+        # The real repository root, nothing patched: a tempdir fixture holds whatever files
+        # the test itself wrote, so it agrees with any population and would have passed on
+        # the 8-file tuple.
+        result = report.build_report(REPO_ROOT, observations=[])
+
+        listed = {
+            element["path"]
+            for element in result["elements"]
+            if element["classification"] == harness_elements.ALWAYS_LOADED
+        }
+        mapped = {str(row["file"]) for row in result["enforcer_rows"]}
+
+        self.assertTrue(listed, "the repository holds at least one always-loaded element")
+        self.assertEqual(mapped, listed)
 
 
 if __name__ == "__main__":
