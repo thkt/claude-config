@@ -948,10 +948,12 @@ const consolidatedDisposition = (sourceIds) =>
   }, null) || DEFAULT_DISPOSITION;
 // Sort mirrors workflows/assert.js's mergeIssues: SEVERITY_RANK descending, then file
 // ascending (localeCompare), then line ascending. Applied once here so the return value's
-// findings and the snapshot's findings (below) share the identical order. A finding with no
-// severity has no SEVERITY_RANK entry, so the subtraction is NaN; the comparator treats NaN
-// as 0 (equal), which is why it sorts after every ranked severity rather than being dropped.
+// findings and the snapshot's findings (below) share the identical order.
+// Not SEVERITY_RANK[severity] on its own: a missing entry makes the subtraction NaN, and
+// `NaN || next` falls through to the file compare, so an unranked finding sorts by filename
+// among the ranked ones instead of after them.
 const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1 };
+const severityRank = (f) => SEVERITY_RANK[f.severity] ?? 0;
 const finalFindings = integratedFindings
   .map((f) => ({
     ...f,
@@ -959,7 +961,7 @@ const finalFindings = integratedFindings
   }))
   .sort(
     (a, b) =>
-      SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] ||
+      severityRank(b) - severityRank(a) ||
       String(a.file || "").localeCompare(String(b.file || "")) ||
       (a.line || 0) - (b.line || 0),
   );

@@ -346,13 +346,13 @@ test("T-104 a finding with no severity comes back last and stays in the findings
   const { result, calls } = await run({
     challenge: BOTH_CONFIRMED,
     integrate: {
-      // Deliberately not in the expected output order: with no sort applied, this input
-      // order alone would already read critical, low, no-severity and the test would pass
-      // for the wrong reason.
+      // Neither the input order nor the filename order matches the expected output, so a
+      // comparator that falls through to the file compare on an unranked severity puts the
+      // no-severity finding first and fails here.
       findings: [
-        { file: "z.js", line: "1", summary: "no severity finding", source_ids: ["R-1"] },
+        { file: "a.js", line: "1", summary: "no severity finding", source_ids: ["R-1"] },
         {
-          file: "a.js",
+          file: "z.js",
           line: "1",
           severity: "critical",
           summary: "critical finding",

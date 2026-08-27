@@ -936,6 +936,7 @@ const consolidatedDisposition = (sourceIds) =>
 // SEVERITY_RANK に該当キーが無く引き算が NaN になる。比較関数は NaN を 0(等しい)として
 // 扱うため、drop されず全ての severity 付き finding の後ろに並ぶ。
 const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1 };
+const severityRank = (f) => SEVERITY_RANK[f.severity] ?? 0;
 const finalFindings = integratedFindings
   .map((f) => ({
     ...f,
@@ -943,7 +944,7 @@ const finalFindings = integratedFindings
   }))
   .sort(
     (a, b) =>
-      SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] ||
+      severityRank(b) - severityRank(a) ||
       String(a.file || "").localeCompare(String(b.file || "")) ||
       (a.line || 0) - (b.line || 0),
   );
