@@ -3,7 +3,7 @@
 // because a caller cannot recover it at run time, so these tests hold it to audit.js's FOCUS.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readMeta } from "../run-workflow.js";
@@ -12,7 +12,6 @@ import { parseRoutingLikeConst } from "./_brace.js";
 const here = dirname(fileURLToPath(import.meta.url));
 
 // One entry per <name>.js, in both the English source under workflows/ and its .ja/ mirror.
-// Shared by the focus-values test (audit only) and the no-args-identifier check (all three).
 const workflowTrees = (name) => [
   { label: `${name}/en`, path: join(here, "..", "..", `${name}.js`) },
   { label: `${name}/ja`, path: join(here, "..", "..", "..", ".ja", "workflows", `${name}.js`) },
@@ -20,7 +19,16 @@ const workflowTrees = (name) => [
 
 const TREES = workflowTrees("audit");
 
-for (const name of ["audit", "build", "code"]) {
+// Each name gets its own test, so a failure names the workflow rather than a file position
+// inside a sweep.
+const NAMED_WORKFLOWS = ["adrift", "assert", "audit", "build", "code", "polish", "shake"];
+
+const WORKFLOW_TREE_DIRS = [
+  { label: "en", dir: join(here, "..", "..") },
+  { label: "ja", dir: join(here, "..", "..", "..", ".ja", "workflows") },
+];
+
+for (const name of NAMED_WORKFLOWS) {
   test(`${name}'s whenToUse in neither tree contains the identifier args`, () => {
     for (const { label, path } of workflowTrees(name)) {
       const meta = readMeta(path);
@@ -32,6 +40,22 @@ for (const name of ["audit", "build", "code"]) {
     }
   });
 }
+
+// Holds the list itself to the tree rather than re-asserting the property: a workflow added
+// later fails here until it is named, instead of slipping past unchecked.
+test("no whenToUse under either tree contains the identifier args", () => {
+  for (const { label, dir } of WORKFLOW_TREE_DIRS) {
+    const scripts = readdirSync(dir)
+      .filter((name) => name.endsWith(".js"))
+      .map((name) => name.replace(/\.js$/, ""))
+      .sort();
+    assert.deepEqual(
+      scripts,
+      [...NAMED_WORKFLOWS].sort(),
+      `[${label}] every workflow carries a named whenToUse test; this tree holds one that does not`,
+    );
+  }
+});
 
 // Only the key set matters here: FOCUS's values are reviewer-name arrays that whenToUse's prose
 // never restates.
@@ -69,11 +93,7 @@ test("the focus values in audit's whenToUse match the FOCUS keys extracted from 
   }
 });
 
-// One tree per polish.js: the English source under workflows/, and its .ja/ mirror.
-const POLISH_TREES = [
-  { label: "en", path: join(here, "..", "..", "polish.js") },
-  { label: "ja", path: join(here, "..", "..", "..", ".ja", "workflows", "polish.js") },
-];
+const POLISH_TREES = workflowTrees("polish");
 
 // Only the key set matters here: MODES's values are null placeholders that whenToUse's prose
 // never restates.
@@ -111,13 +131,3 @@ test("the mode values in polish's whenToUse match the MODES entries extracted fr
   }
 });
 
-test("polish's whenToUse in neither tree contains the identifier args", () => {
-  for (const { label, path } of POLISH_TREES) {
-    const meta = readMeta(path);
-    assert.doesNotMatch(
-      meta.whenToUse,
-      /\bargs\b/,
-      `[${label}] whenToUse names the identifier "args" instead of describing the shape in prose`,
-    );
-  }
-});
