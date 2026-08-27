@@ -39,7 +39,7 @@ scenes: ["<situation this rule bears on, from SCENES only>"]
 
 ## The `kind: structure` page
 
-Besides the 共通項 page, a structure page carries `kind: structure` in its frontmatter. A 共通項 page writes a recurring pattern extracted from PRs/issues, while a structure page writes the structure of one glob contract group (files sharing the same boundary and contract). The skeleton to use is decided by whether a Phase 3 `pages` item carries `kind: structure`: an item without it uses the 共通項 skeleton above, and an item with it uses this one. Phase 3's extraction targets only 共通項 patterns from PRs/issues, so no `pages` item ever carries `kind: structure`, and a structure page is hand-written and added separately. Its sections run 内容 → 境界 → 契約 → 要求 → 参照コード → 由来, and it carries neither 定型手順 nor 根拠. It always keeps the 由来 heading, and empties the content under it only when no record passes the counterfactual test。
+Besides the 共通項 page, a structure page carries `kind: structure` in its frontmatter. A 共通項 page writes a recurring pattern extracted from PRs/issues, while a structure page writes the structure of one glob contract group (files sharing the same boundary and contract). Which skeleton applies follows the write, not a field on a `pages` item: Phase 3 extracts 共通項 patterns alone, so nothing in `pages` is ever a structure page. A structure page reaches this skeleton two ways, both outside `pages`: hand-written and added separately, or rewritten by Phase 6 step 2 when Phase 4 step 4 found its rows adrift from the code. Its sections run 内容 → 境界 → 契約 → 要求 → 参照コード → 由来, and it carries neither 定型手順 nor 根拠. It always keeps the 由来 heading, and empties the content under it only when no record passes the counterfactual test.
 
 ```markdown
 ---

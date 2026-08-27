@@ -250,18 +250,31 @@ class SkillContract(unittest.TestCase):
                 body = doc[doc.index(f"## Phase {phase}") : doc.index(f"## Phase {phase + 1}")]
                 self.assertIn(defers[lang], body, f"{lang}: Phase {phase} defers its write")
 
-    def test_phase_6_step_2_selects_the_skeleton_by_the_pages_kind(self) -> None:
-        """T-005: both trees' Phase 6 step 2 selects the skeleton by the page's kind"""
+    def test_phase_6_step_2_selects_the_skeleton_by_the_write(self) -> None:
+        """T-005: both trees' Phase 6 step 2 selects the skeleton by which write it is making,
+        and Phase 6 names the structure-page rewrite among the writes outside the cap.
+
+        Not a `kind` field on a `pages` item: Phase 3 extracts 共通項 patterns alone, so nothing
+        in `pages` ever carries one and a branch reading it never fires."""
+        pages_word = {"ja": "`pages`", "en": "`pages`"}
+        structure_word = {"ja": "構造ページ", "en": "structure"}
         for lang in LANGS:
             phase6 = self.phase_6(lang)
             step = next(line for line in phase6.split("\n") if line.startswith("2. "))
             self.assertIn(
-                "kind", step, f"{lang}: step 2 names kind as what selects the skeleton"
+                pages_word[lang], step, f"{lang}: step 2 names the pages write"
             )
             self.assertIn(
-                "kind: structure",
+                structure_word[lang],
                 step,
-                f"{lang}: step 2 names the structure kind value that picks the other skeleton",
+                f"{lang}: step 2 names the structure-page write as the other skeleton's source",
+            )
+
+            opening = phase6[: phase6.index("\n1. ")]
+            self.assertIn(
+                structure_word[lang],
+                opening,
+                f"{lang}: Phase 6 names the structure-page rewrite among the cap-exempt writes",
             )
 
     def test_structure_skeleton_order_matches_phase_4_cross_check_order(self) -> None:
