@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflow } from "../../_lib/run-workflow.js";
-import { defaultAgentStub, callOf } from "./_fixtures.js";
+import { defaultAgentStub, callOf, snapshotPayload } from "./_fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const auditJs = join(here, "..", "..", "audit.js");
@@ -246,5 +246,136 @@ test("T-026 consolidating want with imo gives the finding a disposition of want"
     result.findings[0].disposition,
     "want",
     "want outranks imo, so neither the weaker source nor the default decides the merged value",
+  );
+});
+
+// The sort contract mirrors workflows/assert.js's mergeIssues: SEVERITY_RANK descending, then
+// file ascending (localeCompare), then line ascending. It applies once, right after
+// finalFindings is assembled, so the return value's findings and the snapshot payload's
+// findings must carry the identical order.
+test("T-101 findings come back in critical, high, medium, low order when the integrate stage returns them reversed", async () => {
+  const { result, calls } = await run({
+    challenge: BOTH_CONFIRMED,
+    integrate: {
+      findings: [
+        { file: "a.js", line: "1", severity: "low", summary: "low finding", source_ids: ["R-1"] },
+        {
+          file: "a.js",
+          line: "2",
+          severity: "medium",
+          summary: "medium finding",
+          source_ids: ["R-1"],
+        },
+        {
+          file: "a.js",
+          line: "3",
+          severity: "high",
+          summary: "high finding",
+          source_ids: ["R-1"],
+        },
+        {
+          file: "a.js",
+          line: "4",
+          severity: "critical",
+          summary: "critical finding",
+          source_ids: ["R-1"],
+        },
+      ],
+    },
+  });
+  assert.deepEqual(
+    result.findings.map((f) => f.severity),
+    ["critical", "high", "medium", "low"],
+    "the reversed integrate order comes back sorted critical -> high -> medium -> low",
+  );
+  const snap = snapshotPayload(calls);
+  assert.deepEqual(
+    snap.findings.map((f) => f.severity),
+    ["critical", "high", "medium", "low"],
+    "the snapshot's findings carry the same severity order as the return value",
+  );
+});
+
+test("T-102 findings sharing a severity come back ordered by file", async () => {
+  const { result, calls } = await run({
+    challenge: BOTH_CONFIRMED,
+    integrate: {
+      findings: [
+        { file: "b.js", line: "1", severity: "high", summary: "b finding", source_ids: ["R-1"] },
+        { file: "a.js", line: "1", severity: "high", summary: "a finding", source_ids: ["R-1"] },
+      ],
+    },
+  });
+  assert.deepEqual(
+    result.findings.map((f) => f.file),
+    ["a.js", "b.js"],
+    "two findings sharing severity high come back ordered a.js before b.js",
+  );
+  const snap = snapshotPayload(calls);
+  assert.deepEqual(
+    snap.findings.map((f) => f.file),
+    ["a.js", "b.js"],
+    "the snapshot's findings carry the same file order as the return value",
+  );
+});
+
+test("T-103 findings sharing a severity and a file come back ordered by line", async () => {
+  const { result, calls } = await run({
+    challenge: BOTH_CONFIRMED,
+    integrate: {
+      findings: [
+        { file: "a.js", line: "10", severity: "high", summary: "line ten", source_ids: ["R-1"] },
+        { file: "a.js", line: "9", severity: "high", summary: "line nine", source_ids: ["R-1"] },
+      ],
+    },
+  });
+  assert.deepEqual(
+    result.findings.map((f) => f.line),
+    ["9", "10"],
+    'line 9 sorts before line 10 numerically, not lexicographically (a lexicographic sort would put "10" first)',
+  );
+  const snap = snapshotPayload(calls);
+  assert.deepEqual(
+    snap.findings.map((f) => f.line),
+    ["9", "10"],
+    "the snapshot's findings carry the same line order as the return value",
+  );
+});
+
+test("T-104 a finding with no severity comes back last and stays in the findings array", async () => {
+  const { result, calls } = await run({
+    challenge: BOTH_CONFIRMED,
+    integrate: {
+      // Neither the input order nor the filename order matches the expected output, so a
+      // comparator that falls through to the file compare on an unranked severity puts the
+      // no-severity finding first and fails here.
+      findings: [
+        { file: "a.js", line: "1", summary: "no severity finding", source_ids: ["R-1"] },
+        {
+          file: "z.js",
+          line: "1",
+          severity: "critical",
+          summary: "critical finding",
+          source_ids: ["R-1"],
+        },
+        { file: "b.js", line: "1", severity: "low", summary: "low finding", source_ids: ["R-1"] },
+      ],
+    },
+  });
+  assert.equal(
+    result.findings.length,
+    3,
+    "the no-severity finding is not dropped from the findings array",
+  );
+  assert.deepEqual(
+    result.findings.map((f) => f.summary),
+    ["critical finding", "low finding", "no severity finding"],
+    "the finding with no severity sorts after every finding that carries one",
+  );
+  const snap = snapshotPayload(calls);
+  assert.deepEqual(
+    snap.findings.map((f) => f.summary),
+    ["critical finding", "low finding", "no severity finding"],
+    "the snapshot's findings carry the same order as the return value",
   );
 });
