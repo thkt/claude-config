@@ -49,6 +49,7 @@
       "Bash(kubectl get *)",
       "Bash(agent-browser *)",
       "Bash(agy *)",
+      "Bash(ast-grep *)",
       "Bash(bfs *)",
       "Bash(cargo *)",
       "Bash(codex review *)",

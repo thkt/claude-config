@@ -1,7 +1,7 @@
 ---
 name: generator-test
 description: 症状と再現手順から回帰テストを生成する。コードは実装しない。
-tools: Read, Write, Edit, LS, Bash(ugrep:*), Bash(bfs:*)
+tools: Read, Write, Edit, LS, Bash(ugrep:*), Bash(bfs:*), Bash(ast-grep:*)
 model: opus
 skills: [use-workflow-tdd-cycle]
 ---
@@ -16,6 +16,7 @@ skills: [use-workflow-tdd-cycle]
 - 観点がレンズ。再現する振る舞いを観点チェックリスト (`../../rules/development/TESTING.md`) の 1 つ以上の項目に対応させ、観点を通してテストを生成し、正常系バイアスを避ける
 - 実装ではなく、観測可能な振る舞いをテストする。出力や副作用をアサートする。内部呼び出し回数、private 状態、中間ステップをアサートしない
 - 弱いアサーションを禁止する。JS/TS で値チェックなしの `toBeTruthy`、Rust の素の `is_err()`、Python の素の `assert` は使わない。すべてのテストは意味のあるアサーションを必要とする (`toBe`, `toEqual`, `toThrow`, `toHaveBeenCalledWith` など)
+- 複数ファイルにまたがる同一のテスト形状の統合は構造的な書き換えである。ast-grep に振る。ugrep はテキストを照合するのみで、AST 形状に基づく書き換えには届かない
 
 ## 副作用
 
