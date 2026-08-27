@@ -23,10 +23,9 @@ class Classification(unittest.TestCase):
 
         self.assertEqual(result, DELETE_CANDIDATE)
 
-    def test_an_element_that_violates_in_the_wiped_arm_is_reported_as_needing_a_human_value_judgment(
-        self,
-    ) -> None:
-        """T-010 An element that violates in the wiped arm is reported as needing a human value judgment"""
+    def test_wiped_arm_violation_needs_human_judgment(self) -> None:
+        """T-010 An element that violates in the wiped arm is reported as needing a human
+        value judgment"""
         result = classify(trigger_task="task-a", task_set={"task-a"}, complies=False)
 
         self.assertEqual(result, NEEDS_HUMAN_JUDGMENT)
@@ -46,12 +45,11 @@ class Classification(unittest.TestCase):
     def test_an_element_whose_triggering_task_is_absent_from_the_task_set_is_reported_as_unmeasured(
         self,
     ) -> None:
-        """T-012 An element whose triggering task is absent from the task set is reported as unmeasured"""
+        """T-012 An element whose triggering task is absent from the task set is reported as
+        unmeasured"""
         # complies=True would earn DELETE_CANDIDATE on its own; the missing task_set
         # membership must win because its row sits above compliance in the table.
-        result = classify(
-            trigger_task="task-missing", task_set={"task-a", "task-b"}, complies=True
-        )
+        result = classify(trigger_task="task-missing", task_set={"task-a", "task-b"}, complies=True)
 
         self.assertEqual(result, UNMEASURED)
 

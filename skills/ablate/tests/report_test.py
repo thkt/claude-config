@@ -6,9 +6,9 @@ This is the seam unit for U-001 (skills/_lib/harness_elements.py) + U-002
 (skills/ablate/scripts/arms.py) + U-003 (skills/ablate/scripts/verdict.py): report.py must
 call the three real modules and wire their outputs together, so these tests exercise the
 real modules directly (never a stub) and cross-check report.py's output against what those
-real functions independently return for the same input (skills/census/tests/verdict-and-paths.test.js's
-read-both-sides-and-cross-check shape, applied here to the module boundary instead of the
-EN/.ja language boundary).
+real functions independently return for the same input. That is
+skills/census/tests/verdict-and-paths.test.js's read-both-sides-and-cross-check shape applied
+to the module boundary; MirrorParity below applies it to the EN/.ja language boundary.
 """
 
 import json
@@ -23,9 +23,8 @@ sys.path.insert(0, str(HERE.parent.parent / "_lib"))
 
 import arms  # noqa: E402
 import harness_elements  # noqa: E402
-import verdict  # noqa: E402
-
 import report  # noqa: E402
+import verdict  # noqa: E402
 
 
 def _write(root: Path, rel: str, content: str = "# content\n") -> Path:
@@ -142,6 +141,53 @@ class ApparatusSelfExclusion(unittest.TestCase):
 
             self.assertEqual(result["verdicts"][apparatus_rel], verdict.DELETE_CANDIDATE)
             self.assertNotIn(apparatus_rel, result["delete_candidates"])
+
+
+MIRRORED_PAIRS = [
+    ("skills/ablate/scripts/arms.py", ".ja/skills/ablate/scripts/arms.py"),
+    ("skills/ablate/scripts/verdict.py", ".ja/skills/ablate/scripts/verdict.py"),
+    ("skills/ablate/scripts/report.py", ".ja/skills/ablate/scripts/report.py"),
+    ("skills/_lib/harness_elements.py", ".ja/skills/_lib/harness_elements.py"),
+]
+
+REPO_ROOT = HERE.parent.parent.parent
+
+
+class MirrorParity(unittest.TestCase):
+    """`.ja/` is canonical and the English side mirrors it in the same commit
+    (rules/conventions/MIRROR.md). Prose differs between the two by design; the code
+    structure does not, so a refactor landing on one side alone is what this catches."""
+
+    def code_lines(self, path: Path) -> list[str]:
+        """Statement lines with the prose dropped: comments go, and so does every line inside
+        a docstring, which is what lets the two languages differ where they are meant to."""
+        lines: list[str] = []
+        in_doc = False
+        for raw in path.read_text(encoding="utf-8").split("\n"):
+            line = raw.strip()
+            if in_doc:
+                if line.endswith('"""'):
+                    in_doc = False
+                continue
+            if line.startswith('"""'):
+                if not (len(line) > 3 and line.endswith('"""')):
+                    in_doc = True
+                continue
+            if not line or line.startswith("#"):
+                continue
+            lines.append(line)
+        return lines
+
+    def test_every_pair_carries_the_same_code_lines(self) -> None:
+        for en_rel, ja_rel in MIRRORED_PAIRS:
+            with self.subTest(en_rel):
+                en, ja = REPO_ROOT / en_rel, REPO_ROOT / ja_rel
+                self.assertTrue(ja.is_file(), f"{ja_rel} exists")
+                self.assertEqual(
+                    self.code_lines(en),
+                    self.code_lines(ja),
+                    f"{en_rel} and {ja_rel} carry different code",
+                )
 
 
 if __name__ == "__main__":

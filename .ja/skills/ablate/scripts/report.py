@@ -77,6 +77,15 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
     }
 
 
+def _table(headers: tuple[str, str], rows: list[tuple[str, str]]) -> list[str]:
+    """2 列 Markdown 表の見出し行、区切り行、データ行。_render がこの形の表を 3 つ
+    (Summary、Harness Elements、Verdicts) 別々の入力から組むので切り出した。ここで
+    列の組み方を 1 箇所変えると 3 つとも変わる。"""
+    lines = [f"| {headers[0]} | {headers[1]} |", "| --- | --- |"]
+    lines += [f"| {a} | {b} |" for a, b in rows]
+    return lines
+
+
 def _render(result: dict[str, Any]) -> str:
     """`build_report` の結果を Markdown として描画する。build_report が返す 4 つの key
     だけを読み、呼び出し側が渡した生の `observations` は決して読まないため、observation が
@@ -85,16 +94,22 @@ def _render(result: dict[str, Any]) -> str:
     lines: list[str] = ["# Ablation Report", ""]
 
     lines += ["## Summary", ""]
-    lines += ["| Metric | Value |", "| --- | --- |"]
-    lines += [f"| Harness elements enumerated | {len(result['elements'])} |"]
-    lines += [f"| Arms | {len(result['arms'])} |"]
-    lines += [f"| Elements observed | {len(result['verdicts'])} |"]
-    lines += [f"| Delete candidates | {len(result['delete_candidates'])} |", ""]
+    lines += _table(
+        ("Metric", "Value"),
+        [
+            ("Harness elements enumerated", str(len(result["elements"]))),
+            ("Arms", str(len(result["arms"]))),
+            ("Elements observed", str(len(result["verdicts"]))),
+            ("Delete candidates", str(len(result["delete_candidates"]))),
+        ],
+    )
+    lines += [""]
 
     lines += ["## Harness Elements", ""]
-    lines += ["| Path | Classification |", "| --- | --- |"]
-    for element in result["elements"]:
-        lines += [f"| {element['path']} | {element['classification']} |"]
+    lines += _table(
+        ("Path", "Classification"),
+        [(element["path"], element["classification"]) for element in result["elements"]],
+    )
     lines += [""]
 
     lines += ["## Arms", ""]
@@ -102,9 +117,10 @@ def _render(result: dict[str, Any]) -> str:
     lines += [""]
 
     lines += ["## Verdicts", ""]
-    lines += ["| Path | Verdict |", "| --- | --- |"]
-    for path in sorted(result["verdicts"]):
-        lines += [f"| {path} | {result['verdicts'][path]} |"]
+    lines += _table(
+        ("Path", "Verdict"),
+        [(path, result["verdicts"][path]) for path in sorted(result["verdicts"])],
+    )
     lines += [""]
 
     lines += ["## Delete Candidates", ""]

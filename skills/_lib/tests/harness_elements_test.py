@@ -42,9 +42,7 @@ class Classification(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "rules" / "sample.md"
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(
-                '---\npaths:\n  - "**/*.ts"\n---\n\n# Sample Rule\n', encoding="utf-8"
-            )
+            path.write_text('---\npaths:\n  - "**/*.ts"\n---\n\n# Sample Rule\n', encoding="utf-8")
 
             self.assertEqual(classify(path), PATH_TRIGGERED)
 

@@ -46,9 +46,9 @@ def arm_command(arm: str, element: str | None = None) -> list[str]:
     project), which is the ablation baseline. wiped+1 starts from that same baseline and
     restores exactly one harness element by appending it to the system prompt
     (--append-system-prompt), rather than reloading it through normal discovery — the
-    contract this unit implements ("wiped は --setting-sources project、復元は
-    --append-system-prompt で作る"). full-harness runs unmodified, with no restricting
-    flag, as the upper-bound comparison point.
+    contract this unit implements: "wiped は --setting-sources project",
+    "復元は --append-system-prompt で作る". full-harness runs unmodified, with no
+    restricting flag, as the upper-bound comparison point.
     """
     command = list(BASE_COMMAND)
     if arm in (WIPED, WIPED_PLUS_ONE):
