@@ -57,10 +57,9 @@ const PLAN_QUALITY = {
   "plan-drift": true,
   "code-failed": false,
 };
-// record.py の stdout が path/run_id と並べて持つ window tally の key。RUNS_PATH を読み
-// 返せない run では record.py が 4 つとも揃って落とすので、recordedCounts も全部揃うか
-// 何も持たないかの 2 択として読む。key の型をここで 1 度だけ名付け、下の RECORD_SCHEMA の
-// 対応する properties をそこから導くことで、key の追加・改名・型変更で両者がずれるのを防ぐ。
+// record.py の stdout が path/run_id と並べて持つ window tally の key。型をここで 1 度だけ
+// 名付け、下の RECORD_SCHEMA の properties をそこから導くことで、key の追加・改名・型変更で
+// 両者がずれるのを防ぐ。
 const RECORD_COUNT_TYPES = {
   started: "number",
   stops: "number",
