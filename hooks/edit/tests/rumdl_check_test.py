@@ -26,6 +26,11 @@ VIOLATING_MD = """# Heading
 ## Another Heading
 """
 
+CLEAN_MD = """# Heading
+
+A paragraph rumdl reports nothing on.
+"""
+
 
 class TestRumdlCheck(unittest.TestCase):
     # Declared here because setUp fills them: an attribute first seen inside a method
@@ -48,24 +53,20 @@ class TestRumdlCheck(unittest.TestCase):
         payload = {"tool_name": tool, "tool_input": {"file_path": str(path)}}
         return hook_harness.checked(HOOK, payload, env)
 
-    def test_a_markdown_file_carrying_a_rule_violation_makes_the_hook_print_the_violation(
-        self,
-    ) -> None:
+    def test_violation_is_printed(self) -> None:
         """T-001 a markdown file carrying a rule violation makes the hook print the violation"""
         path = self.write("violation.md", VIOLATING_MD)
         result = self.run_hook("Write", path)
         self.assertIn("MD022", result.stdout)
 
-    def test_the_hook_leaves_the_edited_file_byte_identical_to_what_it_received(self) -> None:
+    def test_file_unchanged(self) -> None:
         """T-002 the hook leaves the edited file byte-identical to what it received"""
         path = self.write("unchanged.md", VIOLATING_MD)
         before = path.read_bytes()
         _ = self.run_hook("Write", path)
         self.assertEqual(path.read_bytes(), before)
 
-    def test_a_path_that_is_not_markdown_or_does_not_exist_makes_the_hook_print_nothing(
-        self,
-    ) -> None:
+    def test_non_markdown_and_missing_path_skipped(self) -> None:
         """T-003 a path that is not markdown, or does not exist, makes the hook print nothing"""
         with self.subTest("not markdown"):
             path = self.write("violation.txt", VIOLATING_MD)
@@ -76,13 +77,18 @@ class TestRumdlCheck(unittest.TestCase):
             result = self.run_hook("Write", missing)
             self.assertEqual(result.stdout, "")
 
-    def test_a_path_with_no_rumdl_on_it_makes_the_hook_print_nothing_and_exit_zero(
-        self,
-    ) -> None:
+    def test_graceful_skip_no_rumdl(self) -> None:
         """T-004 a PATH with no rumdl on it makes the hook print nothing and exit zero"""
         path = self.write("violation.md", VIOLATING_MD)
         env = dict(os.environ, PATH="/usr/bin:/bin")
         result = self.run_hook("Write", path, env=env)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(result.returncode, 0)
+
+    def test_clean_file_prints_nothing(self) -> None:
+        """A .md carrying no violation makes the hook print nothing"""
+        path = self.write("clean.md", CLEAN_MD)
+        result = self.run_hook("Write", path)
         self.assertEqual(result.stdout, "")
 
 

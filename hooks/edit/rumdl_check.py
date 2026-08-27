@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """PostToolUse hook: report rumdl violations after editing a .md file.
 
-The pre-edit run cannot see what the edit itself broke. Unlike textlint_fix.py, this hook
-only reports; it never calls `rumdl fmt`, so a fix stays a decision the human or the agent
-makes on purpose.
+Unlike textlint_fix.py, this hook only reports; it never calls `rumdl fmt`, so a fix stays a
+decision the human or the agent makes on purpose.
 """
 
 import subprocess
@@ -31,6 +30,8 @@ try:
 except FileNotFoundError:
     sys.exit(0)
 
-output = result.stdout.strip()
-if output:
-    print(output)
+# Not `if result.stdout`: rumdl prints "Success: No issues found in 1 file" on a clean file
+# too, and forwarding that would put a line on every .md edit. The exit code is the only
+# signal that separates the two.
+if result.returncode != 0:
+    print(result.stdout.strip())
