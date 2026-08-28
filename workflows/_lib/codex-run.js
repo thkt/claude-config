@@ -1,12 +1,9 @@
-#!/usr/bin/env node
 // Runs a workflow script (workflows/<name>.js) on Codex.
 //
 // Claude Code supplies agent() from its own subagent runtime. Codex has no equivalent, so
 // each agent() call becomes one `codex exec` child process here. The rest of the evaluation
 // form -- the vm context, the banned Date / Math globals, parallel and pipeline semantics --
 // is reused from run-workflow.js, which already reproduces what production does.
-//
-// Usage: node workflows/_lib/codex-run.mjs <workflow> --repo <abs path> [--issue N] [--base B]
 import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { availableParallelism, tmpdir } from "node:os";
@@ -14,7 +11,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflow } from "./run-workflow.js";
 
-export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 // build.js and code.js name only haiku and sonnet. The three tiers line up with Codex's
 // current-generation coding models; one CODEX_MODEL_<TIER> variable overrides one entry.
@@ -58,6 +55,10 @@ const acceptsNull = (schema) => {
 
 const described = (schema, description) => (description ? { ...schema, description } : schema);
 
+// An object or array schema that also declared null keeps that branch around the rewritten form.
+const keepNullBranch = (out, includesNull, description) =>
+  includesNull ? described(nullable(out), description) : out;
+
 export function strictify(schema) {
   if (!schema || typeof schema !== "object") return schema;
 
@@ -81,12 +82,12 @@ export function strictify(schema) {
       },
       schema.description,
     );
-    return typeIncludesNull ? described(nullable(out), schema.description) : out;
+    return keepNullBranch(out, typeIncludesNull, schema.description);
   }
 
   if (bare.includes("array")) {
     const out = described({ type: "array", items: strictify(schema.items) }, schema.description);
-    return typeIncludesNull ? described(nullable(out), schema.description) : out;
+    return keepNullBranch(out, typeIncludesNull, schema.description);
   }
 
   if (!typeIncludesNull) return { ...schema };
@@ -159,6 +160,21 @@ export function findSchemaViolation(value, schema, path = "") {
   if (value === null && !acceptsNull(schema)) return `${here} is null`;
   return "";
 }
+
+// ---- Prompt assembly --------------------------------------------------------------------
+// Every string codex reads is built here, so changing what an agent is told does not mean
+// reading through the stage loop.
+
+// The agent definition carries the behavior and the workflow script carries the task. The rule
+// keeps them apart so the model does not read the task as one more clause of the behavior.
+const withPreamble = (preamble, prompt) => (preamble ? `${preamble}\n\n---\n\n${prompt}` : prompt);
+
+// findSchemaViolation names a required field that came back missing or null, so the retry asks
+// for that field to be filled. Asking instead for extra fields to be dropped answers a
+// violation the strict-mode schema cannot produce.
+const schemaCorrection = (reason) =>
+  `\n\nThe previous attempt returned a value that did not fit the output schema (${reason}). ` +
+  `Answer again with every declared field filled, using null only where the schema allows it.`;
 
 // ---- Agent definitions -----------------------------------------------------------------
 // agentType names a Claude Code subagent. general-purpose is a Claude Code built-in with no
@@ -301,7 +317,7 @@ export function createStubs({ repo, concurrency = DEFAULT_CONCURRENCY, onLog = (
       const outPath = join(tmp, `out-${id}.json`);
       if (opts.schema) writeFileSync(schemaPath, JSON.stringify(strictify(opts.schema)));
 
-      const base = preamble ? `${preamble}\n\n---\n\n${prompt}` : prompt;
+      const base = withPreamble(preamble, prompt);
       let correction = "";
 
       for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
@@ -345,9 +361,7 @@ export function createStubs({ repo, concurrency = DEFAULT_CONCURRENCY, onLog = (
           return value;
         } catch (err) {
           onLog(`[${label}] response did not fit the schema: ${err.message}`);
-          correction =
-            `\n\nThe previous attempt returned a value that did not fit the output schema ` +
-            `(${err.message}). Return only the fields the schema declares.`;
+          correction = schemaCorrection(err.message);
         }
       }
       // The Agent tool returns null when a subagent dies after its retries, and the workflow
@@ -373,7 +387,7 @@ export function createStubs({ repo, concurrency = DEFAULT_CONCURRENCY, onLog = (
   return stubs;
 }
 
-export async function runOnCodex(name, args, { concurrency, onLog = () => {} } = {}) {
+async function runOnCodex(name, args, { concurrency, onLog = () => {} } = {}) {
   const path = resolveWorkflowPath(name);
   const tmp = mkdtempSync(join(process.env.TMPDIR || tmpdir(), "codex-run-"));
   try {
@@ -424,7 +438,7 @@ if (invokedDirectly) {
   const { name, args, concurrency } = parseArgv(process.argv.slice(2));
   if (!name || !args.repo) {
     process.stderr.write(
-      "usage: node workflows/_lib/codex-run.mjs <workflow> --repo <abs path> " +
+      "usage: node workflows/_lib/codex-run.js <workflow> --repo <abs path> " +
         "[--issue N] [--base B] [--concurrency N] [--args <json>]\n",
     );
     process.exit(2);

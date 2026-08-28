@@ -15,6 +15,9 @@
     "skills/**/*.{js,mjs}",
     ".ja/skills/**/*.{js,mjs}"
   ],
+  "ignoreBinaries": [
+    "codex"
+  ],
   "ignoreDependencies": [
     "oxfmt",
     "^@?textlint"

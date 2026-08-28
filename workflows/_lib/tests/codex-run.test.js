@@ -15,7 +15,7 @@ import {
   parseArgv,
   pruneNulls,
   strictify,
-} from "../codex-run.mjs";
+} from "../codex-run.js";
 
 // The shape workflows/build.js's obj(required, properties) produces: required is a subset of
 // properties on purpose, which is what OpenAI strict mode rejects.
