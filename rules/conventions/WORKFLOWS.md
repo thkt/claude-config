@@ -18,7 +18,7 @@ Discovery reads `workflows/` flat and registers only the `.js` files directly un
 | Script filename   | `workflows/<name>.js`. That `<name>` is the name `Workflow({name})` resolves                                                         |
 | Shape of the name | One English word naming the operation the workflow performs. Replace generic names like helper, utils, tools with the operation name |
 | Helper script     | Place under `workflows/<name>/`. A `.js` directly under `workflows/` registers as a workflow                                         |
-| Shared harness    | Place under `workflows/_lib/`. Limited to the use imported from tests                                                                |
+| Shared harness    | Place under `workflows/_lib/`. Limited to what tests import and to a runner that evaluates the scripts on another host               |
 
 ## Reference notation
 
