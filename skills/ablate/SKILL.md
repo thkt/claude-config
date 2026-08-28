@@ -45,6 +45,8 @@ python3 -c 'import sys; sys.path.insert(0, "skills/ablate/scripts"); sys.path.in
 
 ## Output
 
+Removing anything the report names is a separate run: hand the delete candidates to `docs/wiki/retire-rename-procedure.md`, which owns the detection layer a retirement loses and the trigger for reviving it. This skill stops at the verdict.
+
 | Item              | Content                                                           |
 | ----------------- | ----------------------------------------------------------------- |
 | Report path       | The path `write_report` returned                                  |

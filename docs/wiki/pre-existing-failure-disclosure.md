@@ -24,3 +24,5 @@ PR の verify でテストが失敗したとき、その PR の変更に起因�
 - #222 verify 出力に「deliberate manual-acceptance gate、not a code defect、no fix was attempted」と記録した
 - #226「fail 2 件は EN/JA 同一の manual acceptance gate で、変更前から赤」と明記した
 - #548 #549 pyright の全リポジトリ実行が対象ブランチと無関係な既存 11 件のエラーで exit 1 になることを、対象外ファイルの列挙とともに verify 節で明示した
+- #581 pyright 27 件のエラーを、ブランチ自身のコミットより前に対象ファイルが最後に触られたことを commit 履歴で確認し、pre-existing baseline findings であって regression でないと verify 節に明記した
+- #556 pyright 11 件のエラーを、対象ファイルが 2026-08-23 以前のコミットで最後に触られたことをもとに pre-existing と分類し、修正を行わなかった旨を verify 節に明記した
