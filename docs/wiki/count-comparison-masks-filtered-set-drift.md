@@ -17,7 +17,7 @@ scenes: []
 
 ## 参照コード
 
-- `skills/scribe/scripts/structure_page.py` の `_unchecked_claim_rows`（検査漏れの主張を件数ではなく行そのものの一覧で返す設計）
+- `skills/scribe/tests/structure_page_test.py` の `_unchecked_claim_rows`（検査漏れの主張を件数ではなく行そのものの一覧で返す設計）
 
 ## 根拠
 

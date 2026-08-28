@@ -15,7 +15,7 @@ argument-hint: "[要素のパス]"
 
 ## 判定と閾値の所在
 
-アームの一覧、1 アームあたりの実行回数、通過閾値はすべて `${CLAUDE_SKILL_DIR}/scripts/arms.py` の定数が持つ。分類の基準は `${CLAUDE_SKILL_DIR}/scripts/verdict.py` が持つ。DR ゲートの基準、未達の記録を表す印、記録を読む先は `${CLAUDE_SKILL_DIR}/scripts/dr_gate.py` が持つ。この本文に数値を書き写さない (`docs/wiki/deterministic-script-judgment.md`)。
+アームの一覧、1 アームあたりの実行回数、通過閾値はすべて `${CLAUDE_SKILL_DIR}/scripts/arms.py` の定数が持つ。分類の基準は `${CLAUDE_SKILL_DIR}/scripts/verdict.py` が持つ。DR ゲートの基準、未達の記録を表す印、記録を読む先は `${CLAUDE_SKILL_DIR}/scripts/dr_gate.py` が持つ。計測窓と rare-by-design の集合は `${CLAUDE_SKILL_DIR}/scripts/usage_counts.py` が持つ。規則ごとの起動タスクと固定タスクセットは `${CLAUDE_SKILL_DIR}/references/measurement-criteria.md` が持つ。この本文に数値を書き写さない (`docs/wiki/deterministic-script-judgment.md`)。
 
 ## Phase 1: 列挙
 
@@ -27,17 +27,17 @@ python3 -c 'import sys; sys.path.insert(0, "skills/_lib"); import harness_elemen
 
 ## Phase 2: アーム実行
 
-Phase 1 が返した要素それぞれについて、`arms.ARMS` の各アームで `arms.arm_command(arm, element)` が返す命令を組み、`arms.RUN_COUNT` 回実行する。各 run の結果から、その要素についての観測 1 件を組む。
+Phase 1 が返した要素それぞれについて、`arms.ARMS` の各アームで `arms.arm_command(arm, element)` が返す命令を組み、`arms.RUN_COUNT` 回実行する。その要素の起動タスクは `${CLAUDE_SKILL_DIR}/references/measurement-criteria.md` から取る。各 run の結果から、その要素についての観測 1 件を組む。
 
-| 状況                                     | 扱い                                                             |
-| ---------------------------------------- | ---------------------------------------------------------------- |
-| run 数が `arms.RUN_COUNT` に届かない     | `arms.measurement_status(runs)` が `unmeasured` を返すまま進める |
-| `wiped+1` に渡す要素が決まらない         | `arm_command` が ValueError で止まるので、要素を確定してから呼ぶ |
-| 実行が失敗し結果を読めない run がある    | その run を数えず、observation に届いた run 数だけを載せる       |
+| 状況                                  | 扱い                                                             |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| run 数が `arms.RUN_COUNT` に届かない  | `arms.measurement_status(runs)` が `unmeasured` を返すまま進める |
+| `wiped+1` に渡す要素が決まらない      | `arm_command` が ValueError で止まるので、要素を確定してから呼ぶ |
+| 実行が失敗し結果を読めない run がある | その run を数えず、observation に届いた run 数だけを載せる       |
 
 ## Phase 3: レポート
 
-`report.write_report(root, observations)` を呼ぶ。削除候補がレポートへ届く前に `dr_gate.gate` が `docs/decisions/` を読み、生きている記録が支配する要素を保留するので、Summary はその件数を分けて数える。書き出し先の既定は `docs/audit/` で、ファイル名は UTC の `<YYYY-MM-DD>-<HHMMSS>-ablate.md`。
+`report.write_report(root, observations)` を呼ぶ。削除候補がレポートへ届く前に `dr_gate.gate` が `docs/decisions/` を読み、生きている記録が支配する要素を保留するので、Summary はその件数を分けて数える。同時に `usage_counts.py` も実行し、各要素の発火回数と最終使用日を同じ Harness Elements 表へ組み込む。見る経路は 1 つで、別経路を並走させない。書き出し先の既定は `docs/audit/` で、ファイル名は UTC の `<YYYY-MM-DD>-<HHMMSS>-ablate.md`。節の順は `${CLAUDE_SKILL_DIR}/templates/report-template.md` が持つ。
 
 ```bash
 python3 -c 'import sys; sys.path.insert(0, "skills/ablate/scripts"); sys.path.insert(0, "skills/_lib"); import report, json, pathlib; print(report.write_report(pathlib.Path("."), json.load(sys.stdin)))' < <observations.json>
@@ -45,8 +45,11 @@ python3 -c 'import sys; sys.path.insert(0, "skills/ablate/scripts"); sys.path.in
 
 ## Output
 
-| 項目           | 内容                                                     |
-| -------------- | -------------------------------------------------------- |
-| レポートのパス | `write_report` が返したパス                              |
-| 削除候補       | レポートの Delete Candidates 節。0 件のときはその旨      |
-| 測定できた数   | Verdicts 節のうち `unmeasured` でない行数                |
+レポートが名指したものを実際に外すのは別の実行。削除候補は `docs/wiki/retire-rename-procedure.md` へ渡す。retire で失われる検出層と、それを復活させる判断トリガーはそちらが持つ。この skill は判定までで止まる。
+
+| 項目           | 内容                                                |
+| -------------- | --------------------------------------------------- |
+| レポートのパス | `write_report` が返したパス                         |
+| 削除候補       | レポートの Delete Candidates 節。0 件のときはその旨 |
+| 測定できた数   | Verdicts 節のうち `unmeasured` でない行数           |
+| Usage          | 各要素の発火回数と最終使用日。Harness Elements 内   |

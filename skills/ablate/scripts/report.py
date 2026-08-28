@@ -12,7 +12,7 @@ report.py does not manipulate sys.path itself.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -20,7 +20,11 @@ import arms
 import dr_gate
 import enforcer_map
 import harness_elements
+import usage_counts
 import verdict
+
+# Held here once so every caller reads the same value rather than each re-deriving it.
+TRANSCRIPTS_ROOT = Path.home() / ".claude" / "projects"
 
 # The ablation apparatus's own script tree. A path under here is the code that produced the
 # observation, not a harness element under test, so it must never appear in
@@ -39,16 +43,32 @@ def _is_apparatus(path: str) -> bool:
     return PurePosixPath(path).as_posix().startswith(APPARATUS_DIR)
 
 
-def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, Any]:
+def _usage_verdict(path: str, usage_elements: dict[str, Any], today: date) -> str:
+    """The usage verdict for one path. An element with no transcript entry never fired, so it
+    reaches classify as zero fires rather than being skipped."""
+    entry = usage_elements.get(path, {})
+    return usage_counts.classify(
+        path, fires=entry.get("fires", 0), last_used=entry.get("last_used"), now=today
+    )
+
+
+def build_report(
+    root: Path, observations: list[dict[str, Any]], *, now: date | None = None
+) -> dict[str, Any]:
     """Calls each preceding unit's script in turn and wires their outputs together.
 
     dr_gate.gate runs after verdict.classify's one-sided judgment and before the result
     reaches write_report, so a held candidate never enters delete_candidates below.
 
+    usage_counts reads session transcripts rather than `observations`, so the reader learns
+    usage from the report without also running an ablation arm.
+
     Returns a plain dict rather than a report string, so a caller that only wants the data
     does not have to parse Markdown back out of write_report's output.
     """
+    today = now or datetime.now(timezone.utc).date()
     elements = harness_elements.enumerate_elements(root)
+    usage = usage_counts.count_usage(TRANSCRIPTS_ROOT)
 
     verdicts: dict[str, str] = {}
     for observation in observations:
@@ -60,38 +80,56 @@ def build_report(root: Path, observations: list[dict[str, Any]]) -> dict[str, An
         )
         verdicts[path] = dr_gate.gate(path=path, verdict=raw_verdict, root=root)
 
+    usage_verdicts = {
+        path: _usage_verdict(path, usage["elements"], today)
+        for path in {element["path"] for element in elements} | set(verdicts)
+    }
+
     delete_candidates = [
         path
         for path in verdicts
-        if verdicts[path] == verdict.DELETE_CANDIDATE and not _is_apparatus(path)
+        if verdicts[path] == verdict.DELETE_CANDIDATE
+        and usage_verdicts[path] == verdict.DELETE_CANDIDATE
+        and not _is_apparatus(path)
     ]
 
     return {
         "elements": elements,
         "arms": list(arms.ARMS),
         "verdicts": verdicts,
+        "usage_verdicts": usage_verdicts,
         "delete_candidates": sorted(delete_candidates),
+        "usage": usage["elements"],
+        "transcripts": {
+            "count": usage["transcript_count"],
+            "date_range": usage["date_range"],
+        },
         "enforcer_rows": enforcer_map.map_all(root),
     }
 
 
 def _table(headers: tuple[str, ...], rows: list[tuple[str, ...]]) -> list[str]:
-    """The header + separator + data lines of a Markdown table, factored out because
-    _render builds five of these (Summary, Harness Elements, Verdicts, Always-Loaded
-    Elements, and — via the two-column callers above — every other section) from
-    differently-shaped inputs — one row-joining rule changed here changes all of them.
-    Column count comes from `headers`, so a 2-column caller and this unit's 4-column
-    Always-Loaded Elements table share the same rendering."""
+    """The header + separator + data lines of a Markdown table, factored out because _render
+    builds every section's table from differently-shaped inputs — one row-joining rule
+    changed here changes all of them. Column count comes from `headers`, so a two-column
+    caller and a wider one share the same rendering."""
     lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
     lines += ["| " + " | ".join(row) + " |" for row in rows]
     return lines
 
 
+def _date_range(date_range: dict[str, str | None]) -> str:
+    """The parsed transcripts' date span as one cell. A run whose transcripts hold no fire has
+    no span, and renders as "none" rather than as a pair of empty cells."""
+    start, end = date_range.get("start"), date_range.get("end")
+    return f"{start} - {end}" if start and end else "none"
+
+
 def _render(result: dict[str, Any]) -> str:
-    """Renders `build_report`'s result as Markdown. Reads only the keys build_report
-    returns — never the raw `observations` a caller passed in — so a field an observation
-    carries for its own provenance (such as the settings snapshot a run used) can never
-    reach the written report, verbatim or otherwise (T-014)."""
+    """Renders `build_report`'s result as Markdown. Reads that result alone, never the raw
+    `observations` a caller passed in, so a field an observation carries for its own
+    provenance (such as the settings snapshot a run used) can never reach the written
+    report, verbatim or otherwise (T-014)."""
     lines: list[str] = ["# Ablation Report", ""]
 
     lines += ["## Summary", ""]
@@ -109,6 +147,8 @@ def _render(result: dict[str, Any]) -> str:
                 "Held by a live DR",
                 str(sum(1 for v in result["verdicts"].values() if v == dr_gate.HELD)),
             ),
+            ("Transcripts parsed", str(result["transcripts"]["count"])),
+            ("Transcript date range", _date_range(result["transcripts"]["date_range"])),
         ],
     )
     lines += [""]
@@ -129,9 +169,20 @@ def _render(result: dict[str, Any]) -> str:
     lines += [""]
 
     lines += ["## Harness Elements", ""]
+    usage = result.get("usage", {})
     lines += _table(
-        ("Path", "Classification"),
-        [(element["path"], element["classification"]) for element in result["elements"]],
+        ("Path", "Classification", "Fires", "Last Used", "Usage Verdict"),
+        [
+            (
+                element["path"],
+                element["classification"],
+                str(element_usage.get("fires", 0)),
+                element_usage.get("last_used") or "never",
+                result["usage_verdicts"][element["path"]],
+            )
+            for element in result["elements"]
+            for element_usage in [usage.get(element["path"], {})]
+        ],
     )
     lines += [""]
 
