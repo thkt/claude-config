@@ -18,7 +18,7 @@ paths:
 | スクリプトのファイル名 | `workflows/<name>.js`。`<name>` がそのまま `Workflow({name})` で解決される名前                    |
 | name の形              | 英単語 1 語で、workflow が行う操作を表す。helper, utils, tools のような汎用名は操作名へ置き換える |
 | 補助スクリプト         | `workflows/<name>/` へ置く。直下へ `.js` を置くと、補助のつもりでも workflow として登録される     |
-| 共有ハーネス           | `workflows/_lib/` へ置く。テストから import する用途に限る                                        |
+| 共有ハーネス           | `workflows/_lib/` へ置く。テストが import するものと、別ホストで script を評価する runner に限る  |
 
 ## 参照記法
 

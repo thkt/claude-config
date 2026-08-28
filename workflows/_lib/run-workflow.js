@@ -205,14 +205,29 @@ export function checkWorkflowSyntax(scriptPath) {
   );
 }
 
-// runWorkflow(scriptPath, { args, stubs }) -> { result, calls, logs }
+// runWorkflow(scriptPath, { args, stubs, onLog, onPhase }) -> { result, calls, logs }
 // stubs.agent / stubs.workflow receive (prompt|name, opts|args) and return the stub result.
 // stubs.pipeline receives (items, ...stages) and replaces the default pipeline implementation.
 // calls captures the agent / workflow / phase invocations.
-export async function runWorkflow(scriptPath, { args = {}, stubs = {} } = {}) {
+// onLog / onPhase mirror each log() and phase() call as the run makes it, for a caller driving
+// a real run that cannot wait for the returned arrays. Both default to no-op, so a caller that
+// omits them observes exactly what it observed before they existed.
+export async function runWorkflow(scriptPath, options = {}) {
+  const { args = {}, stubs = {}, onLog = () => {}, onPhase = () => {} } = options;
   const source = readFileSync(scriptPath, "utf8").replace(/^export const meta/m, "const meta");
   const calls = { agent: [], workflow: [], phase: [] };
   const logs = [];
+  // A caller's own reporting must not decide whether the workflow keeps running, so a throw
+  // from onLog / onPhase is dropped here rather than surfacing inside the script.
+  const mirror = (notify) => (value) => {
+    try {
+      notify(value);
+    } catch {
+      /* the run continues */
+    }
+  };
+  const notifyPhase = mirror(onPhase);
+  const notifyLog = mirror(onLog);
 
   const agent = asProductionThrow(async (prompt, opts = {}) => {
     const hostPrompt = rehome(prompt);
@@ -258,10 +273,14 @@ export async function runWorkflow(scriptPath, { args = {}, stubs = {} } = {}) {
     );
   });
   const phase = asProductionThrow((title) => {
-    calls.phase.push(rehome(title));
+    const hostTitle = rehome(title);
+    calls.phase.push(hostTitle);
+    notifyPhase(hostTitle);
   });
   const log = asProductionThrow((message) => {
-    logs.push(rehome(message));
+    const hostMessage = rehome(message);
+    logs.push(hostMessage);
+    notifyLog(hostMessage);
   });
 
   // The supply side of PRODUCTION_GLOBALS. budget holds the state of a run with no token
