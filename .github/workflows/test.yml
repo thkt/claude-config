@@ -58,6 +58,19 @@ jobs:
       - name: Python tests
         run: find agents hooks skills workflows -name '*_test.py' -print0 | xargs -0 -r -n1 python3
 
+      # Runs only on a failed suite (#589). A test that builds a git repo under
+      # tempfile.TemporaryDirectory has failed here in teardown with
+      # "Directory not empty: 'pack'", and the same commit passed on rerun. The values below
+      # are the ones a local run cannot observe: macOS reproduced 0 failures in 20 runs.
+      - name: git settings on failure
+        if: failure()
+        run: |
+          git --version
+          echo "gc.auto=$(git config --get gc.auto || echo unset)"
+          echo "gc.autoDetach=$(git config --get gc.autoDetach || echo unset)"
+          echo "TMPDIR=${TMPDIR:-unset}"
+          find "${TMPDIR:-/tmp}" -maxdepth 4 -name pack -path '*objects*' -exec ls -la {} +
+
       # glob でなく find なのは、bash 3.2 に globstar が無く ** の階層解釈が版で割れるため。
       # Python tests と同じ形で、階層が増えても suite を落とさない。-t が実行行を stderr へ出す。
       - name: Shell tests
