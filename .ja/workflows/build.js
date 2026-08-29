@@ -444,6 +444,9 @@ const PLAN_SCHEMA = obj(
 // /think Phase 3 の unit サイズ指針と結合しているので、片方だけを変えない。seam unit
 // のテストは unit 間の境界を跨いで実モジュールを動かすため files が正当に増える。
 // 検査対象は非 seam unit に限る。
+// この数値の正はここ。skills/think/SKILL.md が散文で述べ直し、ずれたら unit-caps-ssot.test.js が
+// 落ちる。3 つ目の複製 .agents/skills/build/scripts/validate-plan.ts はここのテストから届かず、
+// 手で合わせるしかない。
 const UNIT_CAPS = { files: 3, tests: 4 };
 const oversizedUnits = (p) =>
   p.units.filter((u) => {
@@ -822,6 +825,8 @@ const code =
     model: "sonnet",
     implementer,
     commit: perUnitCommits,
+    // code を単独で呼ぶ側はテストコマンドを実行できるとは限らない。build は必ず実行できる。
+    verify: true,
     issue: issueNumber,
     untracked_baseline: baselineUntracked,
   })) || null;
@@ -1237,6 +1242,16 @@ const shipPayload = {
   manual_checks: manualChecks,
 };
 
+// agent が選んだファイル名は run をまたいで再利用されうるうえ、fact tail は追記されるので、古い
+// 本文の上に今回の tail が積まれた状態で ship してしまう。タイトルをファイル経由にするのは別の
+// 理由で、展開すると shell の構文として届くためである。
+const runSlug = `${issueNumber || "no-issue"}-${String(branch).replace(/[^\w.-]+/g, "-")}`;
+const prDir = `"$HOME/.claude/history/build"`;
+const prTitlePath = `"$HOME/.claude/history/build/${runSlug}.title"`;
+const prHumanPath = `"$HOME/.claude/history/build/${runSlug}.human.md"`;
+const prPayloadPath = `"$HOME/.claude/history/build/${runSlug}.payload.json"`;
+const prBodyPath = `"$HOME/.claude/history/build/${runSlug}.body.md"`;
+
 const SHIP_SCHEMA = obj(["committed", "pr_url"], {
   committed: {
     type: "boolean",
@@ -1262,32 +1277,74 @@ const commitInstruction = perUnitCommits
 // 作業が混ざるので、Ship はこれを commit に巻き込まない。
 const outOfScopeTracked = scopeDeviations;
 
-const ship = await agent(
-  anchor(
-    commitInstruction +
-      `stage する範囲は自分で絞る。\`git add -A\` と \`git add .\` は使わない。追跡済みファイルの変更はそのまま stage してよいが、次の never-stage 集合は追跡済みでも stage しない。${JSON.stringify(outOfScopeTracked)}。Verify が plan スコープ外と判定した変更で、この build の成果ではない。` +
-      `未追跡ファイル (\`git status --porcelain --untracked-files=all\` の "??" 行。ディレクトリ単位に畳まずファイル単位で判定する) は、plan の files ${JSON.stringify([...planFiles])} に含まれるか、この run で自分が作成したものだけを stage する。` +
-      `それ以外の未追跡ファイルは build 以前から作業ツリーにあったものなので stage しない (仕様書・調査メモ・ローカル設定が PR に混入する)。stage しなかったパスは、未追跡か追跡済みかを問わず結果に列挙する。\n` +
-      `ブランチを push し、draft pull request を開く。本文は PR テンプレートから自分で書く人間向けパートと、データから決定論レンダリングされる fact セクションで構成する (fact セクションを手書きしない)。手順は以下。\n` +
-      `(1) 人間向け本文を書く。\n` +
-      `- タイトル、骨格の選び方、言語、節の並び、各節の中身は \`${bundled("skills/pr/references/pr-writing.md")}\` に従う。\n` +
-      `- 冒頭には解決する問題と到達する成果 (${JSON.stringify(plan.outcome)}) を置く。\n` +
-      `- Related / Closes は書かない (tail が \`Closes #\` を出す)。Scope / Backlog も書かない。スコープ外候補は PR に載せない。\n` +
-      `- Design Decisions は実 diff から埋め、読み取れなければ節ごと省略する。plan に出どころは無い。\n` +
-      `(2) この JSON をそのまま一時ファイルに書く。\n${JSON.stringify(shipPayload)}\n` +
-      `(3) fact tail の追記と PR 作成を 1 つの \`&&\` チェーンで行い、レンダラー失敗時は PR 作成前に中断させる。リポジトリルートから ` +
-      `\`python3 ${bundled("workflows/build/pr-body.py")} < {tempfile} >> {bodyfile} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "{title}" --body-file {bodyfile}\` を実行する。{title} は手順 (1) で決めたタイトル。\n` +
-      `pr-body.py は payload が壊れているか必須フィールドを欠くと非ゼロで終了する (何も出力しない)。チェーンが失敗したら他の手段で PR を作らない。committed と空の pr_url とエラーを報告する。\n` +
-      `committed の状態と PR url を報告する。${guard}`,
-  ),
-  {
-    label: "ship",
-    phase: "Ship",
-    agentType: "general-purpose",
-    schema: SHIP_SCHEMA,
-    model: "sonnet",
-  },
-);
+const ship =
+  (await agent(
+    anchor(
+      commitInstruction +
+        `stage する範囲は自分で絞る。\`git add -A\` と \`git add .\` は使わない。追跡済みファイルの変更はそのまま stage してよいが、次の never-stage 集合は追跡済みでも stage しない。${JSON.stringify(outOfScopeTracked)}。Verify が plan スコープ外と判定した変更で、この build の成果ではない。` +
+        `未追跡ファイル (\`git status --porcelain --untracked-files=all\` の "??" 行。ディレクトリ単位に畳まずファイル単位で判定する) は、plan の files ${JSON.stringify([...planFiles])} に含まれるか、この run で自分が作成したものだけを stage する。` +
+        `それ以外の未追跡ファイルは build 以前から作業ツリーにあったものなので stage しない (仕様書・調査メモ・ローカル設定が PR に混入する)。stage しなかったパスは、未追跡か追跡済みかを問わず結果に列挙する。\n` +
+        `ブランチを push し、draft pull request を開く。本文は PR テンプレートから自分で書く人間向けパートと、データから決定論レンダリングされる fact セクションで構成する (fact セクションを手書きしない)。手順は以下。\n` +
+        `(1) \`mkdir -p ${prDir}\` を実行し、決めたタイトルを ${prTitlePath} へ、人間向け本文を ${prHumanPath} へ書く。\n` +
+        `- タイトル、骨格の選び方、言語、節の並び、各節の中身は \`${bundled("skills/pr/references/pr-writing.md")}\` に従う。\n` +
+        `- 冒頭には解決する問題と到達する成果 (${JSON.stringify(plan.outcome)}) を置く。\n` +
+        `- Related / Closes は書かない (tail が \`Closes #\` を出す)。Scope / Backlog も書かない。スコープ外候補は PR に載せない。\n` +
+        `- Design Decisions は実 diff から埋め、読み取れなければ節ごと省略する。plan に出どころは無い。\n` +
+        `(2) この JSON をそのまま ${prPayloadPath} に書く。\n${JSON.stringify(shipPayload)}\n` +
+        `(3) 本文のレンダリングと PR 作成を 1 つの \`&&\` チェーンで行い、レンダラー失敗時は PR 作成前に中断させる。リポジトリルートから ` +
+        `\`cat ${prHumanPath} > ${prBodyPath} && python3 ${bundled("workflows/build/pr-body.py")} < ${prPayloadPath} >> ${prBodyPath} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "$(cat ${prTitlePath})" --body-file ${prBodyPath}\` を書かれたとおりに実行する。\n` +
+        `pr-body.py は payload が壊れているか必須フィールドを欠くと非ゼロで終了する (何も出力しない)。チェーンが失敗したら他の手段で PR を作らない。committed と空の pr_url とエラーを報告する。\n` +
+        `committed の状態と PR url を報告する。${guard}`,
+    ),
+    {
+      label: "ship",
+      phase: "Ship",
+      agentType: "general-purpose",
+      schema: SHIP_SCHEMA,
+      model: "sonnet",
+    },
+  )) || {};
+
+// url の文字列は、この build が切ったブランチに draft PR が存在する証拠にならない。
+const PR_RELAY_SCHEMA = obj(["stdout"], {
+  stdout: { type: "string", description: "コマンドの stdout を逐語で" },
+});
+const shq = (value) => `'${String(value).replaceAll("'", `'"'"'`)}'`;
+const prVerification = async () => {
+  if (!ship.pr_url) return { verified: false, why: "PR が報告されなかった" };
+  // repository スラッグは渡さない。上の `gh pr create` と同じく cwd から解決させる。
+  const payload = JSON.stringify({
+    branch,
+    base_branch: baseBranch || "main",
+    cwd: repo,
+  });
+  const relayed = await agent(
+    anchor(
+      `次のコマンドを書かれたとおりに実行し、終了ステータスによらず stdout を逐語で stdout に返す。\n` +
+        `printf %s ${shq(payload)} | python3 ${bundled("workflows/build/verify-pr.py")}`,
+    ),
+    {
+      label: "ship:verify",
+      phase: "Ship",
+      agentType: "general-purpose",
+      schema: PR_RELAY_SCHEMA,
+      model: "haiku",
+    },
+  );
+  if (!relayed || typeof relayed.stdout !== "string") {
+    return { verified: false, why: "PR verifier が出力を返さなかった" };
+  }
+  try {
+    const report = JSON.parse(relayed.stdout);
+    if (report && report.verdict === "pass") return { verified: true, why: "" };
+    const blockers = Array.isArray(report?.blockers) ? report.blockers : [];
+    return { verified: false, why: blockers.join(" / ") || "PR が宣言と一致しなかった" };
+  } catch {
+    return { verified: false, why: "PR verifier が解釈可能な report を返さなかった" };
+  }
+};
+const prCheck = await prVerification();
+if (!prCheck.verified) log(`Ship: 報告された PR は未検証 (${prCheck.why})。`);
 
 return {
   issue: issueNumber,
@@ -1320,7 +1377,11 @@ return {
   cleanup_tests_pass: cleanup.tests_pass,
   unit_commits: unitCommits.length,
   backlog_candidates: backlogCandidates,
-  pr_url: ship.pr_url,
+  // 未検証の run でも url は pr_url_unverified に載る。載せないと何が作られたか誰も見に行けない。
+  pr_url: prCheck.verified ? ship.pr_url : "",
+  pr_url_unverified: prCheck.verified ? "" : ship.pr_url || "",
+  pr_verified: prCheck.verified,
+  pr_unverified_reason: prCheck.why,
   committed: ship.committed,
   // Ship が意図して置き去りにしたもの。prompt がこれを求めるのは、stage すると仕様書・調査
   // メモ・ローカル設定が PR へ漏れるため。返り値に無いと、何が残ったか誰も見られない。
