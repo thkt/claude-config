@@ -59,6 +59,8 @@ Decompose tests-first. Enumerate acceptance-test candidates from the whole desig
 
 A test_command failure must be attributable to the planned scope alone. On a repository carrying pre-existing debt such as repo-wide type errors or format drift, scope the gate by paths: lint the touched directories and filter type-check output by path patterns, never by content grep. Write a command that works from the repository root.
 
+Build's Red gate seals one complete output line of the failing run and re-runs the command against it, so a line that changes between two runs of the same failure cannot serve as that anchor. `node --test`'s default reporter prints a per-run duration on every line; `--test-reporter=tap` prints `not ok N - <name>` and does not. Pick the reporter or formatter that leaves the failure line byte-identical across runs.
+
 ### reference_module
 
 A contract can cite a behavior at one call site only, so the implementer hand-rolls the surrounding structure. Record what Phase 2's step 3 noted as `reference_module: { kind, reason, path, files, instances, conventions }` without searching again. kind is one of module/no-module/new-shape; a kind other than module requires a reason. The structure goes in the plan's reference module section, and every unit refers to it.
