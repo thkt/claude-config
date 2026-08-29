@@ -77,6 +77,7 @@ const kindOf = (opts) => {
   if ("spec_found" in p) return "conformance";
   if ("translations" in p) return "translate";
   if ("pr_url" in p) return "ship";
+  if ("stdout" in p) return "prverify";
   return "plain";
 };
 
@@ -95,6 +96,7 @@ const makeStubs = ({
   code,
   record,
   ship,
+  prVerify,
 } = {}) => ({
   agent: (prompt, opts) => {
     const kind = kindOf(opts);
@@ -154,6 +156,11 @@ const makeStubs = ({
         return conformance ?? { spec_found: false, findings: [] };
       case "ship":
         return ship ?? { committed: true, pr_url: "https://example.com/pr/1" };
+      case "prverify":
+        // Stands in for verify-pr.py's stdout. The default is a PR that matches its declaration.
+        if (prVerify !== undefined)
+          return typeof prVerify === "function" ? prVerify(prompt) : prVerify;
+        return { stdout: JSON.stringify({ verdict: "pass", blockers: [] }) };
       default:
         return "feat/sample-branch";
     }
@@ -2360,4 +2367,87 @@ test("reports no unstaged paths rather than undefined when Ship omits the field"
   });
 
   assert.deepEqual(run.result.unstaged, [], "an omitted field reads as nothing left behind");
+});
+
+// A url string is not evidence that a draft PR exists on the branch this build cut. The url
+// reaches the caller only once gh has been asked and answered.
+test("reports the PR url only after the verifier confirms the draft PR", async () => {
+  const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+
+  assert.equal(run.result.pr_verified, true, "the verifier confirmed the PR");
+  assert.equal(run.result.pr_url, "https://example.com/pr/1", "the confirmed url is reported");
+  assert.equal(run.result.pr_url_unverified, "", "nothing is held back on a verified run");
+});
+
+test("withholds the url and names the blocker when the PR does not match its declaration", async () => {
+  const run = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      prVerify: {
+        stdout: JSON.stringify({
+          verdict: "fail",
+          blockers: ["pull request is not a draft (isDraft=False)"],
+        }),
+      },
+    }),
+  });
+
+  assert.equal(run.result.pr_verified, false, "the run is not reported as shipped");
+  assert.equal(run.result.pr_url, "", "an unverified url is not handed back as the PR url");
+  assert.equal(
+    run.result.pr_url_unverified,
+    "https://example.com/pr/1",
+    "the url stays visible so the operator can look at what was made",
+  );
+  assert.match(run.result.pr_unverified_reason, /is not a draft/);
+});
+
+test("a PR verifier whose courier returns nothing parseable withholds the url", async () => {
+  const run = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ prVerify: { stdout: "<html>not json</html>" } }),
+  });
+
+  assert.equal(run.result.pr_verified, false);
+  assert.match(run.result.pr_unverified_reason, /no parseable report/);
+});
+
+// The Ship prompt used to leave {tempfile} and {bodyfile} to the agent. A reused name plus the
+// appended fact tail would ship this run's tail stacked on a previous run's body.
+test("Ship writes the PR body to run-scoped paths the script names, truncating rather than appending", async () => {
+  const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const ship = agentCallsOf(run.calls, "ship")[0];
+
+  assert.ok(ship, "the Ship agent ran");
+  assert.doesNotMatch(ship.prompt, /\{tempfile\}|\{bodyfile\}|\{title\}/);
+  assert.match(
+    ship.prompt,
+    /123-feat-sample-branch\.body\.md/,
+    "the body path carries the run slug",
+  );
+  assert.match(ship.prompt, /123-feat-sample-branch\.payload\.json/);
+  assert.match(
+    ship.prompt,
+    /cat "\$HOME\/\.claude\/history\/build\/123-feat-sample-branch\.human\.md" > /,
+    "the body starts from this run's human text alone",
+  );
+});
+
+// Interpolating the title into the command hands plan- and issue-derived text to the shell as
+// syntax. Reading it back from a file inside double quotes does not.
+test("Ship passes the PR title through a file rather than interpolating it into the command", async () => {
+  const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const ship = agentCallsOf(run.calls, "ship")[0];
+
+  assert.match(ship.prompt, /--title "\$\(cat "\$HOME\/\.claude\/history\/build\/[^"]+\.title"\)"/);
+});
+
+// build always runs where the repository's test command runs, so the nested code workflow reads
+// Red / Green / commit from the gate script rather than from an implementation agent's boolean.
+test("hands the deterministic gates to the nested code workflow", async () => {
+  const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const codeCall = run.calls.workflow.find((c) => c.name === "code");
+
+  assert.ok(codeCall, "the code workflow ran");
+  assert.equal(codeCall.args.verify, true, "code verifies deterministically under build");
 });
