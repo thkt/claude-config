@@ -77,14 +77,17 @@ class VerifyPrTest(unittest.TestCase):
         report = self.verify()
         self.assertEqual(report["verdict"], "fail")
         self.assertIsNone(report["url"])
-        self.assertTrue(any("not a draft" in str(b) for b in report["blockers"]), report["blockers"])
+        self.assertTrue(
+            any("not a draft" in str(b) for b in report["blockers"]), report["blockers"]
+        )
 
     def test_fails_when_the_pull_request_targets_another_base(self) -> None:
         self.stub_gh(json.dumps({**VALID, "baseRefName": "develop"}))
         report = self.verify()
         self.assertEqual(report["verdict"], "fail")
         self.assertTrue(
-            any("base branch is 'develop'" in str(b) for b in report["blockers"]), report["blockers"]
+            any("base branch is 'develop'" in str(b) for b in report["blockers"]),
+            report["blockers"],
         )
 
     def test_fails_when_the_head_branch_is_not_the_one_the_build_pushed(self) -> None:
@@ -156,15 +159,11 @@ class RepositoryScopeTest(unittest.TestCase):
         script.chmod(0o755)
 
     def test_passes_the_repo_flag_when_a_repository_is_given(self) -> None:
-        report = verify_pr.verify(
-            {"repository": "o/r", "branch": "feat/x", "base_branch": "main"}
-        )
+        report = verify_pr.verify({"repository": "o/r", "branch": "feat/x", "base_branch": "main"})
         self.assertEqual(report["verdict"], "pass")
 
     def test_omits_the_repo_flag_and_leans_on_cwd_when_no_repository_is_given(self) -> None:
-        report = verify_pr.verify(
-            {"branch": "feat/x", "base_branch": "main", "cwd": str(self.bin)}
-        )
+        report = verify_pr.verify({"branch": "feat/x", "base_branch": "main", "cwd": str(self.bin)})
         self.assertEqual(report["verdict"], "pass")
 
 

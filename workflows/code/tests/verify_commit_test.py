@@ -27,7 +27,9 @@ assert _spec is not None and _spec.loader is not None
 verify_commit = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(verify_commit)
 
-BODY = "collapse repeated spaces\n\nUnit: U-001\nContract: src/x.ts squeeze\nTests: T-001\nSeam: false"
+BODY = (
+    "collapse repeated spaces\n\nUnit: U-001\nContract: src/x.ts squeeze\nTests: T-001\nSeam: false"
+)
 
 
 class VerifyCommitTest(unittest.TestCase):
@@ -58,7 +60,9 @@ class VerifyCommitTest(unittest.TestCase):
     def head(self) -> str:
         return self.git("rev-parse", "HEAD")
 
-    def commit_unit(self, subject: str, body: str = BODY, files: tuple[str, ...] = ("src/x.ts",)) -> None:
+    def commit_unit(
+        self, subject: str, body: str = BODY, files: tuple[str, ...] = ("src/x.ts",)
+    ) -> None:
         for relative in files:
             self.write(relative, f"// {relative}\n")
         self.git("add", "--", *files)
@@ -108,7 +112,9 @@ class VerifyCommitTest(unittest.TestCase):
         self.assertEqual(report["outside_scope"], ["src/other.ts"])
 
     def test_fails_when_the_body_block_was_reworded(self) -> None:
-        self.commit_unit("feat(core): collapse repeated spaces", body=BODY.replace("T-001", "T-002"))
+        self.commit_unit(
+            "feat(core): collapse repeated spaces", body=BODY.replace("T-001", "T-002")
+        )
         report = self.verify()
         self.assertEqual(report["verdict"], "fail")
         self.assertIn(
@@ -146,14 +152,20 @@ class CliTest(unittest.TestCase):
         )
 
     def test_exits_1_on_a_malformed_payload_rather_than_reporting_a_pass(self) -> None:
-        completed = self.run_cli({"repo": "relative", "baseline_head": "x", "unit_files": [], "body": "b"})
+        completed = self.run_cli(
+            {"repo": "relative", "baseline_head": "x", "unit_files": [], "body": "b"}
+        )
         self.assertEqual(completed.returncode, 1)
         self.assertEqual(completed.stdout, "")
         self.assertIn("repo must be an absolute path", completed.stderr)
 
     def test_exits_1_on_stdin_that_is_not_json(self) -> None:
         completed = subprocess.run(
-            [sys.executable, str(SCRIPT)], input="not json", capture_output=True, text=True, check=False
+            [sys.executable, str(SCRIPT)],
+            input="not json",
+            capture_output=True,
+            text=True,
+            check=False,
         )
         self.assertEqual(completed.returncode, 1)
         self.assertIn("stdin is not valid JSON", completed.stderr)

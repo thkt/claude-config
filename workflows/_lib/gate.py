@@ -39,7 +39,15 @@ REPORT_PROTOCOL = "claude-code-gate/v1"
 DEFAULT_TIMEOUT_MS = 600_000
 DEFAULT_TAIL_BYTES = 12_000
 SINGLE_FLAGS = frozenset(
-    {"--gate-id", "--failure-route", "--cwd", "--expect", "--command", "--timeout-ms", "--tail-bytes"}
+    {
+        "--gate-id",
+        "--failure-route",
+        "--cwd",
+        "--expect",
+        "--command",
+        "--timeout-ms",
+        "--tail-bytes",
+    }
 )
 REPEATABLE_FLAGS = frozenset({"--require-output", "--forbid-output"})
 BOOLEAN_FLAGS = frozenset({"--calibrate"})
@@ -261,7 +269,8 @@ def run_gate(options: dict[str, object]) -> tuple[int, dict[str, object]]:
         verdict = "fail" if reason_codes else "pass"
         exit_code = 1 if reason_codes else 0
 
-    classification = reason_codes[0] if reason_codes else ("expected_failure" if expect == "fail" else "pass")
+    default_classification = "expected_failure" if expect == "fail" else "pass"
+    classification = reason_codes[0] if reason_codes else default_classification
     if options["calibrate"]:
         classification = f"calibration_{classification}"
     failure_route = None

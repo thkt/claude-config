@@ -59,13 +59,15 @@ class TailTest(unittest.TestCase):
 
 class ExactOutputLineTest(unittest.TestCase):
     def test_accepts_a_complete_line(self) -> None:
-        self.assertTrue(gate.has_exact_output_line("not ok 1 - T-001 x\n", "", "not ok 1 - T-001 x"))
+        line = "not ok 1 - T-001 x"
+        self.assertTrue(gate.has_exact_output_line(f"{line}\n", "", line))
 
     def test_rejects_a_substring_of_a_line(self) -> None:
         self.assertFalse(gate.has_exact_output_line("not ok 1 - T-001 x\n", "", "T-001 x"))
 
     def test_matches_a_line_in_stderr(self) -> None:
-        self.assertTrue(gate.has_exact_output_line("", "FAILED tests/a.py::t", "FAILED tests/a.py::t"))
+        line = "FAILED tests/a.py::t"
+        self.assertTrue(gate.has_exact_output_line("", line, line))
 
     def test_rejects_evidence_carrying_a_newline(self) -> None:
         self.assertFalse(gate.has_exact_output_line("a\nb\n", "", "a\nb"))
@@ -104,9 +106,12 @@ class VerdictTest(unittest.TestCase):
 
     def test_confirms_a_red_gate_whose_anchor_is_a_complete_failure_line(self) -> None:
         code, report = run_cli(
-            "--command", "printf 'ok 1 - T-001 x\\nnot ok 2 - T-002 y\\n'; exit 1",
-            "--expect", "fail",
-            "--require-output", "not ok 2 - T-002 y",
+            "--command",
+            "printf 'ok 1 - T-001 x\\nnot ok 2 - T-002 y\\n'; exit 1",
+            "--expect",
+            "fail",
+            "--require-output",
+            "not ok 2 - T-002 y",
         )
         self.assertEqual(code, 0)
         self.assertEqual(report["verdict"], "pass")
@@ -115,9 +120,12 @@ class VerdictTest(unittest.TestCase):
     def test_rejects_a_red_anchor_that_only_names_the_test(self) -> None:
         # "T-001 x" occurs inside the passing line, so an unrelated failure satisfies it.
         code, report = run_cli(
-            "--command", "printf 'ok 1 - T-001 x\\nnot ok 2 - T-002 y\\n'; exit 1",
-            "--expect", "fail",
-            "--require-output", "T-001 x",
+            "--command",
+            "printf 'ok 1 - T-001 x\\nnot ok 2 - T-002 y\\n'; exit 1",
+            "--expect",
+            "fail",
+            "--require-output",
+            "T-001 x",
         )
         self.assertEqual(code, 1)
         self.assertEqual(report["verdict"], "fail")
@@ -125,9 +133,12 @@ class VerdictTest(unittest.TestCase):
 
     def test_forbidden_output_matches_a_substring_rather_than_a_whole_line(self) -> None:
         code, report = run_cli(
-            "--command", "printf 'warning: deprecated call\\n'",
-            "--expect", "pass",
-            "--forbid-output", "deprecated",
+            "--command",
+            "printf 'warning: deprecated call\\n'",
+            "--expect",
+            "pass",
+            "--forbid-output",
+            "deprecated",
         )
         self.assertEqual(code, 1)
         self.assertEqual(report["reason_codes"], ["forbidden_output"])
@@ -155,7 +166,16 @@ class UsageTest(unittest.TestCase):
 
     def test_rejects_a_relative_working_directory(self) -> None:
         completed = subprocess.run(
-            [sys.executable, str(SCRIPT), "--cwd", "relative/dir", "--command", "true", "--expect", "pass"],
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--cwd",
+                "relative/dir",
+                "--command",
+                "true",
+                "--expect",
+                "pass",
+            ],
             capture_output=True,
             text=True,
             check=False,
@@ -166,9 +186,7 @@ class UsageTest(unittest.TestCase):
 
 class CalibrationTest(unittest.TestCase):
     def test_runs_a_red_command_without_an_anchor_and_marks_the_classification(self) -> None:
-        code, report = run_cli(
-            "--command", "printf 'not ok 1 - T-001 x\\n'; exit 1", "--calibrate"
-        )
+        code, report = run_cli("--command", "printf 'not ok 1 - T-001 x\\n'; exit 1", "--calibrate")
         self.assertEqual(code, 0)
         self.assertEqual(report["verdict"], "pass")
         self.assertEqual(report["classification"], "calibration_expected_failure")

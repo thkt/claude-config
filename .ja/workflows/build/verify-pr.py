@@ -57,7 +57,8 @@ def view_pr(repository: str, branch: str, cwd: str | None) -> tuple[int, dict[st
         parsed = json.loads(completed.stdout or "{}")
     except json.JSONDecodeError:
         parsed = {}
-    return completed.returncode, parsed if isinstance(parsed, dict) else {}, completed.stderr.strip()
+    view = parsed if isinstance(parsed, dict) else {}
+    return completed.returncode, view, completed.stderr.strip()
 
 
 def verify(payload: object) -> dict[str, object]:
@@ -70,9 +71,8 @@ def verify(payload: object) -> dict[str, object]:
     branch = required_string(payload, "branch")
     base_branch = required_string(payload, "base_branch")
     cwd = payload.get("cwd")
-    if cwd is not None:
-        if not isinstance(cwd, str) or not Path(cwd).is_absolute():
-            fail("cwd must be an absolute path when present")
+    if cwd is not None and (not isinstance(cwd, str) or not Path(cwd).is_absolute()):
+        fail("cwd must be an absolute path when present")
     if not repository and not isinstance(cwd, str):
         fail("either repository or cwd is required, so gh knows which repository to ask")
 
