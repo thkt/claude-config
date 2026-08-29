@@ -52,6 +52,7 @@ const stub = (overrides = {}) => {
   const answers = {
     calibrate: gateReport({ classification: "calibration_expected_failure" }),
     seal: { evidence: RED_LINE },
+    "gate-red": gateReport({ classification: "expected_failure" }),
     "gate-green": gateReport(),
     "gate-impl": gateReport(),
     commitcheck: { verdict: "pass", blockers: [] },
@@ -68,7 +69,7 @@ const stub = (overrides = {}) => {
     if (label === "verify") return { tests_pass: true, gates_pass: true, output_tail: "" };
     if (key === "head") return { stdout: answers.head };
     if (key === "seal") return answers.seal;
-    if (key === "calibrate" || key === "gate-green" || key === "gate-impl" || key === "commitcheck")
+    if (["calibrate", "gate-red", "gate-green", "gate-impl", "commitcheck"].includes(key))
       return { stdout: JSON.stringify(answers[key]) };
     throw new Error(`unexpected label: ${label}`);
   };
@@ -103,15 +104,23 @@ test("a Red calibration reporting the suite failed carries the unit through to G
   assert.ok(labels(calls).includes("gate-green:U-1"), "the Green gate ran");
 });
 
-test("the Green gate forbids the line the Red run was sealed on", async () => {
+test("the official Red gate requires the line the calibration was sealed on", async () => {
   const { calls } = await run();
-  const greenGate = calls.agent.find((c) => c.opts.label === "gate-green:U-1");
-  assert.ok(greenGate, "the Green gate courier ran");
-  assert.match(greenGate.prompt, /--forbid-output/);
+  const redGate = calls.agent.find((c) => c.opts.label === "gate-red:U-1");
+  assert.ok(redGate, "the official Red gate ran after the seal");
+  assert.match(redGate.prompt, /--expect' 'fail'/);
   assert.ok(
-    greenGate.prompt.includes(RED_LINE),
-    "the sealed line reaches the gate as the output that must be gone",
+    redGate.prompt.includes(RED_LINE),
+    "the sealed line reaches the gate as the output that must be present",
   );
+});
+
+test("a Red gate that does not find the sealed line stops the unit", async () => {
+  const { result } = await run(undefined, {
+    "gate-red": gateReport({ verdict: "fail", classification: "missing_required_output" }),
+  });
+  assert.equal(result.stopped, "red-failed");
+  assert.match(String(result.why), /missing_required_output/);
 });
 
 test("a calibration reporting the suite passed skips the unit and records the gate's own reason", async () => {
@@ -128,7 +137,16 @@ test("a calibration reporting the suite passed skips the unit and records the ga
 test("an agent that offers a line absent from the Red output stops the run", async () => {
   const { result } = await run(undefined, { seal: { evidence: "invented failure line" } });
   assert.equal(result.stopped, "red-failed");
-  assert.match(String(result.why), /complete line of the Red output/);
+  assert.match(String(result.why), /not a complete line of the Red output/);
+});
+
+// A courier that returns nothing and a courier that names a bad line are different findings;
+// reporting both as "no line was offered" sent the last build hunting for a missing line that
+// was in fact present in the calibration output.
+test("a dead evidence courier is reported apart from a bad line", async () => {
+  const { result } = await run(undefined, { seal: null });
+  assert.equal(result.stopped, "red-failed");
+  assert.match(String(result.why), /courier returned no result/);
 });
 
 test("an agent that offers only the test name stops the run", async () => {
