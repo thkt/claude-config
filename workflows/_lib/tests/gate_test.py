@@ -217,5 +217,63 @@ class CalibrationTest(unittest.TestCase):
         self.assertIn("only once", str(report["error"]))
 
 
+class CalibrationCandidateTest(unittest.TestCase):
+    PLANNED = "an empty query returns an error"
+
+    def calibrate(self, command: str, *planned: str) -> tuple[int, dict[str, object]]:
+        args = ["--command", command, "--calibrate"]
+        for entry in planned:
+            args += ["--planned-test", entry]
+        return run_cli(*args)
+
+    def test_offers_the_failing_line_that_names_the_planned_test(self) -> None:
+        code, report = self.calibrate(
+            f"printf 'ok 1 - other\\nnot ok 2 - {self.PLANNED}\\n'; exit 1",
+            f"T-001:{self.PLANNED}",
+        )
+        self.assertEqual(code, 0)
+        candidates = report["candidates"]
+        assert isinstance(candidates, list)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["text"], f"not ok 2 - {self.PLANNED}")
+        self.assertEqual(candidates[0]["test_id"], "T-001")
+        self.assertEqual(candidates[0]["id"], "stdout:2")
+
+    def test_offers_nothing_when_the_planned_test_passed_beside_another_failure(self) -> None:
+        code, report = self.calibrate(
+            f"printf 'ok 1 - {self.PLANNED}\\nnot ok 2 - unrelated\\n'; exit 1",
+            f"T-001:{self.PLANNED}",
+        )
+        self.assertEqual(code, 1)
+        self.assertEqual(report["verdict"], "fail")
+        self.assertEqual(report["classification"], "calibration_missing_calibration_evidence")
+        self.assertEqual(report["candidates"], [])
+
+    def test_a_planned_name_carrying_error_does_not_satisfy_the_marker_by_itself(self) -> None:
+        # The marker is looked for outside the name, or the name alone would pass as failure.
+        code, report = self.calibrate(
+            "printf 'ok 1 - ERROR handling works\\n'; exit 1", "T-001:ERROR handling works"
+        )
+        self.assertEqual(code, 1)
+        self.assertEqual(report["candidates"], [])
+
+    def test_falls_back_to_marker_lines_when_no_planned_test_is_named(self) -> None:
+        code, report = self.calibrate("printf 'ok 1 - fine\\nnot ok 2 - broken\\n'; exit 1")
+        self.assertEqual(code, 0)
+        candidates = report["candidates"]
+        assert isinstance(candidates, list)
+        self.assertEqual([c["text"] for c in candidates], ["not ok 2 - broken"])
+
+    def test_rejects_a_planned_test_outside_a_calibration_run(self) -> None:
+        code, report = run_cli("--command", "true", "--expect", "pass", "--planned-test", "T-001:x")
+        self.assertEqual(code, 2)
+        self.assertIn("only narrows a --calibrate run", str(report["error"]))
+
+    def test_rejects_a_planned_test_without_an_id_separator(self) -> None:
+        code, report = self.calibrate("exit 1", "no-separator")
+        self.assertEqual(code, 2)
+        self.assertIn("<test-id>:<test name>", str(report["error"]))
+
+
 if __name__ == "__main__":
     unittest.main()
