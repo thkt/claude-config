@@ -3,10 +3,15 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { runWorkflow } from "../../_lib/run-workflow.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const codeJs = join(here, "..", "..", "code.js");
+const jaCodeJs = join(here, "..", "..", "..", ".ja", "workflows", "code.js");
+const gateTs = join(here, "..", "..", "_lib", "gate.ts");
 
 const plan = {
   test_command: "npm test",
@@ -320,4 +325,160 @@ test("the gate scripts are reached through bundled(), not a bare dev-tree path",
       `${label} resolves via bundled()`,
     );
   }
+});
+
+// ---- U-007: runGate switches from `python3 ${gateScript}` (gate.py) to a node launch of the
+// real gate.ts, and the deterministic Red path is proved against that real script rather than a
+// canned report. ----
+
+// relayStdout always appends the literal command as the last thing in its prompt (see
+// code.js's relayStdout), so everything after this marker, to the end of the string, is the
+// exact command line runGate built.
+const COMMAND_MARKER = "return its stdout verbatim in stdout, whatever its exit status.\n";
+const extractCommand = (prompt) => {
+  const idx = prompt.indexOf(COMMAND_MARKER);
+  return idx === -1 ? null : prompt.slice(idx + COMMAND_MARKER.length).trim();
+};
+
+test("T-015 runGate が組み立てるコマンドが gate.ts を node で起動する", async () => {
+  const { calls } = await run();
+  const calibrate = calls.agent.find((c) => c.opts.label === "calibrate:U-1");
+  assert.ok(calibrate, "the calibration gate ran");
+  const command = extractCommand(calibrate.prompt);
+  assert.ok(command, "the relay prompt carries the constructed command line");
+  assert.match(
+    command,
+    /^node\s+/,
+    `runGate should launch the gate script with node, not a python3 interpreter (got: ${command})`,
+  );
+  assert.match(command, /gate\.ts\b/, `the launched script should be gate.ts (got: ${command})`);
+});
+
+// docs/wiki/workflow-const-source-text-check.md: a workflow script cannot export a shared
+// constant, so gateScript is defined independently in each of the EN and .ja copies. Parity is
+// proved by extracting the literal from both sources rather than by copying an expected string
+// into this test.
+const GATE_SCRIPT_RE = /const gateScript = bundled\("([^"]+)"\);/;
+const extractGateScript = (source) => {
+  const m = source.match(GATE_SCRIPT_RE);
+  return m ? m[1] : null;
+};
+
+test("T-016 EN と .ja の code.js が同じ gateScript 定数を持つ", () => {
+  const enValue = extractGateScript(readFileSync(codeJs, "utf8"));
+  const jaValue = extractGateScript(readFileSync(jaCodeJs, "utf8"));
+  assert.ok(enValue, "gateScript is extractable from the EN code.js");
+  assert.ok(jaValue, "gateScript is extractable from the .ja code.js");
+  assert.equal(enValue, jaValue, "EN and .ja code.js resolve gateScript to the same path");
+  assert.match(
+    enValue,
+    /gate\.ts$/,
+    `gateScript should now name gate.ts, not gate.py (got: ${enValue})`,
+  );
+});
+
+// A real fixture repo with one test that fails in a stable, TAP-recognizable way. gate.py /
+// gate.ts's calibration matcher looks for a "not ok" marker line naming the planned test, so the
+// fixture's test name is echoed into the plan's tests[].name verbatim.
+const PLANNED_TEST_NAME = "a red planned test";
+const makeGateFixture = () => {
+  const dir = mkdtempSync(join(tmpdir(), "code-gate-seam-"));
+  writeFileSync(join(dir, "package.json"), JSON.stringify({ type: "module" }));
+  writeFileSync(
+    join(dir, "sample.test.js"),
+    [
+      `import { test } from "node:test";`,
+      `import assert from "node:assert/strict";`,
+      `test(${JSON.stringify(PLANNED_TEST_NAME)}, () => {`,
+      `  assert.equal(1, 2);`,
+      `});`,
+      "",
+    ].join("\n"),
+  );
+  return dir;
+};
+
+const seamPlan = {
+  test_command: "node --test --test-reporter=tap sample.test.js",
+  units: [
+    {
+      id: "U-G1",
+      goal: "seam goal",
+      files: ["sample.js"],
+      contract: "seam contract",
+      tests: [{ id: "T-G01", name: PLANNED_TEST_NAME }],
+      seam: false,
+    },
+  ],
+};
+
+// sealAnchor embeds the candidates as one JSON line between two fence lines (see code.js's
+// sealAnchor); this reads that line back rather than re-deriving what a real calibration found.
+const extractCandidatesPayload = (prompt) => {
+  const m = prompt.match(/---- candidates [^\n]*----\n(\{.*\})\n---- candidates/);
+  return m ? JSON.parse(m[1]) : null;
+};
+
+// Only "calibrate" and "gate-red" run the real gate script (this unit's contract is the Red
+// calibration path specifically); "gate-green" stays a canned pass so a fixture that is never
+// actually fixed does not also fail the Green gate for an unrelated reason.
+const gateSeamStub = (fixtureRepo, capturedCommands) => (prompt, opts) => {
+  const label = opts.label ?? "";
+  const key = label.split(":")[0];
+  if (key === "red") return { red_confirmed: true, test_files: ["sample.test.js"], notes: "" };
+  if (key === "calibrate" || key === "gate-red") {
+    const command = extractCommand(prompt);
+    capturedCommands.push({ label, command });
+    const res = spawnSync("bash", ["-c", command ?? "true"], {
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    return { stdout: res.stdout ?? "" };
+  }
+  if (key === "seal") {
+    const payload = extractCandidatesPayload(prompt);
+    const candidates = (payload && payload.candidates) || [];
+    const picked = candidates.find((c) => c.test_id === "T-G01") || candidates[0];
+    return picked ? { candidate_id: picked.id } : null;
+  }
+  if (["green", "impl", "green2", "impl2"].includes(key)) return { green: true, notes: "" };
+  if (key === "gate-green") return { stdout: JSON.stringify(gateReport()) };
+  if (label === "verify") return { tests_pass: true, gates_pass: true, output_tail: "" };
+  throw new Error(`unexpected label in the gate seam stub: ${label} (repo: ${fixtureRepo})`);
+};
+
+test("T-017 実際の gate.ts を通した Red calibration の report を code.js が解析して unit を先へ進める", async () => {
+  const fixtureRepo = makeGateFixture();
+  try {
+    const capturedCommands = [];
+    const { result } = await runWorkflow(codeJs, {
+      args: { plan: seamPlan, repo: fixtureRepo, verify: true },
+      stubs: { agent: gateSeamStub(fixtureRepo, capturedCommands) },
+    });
+    assert.ok(capturedCommands.length > 0, "the calibration/red gate courier ran at least once");
+    for (const { label, command } of capturedCommands) {
+      assert.match(
+        command ?? "",
+        /^node\s+.*gate\.ts\b/,
+        `${label}: expected a node launch of the real gate.ts (got: ${command})`,
+      );
+    }
+    assert.equal(result.stopped, undefined, `code.js stopped early: ${result.why}`);
+    assert.deepEqual(
+      result.completed,
+      ["U-G1"],
+      "the real gate.ts's calibration report carries the unit through to completion",
+    );
+  } finally {
+    rmSync(fixtureRepo, { recursive: true, force: true });
+  }
+});
+
+// Sanity for the fixture itself, independent of code.js: the real gate.ts this unit's contract
+// requires is reachable at the path every other assertion above assumes.
+test("T-017b the real gate.ts the seam test targets exists on disk", () => {
+  assert.doesNotThrow(
+    () => readFileSync(gateTs, "utf8"),
+    `expected a real gate.ts at ${gateTs} for the seam test to run through`,
+  );
 });
