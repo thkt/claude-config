@@ -789,7 +789,8 @@ for (const [index, unit] of units.entries()) {
     (r) => r.red_confirmed,
     `TDD Red step. ${ctx}` +
       `Write each test scenario (T-NNN) as a failing test. Use the scenario's name verbatim as the test name. ` +
-      `Write no implementation code whatsoever. Run the tests and confirm each fails for the intended reason, then report. ` +
+      `Make every planned test discoverable and executable. When a module this unit allows does not exist yet, create the smallest API-shaped scaffold that lets the planned assertion run, and do not satisfy the planned behavior. A module-resolution, parse, type-check, or test-discovery failure is not Red evidence: the gate reads the failure line that names the planned scenario, and a file that never loaded produces none. ` +
+      `Write no other implementation code. Run the tests and confirm each fails for the intended reason, then report. ` +
       `Deleting, moving, renaming, or emptying an existing file to manufacture a Red is forbidden. When the target behavior is already implemented, that is the correct state: keep red_confirmed=false, put the conclusion in notes as one sentence and the supporting facts in evidence, one per element, with no account of what you checked in notes. ` +
       `If the tests do not fail, do not implement.`,
     (prev) =>
