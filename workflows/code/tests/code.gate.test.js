@@ -37,12 +37,15 @@ const noTestPlan = {
 };
 
 const RED_LINE = "not ok 1 - an empty query returns an error";
+const CANDIDATE = { id: "stdout:1", stream: "stdout", text: RED_LINE, test_id: "T-001" };
 
 const gateReport = (overrides = {}) => ({
   protocol: "claude-code-gate/v1",
   verdict: "pass",
   classification: "pass",
   reason_codes: [],
+  command: "npm test",
+  candidates: [],
   evidence: { kind: "shell", stdout_tail: `ok 0 - setup\n${RED_LINE}\n`, stderr_tail: "" },
   ...overrides,
 });
@@ -50,8 +53,11 @@ const gateReport = (overrides = {}) => ({
 // Every stubbed label answers happily; a test overrides only the answer it is about.
 const stub = (overrides = {}) => {
   const answers = {
-    calibrate: gateReport({ classification: "calibration_expected_failure" }),
-    seal: { evidence: RED_LINE },
+    calibrate: gateReport({
+      classification: "calibration_expected_failure",
+      candidates: [CANDIDATE],
+    }),
+    seal: { candidate_id: CANDIDATE.id },
     "gate-red": gateReport({ classification: "expected_failure" }),
     "gate-green": gateReport(),
     "gate-impl": gateReport(),
@@ -134,10 +140,41 @@ test("a calibration reporting the suite passed skips the unit and records the ga
   assert.match(String(noRed.notes), /calibration_unexpected_pass/);
 });
 
-test("an agent that offers a line absent from the Red output stops the run", async () => {
-  const { result } = await run(undefined, { seal: { evidence: "invented failure line" } });
+test("an agent that offers an id outside the candidate set stops the run", async () => {
+  const { result } = await run(undefined, { seal: { candidate_id: "stdout:999" } });
   assert.equal(result.stopped, "red-failed");
-  assert.match(String(result.why), /not a complete line of the Red output/);
+  assert.match(String(result.why), /not a calibration candidate/);
+});
+
+// The seal used to take a line the agent typed back, so a trimmed copy of an indented
+// diagnostic line was rejected as "not a complete line" while the agent believed it had
+// answered. Selecting an id removes the retyping step that produced that mismatch.
+test("the seal prompt offers ids rather than asking for a line", async () => {
+  const { calls } = await run();
+  const seal = calls.agent.find((c) => c.opts.label === "seal:U-1");
+  assert.ok(seal, "the seal courier ran");
+  assert.match(seal.prompt, /candidate_id/);
+  assert.ok(seal.prompt.includes(CANDIDATE.id), "the candidate id reaches the courier");
+});
+
+test("a calibration offering no candidate stops the unit before any courier runs", async () => {
+  const { result, calls } = await run(undefined, {
+    calibrate: gateReport({ classification: "calibration_expected_failure", candidates: [] }),
+  });
+  assert.equal(result.stopped, "red-failed");
+  assert.match(String(result.why), /no line naming a planned failure/);
+  assert.equal(
+    labels(calls).filter((l) => l.startsWith("seal:")).length,
+    0,
+    "no courier is asked to choose from an empty set",
+  );
+});
+
+test("the calibration names the unit's planned tests so the gate can narrow its candidates", async () => {
+  const { calls } = await run();
+  const calibrate = calls.agent.find((c) => c.opts.label === "calibrate:U-1");
+  assert.ok(calibrate, "the calibration ran");
+  assert.match(calibrate.prompt, /--planned-test' 'T-001:an empty query returns an error'/);
 });
 
 // A courier that returns nothing and a courier that names a bad line are different findings;
@@ -147,14 +184,6 @@ test("a dead evidence courier is reported apart from a bad line", async () => {
   const { result } = await run(undefined, { seal: null });
   assert.equal(result.stopped, "red-failed");
   assert.match(String(result.why), /courier returned no result/);
-});
-
-test("an agent that offers only the test name stops the run", async () => {
-  // The name occurs inside the failing line, so containment would have accepted it.
-  const { result } = await run(undefined, {
-    seal: { evidence: "an empty query returns an error" },
-  });
-  assert.equal(result.stopped, "red-failed");
 });
 
 test("a Green gate that keeps failing stops the unit after its one correction", async () => {

@@ -14,11 +14,17 @@ options:
   --require-output LINE   繰り返し可。LINE は出力の完全な 1 行と一致すること
   --forbid-output TEXT    繰り返し可。TEXT が出力のどこにも現れないこと
   --calibrate             Red コマンドを実行し、その失敗出力を得る
+  --planned-test ID:NAME  繰り返し可。calibration の候補を、その計画テスト名を含み
+                          かつ失敗マーカーを伴う行だけに絞る
 
 `--expect fail` は `--require-output` アンカーを 1 つ以上要求する。「コマンドが
 失敗した」だけでは、意図した理由で失敗したことを立証できない。唯一の例外が
 `--calibrate` である。アンカーの選択元になる出力を生む実行そのものだからである。
 `--expect fail` を強制し、アンカーを拒否し、classification に `calibration_` を付ける。
+
+calibration の report は `candidates` を持つ。呼び出し側が seal してよい行の集合で、
+各行に id が付く。行そのものを返させず、この集合から選ばせることが、削ったり作ったり
+した行を seal させない仕組みになる。
 
 stdout: gate report の JSON オブジェクト 1 件 (REPORT_PROTOCOL を参照)。
 exit は 0 が pass、1 が fail、2 が blocked と usage error、124 が timeout。判定は
@@ -48,7 +54,7 @@ SINGLE_FLAGS = frozenset(
         "--tail-bytes",
     }
 )
-REPEATABLE_FLAGS = frozenset({"--require-output", "--forbid-output"})
+REPEATABLE_FLAGS = frozenset({"--require-output", "--forbid-output", "--planned-test"})
 BOOLEAN_FLAGS = frozenset({"--calibrate"})
 GATE_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]*$")
 ROUTE_PATTERN = re.compile(
@@ -56,6 +62,14 @@ ROUTE_PATTERN = re.compile(
     r"|cleanup:[A-Za-z0-9][A-Za-z0-9._-]*)$"
 )
 LINE_SPLIT = re.compile(r"\r\n|\r|\n")
+MAX_CALIBRATION_CANDIDATES = 128
+MAX_CALIBRATION_LINE_LENGTH = 2000
+FAILURE_MARKER = re.compile(
+    r"(?:^\s*not ok\b"
+    r"|^\s*(?:FAIL(?:ED|URE)?\b|ERROR\b|\(fail\)|[\u2716\u2715\u00d7\u2717\u274c\u25cf])"
+    r"|^\s*\d+\)\s+|\bFAILED\b|\bFAILURE\b)",
+    re.IGNORECASE,
+)
 _LF = 0x0A
 _CR = 0x0D
 
@@ -91,6 +105,53 @@ def has_exact_output_line(stdout: str, stderr: str, evidence: str) -> bool:
     return any(evidence in LINE_SPLIT.split(text) for text in (stdout, stderr))
 
 
+def output_lines(stream: str, text: str) -> list[dict[str, object]]:
+    """1 つの stream の各行に id を振る。呼び出し側が行を打ち直さずに指名できるようにする。"""
+    lines: list[dict[str, object]] = []
+    for number, raw in enumerate(LINE_SPLIT.split(text), start=1):
+        if not raw.strip() or len(raw) > MAX_CALIBRATION_LINE_LENGTH:
+            continue
+        lines.append({"id": f"{stream}:{number}", "stream": stream, "text": raw})
+    return lines
+
+
+def names_planned_failure(line: str, name: str) -> bool:
+    """計画テスト名を含み、その名前を除いた残りに失敗マーカーがある行。
+
+    マーカーを探す前に名前を切り落とす。そうしないと、名前自体に "error" を含むテストが
+    名前の力だけでマーカーを満たしてしまう。
+    """
+    at = line.find(name)
+    if at < 0:
+        return False
+    context = line[:at] + line[at + len(name) :]
+    return bool(FAILURE_MARKER.search(context))
+
+
+def calibration_candidates(
+    stdout: str, stderr: str, planned: list[tuple[str, str]] | None
+) -> list[dict[str, object]]:
+    """呼び出し側が seal してよい行。固定された集合から選ばせることが、打ち直した行や
+    削った行や作った行を返させない仕組みになる。"""
+    lines = output_lines("stdout", stdout) + output_lines("stderr", stderr)
+    if planned is None:
+        marked = [line for line in lines if FAILURE_MARKER.search(str(line["text"]))]
+        return (marked or lines)[-MAX_CALIBRATION_CANDIDATES:]
+    candidates: list[dict[str, object]] = []
+    seen: set[str] = set()
+    for test_id, name in planned:
+        for line in lines:
+            if (
+                len(candidates) >= MAX_CALIBRATION_CANDIDATES
+                or line["id"] in seen
+                or not names_planned_failure(str(line["text"]), name)
+            ):
+                continue
+            candidates.append({**line, "test_id": test_id})
+            seen.add(str(line["id"]))
+    return candidates
+
+
 def positive_int(value: str, flag: str) -> int:
     try:
         parsed = int(value)
@@ -109,6 +170,7 @@ def parse_args(argv: list[str]) -> dict[str, object]:
         "tail_bytes": DEFAULT_TAIL_BYTES,
         "required_output": [],
         "forbidden_output": [],
+        "planned_tests": [],
         "calibrate": False,
     }
     seen: set[str] = set()
@@ -149,6 +211,10 @@ def parse_args(argv: list[str]) -> dict[str, object]:
             cast_list(options["required_output"]).append(value)
         elif flag == "--forbid-output":
             cast_list(options["forbidden_output"]).append(value)
+        elif flag == "--planned-test":
+            if ":" not in value:
+                raise UsageError("--planned-test must be <test-id>:<test name>")
+            cast_list(options["planned_tests"]).append(value)
         seen.add(flag)
         index += 2
 
@@ -174,6 +240,8 @@ def parse_args(argv: list[str]) -> dict[str, object]:
         options["expect"] = "fail"
         if cast_list(options["required_output"]):
             raise UsageError("--calibrate discovers the anchor, so it takes no --require-output")
+    elif cast_list(options["planned_tests"]):
+        raise UsageError("--planned-test only narrows a --calibrate run")
     if options.get("expect") not in ("pass", "fail"):
         raise UsageError("--expect must be pass or fail")
     command = options.get("command")
@@ -270,8 +338,21 @@ def run_gate(options: dict[str, object]) -> tuple[int, dict[str, object]]:
 
     default_classification = "expected_failure" if expect == "fail" else "pass"
     classification = reason_codes[0] if reason_codes else default_classification
+    candidates: list[dict[str, object]] = []
     if options["calibrate"]:
+        planned = [
+            (entry.split(":", 1)[0], entry.split(":", 1)[1])
+            for entry in cast_list(options["planned_tests"])
+        ] or None
+        candidates = calibration_candidates(stdout_tail, stderr_tail, planned)
+        # コマンドが失敗することと、計画したシナリオが失敗することは別である。それを名指す
+        # 行が 1 本も無ければ、アンカーを seal する対象が存在しない。
+        if verdict == "pass" and not candidates:
+            verdict, exit_code = "fail", 1
+            reason_codes = ["missing_calibration_evidence"]
+            classification = "missing_calibration_evidence"
         classification = f"calibration_{classification}"
+
     failure_route = None
     if verdict == "blocked":
         failure_route = "blocked"
@@ -289,6 +370,7 @@ def run_gate(options: dict[str, object]) -> tuple[int, dict[str, object]]:
         "cwd": options["cwd"],
         "expected": expect,
         "duration_ms": duration_ms,
+        "candidates": candidates,
         "evidence": {
             "kind": "shell",
             "checks": checks,
