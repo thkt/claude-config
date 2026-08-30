@@ -19,7 +19,10 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          # .test.ts を node --test で直接読ませる型ストリップは Node 22.18 / 23.6 で
+          # 無フラグ既定化済みだが、stable 化したのは Node 24.12 / 25.2 のみで 22.x の
+          # 系列には来ていない (https://nodejs.org/api/typescript.html)。stable な方を選ぶ。
+          node-version: 24
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
 
@@ -39,6 +42,11 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
+      # typescript は devDependency なので、上の Install がそのまま入れる。oxlint と同じ形。
+      # tsconfig.json の include/exclude が検査範囲そのものなので、対象を CLI に別途渡さない。
+      - name: Type check
+        run: npx tsc --noEmit
+
       - name: Node tests
         run: >
           node --test
@@ -47,6 +55,7 @@ jobs:
           "hooks/**/tests/*.test.js"
           "skills/**/tests/*.test.js"
           "workflows/**/tests/*.test.js"
+          "workflows/**/tests/*.test.ts"
 
       # hooks/edit/tests/rumdl_check_test.py runs the real binary. The rumdl step below
       # reaches it through `pipx run`, which puts nothing on PATH for this step.
