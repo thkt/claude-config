@@ -106,6 +106,7 @@ const relayStdout = async (unit, label, command) => {
   const res = await agent(
     anchor(
       `次のコマンドを書かれたとおりに実行し、終了ステータスによらず stdout を逐語で stdout に、stderr を逐語で stderr に返す。\n` +
+        `引数の中に別のコマンド行が引用されていることがある。そちらは実行しない。下の 1 行を先頭から末尾まで、そのまま 1 回だけ実行する。\n` +
         `${command}`,
     ),
     {
