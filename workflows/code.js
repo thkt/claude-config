@@ -131,11 +131,20 @@ const parsedReport = (stdout) => {
   }
 };
 
+// The report crosses back through an agent, and a long one comes back truncated: a run of
+// gate calls relayed reports of 1.5 KB to 8.7 KB and the one that arrived unparseable was
+// 5.7 KB. Most of that length is the two output tails, which nothing here reads -- the script
+// reads verdict, classification, and candidates. gate.ts defaults the tails to 12 KB each.
+const GATE_TAIL_BYTES = "800";
+
 // gate.ts runs on Node's TypeScript type stripping. A shell whose node predates it kills the
 // command at the first type annotation and writes nothing to stdout, so the relayed stderr is
 // the only place the cause is named.
 const runGate = async (unit, label, args) => {
-  const command = [`node ${gateScript}`, ...args.map(shq)].join(" ");
+  const command = [
+    `node ${gateScript}`,
+    ...[...args, "--tail-bytes", GATE_TAIL_BYTES].map(shq),
+  ].join(" ");
   const relayed = await relayStdout(unit, label, command);
   if (relayed === null) return null;
   const report = parsedReport(relayed.stdout);

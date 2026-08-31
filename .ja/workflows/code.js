@@ -132,10 +132,19 @@ const parsedReport = (stdout) => {
   }
 };
 
+// レポートは agent を経由して戻るので、長いものは途中で切れて戻る。ある run では 1.5 KB から
+// 8.7 KB のレポートが中継され、解析できない形で届いたものは 5.7 KB だった。その長さの大半は
+// 2 つの出力 tail で、ここはそれを一度も読まない。読むのは verdict と classification と
+// candidates である。gate.ts の既定は tail 1 つあたり 12 KB。
+const GATE_TAIL_BYTES = "800";
+
 // gate.ts は Node の TypeScript 型ストリップの上で動く。それより古い node のシェルでは最初の
 // 型注釈でコマンドが死に、stdout には何も出ない。中継した stderr だけが原因を名指す場所になる。
 const runGate = async (unit, label, args) => {
-  const command = [`node ${gateScript}`, ...args.map(shq)].join(" ");
+  const command = [
+    `node ${gateScript}`,
+    ...[...args, "--tail-bytes", GATE_TAIL_BYTES].map(shq),
+  ].join(" ");
   const relayed = await relayStdout(unit, label, command);
   if (relayed === null) return null;
   const report = parsedReport(relayed.stdout);
