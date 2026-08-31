@@ -18,7 +18,7 @@ research や調査の過程で、ある DR の reassessment trigger(再評価す
 
 ## 参照コード
 
-- `docs/decisions/0058-inline-single-consumer-agent-context-skills-into-agents.md` の `### Reassessment Triggers`(research が照合する対象の節。108 件中 98 件の DR がこの節を持つ)
+- `docs/decisions/0058-inline-single-consumer-agent-context-skills-into-agents.md` の `### Reassessment Triggers`(research が照合する対象の節。112 件中 103 件の DR がこの節を持つ)
 
 ## 根拠
 
