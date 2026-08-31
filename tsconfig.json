@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    // A .ts test importing a .ts helper is the only specifier Node resolves under type
+    // stripping, and tsc rejects it without this. Without both, a pure helper is reachable
+    // only by spawning the CLI.
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true
+  },
+  "include": ["skills/**/*.ts", "workflows/**/*.ts"],
+  // exclude はここが正本ではなく .oxlintrc.json の ignorePatterns 内
+  // "skills/*/test/cases/**" の写し。正本を編集したらここも合わせて直す。
+  "exclude": ["skills/*/test/cases/**"]
+}

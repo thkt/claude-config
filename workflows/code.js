@@ -86,11 +86,16 @@ const shq = (value) => `'${String(value).replaceAll("'", `'"'"'`)}'`;
 const RELAY_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["stdout"],
+  required: ["stdout", "stderr"],
   properties: {
     stdout: {
       type: "string",
       description: "the command's stdout, verbatim, with nothing added, removed, or reordered",
+    },
+    stderr: {
+      type: "string",
+      description:
+        "the command's stderr, verbatim. Empty when it wrote none. This is where a runtime that cannot start the command says so",
     },
   },
 };
@@ -99,7 +104,7 @@ const RELAY_SCHEMA = {
 const relayStdout = async (unit, label, command) => {
   const res = await agent(
     anchor(
-      `Run this command exactly as written and return its stdout verbatim in stdout, whatever its exit status.\n` +
+      `Run this command exactly as written and return its stdout verbatim in stdout and its stderr verbatim in stderr, whatever its exit status.\n` +
         `${command}`,
     ),
     {
@@ -110,10 +115,11 @@ const relayStdout = async (unit, label, command) => {
       model: "haiku",
     },
   );
-  return res && typeof res.stdout === "string" ? res.stdout : null;
+  if (!res || typeof res.stdout !== "string") return null;
+  return { stdout: res.stdout, stderr: typeof res.stderr === "string" ? res.stderr : "" };
 };
 
-const gateScript = bundled("workflows/_lib/gate.py");
+const gateScript = bundled("workflows/_lib/gate.ts");
 
 const parsedReport = (stdout) => {
   try {
@@ -124,10 +130,17 @@ const parsedReport = (stdout) => {
   }
 };
 
+// gate.ts runs on Node's TypeScript type stripping. A shell whose node predates it kills the
+// command at the first type annotation and writes nothing to stdout, so the relayed stderr is
+// the only place the cause is named.
 const runGate = async (unit, label, args) => {
-  const command = [`python3 ${gateScript}`, ...args.map(shq)].join(" ");
-  const stdout = await relayStdout(unit, label, command);
-  return stdout === null ? null : parsedReport(stdout);
+  const command = [`node ${gateScript}`, ...args.map(shq)].join(" ");
+  const relayed = await relayStdout(unit, label, command);
+  if (relayed === null) return null;
+  const report = parsedReport(relayed.stdout);
+  return (
+    report ?? { verdict: "blocked", classification: "gate_did_not_report", stderr: relayed.stderr }
+  );
 };
 
 const SEAL_SCHEMA = {
@@ -194,8 +207,11 @@ const suiteFailure = async (unit, label, route, extraArgs) => {
   ]);
   if (!report) return { why: `the ${label} gate returned no parseable report`, report: null };
   if (report.verdict === "pass") return null;
+  // stderr is present only on the synthetic report runGate builds when the command wrote no
+  // parseable stdout. It is where a runtime that could not start the command said so.
+  const detail = report.stderr ? ` (stderr: ${flatten(report.stderr).slice(0, 300)})` : "";
   return {
-    why: `${report.classification}: the suite did not pass under the ${label} gate`,
+    why: `${report.classification}: the suite did not pass under the ${label} gate${detail}`,
     report,
   };
 };
@@ -235,13 +251,13 @@ const commitPostcondition = async (unit, baselineHead, body, files) => {
     unit_files: files,
     body,
   });
-  const stdout = await relayStdout(
+  const relayed = await relayStdout(
     unit,
     "commitcheck",
     `printf %s ${shq(payload)} | python3 ${verifyCommitScript}`,
   );
-  if (stdout === null) return "the commit verifier returned no output";
-  const report = parsedReport(stdout);
+  if (relayed === null) return "the commit verifier returned no output";
+  const report = parsedReport(relayed.stdout);
   if (!report) return "the commit verifier returned no parseable report";
   if (report.verdict !== "pass") {
     const blockers = Array.isArray(report?.blockers) ? report.blockers : [];
@@ -369,7 +385,7 @@ const commitUnit = async (unit, tests, testFiles) => {
   if (!commitPerUnit) return;
   // Read after the commit agent runs, the head it landed on is already gone.
   const baselineHead = verifyDeterministically
-    ? await relayStdout(unit, "head", `git -C ${shq(repo)} rev-parse HEAD`)
+    ? (await relayStdout(unit, "head", `git -C ${shq(repo)} rev-parse HEAD`))?.stdout
     : null;
   const res = await agent(
     anchor(

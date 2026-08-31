@@ -17,7 +17,7 @@ const JAPANESE = /[぀-ゟ゠-ヿ一-龯]/;
 
 // git ls-files, not a directory walk: an untracked scratch file is not what the rule governs.
 const trackedTests = async () => {
-  const { stdout } = await run("git", ["ls-files", "*.test.js"], { cwd: root });
+  const { stdout } = await run("git", ["ls-files", "*.test.js", "*.test.ts"], { cwd: root });
   return stdout.split("\n").filter((p) => p.trim() && !p.startsWith(".ja/"));
 };
 
