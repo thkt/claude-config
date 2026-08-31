@@ -1,20 +1,24 @@
-// EN と .ja の .ts ペアが、コメントを除いた本文で一致していることを検査する。
-// 一致判定は本文の内容そのもの (docs/wiki/count-comparison-masks-filtered-set-drift.md:
-// 件数の一致は集合の一致を保証しない) で行い、行数や識別子の個数では代替しない。
+// An EN and .ja .ts pair must carry the same body once comments are removed. The comparison
+// reads the body itself rather than a line or identifier count: two sets filtered the same way
+// agree on their counts while their elements drift (docs/wiki/count-comparison-masks-filtered-set-drift.md).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(TEST_DIR, "..", "..");
+const run = promisify(execFile);
 const FIXTURES = join(TEST_DIR, "fixtures", "ja-ts-parity");
 
 const read = (relative) => readFileSync(join(FIXTURES, relative), "utf8");
 
-// 文字列 / テンプレートリテラルの内側にある // や /* は削らない。単純な正規表現置換だと
-// `` `http://example.com` `` のようなコードまで本文から失われ、identifier-diff や
-// extra-statement を誤って一致判定してしまう (docs/wiki/count-comparison-masks-filtered-set-drift.md)。
+// A // or /* inside a string or template literal is not a comment. A plain regex substitution
+// would eat `http://example.com` out of the body, and two files differing only there would then
+// compare equal.
 function stripComments(source) {
   let out = "";
   let i = 0;
@@ -55,9 +59,8 @@ function stripComments(source) {
   return out;
 }
 
-// コメントを取り除いた本文を、行単位で正規化して返す。空行 / 前後の空白はコメント削除の
-// 副産物として増減しうるので比較対象から外し、本文の内容そのものを比較する
-// (docs/wiki/count-comparison-masks-filtered-set-drift.md: 件数ではなく内容を見る)。
+// Blank lines and surrounding whitespace move as a side effect of removing comments, so they
+// stay out of the comparison.
 function extractBody(source) {
   return stripComments(source)
     .split("\n")
@@ -77,17 +80,34 @@ function fixturePair(scenario) {
   };
 }
 
-test("T-003 コメントだけが異なる EN と .ja の .ts ペアが一致と判定される", () => {
+test("T-003 an EN and .ja .ts pair differing only in comments is judged identical", () => {
   const { en, ja } = fixturePair("comment-only");
   assert.equal(tsBodiesMatch(en, ja), true);
 });
 
-test("T-004 識別子が 1 つ異なるペアが不一致として落ちる", () => {
+test("T-004 a pair whose identifier differs is judged divergent", () => {
   const { en, ja } = fixturePair("identifier-diff");
   assert.equal(tsBodiesMatch(en, ja), false);
 });
 
-test("T-005 EN 側にだけ文が 1 つ多いペアが不一致として落ちる", () => {
+test("T-005 a pair with one extra statement on the EN side is judged divergent", () => {
   const { en, ja } = fixturePair("extra-statement");
   assert.equal(tsBodiesMatch(en, ja), false);
+});
+
+// The fixtures above are the algorithm's positive and negative controls. Without this test the
+// suite would still pass on the day workflows/_lib/gate.ts and its .ja mirror drift apart, since
+// nothing else compares a pair the repository actually tracks.
+test("every tracked EN and .ja .ts pair matches once comments are removed", async () => {
+  const { stdout } = await run("git", ["ls-files", ".ja/**/*.ts"], { cwd: ROOT });
+  const jaFiles = stdout.split("\n").filter(Boolean);
+  assert.ok(jaFiles.length > 0, "the repository tracks at least one .ja .ts file to compare");
+  const diverged = jaFiles.filter((jaPath) => {
+    const enPath = jaPath.replace(/^\.ja\//, "");
+    return !tsBodiesMatch(
+      readFileSync(join(ROOT, enPath), "utf8"),
+      readFileSync(join(ROOT, jaPath), "utf8"),
+    );
+  });
+  assert.deepEqual(diverged, [], "these .ja mirrors differ from their EN side outside comments");
 });

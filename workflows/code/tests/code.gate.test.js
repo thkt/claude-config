@@ -325,7 +325,7 @@ test("the gate scripts are reached through bundled(), not a bare dev-tree path",
   }
 });
 
-test("runGate が組み立てるコマンドが gate.ts を node で起動する", async () => {
+test("T-015 the command runGate assembles launches gate.ts with node", async () => {
   const { calls } = await run();
   const calibrate = calls.agent.find((c) => c.opts.label === "calibrate:U-1");
   assert.ok(calibrate, "the calibration gate ran");
@@ -347,7 +347,7 @@ test("runGate が組み立てるコマンドが gate.ts を node で起動する
 // prompt (the same text the previous test pins) and actually executes it with the repo's real
 // gate.ts, so this fails today for the same reason the previous test does -- the extracted
 // command still names gate.py -- and only turns green once runGate truly launches gate.ts.
-test("実際の gate.ts を通した Red calibration の report を code.js が解析して unit を先へ進める", async () => {
+test("T-017 a Red calibration through the real gate.ts parses and carries the unit forward", async () => {
   const workDir = mkdtempSync(join(tmpdir(), "code-gate-seam-"));
   const REAL_TEST_NAME = "real gate.ts seam check";
   const fixture = join(workDir, "fail.js");

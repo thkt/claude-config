@@ -3,8 +3,8 @@
 // established by the preceding units). This file guards the retirement itself: no tracked file
 // still names the retired path, and the EN / .ja copies of code.js agree on the replacement.
 //
-// Full-tree scan per docs/wiki/retire-rename-procedure.md ("EN と .ja の両ツリー + docs を
-// 一括更新し、git ls-files / ugrep 全走査で残存参照ゼロを確認する"). A mention under
+// Full-tree scan per docs/wiki/retire-rename-procedure.md: update both trees and docs in one
+// change, then confirm zero residual references across git ls-files. A mention under
 // docs/decisions/ is kept as historical record by that same procedure, so it is excluded here
 // rather than counted as a leftover reference.
 import assert from "node:assert/strict";
@@ -28,8 +28,8 @@ function referencesRetiredPath(content: string): boolean {
   return content.includes(RETIRED_PATH);
 }
 
-test("追跡ファイルのどれも _lib/gate.py を参照しない", () => {
-  // Positive control: an absence/0-件 check stays green even after the scan itself breaks
+test("T-014 no tracked file references _lib/gate.py", () => {
+  // Positive control: an absence check stays green even after the scan itself breaks
   // (e.g. RETIRED_PATH mistyped, the .includes() call dropped) unless it is proven to still
   // catch a violation. Run the same predicate against a fixture that names the retired path
   // and confirm it is caught, then against a copy with that one clue removed and confirm the
@@ -38,14 +38,14 @@ test("追跡ファイルのどれも _lib/gate.py を参照しない", () => {
   assert.equal(
     referencesRetiredPath(positiveControl),
     true,
-    "陽性対照: 検査手掛かりを含む写しは検出される",
+    "positive control: a copy carrying the cue is detected",
   );
   const masked = positiveControl.replace(RETIRED_PATH, "REMOVED");
-  assert.equal(masked.includes(RETIRED_PATH), false, "手掛かりを取り除いた写しであることの確認");
+  assert.equal(masked.includes(RETIRED_PATH), false, "the masked copy no longer carries the cue");
   assert.equal(
     referencesRetiredPath(masked),
     false,
-    "陽性対照: 手掛かりを取り除くと同じ違反が検出漏れとして落ちる",
+    "positive control: the same violation goes undetected once the cue is removed",
   );
 
   const tracked = execFileSync("git", ["ls-files", "-z"], { cwd: REPO_ROOT, encoding: "utf8" })
@@ -79,17 +79,17 @@ function extractGateScript(source: string): string | null {
   return m ? m[1] : null;
 }
 
-test("EN と .ja の code.js が同じ gateScript 定数を持つ", () => {
+test("T-016 the EN and .ja code.js carry the same gateScript constant", () => {
   const enSource = readFileSync(join(REPO_ROOT, "workflows", "code.js"), "utf8");
   const jaSource = readFileSync(join(REPO_ROOT, ".ja", "workflows", "code.js"), "utf8");
   const enGateScript = extractGateScript(enSource);
   const jaGateScript = extractGateScript(jaSource);
   assert.ok(enGateScript, "gateScript is extractable from workflows/code.js");
   assert.ok(jaGateScript, "gateScript is extractable from .ja/workflows/code.js");
-  assert.equal(jaGateScript, enGateScript, "EN と .ja で gateScript の指す先が食い違っている");
+  assert.equal(jaGateScript, enGateScript, "EN and .ja gateScript point at different files");
   assert.equal(
     enGateScript,
     "workflows/_lib/gate.ts",
-    "gateScript は retire 対象の gate.py をまだ指している",
+    "gateScript still points at the retired gate.py",
   );
 });

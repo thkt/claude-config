@@ -31,7 +31,7 @@ function withTempDir<T>(fn: (cwd: string) => T): T {
   }
 }
 
-test("T-010 未知フラグと重複 singleton と相対 cwd とアンカー無しの expect fail が blocked と usage_error になる", () => {
+test("T-010 an unknown flag, a repeated singleton, a relative cwd, and an anchorless expect fail all report blocked with usage_error", () => {
   withTempDir((cwd) => {
     const unknownFlag = runCli([
       "--cwd",
@@ -81,7 +81,7 @@ test("T-010 未知フラグと重複 singleton と相対 cwd とアンカー無�
   assert.match(String(relativeCwd.report.error), /--cwd must be absolute/);
 });
 
-test("T-011 切り詰めが残した先頭行が tail から落ち、完全な行が無ければ tail が空になる", () => {
+test("T-011 the tail drops a first line the cut left incomplete and is empty when no complete line remains", () => {
   // gate.py's own test exercises tail() as a direct unit import. gate.ts's tsconfig
   // (workflows/../tsconfig.json, owned by U-001, out of this unit's file scope) sets no
   // allowImportingTsExtensions, so a same-repo .ts-to-.ts import of an internal helper fails
@@ -129,7 +129,7 @@ test("T-011 切り詰めが残した先頭行が tail から落ち、完全な�
   });
 });
 
-test("T-012 完全な 1 行と一致しないアンカーが missing_required_output で落ち、禁止出力が forbidden_output で落ちる", () => {
+test("T-012 an anchor matching no complete line fails as missing_required_output and forbidden output fails as forbidden_output", () => {
   withTempDir((cwd) => {
     const nameOnlyAnchor = runCli([
       "--cwd",
@@ -161,7 +161,7 @@ test("T-012 完全な 1 行と一致しないアンカーが missing_required_ou
   });
 });
 
-test("T-013 calibrate がアンカー無しで走り classification に calibration_ が付き、アンカー指定と expect pass を拒否する", () => {
+test("T-013 calibrate runs without an anchor, prefixes its classification, and refuses an anchor or an expect pass", () => {
   withTempDir((cwd) => {
     const noAnchorRun = runCli([
       "--cwd",
@@ -207,5 +207,184 @@ test("T-013 calibrate がアンカー無しで走り classification に calibrat
       "calibrate with expect pass: verdict",
     );
     assert.match(String(calibratePassExpectation.report.error), /--expect must be fail/);
+  });
+});
+
+// The three paths below were the differential suite's reason for existing: each one reads
+// differently in Node than in the Python the gate was ported from, and none of them shows up in
+// a test that only exercises the verdict on a command that ran to completion.
+test("T-018 a command that outruns its timeout reports blocked with exit 124", () => {
+  withTempDir((cwd) => {
+    const run = runCli([
+      "--cwd",
+      cwd,
+      "--command",
+      "sleep 5",
+      "--expect",
+      "pass",
+      "--timeout-ms",
+      "200",
+    ]);
+    assert.equal(run.status, 124, "timeout: exit code");
+    assert.equal(run.report.verdict, "blocked", "timeout: verdict");
+    assert.deepEqual(run.report.reason_codes, ["timeout"]);
+    const evidence = run.report.evidence as Record<string, unknown>;
+    assert.equal(evidence.timed_out, true, "timeout: timed_out");
+    assert.equal(evidence.exit_code, null, "timeout: no exit code");
+  });
+});
+
+test("T-019 a command killed by a signal reports blocked with the negative exit code", () => {
+  withTempDir((cwd) => {
+    const run = runCli(["--cwd", cwd, "--command", "kill -TERM $$", "--expect", "pass"]);
+    assert.equal(run.status, 2, "signal: exit code");
+    assert.equal(run.report.verdict, "blocked", "signal: verdict");
+    assert.deepEqual(run.report.reason_codes, ["signal"]);
+    const evidence = run.report.evidence as Record<string, unknown>;
+    assert.equal(evidence.signal, "SIGTERM", "signal: name");
+    assert.equal(evidence.exit_code, -15, "signal: negative exit code");
+  });
+});
+
+// Node's spawnSync stops at a 1 MiB default buffer and reports ENOBUFS with SIGTERM, which a
+// naive port classifies as a killed command. A test suite is exactly the command that exceeds it.
+test("T-020 a command emitting more than 1 MiB still reports its own verdict", () => {
+  withTempDir((cwd) => {
+    const run = runCli([
+      "--cwd",
+      cwd,
+      "--command",
+      "yes hello | head -c 2000000",
+      "--expect",
+      "pass",
+    ]);
+    assert.equal(run.status, 0, "large output: exit code");
+    assert.equal(run.report.verdict, "pass", "large output: verdict");
+    const evidence = run.report.evidence as Record<string, unknown>;
+    assert.equal(evidence.timed_out, false, "large output: not a timeout");
+    assert.equal(evidence.signal, null, "large output: no signal");
+  });
+});
+
+test("T-021 the tail keeps a complete first line and drops one the cut left partial", () => {
+  withTempDir((cwd) => {
+    const complete = runCli([
+      "--cwd",
+      cwd,
+      "--command",
+      String.raw`printf 'alpha\nbeta\n'`,
+      "--expect",
+      "pass",
+      "--tail-bytes",
+      "5",
+    ]);
+    assert.equal((complete.report.evidence as Record<string, unknown>).stdout_tail, "beta\n");
+    const partial = runCli([
+      "--cwd",
+      cwd,
+      "--command",
+      String.raw`printf 'alpha\nbeta\n'`,
+      "--expect",
+      "pass",
+      "--tail-bytes",
+      "8",
+    ]);
+    assert.equal((partial.report.evidence as Record<string, unknown>).stdout_tail, "beta\n");
+    const none = runCli([
+      "--cwd",
+      cwd,
+      "--command",
+      String.raw`printf 'alphabeta'`,
+      "--expect",
+      "pass",
+      "--tail-bytes",
+      "4",
+    ]);
+    assert.equal((none.report.evidence as Record<string, unknown>).stdout_tail, "");
+  });
+});
+
+// Candidate selection is what keeps a caller from sealing a line it typed. Without these, a
+// calibration could offer the wrong lines and the suite would still be green.
+test("T-022 a calibration offers only lines naming a planned test beside a failure marker", () => {
+  withTempDir((cwd) => {
+    const named = runCli([
+      "--cwd",
+      cwd,
+      "--command",
+      String.raw`printf 'ok 1 - other\nnot ok 2 - an empty query returns an error\n'; exit 1`,
+      "--calibrate",
+      "--planned-test",
+      "T-001:an empty query returns an error",
+    ]);
+    assert.equal(named.status, 0, "named: exit code");
+    const candidates = named.report.candidates as Array<Record<string, unknown>>;
+    assert.equal(candidates.length, 1, "named: one candidate");
+    assert.equal(candidates[0].text, "not ok 2 - an empty query returns an error");
+    assert.equal(candidates[0].test_id, "T-001");
+
+    const passed = runCli([
+      "--cwd",
+      cwd,
+      "--command",
+      String.raw`printf 'ok 1 - an empty query returns an error\nnot ok 2 - unrelated\n'; exit 1`,
+      "--calibrate",
+      "--planned-test",
+      "T-001:an empty query returns an error",
+    ]);
+    assert.equal(passed.status, 1, "planned test passed: exit code");
+    assert.equal(passed.report.classification, "calibration_missing_calibration_evidence");
+    assert.deepEqual(passed.report.candidates, []);
+  });
+});
+
+test("T-023 a planned name carrying a failure word does not satisfy the marker by itself", () => {
+  withTempDir((cwd) => {
+    const run = runCli([
+      "--cwd",
+      cwd,
+      "--command",
+      String.raw`printf 'ok 1 - ERROR handling works\n'; exit 1`,
+      "--calibrate",
+      "--planned-test",
+      "T-001:ERROR handling works",
+    ]);
+    assert.equal(run.status, 1, "self-satisfying name: exit code");
+    assert.deepEqual(run.report.candidates, [], "the name alone is not a failure marker");
+  });
+});
+
+test("T-024 a calibration with no planned test falls back to marker lines", () => {
+  withTempDir((cwd) => {
+    const run = runCli([
+      "--cwd",
+      cwd,
+      "--command",
+      String.raw`printf 'ok 1 - fine\nnot ok 2 - broken\n'; exit 1`,
+      "--calibrate",
+    ]);
+    assert.equal(run.status, 0, "fallback: exit code");
+    const candidates = run.report.candidates as Array<Record<string, unknown>>;
+    assert.deepEqual(
+      candidates.map((c) => c.text),
+      ["not ok 2 - broken"],
+    );
+  });
+});
+
+test("T-025 a planned test outside a calibration run is a usage error", () => {
+  withTempDir((cwd) => {
+    const run = runCli([
+      "--cwd",
+      cwd,
+      "--command",
+      "true",
+      "--expect",
+      "pass",
+      "--planned-test",
+      "T-001:x",
+    ]);
+    assert.equal(run.status, 2, "planned test without calibrate: exit code");
+    assert.match(String(run.report.error), /only narrows a --calibrate run/);
   });
 });

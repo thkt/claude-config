@@ -1,5 +1,4 @@
-// tsconfig-scope.test.js が「workflows 配下の .ts が型検査対象に含まれる」ことを
-// 確認するために参照する固定フィクスチャ。テスト実行のたびに生成/削除すると
-// サンドボックス環境で workflows/ 配下への書き込みが EPERM になるため、
-// リポジトリに常設したファイルとして持つ。
+// The fixture tsconfig-scope.test.js points at to confirm that a .ts under workflows reaches
+// the type-check set. It is committed rather than written per run: the sandbox denies writes
+// under workflows/, so creating it at test time fails with EPERM.
 export const tsconfigScopeFixture: number = 1;
