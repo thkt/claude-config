@@ -128,9 +128,21 @@ export function hashes(skill: string, root: string = ROOT): HarnessHashes {
   };
 }
 
+// Python の main(argv) は sys.argv (スクリプト名を含む) を受け取るため、そちらの
+// `len(argv) != 2` はここでは `argv.length !== 1` になる: main() は process.argv.slice(2)
+// を受け取る、gate.ts の main() と同じ argv の扱いである。
 export function main(argv: string[]): number {
-  void argv;
-  throw new Error("not implemented");
+  if (argv.length !== 1) {
+    process.stderr.write("Usage: harness_hash.ts <skill-name>\n");
+    return 2;
+  }
+  try {
+    process.stdout.write(`${JSON.stringify(hashes(argv[0]))}\n`);
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    return 1;
+  }
+  return 0;
 }
 
 if (isMainModule(import.meta.url)) {

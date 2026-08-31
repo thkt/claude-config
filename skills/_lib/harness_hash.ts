@@ -128,9 +128,21 @@ export function hashes(skill: string, root: string = ROOT): HarnessHashes {
   };
 }
 
+// Python's main(argv) takes sys.argv (script name included), so `len(argv) != 2` there is
+// this CLI's `argv.length !== 1` here: main() receives process.argv.slice(2), the same
+// argv convention gate.ts's main() uses.
 export function main(argv: string[]): number {
-  void argv;
-  throw new Error("not implemented");
+  if (argv.length !== 1) {
+    process.stderr.write("Usage: harness_hash.ts <skill-name>\n");
+    return 2;
+  }
+  try {
+    process.stdout.write(`${JSON.stringify(hashes(argv[0]))}\n`);
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    return 1;
+  }
+  return 0;
 }
 
 if (isMainModule(import.meta.url)) {
