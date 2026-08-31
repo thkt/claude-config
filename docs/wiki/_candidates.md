@@ -60,6 +60,8 @@
 - 原因未確定かつローカル再現しない不具合は、推測に基づく修正を当てず再現条件を確定する診断計測を先に足す #590
 - Red gate の test_command は、失敗行の文字列が実行間で完全一致する出力形式 (reporter) を要求する #596
 - tests を持つ unit は plan の files に、そのテストが動かすモジュールを含める。Red が触れるのは files にあるものだけなので、files 外を import するテストは Red を確立できない #600
+- plan 文の Markdown 整形は日本語中の ASCII 数字前後に空白を入れるため、テスト名照合は空白の連なりの有無を許容しないと候補を取りこぼす #609
+- unittest.main(verbosity=2) の verbose reporter は判定 (FAIL/ERROR) を行末に置くため、行頭マーカーのみを見る失敗検出は Python スイートの失敗を常に取りこぼす #609
 
 ## 棄却
 
