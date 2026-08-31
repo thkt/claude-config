@@ -6,6 +6,7 @@
   "type": "module",
   "devDependencies": {
     "@textlint-ja/textlint-rule-preset-ai-writing": "^1.7.0",
+    "@types/node": "^24",
     "hucre": "^1.1.0",
     "oxfmt": "0.63.0",
     "oxlint": "1.78.0",
