@@ -1,6 +1,10 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
-  "ignorePatterns": ["plugins/**", "node_modules/**", "skills/*/test/cases/**"],
+  "ignorePatterns": [
+    "plugins/**",
+    "node_modules/**",
+    "skills/*/test/cases/**"
+  ],
   "globals": {
     "agent": "readonly",
     "parallel": "readonly",
@@ -16,12 +20,40 @@
   },
   "overrides": [
     {
-      "files": ["workflows/*.js", ".ja/workflows/*.js"],
+      "files": [
+        "workflows/*.js",
+        ".ja/workflows/*.js"
+      ],
       "rules": {
-        "func-style": ["error", "expression"],
+        "func-style": [
+          "error",
+          "expression"
+        ],
         "prefer-arrow-callback": "error",
         "no-var": "error",
         "no-undef": "error"
+      }
+    },
+    {
+      "files": [
+        "**/*.ts"
+      ],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "Bun",
+            "message": "Library code stays runnable on both node and bun. Use a node: API instead."
+          }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              "bun:*"
+            ]
+          }
+        ]
       }
     }
   ]
