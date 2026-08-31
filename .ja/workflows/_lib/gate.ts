@@ -32,8 +32,7 @@
 // 終了コードだけでなく JSON から読む。fail-closed: usage error は blocked 判定であり、
 // pass にはならない。
 //
-// Contract: workflows/_lib/gate.py 自身の docstring と挙動を、そのまま TypeScript へ
-// 移したもの (differential coverage: workflows/_lib/tests/gate.differential.test.ts)。
+// Contract: この CLI 自身の挙動。workflows/_lib/tests/gate.test.ts がエンドツーエンドで検査する。
 //
 // tsconfig.json は `types` 配列を宣言しておらず、TypeScript 7 の `moduleResolution:
 // "bundler"` はそれが無いと @types/node を自動では含めない。上の

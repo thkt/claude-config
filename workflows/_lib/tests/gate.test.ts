@@ -1,9 +1,6 @@
 /// <reference types="node" />
-// Behavior tests for workflows/_lib/gate.ts, ported from workflows/_lib/tests/gate_test.py
-// (the .py file stays until every scenario it covers has a home here; the ones already
-// exercised as cross-checks live in workflows/_lib/tests/gate.differential.test.ts instead).
-// gate.ts is a Red-step scaffold, so every test here is expected to fail against it until a
-// later unit fills in the real parity implementation.
+// Behavior tests for workflows/_lib/gate.ts. gate.py and the differential suite that
+// cross-checked it are retired now that code.js's gate path runs gate.ts directly.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
