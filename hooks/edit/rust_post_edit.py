@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """Rust: cargo fmt after editing .rs files, then clippy.
 
 The pre-edit run cannot see what the edit itself broke.

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """PreToolUse hook: name the docs/wiki pages scoped to a gh command about to run.
 
 Advisory: the decision is always allow, so a missing page never stops the command.

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """Hold the Mac awake while a turn is working, via Amphetamine.
 
 UserPromptSubmit calls acquire, Stop calls release, PostToolUse calls background.

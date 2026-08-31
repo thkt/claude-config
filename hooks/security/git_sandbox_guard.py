@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """PreToolUse hook: stop tree-rewriting git commands from running sandboxed in the Claude
 config directory.
 

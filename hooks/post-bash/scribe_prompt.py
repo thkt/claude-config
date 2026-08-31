@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """PostToolUse hook: nudge toward /scribe when a git pull just brought down new work.
 
 The Bash tool_response carries no exit code
