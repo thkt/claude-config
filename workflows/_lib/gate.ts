@@ -67,7 +67,7 @@ const LINE_SPLIT = /\r\n|\r|\n/;
 export const MAX_CALIBRATION_CANDIDATES = 128;
 export const MAX_CALIBRATION_LINE_LENGTH = 2000;
 const FAILURE_MARKER =
-  /(?:^\s*not ok\b|^\s*(?:FAIL(?:ED|URE)?\b|ERROR\b|\(fail\)|[✖✕×✗❌●])|^\s*\d+\)\s+|\bFAILED\b|\bFAILURE\b)/i;
+  /(?:^\s*not ok\b|^\s*(?:FAIL(?:ED|URE)?\b|ERROR\b|\(fail\)|[✖✕×✗❌●])|^\s*\d+\)\s+|\bFAILED\b|\bFAILURE\b|\.{3}\s*(?:FAIL|ERROR)\s*$)/i;
 const LF = 0x0a;
 const CR = 0x0d;
 
@@ -195,16 +195,39 @@ export function outputLines(stream: "stdout" | "stderr", text: string): Candidat
   return lines;
 }
 
+const REGEX_META = /[.*+?^${}()|[\]\\]/g;
+
+// Where the planned name sits in the line, with each run of whitespace inside the name
+// allowed to be absent from the line.
+//
+// Not an exact comparison: the plan's sentence reaches here through the repository's
+// Markdown formatter, which spaces an ASCII digit run apart from the Japanese around it,
+// while the same sentence written into a test name carries no such space. An exact
+// comparison then offers no candidate at all and the run stops with nothing to seal.
+function locateName(line: string, name: string): { at: number; length: number } | null {
+  const at = line.indexOf(name);
+  if (at >= 0) {
+    return { at, length: name.length };
+  }
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) {
+    return null;
+  }
+  const pattern = parts.map((part) => part.replace(REGEX_META, "\\$&")).join("\\s*");
+  const match = new RegExp(pattern).exec(line);
+  return match === null ? null : { at: match.index, length: match[0].length };
+}
+
 // A line naming the planned test and, outside that name, carrying a failure marker.
 //
 // The name is cut out before the marker is looked for. A test whose own name contains
 // "error" would otherwise satisfy the marker on the strength of its name alone.
 export function namesPlannedFailure(line: string, name: string): boolean {
-  const at = line.indexOf(name);
-  if (at < 0) {
+  const found = locateName(line, name);
+  if (found === null) {
     return false;
   }
-  const context = line.slice(0, at) + line.slice(at + name.length);
+  const context = line.slice(0, found.at) + line.slice(found.at + found.length);
   return FAILURE_MARKER.test(context);
 }
 
