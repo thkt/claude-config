@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,6 +10,7 @@ import { runWorkflow } from "../../_lib/run-workflow.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const codeJs = join(here, "..", "..", "code.js");
+const repoRoot = join(here, "..", "..", "..");
 
 const plan = {
   test_command: "npm test",
@@ -365,12 +366,30 @@ test("T-017 a Red calibration through the real gate.ts parses and carries the un
       },
     ],
   };
+  // bundled() resolves the script under $HOME/.claude, which is where this repository sits on a
+  // dev machine and nowhere near where CI checks it out. Giving the command its own HOME with the
+  // real gate.ts under it keeps the resolution itself under test wherever the checkout lives.
+  const fakeHome = join(workDir, "home");
+  const bundledDir = join(fakeHome, ".claude", "workflows", "_lib");
+  mkdirSync(bundledDir, { recursive: true });
+  copyFileSync(join(repoRoot, "workflows", "_lib", "gate.ts"), join(bundledDir, "gate.ts"));
   const COMMAND_MARKER = "whatever its exit status.\n";
   const runRealGate = (prompt) => {
     const at = prompt.indexOf(COMMAND_MARKER);
     const command = prompt.slice(at + COMMAND_MARKER.length);
     try {
-      return { stdout: execFileSync("/bin/zsh", ["-c", command], { encoding: "utf8" }) };
+      return {
+        stdout: execFileSync("/bin/zsh", ["-c", command], {
+          encoding: "utf8",
+          // The real node binary goes first on PATH: a version-manager shim reads its config
+          // out of HOME, and the HOME below is not the one it was set up under.
+          env: {
+            ...process.env,
+            HOME: fakeHome,
+            PATH: `${dirname(process.execPath)}:${process.env.PATH ?? ""}`,
+          },
+        }),
+      };
     } catch (err) {
       return { stdout: err.stdout ?? "" };
     }

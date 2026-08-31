@@ -39,9 +39,9 @@
 // `/// <reference types="node" />` は、tsconfig.json を編集する代わりにその隙間を
 // この unit のファイル範囲外に留めている。tsconfig.json は別の unit が持つ。
 import { spawnSync } from "node:child_process";
-import { statSync } from "node:fs";
+import { realpathSync, statSync } from "node:fs";
 import { constants as osConstants } from "node:os";
-import { isAbsolute } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const REPORT_PROTOCOL = "claude-code-gate/v1";
@@ -561,6 +561,20 @@ export function main(argv: string[]): number {
   return exitCode;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// 比較の前に両側を解決する。argv[1] がシンボリックリンク経由のパスで届くと (macOS は
+// /private/var/... を /var/... として渡す)、解決済みのモジュールパスと決して一致せず、
+// CLI は何も出力しないまま exit 0 で終わる。
+function isMainModule(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  const modulePath = fileURLToPath(import.meta.url);
+  try {
+    return realpathSync(resolve(entry)) === realpathSync(modulePath);
+  } catch {
+    return resolve(entry) === modulePath;
+  }
+}
+
+if (isMainModule()) {
   process.exit(main(process.argv.slice(2)));
 }

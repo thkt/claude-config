@@ -40,9 +40,9 @@
 // above keeps that gap out of this unit's file scope instead of editing tsconfig.json,
 // which is owned elsewhere.
 import { spawnSync } from "node:child_process";
-import { statSync } from "node:fs";
+import { realpathSync, statSync } from "node:fs";
 import { constants as osConstants } from "node:os";
-import { isAbsolute } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const REPORT_PROTOCOL = "claude-code-gate/v1";
@@ -562,6 +562,20 @@ export function main(argv: string[]): number {
   return exitCode;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// Both sides are resolved before the comparison. A path reaching argv[1] through a symlink
+// (macOS hands out /var/... for /private/var/...) would otherwise never equal the resolved
+// module path, and the CLI would exit 0 having printed nothing at all.
+function isMainModule(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  const modulePath = fileURLToPath(import.meta.url);
+  try {
+    return realpathSync(resolve(entry)) === realpathSync(modulePath);
+  } catch {
+    return resolve(entry) === modulePath;
+  }
+}
+
+if (isMainModule()) {
   process.exit(main(process.argv.slice(2)));
 }

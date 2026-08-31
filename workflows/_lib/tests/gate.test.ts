@@ -3,7 +3,7 @@
 // cross-checked it are retired now that code.js's gate path runs gate.ts directly.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -386,5 +386,24 @@ test("T-025 a planned test outside a calibration run is a usage error", () => {
     ]);
     assert.equal(run.status, 2, "planned test without calibrate: exit code");
     assert.match(String(run.report.error), /only narrows a --calibrate run/);
+  });
+});
+
+// Reached through a symlinked directory, a main guard comparing argv[1] to the resolved module
+// path never fires: the CLI exits 0 having printed nothing, and every caller reads that as an
+// unparseable report. macOS hands out /var/... for /private/var/..., so a temp dir is enough.
+test("T-026 the CLI reports through a symlinked path to its own file", () => {
+  withTempDir((cwd) => {
+    const link = join(cwd, "gate-link.ts");
+    symlinkSync(TS_SCRIPT, link);
+    const result = spawnSync(
+      process.execPath,
+      [link, "--cwd", cwd, "--command", "true", "--expect", "pass"],
+      {
+        encoding: "utf8",
+      },
+    );
+    assert.notEqual(result.stdout.trim(), "", "the CLI printed a report through the symlink");
+    assert.equal(JSON.parse(result.stdout).verdict, "pass");
   });
 });
