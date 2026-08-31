@@ -17,9 +17,11 @@ jobs:
           # Nothing here pushes, and a token left in .git/config travels with an upload.
           persist-credentials: false
 
+      # Node 22 は型ストリップ (.ts をそのまま node --test に渡す機能) を無フラグで行わない。
+      # 24 (LTS) から無フラグで有効になる。
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version: 24
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
 
@@ -39,6 +41,11 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
+      # typescript は ruff と違い JS 依存にあるので、上の Install がそのまま入れる。
+      # 版の固定は package.json/bun.lock 側 (ruff の --spec と同じ役割)。
+      - name: Type check
+        run: npx tsc
+
       - name: Node tests
         run: >
           node --test
@@ -47,6 +54,7 @@ jobs:
           "hooks/**/tests/*.test.js"
           "skills/**/tests/*.test.js"
           "workflows/**/tests/*.test.js"
+          "workflows/**/tests/*.test.ts"
 
       # hooks/edit/tests/rumdl_check_test.py runs the real binary. The rumdl step below
       # reaches it through `pipx run`, which puts nothing on PATH for this step.
