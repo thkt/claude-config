@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """PostToolUse hook: auto-fix a Japanese .md file with textlint.
 
 The rules are Japanese-specific, so an English document would be rewritten against a grammar

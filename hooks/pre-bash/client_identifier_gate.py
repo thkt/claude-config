@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """PreToolUse hook: stop a commit in this repository when the staged diff adds a term from
 the operator's private identifier list.
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """Rust: cargo clippy before editing .rs files, injected as additionalContext."""
 
 import sys

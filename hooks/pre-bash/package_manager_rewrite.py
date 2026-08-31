@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """PreToolUse hook: rewrite a package manager command into its ni equivalent.
 
 The ni family resolves the manager from the lockfile, so one spelling keeps working in a

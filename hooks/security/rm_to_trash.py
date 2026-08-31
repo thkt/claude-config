@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """PreToolUse hook: redirect deletion to `mv ~/.Trash/`.
 
 Covers the deletion verbs (rm / rmdir / unlink / shred) plus the two forms that unlink files
