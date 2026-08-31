@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """SessionStart hook: catch up recall's cross-session index in the background.
 
 SessionStart rather than SessionEnd. The previous session's transcript is already flushed by

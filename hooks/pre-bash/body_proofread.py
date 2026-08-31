@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """PreToolUse hook: proofread the body a gh filing or a commit is about to write.
 
 Advisory. The findings ride back as additionalContext and never stop the call, since a

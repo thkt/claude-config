@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """PreToolUse hook: block a package install when ignore-scripts is not configured.
 
 Failure mode: fail-closed (security enforcement).

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """PostToolUse hook: report rumdl violations after editing a .md file.
 
 Unlike textlint_fix.py, this hook only reports; it never calls `rumdl fmt`, so a fix stays a

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """PreToolUse hook: match a gh issue create body against the skeleton its title's type points
 at, and stop the filing when the two diverge.
 

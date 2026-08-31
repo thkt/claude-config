@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/homebrew/bin/python3
 """PostToolUse hook: warn when a file under .ja/ carries prose with no Japanese in it.
 
 Warns, never blocks: a file whose comments are legitimately all identifiers or proper nouns
