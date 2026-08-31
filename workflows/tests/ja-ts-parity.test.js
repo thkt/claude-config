@@ -16,9 +16,27 @@ const FIXTURES = join(TEST_DIR, "fixtures", "ja-ts-parity");
 
 const read = (relative) => readFileSync(join(FIXTURES, relative), "utf8");
 
-// A // or /* inside a string or template literal is not a comment. A plain regex substitution
-// would eat `http://example.com` out of the body, and two files differing only there would then
-// compare equal.
+// A `/` opens a regex literal only where a value may start. After an identifier, a digit, or a
+// closing `)` `]` `}` it is the division operator, and consuming `a / b / c` as a literal would
+// swallow the code between the two slashes.
+const CLOSES_A_VALUE = /[\w$)\]}]/;
+
+// The scan reads what stripComments has emitted, so a comment sitting between the previous token
+// and the `/` is already gone. No `.ts` in the compared set puts a regex after a keyword
+// (`return /re/`, `typeof /re/`), where the last character is a letter and this reads division,
+// so the keyword list that case would need is left out.
+function opensRegexLiteral(emitted) {
+  for (let k = emitted.length - 1; k >= 0; k--) {
+    const ch = emitted[k];
+    if (ch === " " || ch === "\t" || ch === "\r" || ch === "\n") continue;
+    return !CLOSES_A_VALUE.test(ch);
+  }
+  return true;
+}
+
+// A // or /* inside a string, a template literal, or a regex literal is not a comment. A plain
+// regex substitution would eat `http://example.com` out of the body, and two files differing only
+// there would then compare equal.
 function stripComments(source) {
   let out = "";
   let i = 0;
@@ -33,6 +51,39 @@ function stripComments(source) {
       i += 2;
       while (i < n && source.slice(i, i + 2) !== "*/") i++;
       i += 2;
+      continue;
+    }
+    // `/https?:\/\//g` ends in an escaped slash followed by the delimiter. Emitting the opening
+    // `/` and reading on character by character would meet that pair as `//` and drop the flag
+    // and the rest of the line, so the literal is consumed here in one piece. Inside a `[...]`
+    // class a `/` does not close the literal.
+    if (source[i] === "/" && opensRegexLiteral(out)) {
+      out += "/";
+      i++;
+      let inCharClass = false;
+      while (i < n && source[i] !== "\n") {
+        const c = source[i];
+        if (c === "\\") {
+          out += c + (source[i + 1] ?? "");
+          i += 2;
+          continue;
+        }
+        if (c === "[") inCharClass = true;
+        else if (c === "]") inCharClass = false;
+        else if (c === "/" && !inCharClass) break;
+        out += c;
+        i++;
+      }
+      // A newline or the end of input means the `/` was not a literal after all. Leave both
+      // untouched for the outer loop rather than consuming them as part of one.
+      if (source[i] === "/") {
+        out += "/";
+        i++;
+        while (i < n && /[a-z]/i.test(source[i])) {
+          out += source[i];
+          i++;
+        }
+      }
       continue;
     }
     const ch = source[i];
@@ -135,4 +186,15 @@ test("T-019 a comment-shaped literal inside a template interpolation survives", 
   const { en, ja } = fixturePair("comment-in-template");
   assert.equal(tsBodiesMatch(en, ja), true);
   assert.match(extractBody(en), /not a comment/, "the interpolated literal is still in the body");
+});
+
+// A negative control, not a positive one: a pair differing only in comments passes whether or
+// not stripComments knows regex literals. Reading `\/` plus the closing delimiter as a line
+// comment truncates both sides to `export const PROTOCOL = /https?:\`, which compares equal
+// while the EN flag is `g` and the JA flag is `i`.
+test("T-020 a regex literal holding an escaped slash keeps its flag and its trailing code", () => {
+  const { en, ja } = fixturePair("regex-literal");
+  assert.equal(tsBodiesMatch(en, ja), false);
+  assert.equal(extractBody(en), String.raw`export const PROTOCOL = /https?:\/\//g;`);
+  assert.equal(extractBody(ja), String.raw`export const PROTOCOL = /https?:\/\//i;`);
 });

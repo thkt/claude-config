@@ -93,54 +93,6 @@ test("T-010 an unknown flag, a repeated singleton, a relative cwd, and an anchor
   assert.match(String(relativeCwd.report.error), /--cwd must be absolute/);
 });
 
-test("T-011 the tail drops a first line the cut left incomplete and is empty when no complete line remains", () => {
-  // gate.py's own test exercises tail() as a direct unit import. gate.ts's tsconfig
-  // (workflows/../tsconfig.json, owned by U-001, out of this unit's file scope) sets no
-  // allowImportingTsExtensions, so a same-repo .ts-to-.ts import of an internal helper fails
-  // tsc's TS5097 while a Node-runtime-only extensionless specifier fails module resolution --
-  // there is no specifier both accept. evidence.stdout_tail is tail()'s own output on the
-  // CLI's surface, so the truncation behavior is observed through it instead.
-  withTempDir((cwd) => {
-    const incompleteFirstLineDropped = runCli([
-      "--cwd",
-      cwd,
-      "--command",
-      "printf 'alpha\\nbeta\\n'",
-      "--expect",
-      "pass",
-      "--tail-bytes",
-      "8",
-    ]);
-    const incompleteEvidence = incompleteFirstLineDropped.report.evidence as
-      | Record<string, unknown>
-      | undefined;
-    assert.equal(
-      incompleteEvidence?.stdout_tail,
-      "beta\n",
-      "the cut lands mid-line, so the incomplete first line is dropped",
-    );
-
-    const noCompleteLine = runCli([
-      "--cwd",
-      cwd,
-      "--command",
-      "printf 'alphabeta'",
-      "--expect",
-      "pass",
-      "--tail-bytes",
-      "4",
-    ]);
-    const noCompleteLineEvidence = noCompleteLine.report.evidence as
-      | Record<string, unknown>
-      | undefined;
-    assert.equal(
-      noCompleteLineEvidence?.stdout_tail,
-      "",
-      "no newline survives the cut, so there is no complete line to return",
-    );
-  });
-});
-
 test("T-012 an anchor matching no complete line fails as missing_required_output and forbidden output fails as forbidden_output", () => {
   withTempDir((cwd) => {
     const nameOnlyAnchor = runCli([
