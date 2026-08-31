@@ -114,7 +114,7 @@ const relayStdout = async (unit, label, command) => {
   return res && typeof res.stdout === "string" ? res.stdout : null;
 };
 
-const gateScript = bundled("workflows/_lib/gate.py");
+const gateScript = bundled("workflows/_lib/gate.ts");
 
 const parsedReport = (stdout) => {
   try {
@@ -126,7 +126,7 @@ const parsedReport = (stdout) => {
 };
 
 const runGate = async (unit, label, args) => {
-  const command = [`python3 ${gateScript}`, ...args.map(shq)].join(" ");
+  const command = [`node ${gateScript}`, ...args.map(shq)].join(" ");
   const stdout = await relayStdout(unit, label, command);
   return stdout === null ? null : parsedReport(stdout);
 };

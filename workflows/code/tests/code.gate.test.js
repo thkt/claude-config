@@ -1,6 +1,9 @@
 // These pin who decides, not how the script computes: the gate scripts have their own tests.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runWorkflow } from "../../_lib/run-workflow.js";
@@ -319,5 +322,92 @@ test("the gate scripts are reached through bundled(), not a bare dev-tree path",
       /find "\$HOME\/\.claude\/plugins"/,
       `${label} resolves via bundled()`,
     );
+  }
+});
+
+test("runGate が組み立てるコマンドが gate.ts を node で起動する", async () => {
+  const { calls } = await run();
+  const calibrate = calls.agent.find((c) => c.opts.label === "calibrate:U-1");
+  assert.ok(calibrate, "the calibration gate ran");
+  assert.match(
+    calibrate.prompt,
+    /\nnode "\$\(P="\$HOME\/\.claude\/workflows\/_lib\/gate\.ts";/,
+    "the assembled command launches gate.ts with node",
+  );
+  assert.equal(/\bpython3\b/.test(calibrate.prompt), false, "python3 no longer launches the gate");
+  assert.equal(
+    calibrate.prompt.includes("gate.py"),
+    false,
+    "the assembled command no longer names the retired gate.py",
+  );
+});
+
+// Seam test: the "agent" tool is the one external system this unit fakes, but the shell
+// command it is asked to run is real. The stub below cuts that literal command out of the
+// prompt (the same text the previous test pins) and actually executes it with the repo's real
+// gate.ts, so this fails today for the same reason the previous test does -- the extracted
+// command still names gate.py -- and only turns green once runGate truly launches gate.ts.
+test("実際の gate.ts を通した Red calibration の report を code.js が解析して unit を先へ進める", async () => {
+  const workDir = mkdtempSync(join(tmpdir(), "code-gate-seam-"));
+  const REAL_TEST_NAME = "real gate.ts seam check";
+  const fixture = join(workDir, "fail.js");
+  writeFileSync(fixture, `console.log("not ok 1 - ${REAL_TEST_NAME}");\nprocess.exit(1);\n`);
+  const seamPlan = {
+    test_command: `node ${fixture}`,
+    units: [
+      {
+        id: "U-1",
+        goal: "prove the calibration seam",
+        files: ["src/x.js"],
+        contract: "seam check",
+        tests: [{ id: "T-001", name: REAL_TEST_NAME }],
+        seam: true,
+      },
+    ],
+  };
+  const COMMAND_MARKER = "whatever its exit status.\n";
+  const runRealGate = (prompt) => {
+    const at = prompt.indexOf(COMMAND_MARKER);
+    const command = prompt.slice(at + COMMAND_MARKER.length);
+    try {
+      return { stdout: execFileSync("/bin/zsh", ["-c", command], { encoding: "utf8" }) };
+    } catch (err) {
+      return { stdout: err.stdout ?? "" };
+    }
+  };
+  const CANDIDATES_FENCE = "---- candidates U-1 ----";
+  const sealFromRealCandidates = (prompt) => {
+    const start = prompt.indexOf(CANDIDATES_FENCE) + CANDIDATES_FENCE.length;
+    const end = prompt.indexOf(CANDIDATES_FENCE, start);
+    const { candidates } = JSON.parse(prompt.slice(start, end).trim());
+    return { candidate_id: candidates[0].id };
+  };
+  const baseStub = stub();
+  const seamAgent = (prompt, opts) => {
+    const key = (opts.label ?? "").split(":")[0];
+    if (key === "calibrate" || key === "gate-red") return runRealGate(prompt);
+    if (key === "seal") return sealFromRealCandidates(prompt);
+    return baseStub(prompt, opts);
+  };
+  try {
+    const { result, calls } = await runWorkflow(codeJs, {
+      args: { plan: seamPlan, repo: workDir, verify: true },
+      stubs: { agent: seamAgent },
+    });
+    const calibrate = calls.agent.find((c) => c.opts.label === "calibrate:U-1");
+    assert.ok(calibrate, "the calibration step ran");
+    assert.ok(
+      calibrate.prompt.includes("gate.ts") && !calibrate.prompt.includes("gate.py"),
+      "the calibration ran against the real gate.ts, not the retired gate.py",
+    );
+    assert.equal(result.stopped, undefined, `the run stopped: ${result.why}`);
+    assert.deepEqual(result.completed, ["U-1"]);
+    assert.deepEqual(result.skipped, []);
+    assert.ok(
+      calls.agent.find((c) => c.opts.label === "gate-red:U-1"),
+      "the official Red gate ran against the real calibration's sealed line",
+    );
+  } finally {
+    rmSync(workDir, { recursive: true, force: true });
   }
 });
