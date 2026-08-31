@@ -87,11 +87,16 @@ const shq = (value) => `'${String(value).replaceAll("'", `'"'"'`)}'`;
 const RELAY_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["stdout"],
+  required: ["stdout", "stderr"],
   properties: {
     stdout: {
       type: "string",
       description: "コマンドの stdout を逐語で。足さない、削らない、並べ替えない",
+    },
+    stderr: {
+      type: "string",
+      description:
+        "コマンドの stderr を逐語で。何も書かなければ空。コマンドを起動できないランタイムはここに理由を書く",
     },
   },
 };
@@ -100,7 +105,7 @@ const RELAY_SCHEMA = {
 const relayStdout = async (unit, label, command) => {
   const res = await agent(
     anchor(
-      `次のコマンドを書かれたとおりに実行し、終了ステータスによらず stdout を逐語で stdout に返す。\n` +
+      `次のコマンドを書かれたとおりに実行し、終了ステータスによらず stdout を逐語で stdout に、stderr を逐語で stderr に返す。\n` +
         `${command}`,
     ),
     {
@@ -111,7 +116,8 @@ const relayStdout = async (unit, label, command) => {
       model: "haiku",
     },
   );
-  return res && typeof res.stdout === "string" ? res.stdout : null;
+  if (!res || typeof res.stdout !== "string") return null;
+  return { stdout: res.stdout, stderr: typeof res.stderr === "string" ? res.stderr : "" };
 };
 
 const gateScript = bundled("workflows/_lib/gate.ts");
@@ -125,10 +131,16 @@ const parsedReport = (stdout) => {
   }
 };
 
+// gate.ts は Node の TypeScript 型ストリップの上で動く。それより古い node のシェルでは最初の
+// 型注釈でコマンドが死に、stdout には何も出ない。中継した stderr だけが原因を名指す場所になる。
 const runGate = async (unit, label, args) => {
   const command = [`node ${gateScript}`, ...args.map(shq)].join(" ");
-  const stdout = await relayStdout(unit, label, command);
-  return stdout === null ? null : parsedReport(stdout);
+  const relayed = await relayStdout(unit, label, command);
+  if (relayed === null) return null;
+  const report = parsedReport(relayed.stdout);
+  return (
+    report ?? { verdict: "blocked", classification: "gate_did_not_report", stderr: relayed.stderr }
+  );
 };
 
 const SEAL_SCHEMA = {
@@ -195,7 +207,13 @@ const suiteFailure = async (unit, label, route, extraArgs) => {
   ]);
   if (!report) return { why: `${label} gate が解釈可能な report を返さなかった`, report: null };
   if (report.verdict === "pass") return null;
-  return { why: `${report.classification}: ${label} gate で suite が通らなかった`, report };
+  // stderr が載るのは、コマンドが解釈可能な stdout を書かなかったときに runGate が組み立てる
+  // 合成 report だけである。コマンドを起動できなかったランタイムが理由を書いた場所になる。
+  const detail = report.stderr ? ` (stderr: ${flatten(report.stderr).slice(0, 300)})` : "";
+  return {
+    why: `${report.classification}: ${label} gate で suite が通らなかった${detail}`,
+    report,
+  };
 };
 
 // actor はいずれも gate 実行の記憶を持たない別 agent なので、report を retry に思い出させることは
@@ -233,13 +251,13 @@ const commitPostcondition = async (unit, baselineHead, body, files) => {
     unit_files: files,
     body,
   });
-  const stdout = await relayStdout(
+  const relayed = await relayStdout(
     unit,
     "commitcheck",
     `printf %s ${shq(payload)} | python3 ${verifyCommitScript}`,
   );
-  if (stdout === null) return "commit verifier が出力を返さなかった";
-  const report = parsedReport(stdout);
+  if (relayed === null) return "commit verifier が出力を返さなかった";
+  const report = parsedReport(relayed.stdout);
   if (!report) return "commit verifier が解釈可能な report を返さなかった";
   if (report.verdict !== "pass") {
     const blockers = Array.isArray(report?.blockers) ? report.blockers : [];
@@ -362,7 +380,7 @@ const commitUnit = async (unit, tests, testFiles) => {
   if (!commitPerUnit) return;
   // commit agent の後に読むと、着地先の head はもう残っていない。
   const baselineHead = verifyDeterministically
-    ? await relayStdout(unit, "head", `git -C ${shq(repo)} rev-parse HEAD`)
+    ? (await relayStdout(unit, "head", `git -C ${shq(repo)} rev-parse HEAD`))?.stdout
     : null;
   const res = await agent(
     anchor(

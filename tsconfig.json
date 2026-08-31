@@ -5,6 +5,10 @@
     "moduleResolution": "bundler",
     "strict": true,
     "noEmit": true,
+    // A .ts test importing a .ts helper is the only specifier Node resolves under type
+    // stripping, and tsc rejects it without this. Without both, a pure helper is reachable
+    // only by spawning the CLI.
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true
   },
   "include": ["skills/**/*.ts", "workflows/**/*.ts"],

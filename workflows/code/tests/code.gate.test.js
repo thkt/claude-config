@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -246,13 +246,19 @@ test("a Green gate whose courier returns unparseable output is a stop, not a pas
     stubs: {
       agent: (prompt, opts) => {
         const key = (opts.label ?? "").split(":")[0];
-        if (key === "gate-green") return { stdout: "<html>not json</html>" };
+        if (key === "gate-green")
+          return { stdout: "<html>not json</html>", stderr: "SyntaxError: Unexpected token" };
         return stub()(prompt, opts);
       },
     },
   });
   assert.equal(result.stopped, "unit-failed");
-  assert.match(String(result.why), /no parseable report/);
+  assert.match(String(result.why), /gate_did_not_report/);
+  assert.match(
+    String(result.why),
+    /SyntaxError: Unexpected token/,
+    "the stderr names what stopped the command from reporting",
+  );
 });
 
 test("a correction agent that returns nothing stops without re-running the gate", async () => {
@@ -370,15 +376,17 @@ test("T-017 a Red calibration through the real gate.ts parses and carries the un
   // dev machine and nowhere near where CI checks it out. Giving the command its own HOME with the
   // real gate.ts under it keeps the resolution itself under test wherever the checkout lives.
   const fakeHome = join(workDir, "home");
-  const bundledDir = join(fakeHome, ".claude", "workflows", "_lib");
-  mkdirSync(bundledDir, { recursive: true });
-  copyFileSync(join(repoRoot, "workflows", "_lib", "gate.ts"), join(bundledDir, "gate.ts"));
+  mkdirSync(join(fakeHome, ".claude"), { recursive: true });
+  // The whole tree, not the one file: gate.ts imports its siblings, and a copy of it alone
+  // stops resolving the moment another import is added.
+  symlinkSync(join(repoRoot, "workflows"), join(fakeHome, ".claude", "workflows"));
   const COMMAND_MARKER = "whatever its exit status.\n";
   const runRealGate = (prompt) => {
     const at = prompt.indexOf(COMMAND_MARKER);
     const command = prompt.slice(at + COMMAND_MARKER.length);
     try {
       return {
+        stderr: "",
         stdout: execFileSync("/bin/zsh", ["-c", command], {
           encoding: "utf8",
           // The real node binary goes first on PATH: a version-manager shim reads its config
@@ -391,13 +399,22 @@ test("T-017 a Red calibration through the real gate.ts parses and carries the un
         }),
       };
     } catch (err) {
-      return { stdout: err.stdout ?? "" };
+      // A shell that cannot start node exits non-zero with an empty stdout, which the caller
+      // would otherwise read as a gate that ran and said nothing.
+      assert.ok(
+        (err.stdout ?? "").trim(),
+        `the gate command produced no stdout: ${String(err.stderr ?? err.message).slice(0, 300)}`,
+      );
+      return { stdout: err.stdout, stderr: err.stderr ?? "" };
     }
   };
   const CANDIDATES_FENCE = "---- candidates U-1 ----";
   const sealFromRealCandidates = (prompt) => {
-    const start = prompt.indexOf(CANDIDATES_FENCE) + CANDIDATES_FENCE.length;
+    const open = prompt.indexOf(CANDIDATES_FENCE);
+    assert.notEqual(open, -1, "the seal prompt carries the candidates fence");
+    const start = open + CANDIDATES_FENCE.length;
     const end = prompt.indexOf(CANDIDATES_FENCE, start);
+    assert.notEqual(end, -1, "the candidates fence closes");
     const { candidates } = JSON.parse(prompt.slice(start, end).trim());
     return { candidate_id: candidates[0].id };
   };

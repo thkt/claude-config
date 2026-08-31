@@ -8,9 +8,21 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import {
+  MAX_CALIBRATION_CANDIDATES,
+  MAX_CALIBRATION_LINE_LENGTH,
+  calibrationCandidates,
+  classifyObservation,
+  hasExactOutputLine,
+  parseArgs,
+  tail,
+} from "../gate.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TS_SCRIPT = join(HERE, "..", "gate.ts");
+
+// Imported directly rather than spawned: tsconfig's allowImportingTsExtensions makes this
+// specifier one tsc accepts, and Node resolves the same one under type stripping.
 
 interface GateRun {
   status: number | null;
@@ -406,4 +418,93 @@ test("T-026 the CLI reports through a symlinked path to its own file", () => {
     assert.notEqual(result.stdout.trim(), "", "the CLI printed a report through the symlink");
     assert.equal(JSON.parse(result.stdout).verdict, "pass");
   });
+});
+
+// The cases below reach the helpers directly. Under the CLI-only surface they were unreachable
+// in process, so the port dropped them; each one guards a branch a spawned run cannot single out.
+test("T-027 tail keeps a complete line, drops a partial one, and survives a split UTF-8 sequence", () => {
+  assert.equal(tail(Buffer.from("alpha\nbeta\n"), 100), "alpha\nbeta\n");
+  assert.equal(tail(Buffer.from("alpha\nbeta\n"), 5), "beta\n");
+  assert.equal(tail(Buffer.from("alpha\nbeta\n"), 8), "beta\n");
+  assert.equal(tail(Buffer.from("alphabeta"), 4), "");
+  assert.equal(tail(Buffer.from("alpha\rbeta"), 8), "beta");
+  // The cut lands inside a 3-byte character, so the tail starts after the newline.
+  const multibyte = Buffer.from("あいう\nおわり\n");
+  assert.equal(tail(multibyte, multibyte.length - 2), "おわり\n");
+});
+
+test("T-028 hasExactOutputLine matches a whole line and rejects a substring of one", () => {
+  const line = "not ok 1 - T-001 x";
+  assert.equal(hasExactOutputLine(`${line}\n`, "", line), true);
+  assert.equal(hasExactOutputLine(`${line}\n`, "", "T-001 x"), false);
+  assert.equal(hasExactOutputLine("", "FAILED tests/a.py::t", "FAILED tests/a.py::t"), true);
+  assert.equal(hasExactOutputLine("a\nb\n", "", "a\nb"), false);
+  assert.equal(hasExactOutputLine("\n\n", "", ""), false);
+});
+
+test("T-029 the gate id and failure route shapes are enforced", () => {
+  const base = ["--command", "true", "--expect", "pass", "--cwd", "/"];
+  assert.throws(() => parseArgs([...base, "--gate-id", "-leading-dash"]), /--gate-id/);
+  assert.throws(() => parseArgs([...base, "--gate-id", "a".repeat(129)]), /--gate-id/);
+  assert.throws(() => parseArgs([...base, "--failure-route", "sideways"]), /--failure-route/);
+  assert.equal(parseArgs([...base, "--failure-route", "red:U-001"]).failure_route, "red:U-001");
+  assert.equal(parseArgs([...base, "--failure-route", "cleanup:x"]).failure_route, "cleanup:x");
+});
+
+test("T-030 a missing value, a missing cwd, and a repeated calibrate are usage errors", () => {
+  assert.throws(() => parseArgs(["--command"]), /missing value/);
+  assert.throws(() => parseArgs(["--command", "true", "--expect", "pass"]), /--cwd is required/);
+  assert.throws(
+    () => parseArgs(["--command", "true", "--cwd", "/", "--calibrate", "--calibrate"]),
+    /only once/,
+  );
+  assert.throws(
+    () =>
+      parseArgs(["--command", "true", "--cwd", "/", "--calibrate", "--planned-test", "no-colon"]),
+    /<test-id>:<test name>/,
+  );
+});
+
+test("T-031 the calibration caps are the ones the candidate extraction applies", () => {
+  const many = Array.from({ length: MAX_CALIBRATION_CANDIDATES + 40 }, (_, i) => `not ok ${i} - x`);
+  assert.equal(calibrationCandidates(many.join("\n"), "", null).length, MAX_CALIBRATION_CANDIDATES);
+  const long = `not ok 1 - ${"y".repeat(MAX_CALIBRATION_LINE_LENGTH)}`;
+  assert.deepEqual(calibrationCandidates(long, "", null), []);
+});
+
+test("T-032 every verdict branch is reachable from an observation alone", () => {
+  const options = parseArgs(["--command", "true", "--cwd", "/", "--expect", "pass"]);
+  const base = {
+    timedOut: false,
+    executionError: null,
+    returncode: 0,
+    signalName: null,
+    stdout: Buffer.alloc(0),
+    stderr: Buffer.alloc(0),
+    durationMs: 1,
+  };
+  const [passCode, passReport] = classifyObservation(options, base);
+  assert.equal(passCode, 0);
+  assert.equal(passReport.verdict, "pass");
+
+  const [failCode, failReport] = classifyObservation(options, { ...base, returncode: 3 });
+  assert.equal(failCode, 1);
+  assert.deepEqual(failReport.reason_codes, ["unexpected_failure"]);
+
+  const [execCode, execReport] = classifyObservation(options, {
+    ...base,
+    returncode: null,
+    executionError: "spawn failed",
+  });
+  assert.equal(execCode, 2);
+  assert.deepEqual(execReport.reason_codes, ["execution_error"]);
+
+  const redOptions = parseArgs(["--command", "x", "--cwd", "/", "--calibrate"]);
+  const [calCode, calReport] = classifyObservation(redOptions, {
+    ...base,
+    returncode: 0,
+    stdout: Buffer.from("ok 1 - all green\n"),
+  });
+  assert.equal(calCode, 1);
+  assert.equal(calReport.classification, "calibration_unexpected_pass");
 });

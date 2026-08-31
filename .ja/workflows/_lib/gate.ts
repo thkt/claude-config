@@ -39,14 +39,14 @@
 // `/// <reference types="node" />` は、tsconfig.json を編集する代わりにその隙間を
 // この unit のファイル範囲外に留めている。tsconfig.json は別の unit が持つ。
 import { spawnSync } from "node:child_process";
-import { realpathSync, statSync } from "node:fs";
+import { statSync } from "node:fs";
 import { constants as osConstants } from "node:os";
-import { isAbsolute, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { isAbsolute } from "node:path";
+import { isMainModule } from "./entry-point.ts";
 
 export const REPORT_PROTOCOL = "claude-code-gate/v1";
-const DEFAULT_TIMEOUT_MS = 600_000;
-const DEFAULT_TAIL_BYTES = 12_000;
+export const DEFAULT_TIMEOUT_MS = 600_000;
+export const DEFAULT_TAIL_BYTES = 12_000;
 
 const SINGLE_FLAGS = new Set([
   "--gate-id",
@@ -59,12 +59,12 @@ const SINGLE_FLAGS = new Set([
 ]);
 const REPEATABLE_FLAGS = new Set(["--require-output", "--forbid-output", "--planned-test"]);
 const BOOLEAN_FLAGS = new Set(["--calibrate"]);
-const GATE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
+export const GATE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
 const ROUTE_PATTERN =
   /^(?:blocked|triage|(?:red|green|direct):[A-Za-z0-9][A-Za-z0-9._-]*|cleanup:[A-Za-z0-9][A-Za-z0-9._-]*)$/;
 const LINE_SPLIT = /\r\n|\r|\n/;
-const MAX_CALIBRATION_CANDIDATES = 128;
-const MAX_CALIBRATION_LINE_LENGTH = 2000;
+export const MAX_CALIBRATION_CANDIDATES = 128;
+export const MAX_CALIBRATION_LINE_LENGTH = 2000;
 const FAILURE_MARKER =
   /(?:^\s*not ok\b|^\s*(?:FAIL(?:ED|URE)?\b|ERROR\b|\(fail\)|[✖✕×✗❌●])|^\s*\d+\)\s+|\bFAILED\b|\bFAILURE\b)/i;
 const LF = 0x0a;
@@ -155,7 +155,7 @@ interface BlockedReport {
 }
 
 // 切り口の先頭行を報告すると、完全な行のどれとも一致しないアンカーを差し出すことになる。
-function tail(data: Buffer, maxBytes: number): string {
+export function tail(data: Buffer, maxBytes: number): string {
   const start = Math.max(0, data.length - maxBytes);
   if (start === 0 || data[start - 1] === LF || data[start - 1] === CR) {
     return data.subarray(start).toString("utf8");
@@ -173,7 +173,7 @@ function tail(data: Buffer, maxBytes: number): string {
 }
 
 // 包含にすると、成功行にも含まれる素のテスト名を受理してしまう。
-function hasExactOutputLine(stdout: string, stderr: string, evidence: string): boolean {
+export function hasExactOutputLine(stdout: string, stderr: string, evidence: string): boolean {
   if (!evidence || evidence.includes("\r") || evidence.includes("\n")) {
     return false;
   }
@@ -181,7 +181,7 @@ function hasExactOutputLine(stdout: string, stderr: string, evidence: string): b
 }
 
 // 1 つの stream の各行に id を振る。呼び出し側が行を打ち直さずに指名できるようにする。
-function outputLines(stream: "stdout" | "stderr", text: string): CandidateLine[] {
+export function outputLines(stream: "stdout" | "stderr", text: string): CandidateLine[] {
   const lines: CandidateLine[] = [];
   const raws = text.split(LINE_SPLIT);
   for (let index = 0; index < raws.length; index += 1) {
@@ -198,7 +198,7 @@ function outputLines(stream: "stdout" | "stderr", text: string): CandidateLine[]
 //
 // マーカーを探す前に名前を切り落とす。そうしないと、名前自体に "error" を含むテストが
 // 名前の力だけでマーカーを満たしてしまう。
-function namesPlannedFailure(line: string, name: string): boolean {
+export function namesPlannedFailure(line: string, name: string): boolean {
   const at = line.indexOf(name);
   if (at < 0) {
     return false;
@@ -209,7 +209,7 @@ function namesPlannedFailure(line: string, name: string): boolean {
 
 // 呼び出し側が seal してよい行。固定された集合から選ばせることが、打ち直した行や
 // 削った行や作った行を返させない仕組みになる。
-function calibrationCandidates(
+export function calibrationCandidates(
   stdout: string,
   stderr: string,
   planned: [string, string][] | null,
@@ -238,7 +238,7 @@ function calibrationCandidates(
   return candidates;
 }
 
-function positiveInt(value: string, flag: string): number {
+export function positiveInt(value: string, flag: string): number {
   const trimmed = value.trim();
   const parsed = Number(trimmed);
   if (!/^[+-]?\d+$/.test(trimmed) || !Number.isSafeInteger(parsed) || parsed <= 0) {
@@ -247,15 +247,20 @@ function positiveInt(value: string, flag: string): number {
   return parsed;
 }
 
-function isExistingDirectory(path: string): boolean {
+/** stat が「不在」以外の理由で失敗したときは、その理由を呼び出し側へ渡す。
+ * EACCES を不在として報告すると、権限の問題が「ディレクトリではない」と表示される。 */
+export function isExistingDirectory(path: string): boolean {
   try {
     return statSync(path).isDirectory();
-  } catch {
-    return false;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw new UsageError(
+      `--cwd is not readable: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
-function parseArgs(argv: string[]): ValidatedOptions {
+export function parseArgs(argv: string[]): ValidatedOptions {
   const options: ParsedOptions = {
     gate_id: "gate",
     failure_route: "triage",
@@ -379,45 +384,78 @@ function parseArgs(argv: string[]): ValidatedOptions {
   };
 }
 
-function signalNumber(name: string): number | undefined {
+export function signalNumber(name: string): number | undefined {
   return (osConstants.signals as unknown as Record<string, number>)[name];
 }
 
-function runGate(options: ValidatedOptions): [number, GateReport] {
-  const { command, expect } = options;
+/** コマンドを実行して得られたもの。これ以降はすべてここから導出する。 */
+export interface CommandObservation {
+  timedOut: boolean;
+  executionError: string | null;
+  returncode: number | null;
+  signalName: string | null;
+  stdout: Buffer;
+  stderr: Buffer;
+  durationMs: number;
+}
+
+/** 唯一の非純粋な手順。切り出すことで、下の各判定分岐が、それを生む OS 側の条件を
+ * 再現しなくても到達可能になる。 */
+function observeCommand(options: ValidatedOptions): CommandObservation {
   const startedAt = process.hrtime.bigint();
   let timedOut = false;
   let executionError: string | null = null;
   let returncode: number | null = null;
   let signalName: string | null = null;
-  let stdout = Buffer.alloc(0);
-  let stderr = Buffer.alloc(0);
 
-  const result = spawnSync("/bin/zsh", ["-c", command], {
+  const result = spawnSync("/bin/zsh", ["-c", options.command], {
     cwd: options.cwd,
     timeout: options.timeout_ms,
-    maxBuffer: Infinity,
+    // timeout まで出力し続けるコマンドがメモリを食い尽くさない上限であり、実際の suite の
+    // 出力が収まる大きさでもある。超過は切り詰めではなく ENOBUFS エラーになり、通るはずの
+    // コマンドが blocked 判定に転ぶ。
+    maxBuffer: 64 * 1024 * 1024,
   });
+  // 各分岐でなく 1 回だけ代入する。後から分岐を足すと、前の分岐が残した値をそのまま
+  // 引き継いでしまう。
+  let stdout = result.stdout ?? Buffer.alloc(0);
+  let stderr = result.stderr ?? Buffer.alloc(0);
 
   if (result.error && (result.error as NodeJS.ErrnoException).code === "ETIMEDOUT") {
     timedOut = true;
-    stdout = result.stdout ?? Buffer.alloc(0);
-    stderr = result.stderr ?? Buffer.alloc(0);
   } else if (result.error) {
     executionError = result.error.message;
+    stdout = Buffer.alloc(0);
+    stderr = Buffer.alloc(0);
   } else if (result.signal !== null) {
     signalName = result.signal;
+    // os.constants に無いシグナルでも名前は残す。分からないのは数値表現だけである。
     const number = signalNumber(signalName);
     returncode = number === undefined ? null : -number;
-    stdout = result.stdout ?? Buffer.alloc(0);
-    stderr = result.stderr ?? Buffer.alloc(0);
   } else {
     returncode = result.status;
-    stdout = result.stdout ?? Buffer.alloc(0);
-    stderr = result.stderr ?? Buffer.alloc(0);
   }
 
-  const durationMs = Math.round(Number(process.hrtime.bigint() - startedAt) / 1_000_000);
+  return {
+    timedOut,
+    executionError,
+    returncode,
+    signalName,
+    stdout,
+    stderr,
+    durationMs: Math.round(Number(process.hrtime.bigint() - startedAt) / 1_000_000),
+  };
+}
+
+/** 観測から判定を導出する。純粋なので、テストは条件を作り出すのではなく記述する
+ * ことで各分岐に到達できる。 */
+export function classifyObservation(
+  options: ValidatedOptions,
+  observed: CommandObservation,
+): [number, GateReport] {
+  const { expect } = options;
+  const command = options.command;
+  const { timedOut, executionError, returncode, signalName, stdout, stderr, durationMs } = observed;
 
   const stdoutTail = tail(stdout, options.tail_bytes);
   const stderrTail = tail(stderr, options.tail_bytes);
@@ -548,12 +586,33 @@ function blockedReport(error: unknown): BlockedReport {
   };
 }
 
+function runGate(options: ValidatedOptions): [number, GateReport] {
+  return classifyObservation(options, observeCommand(options));
+}
+
 export function main(argv: string[]): number {
   let exitCode: number;
   let report: GateReport | BlockedReport;
   try {
     [exitCode, report] = runGate(parseArgs(argv));
   } catch (error) {
+    if (!(error instanceof UsageError)) {
+      // ここの欠陥と環境障害が同じ JSON になっていたため、呼び出し側は違いで分岐できず、
+      // 欠陥の場所を示すスタックも失われていた。
+      process.stdout.write(
+        `${JSON.stringify(
+          {
+            ...blockedReport(error),
+            classification: "internal_error",
+            reason_codes: ["internal_error"],
+            stack: error instanceof Error ? error.stack : null,
+          },
+          null,
+          2,
+        )}\n`,
+      );
+      return 2;
+    }
     process.stdout.write(`${JSON.stringify(blockedReport(error), null, 2)}\n`);
     return 2;
   }
@@ -561,20 +620,6 @@ export function main(argv: string[]): number {
   return exitCode;
 }
 
-// 比較の前に両側を解決する。argv[1] がシンボリックリンク経由のパスで届くと (macOS は
-// /private/var/... を /var/... として渡す)、解決済みのモジュールパスと決して一致せず、
-// CLI は何も出力しないまま exit 0 で終わる。
-function isMainModule(): boolean {
-  const entry = process.argv[1];
-  if (!entry) return false;
-  const modulePath = fileURLToPath(import.meta.url);
-  try {
-    return realpathSync(resolve(entry)) === realpathSync(modulePath);
-  } catch {
-    return resolve(entry) === modulePath;
-  }
-}
-
-if (isMainModule()) {
+if (isMainModule(import.meta.url)) {
   process.exit(main(process.argv.slice(2)));
 }

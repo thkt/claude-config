@@ -3,7 +3,7 @@
 // agree on their counts while their elements drift (docs/wiki/count-comparison-masks-filtered-set-drift.md).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
@@ -99,9 +99,19 @@ test("T-005 a pair with one extra statement on the EN side is judged divergent",
 // suite would still pass on the day workflows/_lib/gate.ts and its .ja mirror drift apart, since
 // nothing else compares a pair the repository actually tracks.
 test("every tracked EN and .ja .ts pair matches once comments are removed", async () => {
+  // .ts only. MIRROR.md has the .ja side translate prompts and message strings, which are
+  // string literals this comparison keeps, so every prompt-carrying .js mirror differs by
+  // design: all 9 tracked .js pairs diverge, 210 of the 423 differing lines carrying Japanese.
+  // The .ts helpers carry no translated literal, so their bodies do match.
   const { stdout } = await run("git", ["ls-files", ".ja/**/*.ts"], { cwd: ROOT });
   const jaFiles = stdout.split("\n").filter(Boolean);
   assert.ok(jaFiles.length > 0, "the repository tracks at least one .ja .ts file to compare");
+  // An orphan is a mirror whose EN side was renamed or deleted. Reading it would throw ENOENT,
+  // which reports as an error rather than as the drift it is.
+  const orphans = jaFiles.filter(
+    (jaPath) => !existsSync(join(ROOT, jaPath.replace(/^\.ja\//, ""))),
+  );
+  assert.deepEqual(orphans, [], "these .ja mirrors have no EN counterpart");
   const diverged = jaFiles.filter((jaPath) => {
     const enPath = jaPath.replace(/^\.ja\//, "");
     return !tsBodiesMatch(
@@ -110,4 +120,19 @@ test("every tracked EN and .ja .ts pair matches once comments are removed", asyn
     );
   });
   assert.deepEqual(diverged, [], "these .ja mirrors differ from their EN side outside comments");
+});
+
+// stripComments names these two hazards in its own comment and no fixture reproduced either.
+// Replacing its string-literal branch with a plain /\/\/.*$/gm substitution passed every
+// fixture that existed, because none carried a '//' inside a string.
+test("T-018 a // inside a string literal survives comment removal", () => {
+  const { en, ja } = fixturePair("url-in-string");
+  assert.equal(tsBodiesMatch(en, ja), true);
+  assert.match(extractBody(en), /http:\/\/example\.com\/v1/, "the URL is still in the body");
+});
+
+test("T-019 a comment-shaped literal inside a template interpolation survives", () => {
+  const { en, ja } = fixturePair("comment-in-template");
+  assert.equal(tsBodiesMatch(en, ja), true);
+  assert.match(extractBody(en), /not a comment/, "the interpolated literal is still in the body");
 });

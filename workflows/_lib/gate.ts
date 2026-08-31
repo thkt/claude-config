@@ -40,14 +40,14 @@
 // above keeps that gap out of this unit's file scope instead of editing tsconfig.json,
 // which is owned elsewhere.
 import { spawnSync } from "node:child_process";
-import { realpathSync, statSync } from "node:fs";
+import { statSync } from "node:fs";
 import { constants as osConstants } from "node:os";
-import { isAbsolute, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { isAbsolute } from "node:path";
+import { isMainModule } from "./entry-point.ts";
 
 export const REPORT_PROTOCOL = "claude-code-gate/v1";
-const DEFAULT_TIMEOUT_MS = 600_000;
-const DEFAULT_TAIL_BYTES = 12_000;
+export const DEFAULT_TIMEOUT_MS = 600_000;
+export const DEFAULT_TAIL_BYTES = 12_000;
 
 const SINGLE_FLAGS = new Set([
   "--gate-id",
@@ -60,12 +60,12 @@ const SINGLE_FLAGS = new Set([
 ]);
 const REPEATABLE_FLAGS = new Set(["--require-output", "--forbid-output", "--planned-test"]);
 const BOOLEAN_FLAGS = new Set(["--calibrate"]);
-const GATE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
+export const GATE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
 const ROUTE_PATTERN =
   /^(?:blocked|triage|(?:red|green|direct):[A-Za-z0-9][A-Za-z0-9._-]*|cleanup:[A-Za-z0-9][A-Za-z0-9._-]*)$/;
 const LINE_SPLIT = /\r\n|\r|\n/;
-const MAX_CALIBRATION_CANDIDATES = 128;
-const MAX_CALIBRATION_LINE_LENGTH = 2000;
+export const MAX_CALIBRATION_CANDIDATES = 128;
+export const MAX_CALIBRATION_LINE_LENGTH = 2000;
 const FAILURE_MARKER =
   /(?:^\s*not ok\b|^\s*(?:FAIL(?:ED|URE)?\b|ERROR\b|\(fail\)|[✖✕×✗❌●])|^\s*\d+\)\s+|\bFAILED\b|\bFAILURE\b)/i;
 const LF = 0x0a;
@@ -156,7 +156,7 @@ interface BlockedReport {
 }
 
 // Reporting the cut's first line would offer an anchor no complete line equals.
-function tail(data: Buffer, maxBytes: number): string {
+export function tail(data: Buffer, maxBytes: number): string {
   const start = Math.max(0, data.length - maxBytes);
   if (start === 0 || data[start - 1] === LF || data[start - 1] === CR) {
     return data.subarray(start).toString("utf8");
@@ -174,7 +174,7 @@ function tail(data: Buffer, maxBytes: number): string {
 }
 
 // Containment would accept a bare test name, which the passing line carries too.
-function hasExactOutputLine(stdout: string, stderr: string, evidence: string): boolean {
+export function hasExactOutputLine(stdout: string, stderr: string, evidence: string): boolean {
   if (!evidence || evidence.includes("\r") || evidence.includes("\n")) {
     return false;
   }
@@ -182,7 +182,7 @@ function hasExactOutputLine(stdout: string, stderr: string, evidence: string): b
 }
 
 // Every line of one stream, addressed so a caller can name one without retyping it.
-function outputLines(stream: "stdout" | "stderr", text: string): CandidateLine[] {
+export function outputLines(stream: "stdout" | "stderr", text: string): CandidateLine[] {
   const lines: CandidateLine[] = [];
   const raws = text.split(LINE_SPLIT);
   for (let index = 0; index < raws.length; index += 1) {
@@ -199,7 +199,7 @@ function outputLines(stream: "stdout" | "stderr", text: string): CandidateLine[]
 //
 // The name is cut out before the marker is looked for. A test whose own name contains
 // "error" would otherwise satisfy the marker on the strength of its name alone.
-function namesPlannedFailure(line: string, name: string): boolean {
+export function namesPlannedFailure(line: string, name: string): boolean {
   const at = line.indexOf(name);
   if (at < 0) {
     return false;
@@ -210,7 +210,7 @@ function namesPlannedFailure(line: string, name: string): boolean {
 
 // Lines a caller may seal on. Selecting from a fixed set is what keeps the caller
 // from handing back a line it typed, trimmed, or invented.
-function calibrationCandidates(
+export function calibrationCandidates(
   stdout: string,
   stderr: string,
   planned: [string, string][] | null,
@@ -239,7 +239,7 @@ function calibrationCandidates(
   return candidates;
 }
 
-function positiveInt(value: string, flag: string): number {
+export function positiveInt(value: string, flag: string): number {
   const trimmed = value.trim();
   const parsed = Number(trimmed);
   if (!/^[+-]?\d+$/.test(trimmed) || !Number.isSafeInteger(parsed) || parsed <= 0) {
@@ -248,15 +248,20 @@ function positiveInt(value: string, flag: string): number {
   return parsed;
 }
 
-function isExistingDirectory(path: string): boolean {
+/** A stat failing for a reason other than absence keeps that reason: reporting EACCES as
+ * absence tells the caller the path is not a directory when the path is unreadable. */
+export function isExistingDirectory(path: string): boolean {
   try {
     return statSync(path).isDirectory();
-  } catch {
-    return false;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw new UsageError(
+      `--cwd is not readable: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
-function parseArgs(argv: string[]): ValidatedOptions {
+export function parseArgs(argv: string[]): ValidatedOptions {
   const options: ParsedOptions = {
     gate_id: "gate",
     failure_route: "triage",
@@ -380,45 +385,78 @@ function parseArgs(argv: string[]): ValidatedOptions {
   };
 }
 
-function signalNumber(name: string): number | undefined {
+export function signalNumber(name: string): number | undefined {
   return (osConstants.signals as unknown as Record<string, number>)[name];
 }
 
-function runGate(options: ValidatedOptions): [number, GateReport] {
-  const { command, expect } = options;
+/** What running the command produced. Everything past this point derives from it alone. */
+export interface CommandObservation {
+  timedOut: boolean;
+  executionError: string | null;
+  returncode: number | null;
+  signalName: string | null;
+  stdout: Buffer;
+  stderr: Buffer;
+  durationMs: number;
+}
+
+/** The one impure step. Split out so every verdict branch below is reachable without
+ * reproducing the operating-system condition that produces it. */
+function observeCommand(options: ValidatedOptions): CommandObservation {
   const startedAt = process.hrtime.bigint();
   let timedOut = false;
   let executionError: string | null = null;
   let returncode: number | null = null;
   let signalName: string | null = null;
-  let stdout = Buffer.alloc(0);
-  let stderr = Buffer.alloc(0);
 
-  const result = spawnSync("/bin/zsh", ["-c", command], {
+  const result = spawnSync("/bin/zsh", ["-c", options.command], {
     cwd: options.cwd,
     timeout: options.timeout_ms,
-    maxBuffer: Infinity,
+    // Bounded so a command that streams until its timeout fires cannot exhaust memory, and
+    // large enough that a real suite's output fits: exceeding this is not a truncation but an
+    // ENOBUFS error, which turns a passing command into a blocked verdict.
+    maxBuffer: 64 * 1024 * 1024,
   });
+  // Assigned once rather than in each branch: a branch added later would otherwise carry
+  // whatever the previous one left behind.
+  let stdout = result.stdout ?? Buffer.alloc(0);
+  let stderr = result.stderr ?? Buffer.alloc(0);
 
   if (result.error && (result.error as NodeJS.ErrnoException).code === "ETIMEDOUT") {
     timedOut = true;
-    stdout = result.stdout ?? Buffer.alloc(0);
-    stderr = result.stderr ?? Buffer.alloc(0);
   } else if (result.error) {
     executionError = result.error.message;
+    stdout = Buffer.alloc(0);
+    stderr = Buffer.alloc(0);
   } else if (result.signal !== null) {
     signalName = result.signal;
+    // A signal absent from os.constants keeps its name; only the numeric form is unknown.
     const number = signalNumber(signalName);
     returncode = number === undefined ? null : -number;
-    stdout = result.stdout ?? Buffer.alloc(0);
-    stderr = result.stderr ?? Buffer.alloc(0);
   } else {
     returncode = result.status;
-    stdout = result.stdout ?? Buffer.alloc(0);
-    stderr = result.stderr ?? Buffer.alloc(0);
   }
 
-  const durationMs = Math.round(Number(process.hrtime.bigint() - startedAt) / 1_000_000);
+  return {
+    timedOut,
+    executionError,
+    returncode,
+    signalName,
+    stdout,
+    stderr,
+    durationMs: Math.round(Number(process.hrtime.bigint() - startedAt) / 1_000_000),
+  };
+}
+
+/** Derives the verdict from an observation. Pure, so a test reaches every branch by
+ * describing the condition rather than by producing it. */
+export function classifyObservation(
+  options: ValidatedOptions,
+  observed: CommandObservation,
+): [number, GateReport] {
+  const { expect } = options;
+  const command = options.command;
+  const { timedOut, executionError, returncode, signalName, stdout, stderr, durationMs } = observed;
 
   const stdoutTail = tail(stdout, options.tail_bytes);
   const stderrTail = tail(stderr, options.tail_bytes);
@@ -549,12 +587,33 @@ function blockedReport(error: unknown): BlockedReport {
   };
 }
 
+function runGate(options: ValidatedOptions): [number, GateReport] {
+  return classifyObservation(options, observeCommand(options));
+}
+
 export function main(argv: string[]): number {
   let exitCode: number;
   let report: GateReport | BlockedReport;
   try {
     [exitCode, report] = runGate(parseArgs(argv));
   } catch (error) {
+    if (!(error instanceof UsageError)) {
+      // A defect here and an environment failure reported the same JSON, so the caller could
+      // not route on the difference and the stack that localizes the defect was gone.
+      process.stdout.write(
+        `${JSON.stringify(
+          {
+            ...blockedReport(error),
+            classification: "internal_error",
+            reason_codes: ["internal_error"],
+            stack: error instanceof Error ? error.stack : null,
+          },
+          null,
+          2,
+        )}\n`,
+      );
+      return 2;
+    }
     process.stdout.write(`${JSON.stringify(blockedReport(error), null, 2)}\n`);
     return 2;
   }
@@ -562,20 +621,6 @@ export function main(argv: string[]): number {
   return exitCode;
 }
 
-// Both sides are resolved before the comparison. A path reaching argv[1] through a symlink
-// (macOS hands out /var/... for /private/var/...) would otherwise never equal the resolved
-// module path, and the CLI would exit 0 having printed nothing at all.
-function isMainModule(): boolean {
-  const entry = process.argv[1];
-  if (!entry) return false;
-  const modulePath = fileURLToPath(import.meta.url);
-  try {
-    return realpathSync(resolve(entry)) === realpathSync(modulePath);
-  } catch {
-    return resolve(entry) === modulePath;
-  }
-}
-
-if (isMainModule()) {
+if (isMainModule(import.meta.url)) {
   process.exit(main(process.argv.slice(2)));
 }
