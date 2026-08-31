@@ -49,11 +49,12 @@ argument-hint: "[task description]"
 7. 検証可能な振る舞いが無い unit (docs/設定) は tests を空配列にする
 8. test_command で実行できない基準は T-NNN にしない。画面の見た目確認や外部サービスとの手動連携がこれに当たる。`### 実機確認` へ委譲する。委譲した基準には、それを引き取る機構 (test-storybook、コードレビュー) を添える
 9. ドメインフィールドを描画する unit は、そのフィールドを T-NNN へ 1 件ずつ列挙する。まとめて 1 件にすると個別フィールドの欠落を検出できない
-10. non-seam unit の上限は files 3 つ、tests 4 個。seam unit の tests は unit 境界を跨ぐので files が増え、この上限の対象外になる。上限を超えた unit は成果を軸に分割し、生じた新しい unit 構成をユーザーと確認する。スコープ外へ切り出した候補は plan から外し、backlog candidates に回す。この上限の正は `workflows/build.js` の `UNIT_CAPS`。変更はこの記述と `UNIT_CAPS` を同一コミットで揃える
-11. tests を持つ unit が 2 つ以上なら、seam unit を 1 つだけ最後に置く。`seam: true` を付ける。unit ごとに green でも、unit どうしを繋ぐ配線は誰も通していない。seam の tests は unit 間の境界を跨いで実モジュールを動かし、その接続を assert する。ここでテストダブルへ置き換えてよいのはシステム外部との I/O に限る
-12. seam unit の files には、その接続を作る非テストファイルを 1 つ以上入れる。それを持つ unit を seam にし、step 11 に従って最後に置く。非テストファイルを持つ unit がいないときは、step 10 に従って unit を切り直す
-13. unit が出そろったら `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <units[].files を並べる> --scene plan` を実行する。Phase 2 で読んだ分との差を取る。`matched` の各ページは、引用するか、この plan には当たらない理由を散文に書くかのどちらかにする。`related` は語が重なるだけなので、引くときは当たる理由を添える。`scenes` の各ページは読む
-14. 自己点検を通す。見るのは必須フィールドの欠落、id の重複、そして units、files、goal、contract の空。続けて ${CLAUDE_SKILL_DIR}/references/pre-write-check.md の書き出し前検証を通す。通ったら ${CLAUDE_SKILL_DIR}/templates/plan.md の骨格で `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md` に書き出す。slug はタイトルの小文字ハイフン区切り。`## Plan` と `## Backlog candidates` の両節を含める
+10. tests を持つ unit は、そのテストが動かすモジュールをすべて `files` に挙げる。まだどのファイルも作っていないものも含める。Red step は触ってよいモジュールにスタブを置けるが、触ってよいのは `files` にあるものだけである。`files` の外を import するテストを持つ unit は、Red がモジュール解決エラーで落ちる。そのエラーは計画シナリオを名指さないので Red の証拠にならず、build は実装を飛ばして先へ進む。
+11. non-seam unit の上限は files 3 つ、tests 4 個。seam unit の tests は unit 境界を跨ぐので files が増え、この上限の対象外になる。上限を超えた unit は成果を軸に分割し、生じた新しい unit 構成をユーザーと確認する。スコープ外へ切り出した候補は plan から外し、backlog candidates に回す。この上限の正は `workflows/build.js` の `UNIT_CAPS`。変更はこの記述と `UNIT_CAPS` を同一コミットで揃える
+12. tests を持つ unit が 2 つ以上なら、seam unit を 1 つだけ最後に置く。`seam: true` を付ける。unit ごとに green でも、unit どうしを繋ぐ配線は誰も通していない。seam の tests は unit 間の境界を跨いで実モジュールを動かし、その接続を assert する。ここでテストダブルへ置き換えてよいのはシステム外部との I/O に限る
+13. seam unit の files には、その接続を作る非テストファイルを 1 つ以上入れる。それを持つ unit を seam にし、step 12 に従って最後に置く。非テストファイルを持つ unit がいないときは、step 11 に従って unit を切り直す
+14. unit が出そろったら `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <units[].files を並べる> --scene plan` を実行する。Phase 2 で読んだ分との差を取る。`matched` の各ページは、引用するか、この plan には当たらない理由を散文に書くかのどちらかにする。`related` は語が重なるだけなので、引くときは当たる理由を添える。`scenes` の各ページは読む
+15. 自己点検を通す。見るのは必須フィールドの欠落、id の重複、そして units、files、goal、contract の空。続けて ${CLAUDE_SKILL_DIR}/references/pre-write-check.md の書き出し前検証を通す。通ったら ${CLAUDE_SKILL_DIR}/templates/plan.md の骨格で `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md` に書き出す。slug はタイトルの小文字ハイフン区切り。`## Plan` と `## Backlog candidates` の両節を含める
 
 ### test_command
 

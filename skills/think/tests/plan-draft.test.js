@@ -880,35 +880,38 @@ test("think SKILL.md requires a seam unit to carry the file that makes the conne
   assert.match(en, /at least one non-test file/i, "en: the non-test file is required");
 });
 
-// Step 11 requires exactly one seam unit last once 2+ units carry tests. Step 12's old exception
-// let a plan skip the seam unit entirely, which contradicts step 11 for the same plan. Replacing
-// the exception with a unit re-cut keeps step 11 an actual guarantee instead of a conditional one.
-// The re-cut regex below is the sole check for that replacing operation, scoped to step 12 itself
-// rather than the whole document, so it doesn't duplicate as a looser check elsewhere.
-const step12 = (doc) => steps(doc).find((line) => line.startsWith("12. "));
+// The seam-placement step requires exactly one seam unit last once 2+ units carry tests. The
+// seam-files step's old exception let a plan skip the seam unit entirely, which contradicts
+// that for the same plan. Replacing the exception with a unit re-cut keeps the placement an
+// actual guarantee instead of a conditional one. The re-cut regex below is the sole check for
+// that replacing operation, scoped to the seam-files step itself rather than the whole document,
+// so it doesn't duplicate as a looser check elsewhere.
+// Located by its own wording rather than by its number: a rule inserted earlier in the list
+// renumbers every step after it, and a number-pinned lookup then reads a different rule.
+const step12 = (doc) => steps(doc).find((line) => /non-test file|非テストファイル/.test(line));
 
-test("both trees' step 12 carries no branch that places no seam unit", () => {
+test("both trees' seam-files step carries no branch that places no seam unit", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
     const step = step12(doc);
-    assert.ok(step, `${lang}: step 12 exists`);
+    assert.ok(step, `${lang}: the seam-files step exists`);
     assert.doesNotMatch(
       step,
       lang === "ja" ? /seam unit を置かず/ : /place no seam unit/i,
-      `${lang}: step 12 carries no branch skipping the seam unit`,
+      `${lang}: the seam-files step carries no branch skipping the seam unit`,
     );
   }
 });
 
-test("both trees' step 12 makes the unit carrying the non-test file the seam", () => {
+test("both trees' the seam-files step makes the unit carrying the non-test file the seam", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
     const step = step12(doc);
-    assert.ok(step, `${lang}: step 12 exists`);
+    assert.ok(step, `${lang}: the seam-files step exists`);
     assert.match(
       step,
       lang === "ja" ? /それを持つ unit を seam に/ : /Make the unit carrying it the seam/i,
-      `${lang}: step 12 makes the unit carrying the non-test file the seam`,
+      `${lang}: the seam-files step makes the unit carrying the non-test file the seam`,
     );
   }
 });
@@ -916,7 +919,7 @@ test("both trees' step 12 makes the unit carrying the non-test file the seam", (
 // Not the per-language patterns above: each of those passes on its own tree, so a clause added to
 // one side alone (an "already carries" qualifier on the English step, say) satisfies both branches
 // and the divergence goes unseen. Counting sentences reads the shape rather than the wording.
-test("both trees' step 12 carries the same number of claims", () => {
+test("both trees' seam-files step carries the same number of claims", () => {
   const counts = Object.fromEntries(
     Object.entries(skills).map(([lang, path]) => [
       lang,
@@ -934,7 +937,7 @@ test("both trees' step 12 carries the same number of claims", () => {
 
 // step 11 places the seam last. A step 12 that lets a non-last unit become the seam cancels it,
 // which is what this issue set out to stop.
-test("both trees' step 12 does not qualify the seam as a unit that precedes another", () => {
+test("both trees' seam-files step does not qualify the seam as a unit that precedes another", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const step = step12(read(path));
     assert.doesNotMatch(
@@ -945,11 +948,11 @@ test("both trees' step 12 does not qualify the seam as a unit that precedes anot
   }
 });
 
-test("both trees' step 12 says to re-cut the units when no unit carries a non-test file", () => {
+test("both trees' seam-files step says to re-cut the units when no unit carries a non-test file", () => {
   for (const [lang, path] of Object.entries(skills)) {
     const doc = read(path);
     const step = step12(doc);
-    assert.ok(step, `${lang}: step 12 exists`);
+    assert.ok(step, `${lang}: the seam-files step exists`);
     assert.match(
       step,
       lang === "ja"
