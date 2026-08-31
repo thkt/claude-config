@@ -66,7 +66,7 @@ const LINE_SPLIT = /\r\n|\r|\n/;
 export const MAX_CALIBRATION_CANDIDATES = 128;
 export const MAX_CALIBRATION_LINE_LENGTH = 2000;
 const FAILURE_MARKER =
-  /(?:^\s*not ok\b|^\s*(?:FAIL(?:ED|URE)?\b|ERROR\b|\(fail\)|[✖✕×✗❌●])|^\s*\d+\)\s+|\bFAILED\b|\bFAILURE\b)/i;
+  /(?:^\s*not ok\b|^\s*(?:FAIL(?:ED|URE)?\b|ERROR\b|\(fail\)|[✖✕×✗❌●])|^\s*\d+\)\s+|\bFAILED\b|\bFAILURE\b|\.{3}\s*(?:FAIL|ERROR)\s*$)/i;
 const LF = 0x0a;
 const CR = 0x0d;
 
@@ -194,16 +194,37 @@ export function outputLines(stream: "stdout" | "stderr", text: string): Candidat
   return lines;
 }
 
+const REGEX_META = /[.*+?^${}()|[\]\\]/g;
+
+// 行のどこに計画テスト名が座っているか。名前の中の空白の連なりは、行側で消えていてもよい。
+//
+// 完全一致で引かないのは、計画の文が repository の Markdown formatter を通ってここへ届くため。
+// formatter は日本語の中の ASCII 数字の前後を空けるが、同じ文をテスト名として書いた側にその
+// 空白は無い。完全一致だと候補が 1 件も出ず、seal する行が無いまま run が止まってしまう。
+function locateName(line: string, name: string): { at: number; length: number } | null {
+  const at = line.indexOf(name);
+  if (at >= 0) {
+    return { at, length: name.length };
+  }
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) {
+    return null;
+  }
+  const pattern = parts.map((part) => part.replace(REGEX_META, "\\$&")).join("\\s*");
+  const match = new RegExp(pattern).exec(line);
+  return match === null ? null : { at: match.index, length: match[0].length };
+}
+
 // 計画テスト名を含み、その名前を除いた残りに失敗マーカーがある行。
 //
 // マーカーを探す前に名前を切り落とす。そうしないと、名前自体に "error" を含むテストが
 // 名前の力だけでマーカーを満たしてしまう。
 export function namesPlannedFailure(line: string, name: string): boolean {
-  const at = line.indexOf(name);
-  if (at < 0) {
+  const found = locateName(line, name);
+  if (found === null) {
     return false;
   }
-  const context = line.slice(0, at) + line.slice(at + name.length);
+  const context = line.slice(0, found.at) + line.slice(found.at + found.length);
   return FAILURE_MARKER.test(context);
 }
 

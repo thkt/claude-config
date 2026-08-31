@@ -460,3 +460,31 @@ test("T-032 every verdict branch is reachable from an observation alone", () => 
   assert.equal(calCode, 1);
   assert.equal(calReport.classification, "calibration_unexpected_pass");
 });
+
+// The plan's sentence reaches the gate through the repository's Markdown formatter, which puts
+// spaces around an ASCII digit run in Japanese prose. The same sentence written into a test name
+// carries none, and an exact comparison then leaves the run with no candidate to seal at all.
+test("T-033 a planned name the formatter respaced still names its failure, and an absent one does not", () => {
+  const name = "追跡 `.py` すべてが 1 行目に持つ";
+  const line =
+    "test_T_001 (__main__.Shebang.test_T_001)\nT-001 追跡 `.py` すべてが1行目に持つ ... FAIL";
+  const [first, second] = line.split("\n");
+  assert.deepEqual(
+    calibrationCandidates("", `${first}\n${second}\n`, [["T-001", name]]).map((c) => c.text),
+    [second],
+  );
+  assert.deepEqual(calibrationCandidates("", `${second}\n`, [["T-002", "別の名前"]]), []);
+});
+
+// unittest's verbose reporter puts its verdict at the end of the line, so a marker set that only
+// looks for FAIL at the head of a line reads a failing Python suite as offering nothing.
+test("T-034 a trailing unittest verdict counts as a failure marker and a passing one does not", () => {
+  const planned: [string, string][] = [["T-001", "シェバンを持つ"]];
+  const fail = "T-001 シェバンを持つ ... FAIL";
+  const error = "T-001 シェバンを持つ ... ERROR";
+  const ok = "T-001 シェバンを持つ ... ok";
+  assert.deepEqual(
+    calibrationCandidates("", `${fail}\n${error}\n${ok}\n`, planned).map((c) => c.text),
+    [fail, error],
+  );
+});
