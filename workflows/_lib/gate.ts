@@ -246,13 +246,26 @@ export function calibrationCandidates(
   }
   const candidates: CandidateLine[] = [];
   const seen = new Set<string>();
+  // Python's unittest, outside verbose mode, prints its header (`FAIL: test_x (...)`) on one
+  // line and the test's docstring, which is where the planned statement lives, on the next.
+  // That next line is accepted when the line before it in the same stream is such a header.
+  // The header alone qualifies, not any marker: a verbose `... ok` line would otherwise be
+  // admitted on the strength of the `... ERROR` line above it.
+  const UNITTEST_HEADER = /^(?:FAIL|ERROR): \S/;
+  const followsMarker = (index: number): boolean => {
+    const previous = index > 0 ? lines[index - 1] : undefined;
+    return (
+      previous !== undefined &&
+      previous.stream === lines[index].stream &&
+      UNITTEST_HEADER.test(previous.text)
+    );
+  };
   for (const [testId, name] of planned) {
-    for (const line of lines) {
-      if (
-        candidates.length >= MAX_CALIBRATION_CANDIDATES ||
-        seen.has(line.id) ||
-        !namesPlannedFailure(line.text, name)
-      ) {
+    for (const [index, line] of lines.entries()) {
+      const named =
+        namesPlannedFailure(line.text, name) ||
+        (locateName(line.text, name) !== null && followsMarker(index));
+      if (candidates.length >= MAX_CALIBRATION_CANDIDATES || seen.has(line.id) || !named) {
         continue;
       }
       candidates.push({ ...line, test_id: testId });

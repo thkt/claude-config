@@ -175,6 +175,31 @@ test("a planned failure line outside the report tail is still a calibration cand
   });
 });
 
+// Python's unittest names the failing test on a `FAIL:` line and prints the docstring, where the
+// planned statement lives, on the line after it. A live build run offered no candidate for that.
+test("a planned statement on the line after a unittest FAIL header is a calibration candidate", () => {
+  withTempDir((cwd) => {
+    const output =
+      "FAIL: test_x (report_cli_test.Cli.test_x)\\nT-001 report.py writes the report\\n---\\nTraceback\\n";
+    const calibrated = runCli([
+      "--cwd",
+      cwd,
+      "--command",
+      `printf '${output}' >&2; exit 1`,
+      "--calibrate",
+      "--planned-test",
+      "T-001:T-001 report.py writes the report",
+    ]);
+    assert.equal(calibrated.report.verdict, "pass", "calibration: verdict");
+    const candidates = calibrated.report.candidates as { text: string; stream: string }[];
+    assert.deepEqual(
+      candidates.map((c) => [c.stream, c.text]),
+      [["stderr", "T-001 report.py writes the report"]],
+      "the docstring line after the FAIL header is offered",
+    );
+  });
+});
+
 test("T-013 calibrate runs without an anchor, prefixes its classification, and refuses an anchor or an expect pass", () => {
   withTempDir((cwd) => {
     const noAnchorRun = runCli([

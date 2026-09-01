@@ -150,7 +150,9 @@ const runGate = async (unit, label, args) => {
   ].join(" ");
   const relayed = await relayStdout(unit, label, command);
   if (relayed === null) return null;
-  const report = parsedReport(relayed.stdout);
+  // A relay that merged the streams hands the report back under stderr; it is the only JSON
+  // object in either, so the fallback cannot pick up anything else.
+  const report = parsedReport(relayed.stdout) ?? parsedReport(relayed.stderr);
   return (
     report ?? { verdict: "blocked", classification: "gate_did_not_report", stderr: relayed.stderr }
   );
