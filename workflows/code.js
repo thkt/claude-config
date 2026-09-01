@@ -747,9 +747,9 @@ for (const [index, unit] of units.entries()) {
     `When writing framework / library API code, follow the pinned version's official docs rather than memory. Read docs with \`scout fetch <url>\`. When scout is unavailable or the fetch fails, mark that API usage unverified in a code comment and keep implementing.\n` +
     `Before reporting the result, audit each claim against a tool result from this session. Report only work you can point to evidence for; state unverified items as such in notes.\n` +
     `Unit-test convenience is never a reason to drop part of the feature. Do not omit a shared component, a data fetch, or a navigation affordance because it would need a Router / Suspense / permission context; stub that boundary in the test instead. Deferrals absent from the plan are forbidden, including narrowing the implementation behind a code comment claiming a later unit will do it. If part of what the contract / files require must go unimplemented, list it in deferred (it is recorded as an anomaly and surfaced on the PR).\n` +
-    // Consulting advisor mid-implementation clashes with build's design: blockers are recorded
+    // Pausing for guidance mid-implementation clashes with build's design: blockers are recorded
     // as anomalies and heavy assurance is human-invoked on the draft PR.
-    `Do not call the advisor tool, even on design ambiguity or an environment blocker. Push through to the end on your own analysis alone; write the judgment you made into notes and any narrowed implementation into deferred, leaving it to the anomaly record.\n` +
+    `Do not stop to ask for guidance, even on design ambiguity or an environment blocker. Push through to the end on your own analysis alone; write the judgment you made into notes and any narrowed implementation into deferred, leaving it to the anomaly record.\n` +
     (unit.seam === true
       ? `This is the plan's seam unit: its tests are what catch units that are each green in isolation but never connected. Run the real modules across the unit boundary; fake only I/O with systems external to this one. Stubbing an internal layer here defeats the unit. Assert that the connections between what the preceding units built (calls, transitions, data handoffs) exist and are actually reachable; showing a leaf piece works on its own is not enough.\n`
       : "") +

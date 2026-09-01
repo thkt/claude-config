@@ -13,7 +13,7 @@ HEAD.
 stdout (create):  JSON {branch, path, status: "created"}
 stdout (cleanup): JSON {branch, path, status: "removed"}
 On create failure: JSON {branch, path, status: "error", reason, stderr}, exit 1
-(env failure, references/phase-4.md § Bootstrap Failure Handling). Cleanup
+(env failure, assert.js's envFail rule). Cleanup
 is best-effort: stale-state removals are ignored and it never fails the run.
 """
 

@@ -133,11 +133,11 @@ test("only a unit with seam: true carries the inner-layer stub ban and the wirin
   assert.doesNotMatch(withoutSeam, /seam unit/, "a unit with seam: false carries no seam wording");
 });
 
-// Consulting the advisor mid-implementation clashes with build's design (a blocker is recorded
+// Pausing for guidance mid-implementation clashes with build's design (a blocker is recorded
 // as an anomaly and the run advances; heavy assurance is human-invoked on the draft PR), so
-// these pin that the no-advisor constraint rides all three implementation prompts and not
+// these pin that the no-consult rule rides all three implementation prompts and not
 // Verify's.
-test("the direct impl, Red, and Green prompts carry the advisor ban and the anomaly routing while Verify does not", async () => {
+test("the direct impl, Red, and Green prompts carry the no-consult rule and the anomaly routing while Verify does not", async () => {
   const directStub = (prompt, opts) => {
     const label = opts.label ?? "";
     if (label.startsWith("impl:")) return { green: true, notes: "" };
@@ -158,12 +158,20 @@ test("the direct impl, Red, and Green prompts carry the advisor ban and the anom
   );
   assert.equal(implementCalls.length, 3, "all three routes red / green / impl are present");
   for (const call of implementCalls) {
-    assert.match(call.prompt, /advisor tool/, `${call.opts.label} carries the advisor ban`);
+    assert.match(
+      call.prompt,
+      /Do not stop to ask for guidance/,
+      `${call.opts.label} carries the no-consult rule`,
+    );
     assert.match(call.prompt, /anomaly/, `${call.opts.label} carries the anomaly routing`);
   }
 
   const verify = tddCalls.agent.find((c) => c.opts.label === "verify");
-  assert.doesNotMatch(verify.prompt, /advisor/, "the Verify prompt carries no advisor constraint");
+  assert.doesNotMatch(
+    verify.prompt,
+    /ask for guidance/,
+    "the Verify prompt carries no no-consult rule",
+  );
 });
 
 test("a unit with no tests skips Red / Green, completes in one direct impl step, and propagates model and effort", async () => {

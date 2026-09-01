@@ -10,7 +10,7 @@ stdout: JSON {project_type, install, build, install_cmd, build_cmd, reason}
   build:   pass | fail | skipped
 exit 0 は run 完走 (verdict は JSON から読む)、exit 1 は usage / path エラー。
 
-Gate routing (呼び出し側、references/phase-4.md § Bootstrap Failure Handling)。三値は
+Gate routing (呼び出し側、assert.js の envFail / buildCol 規則)。三値は
 build 単独ではなく (install, build) の組で決まる。
 
   install=fail  + build=skipped   -> env 失敗          -> Ready (caveat) 経路
@@ -20,7 +20,7 @@ build 単独ではなく (install, build) の組で決まる。
 
 build 開始後に発火した build timeout は build=fail として報告する。ハングした build は
 壊れた build と区別できず、環境起因として扱うと Ready (caveat) に達してしまう
-(references/phase-0.md 0b)。
+。
 """
 
 import json
@@ -33,7 +33,7 @@ from typing import NoReturn, cast
 INSTALL_TIMEOUT = 180
 BUILD_TIMEOUT = 600
 
-# この順で最初に一致した種別を採用する (references/phase-0.md)。
+# この順で最初に一致した種別を採用する。
 PROJECT_MARKERS = [
     ("package.json", "node"),
     ("Cargo.toml", "rust"),

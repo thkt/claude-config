@@ -314,7 +314,8 @@ const ext = (p) => {
   return dot > 0 ? base.slice(dot).toLowerCase() : "";
 };
 const classify = (p) => {
-  if (/(^|\/|\.)test\./.test(p)) return ROUTING.test;
+  // foo.test.ts、foo.spec.ts、foo_test.py、および test/ か tests/ ディレクトリ配下。
+  if (/(^|\/)tests?\/|(^|\/|[._])(test|spec)\./.test(p)) return ROUTING.test;
   const e = ext(p);
   if (e === ".sh") return ROUTING["*.sh"];
   if (e === ".js") return ROUTING["*.js"];
@@ -634,7 +635,7 @@ log(
 // ---- Review ----
 phase("Review");
 const RELIABILITY =
-  "advisor tool は呼ばない。自分の解析だけで最後まで進む。8 分以内に完了する。確信の持てない finding も skip せず含める (false positive は challenger が刈る)。対象が複数ファイルに跨るなら churn の高い path から見て、最初のファイルで budget を使い切らない。";
+  "自分の解析だけで最後まで進む。8 分以内に完了する。確信の持てない finding も skip せず含める (false positive は challenger が刈る)。対象が複数ファイルに跨るなら churn の高い path から見て、最初のファイルで budget を使い切らない。";
 const raw = await parallel(
   units.map(
     (u) => () =>

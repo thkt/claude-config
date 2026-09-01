@@ -141,6 +141,10 @@ const BOOTSTRAP_SCHEMA = {
     },
     worktree_ok: { type: "boolean" },
     worktree_path: { type: "string" },
+    worktree_id: {
+      type: "string",
+      description: "worktree.py に渡した id。Cleanup は同じ id で worktree を撤去する",
+    },
     install: { type: "string", enum: ["ok", "fail", "skip"] },
     build: { type: "string", enum: ["pass", "fail", "skipped"] },
     reason: { type: "string" },
@@ -256,7 +260,7 @@ const bootstrapPrompt = anchor(
     `1. \`command -v codex\` で codex CLI の有無を確認する。無ければ codex_available: false とし、以降を省いて mode: none で返す。\n` +
     `2. ${OUTCOME_VALIDATOR} .claude/OUTCOME.md を実行する。JSON の state が absent または empty なら outcome: "absent"。それ以外は本文を読み、Behavior / Non-goals / Constraints を outcome に要約する。stub 生成はしない。\n` +
     `3. ${scopeInstr}\n` +
-    `4. mode が none でなければ、${SCRIPTS}/worktree.py "$CLAUDE_SESSION_ID" で isolated worktree を用意し (JSON の status が error なら worktree_ok: false、reason に stderr を写す)、続けて ${SCRIPTS}/bootstrap.py "<worktree path>" を実行して install / build / reason を JSON から写す。diff_kind が uncommitted のときは worktree に uncommitted 変更を反映する (\`git diff HEAD\` を worktree 側で apply し、scope_files 中の untracked ファイルは cp する)。\n` +
+    `4. mode が none でなければ、worktree の id を \`ID="\${CLAUDE_SESSION_ID:-$(date -u +%Y%m%d%H%M%S)-$$}"\` で決めて worktree_id として返す。${SCRIPTS}/worktree.py "$ID" で isolated worktree を用意する。JSON の status が error なら worktree_ok: false とし、reason に stderr を写す。続けて ${SCRIPTS}/bootstrap.py "<worktree path>" を実行し、install / build / reason を JSON から写す。diff_kind が uncommitted のときは worktree に uncommitted 変更を反映する (\`git diff HEAD\` を worktree 側で apply し、scope_files 中の untracked ファイルは cp する)。\n` +
     `コードの review や修正はしない。この段階の仕事は環境の準備と事実の記録だけ。`,
 );
 const boot = (await agent(bootstrapPrompt, {
@@ -397,10 +401,10 @@ try {
   phase("Evidence");
   const fileList = boot.scope_files.join("\n");
   const testRunRaw =
-    `assert の test 実行段階を担当する。プロジェクトの test コマンドを検出し、\`timeout 600 codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} "Run the project test command. Report: (1) test exit code and last 50 lines of stderr if non-zero, (2) test summary (total/passed/failed)." </dev/null\` で 1 回だけ実行する。` +
+    `assert の test 実行段階を担当する。プロジェクトの test コマンドを検出し、\`codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} "Run the project test command. Report: (1) test exit code and last 50 lines of stderr if non-zero, (2) test summary (total/passed/failed)." </dev/null\` で 1 回だけ実行する。timeout バイナリで包まず、Bash tool の timeout パラメータを 600000 にする (macOS に timeout バイナリは無い)。` +
     `build は bootstrap 済みなので再実行しない。test runner が見つからなければ outcome: no-runner、timeout やその他の実行不能は outcome: skipped とし notes に理由を書く。修正はしない。`;
   const adversarialRaw =
-    `assert の adversarial testing 段階を担当する。\`timeout 600 codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} --full-auto "<prompt>" </dev/null\` を実行する。<prompt> は次の英文をそのまま使い、Target files に対象一覧を埋める。\n` +
+    `assert の adversarial testing 段階を担当する。\`codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} --approve-for-me "<prompt>" </dev/null\` を実行する。timeout バイナリで包まず、Bash tool の timeout パラメータを 600000 にする (macOS に timeout バイナリは無い)。<prompt> は次の英文をそのまま使い、Target files に対象一覧を埋める。\n` +
     `---\n` +
     `You are an adversarial tester. Your goal is to find bugs by writing tests that the original developer likely missed.\n\nTarget files:\n${fileList}\n\n` +
     `Instructions:\n1. Read each target file and understand its behavior\n2. Generate edge-case tests targeting:\n   - Boundary values (empty, zero, max, off-by-one)\n   - Error paths (invalid input, null/nil equivalents, failure modes)\n   - Input validation gaps (special characters, injection, overflow)\n   - State transitions (concurrent access, race conditions if applicable)\n   - Implicit assumptions (hardcoded limits, timezone, locale)\n3. Write tests using the project's existing test framework and naming convention\n4. Place tests following the project's test directory and file-naming convention\n5. Run the tests\n6. Report results in this exact format:\n\nADVERSARIAL_RESULTS_START\ntest_name: <name>\ntarget: <file:line being tested>\nassertion: <what the test asserts>\nresult: PASS | FAIL\nfailure_detail: <error message if FAIL>\n---\n(repeat for each test)\nADVERSARIAL_RESULTS_END\n` +
@@ -684,7 +688,7 @@ try {
   phase("Cleanup");
   await agent(
     anchor(
-      `assert の Cleanup 段階を担当する。${SCRIPTS}/worktree.py --cleanup "$CLAUDE_SESSION_ID" で assert 用 worktree を撤去する。失敗しても warning として報告するだけでよい (best-effort)。他のファイルに触れない。`,
+      `assert の Cleanup 段階を担当する。${SCRIPTS}/worktree.py --cleanup "${String(boot.worktree_id || "")}" で assert 用 worktree を撤去する。失敗しても warning として報告するだけでよい (best-effort)。他のファイルに触れない。`,
     ),
     {
       agentType: "general-purpose",

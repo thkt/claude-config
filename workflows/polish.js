@@ -220,7 +220,7 @@ if (mode !== "cleanup") {
     anchor(
       `External Codex review stage. ${detectNote}\n` +
         `Then check \`which codex\`. If missing, return available: false with empty findings.\n` +
-        `When diff_kind is branch, run \`codex review --base ${base}\` (in codex 0.144.6 the scope flags (--uncommitted / --base / --commit) are mutually exclusive with the PROMPT argument, so for a branch diff no PROMPT can be sent and the simplicity lens falls back to Codex's default lens).\n` +
+        `When diff_kind is branch, run \`codex review --base ${base}\` with no PROMPT. codex rejects a scope flag (--uncommitted / --base / --commit) combined with the PROMPT argument (confirmed through 0.152.0), so the simplicity lens falls back to Codex's default lens for a branch diff.\n` +
         `Otherwise run \`codex review "Review for logic, architecture, data flow, and code simplicity (flag over-complexity and unnecessary indirection)"\`. Pass no scope flag when sending the PROMPT (Codex reads git status itself). Omitting the PROMPT drops the simplicity lens, so always pass it for uncommitted.\n` +
         `Structure the output into findings. Assign ids F1, F2, ..., and copy Codex's P1/P2/P3 as severity (judge from impact when absent). ` +
         (scope

@@ -731,9 +731,9 @@ for (const [index, unit] of units.entries()) {
     `フレームワーク / ライブラリの API を書くときは、記憶でなく pinned version の公式 docs に従う。docs は \`scout fetch <url>\` で読む。scout が無い、または fetch が失敗して読めなければ、その API 使用を未確認としてコード内コメントに残し、実装は続ける。\n` +
     `結果を報告する前に、各 claim をこのセッションの tool result と突き合わせる。evidence を指せる作業のみ報告し、未検証のものは notes にその旨を書く。\n` +
     `単体テストの都合を理由に機能の一部を落とすことは禁止。Router / Suspense / 権限 context が要るという理由で、共有コンポーネント・データ取得・遷移導線を省いてはならない。テスト側でその境界を差し替える。plan に無い先送りは禁止で、コード内コメントで「別ユニット」「後続に委ねる」と宣言して実装を狭めることも禁止。contract / files が求める実装の一部をやむを得ず実装しない場合は deferred に列挙する (anomaly として記録され PR に surface される)。\n` +
-    // 実装中の advisor 相談は build の設計と噛み合わない。blocker は anomaly として記録して
+    // 実装中に指示を仰いで止まるのは build の設計と噛み合わない。blocker は anomaly として記録して
     // 進み、重い assurance は draft PR 上で人間が起動する。
-    `設計の曖昧さや環境起因の blocker に当たっても advisor tool は呼ばない。自分の解析だけで最後まで進み、下した判断を notes に、実装を狭めた分を deferred に書いて anomaly 記録に委ねる。\n` +
+    `設計の曖昧さや環境起因の blocker に当たっても、止まって指示を仰がない。自分の解析だけで最後まで進み、下した判断を notes に、実装を狭めた分を deferred に書いて anomaly 記録に委ねる。\n` +
     (unit.seam === true
       ? `この unit は plan の seam unit で、各 unit が単体では緑のまま結線されていない状態を捕まえるのがそのテストの役割。unit 間の境界を跨いで実モジュールを動かし、偽装はシステム外部との I/O に限る。ここで内部の層を stub すると unit の意味が消える。先行 unit が作った部品どうしの接続 (呼び出し、遷移、データの受け渡し) が存在し、実際に到達可能であることを assert する。末端の部品が単体で動くことの確認では足りない。\n`
       : "") +

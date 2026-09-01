@@ -10,7 +10,7 @@ stdout: JSON {project_type, install, build, install_cmd, build_cmd, reason}
   build:   pass | fail | skipped
 exit 0 on a completed run (read the verdict from JSON); exit 1 on usage / path error.
 
-Gate routing (caller, references/phase-4.md § Bootstrap Failure Handling). The
+Gate routing (the caller, assert.js's envFail / buildCol rule). The
 trichotomy is encoded by (install, build) jointly, not by build alone:
 
   install=fail  + build=skipped  -> env failure         -> Ready (caveat) path
@@ -20,7 +20,7 @@ trichotomy is encoded by (install, build) jointly, not by build alone:
 
 A build timeout that fires after the build started is reported as build=fail: a
 hanging build is indistinguishable from a broken one, and treating it as
-environmental would let it reach Ready (caveat) (references/phase-0.md 0b).
+environmental would let it reach Ready (caveat).
 """
 
 import json
@@ -33,7 +33,7 @@ from typing import NoReturn, cast
 INSTALL_TIMEOUT = 180
 BUILD_TIMEOUT = 600
 
-# First match in this order wins (references/phase-0.md).
+# First match in this order wins.
 PROJECT_MARKERS = [
     ("package.json", "node"),
     ("Cargo.toml", "rust"),

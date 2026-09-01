@@ -322,7 +322,8 @@ const ext = (p) => {
   return dot > 0 ? base.slice(dot).toLowerCase() : "";
 };
 const classify = (p) => {
-  if (/(^|\/|\.)test\./.test(p)) return ROUTING.test;
+  // foo.test.ts, foo.spec.ts, foo_test.py, and anything under a test/ or tests/ directory.
+  if (/(^|\/)tests?\/|(^|\/|[._])(test|spec)\./.test(p)) return ROUTING.test;
   const e = ext(p);
   if (e === ".sh") return ROUTING["*.sh"];
   if (e === ".js") return ROUTING["*.js"];
@@ -646,7 +647,7 @@ log(
 // ---- Review ----
 phase("Review");
 const RELIABILITY =
-  "Do NOT call the advisor tool; work autonomously from your own analysis. Complete within 8 minutes; if uncertain about a finding, include it rather than skip (the challenger prunes false positives). When the scope spans several files, follow the high-churn paths and do not spend the whole budget on the first file.";
+  "Work autonomously from your own analysis. Complete within 8 minutes; if uncertain about a finding, include it rather than skip (the challenger prunes false positives). When the scope spans several files, follow the high-churn paths and do not spend the whole budget on the first file.";
 const raw = await parallel(
   units.map(
     (u) => () =>
