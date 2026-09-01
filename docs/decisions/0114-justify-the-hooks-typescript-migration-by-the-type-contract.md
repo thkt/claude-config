@@ -10,7 +10,7 @@ decision-makers: "thkt"
 
 DR-0112 は helper script 全体の TypeScript 段階移行を、型契約の共有と起動コストの両方を根拠に決めた。起動コストの根拠は「stdin JSON + ローカル import を持つ現実的な hook 形が python3 で 34ms、TypeScript ファイルで 23ms」という当時の見積もりだった。
 
-#606 の設計中に実測すると値が違った。python3 は 24.6ms、`node -e ''` の空プロセスだけで 30.4ms、bun は 14.7ms である（DR-0113 に記録済み）。node は python3 より遅く、hooks 層に node をそのまま採ると `PreToolUse` の Bash matcher 8 本の合計起動時間は移行前を下回るどころか悪化する。DR-0112 の Success Criteria が要求する「移行前を下回る」を node だけでは満たせない。
+issue #606 の設計中に実測すると値が違った。python3 は 24.6ms、`node -e ''` の空プロセスだけで 30.4ms、bun は 14.7ms である（DR-0113 に記録済み）。node は python3 より遅く、hooks 層に node をそのまま採ると `PreToolUse` の Bash matcher 8 本の合計起動時間は移行前を下回るどころか悪化する。DR-0112 の Success Criteria が要求する「移行前を下回る」を node だけでは満たせない。
 
 一方で settings.json は hook を絶対パスのシェバン経由で直接起動し、PATH は truncated である（`hooks/_lib/tests/shebang_test.py`、#534）。ランタイムを切り替えるなら、そのシェバンが指す先も同じ制約を満たす必要がある。
 
