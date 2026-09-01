@@ -12,6 +12,9 @@ report.py does not manipulate sys.path itself.
 
 from __future__ import annotations
 
+import json
+import os
+import sys
 from datetime import date, datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -24,7 +27,8 @@ import usage_counts
 import verdict
 
 # Held here once so every caller reads the same value rather than each re-deriving it.
-TRANSCRIPTS_ROOT = Path.home() / ".claude" / "projects"
+# Tests can override via the ABLATE_TRANSCRIPTS_ROOT environment variable.
+TRANSCRIPTS_ROOT = Path(os.environ.get("ABLATE_TRANSCRIPTS_ROOT", Path.home() / ".claude" / "projects"))
 
 # The ablation apparatus's own script tree. A path under here is the code that produced the
 # observation, not a harness element under test, so it must never appear in
@@ -225,3 +229,19 @@ def write_report(
     report_path = target_dir / f"{timestamp}-{REPORT_NAME}.md"
     report_path.write_text(content, encoding="utf-8")
     return report_path
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 2:
+        print("usage: report.py <observations.json>", file=sys.stderr)
+        return 2
+    observations_path = Path(argv[1])
+    observations = json.loads(observations_path.read_text(encoding="utf-8"))
+    root = Path.cwd()
+    report_path = write_report(root, observations)
+    print(report_path)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
