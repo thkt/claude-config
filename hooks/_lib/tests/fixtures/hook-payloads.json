@@ -1,0 +1,39 @@
+[
+  {
+    "id": "T-001-pretooluse-bash",
+    "payload": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "echo hello world"
+      }
+    }
+  },
+  {
+    "id": "T-002-posttooluse-write",
+    "payload": {
+      "hook_event_name": "PostToolUse",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "/tmp/hook-payload-parity-example.txt",
+        "content": "hello"
+      }
+    }
+  },
+  {
+    "id": "T-003-missing-key",
+    "payload": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": {}
+    }
+  },
+  {
+    "id": "T-003-type-mismatch",
+    "payload": {
+      "hook_event_name": "PreToolUse",
+      "tool_name": "Bash",
+      "tool_input": "not-a-mapping"
+    }
+  }
+]

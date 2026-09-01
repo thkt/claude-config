@@ -52,6 +52,7 @@ jobs:
           "tests/*.test.js"
           "agents/**/tests/*.test.js"
           "hooks/**/tests/*.test.js"
+          "hooks/**/tests/*.test.ts"
           "skills/**/tests/*.test.js"
           "skills/**/tests/*.test.ts"
           "workflows/**/tests/*.test.js"

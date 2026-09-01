@@ -119,6 +119,7 @@ This directory contains important decisions about the project.
 | [0111](0111-adopt-apple-container-for-agent-sandbox.md) | Adopt Apple container for agent sandbox | accepted | 2026-08-28 |
 | [0112](0112-adopt-typescript-for-helper-scripts.md) | Adopt TypeScript for helper scripts | proposed | 2026-08-29 |
 | [0113](0113-ban-bun-branded-identifiers-in-typescript-sources.md) | Ban bun-branded identifiers in TypeScript sources | accepted | 2026-09-01 |
+| [0114](0114-justify-the-hooks-typescript-migration-by-the-type-contract.md) | Justify the hooks TypeScript migration by the type contract | proposed | 2026-09-01 |
 
 ## By Status
 
@@ -144,6 +145,7 @@ This directory contains important decisions about the project.
 - **0101**: embedding + storage ユーティリティの共有クレート化 (rurico)
 - **0109**: Keep the scope tag and retire the cluster-promotion rule
 - **0112**: Adopt TypeScript for helper scripts
+- **0114**: Justify the hooks TypeScript migration by the type contract
 
 ### Accepted
 
