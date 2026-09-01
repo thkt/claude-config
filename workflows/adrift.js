@@ -502,7 +502,14 @@ const report = (await agent(
 
 // written is the Report agent's claim about its own work, and no other number here comes from
 // the agent that produced it. A script cannot reach the filesystem, so the check costs an agent.
-const claimedPath = String(report.report_path || "");
+// An agent that writes under the repository reports the absolute path as readily as the relative
+// one, so the repository prefix is stripped before the shape is judged; a path anywhere else
+// stays as claimed and fails the shape.
+const repoPrefix = `${repo.replace(/\/+$/, "")}/`;
+const rawClaimedPath = String(report.report_path || "");
+const claimedPath = rawClaimedPath.startsWith(repoPrefix)
+  ? rawClaimedPath.slice(repoPrefix.length)
+  : rawClaimedPath;
 const pathOk = report.written && REPORT_PATH_SHAPE.test(claimedPath);
 const stat = pathOk
   ? await agent(

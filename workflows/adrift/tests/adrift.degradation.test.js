@@ -291,6 +291,51 @@ test("reports the file as written only after a separate agent finds it", async (
   );
 });
 
+// A live run reported the file by its absolute path, and the shape check read that as a path
+// adrift never writes even though the file was there.
+test("an absolute path under the repository confirms and comes back repository-relative", async () => {
+  const { result, calls } = await runWorkflow(adriftJs, {
+    args: { repo: "/abs/target-repo" },
+    stubs: {
+      agent: reportStub({
+        report: {
+          written: true,
+          report_path: "/abs/target-repo/docs/audit/2026-01-01-000000-dr-drift.md",
+        },
+        stat: { exists: true, bytes: 1200 },
+      }),
+    },
+  });
+
+  assert.equal(result.report_written, true, "the file under the repository confirmed");
+  assert.equal(result.report_path, "docs/audit/2026-01-01-000000-dr-drift.md");
+  const confirm = calls.agent.find((c) => c.opts && c.opts.label === "confirm-report");
+  assert.match(confirm.prompt, /docs\/audit\/2026-01-01-000000-dr-drift\.md/);
+  assert.doesNotMatch(
+    confirm.prompt,
+    /\/abs\/target-repo\/docs/,
+    "the stat agent gets the relative path",
+  );
+});
+
+test("a path outside the repository is not read as a written report", async () => {
+  const { result } = await runWorkflow(adriftJs, {
+    args: { repo: "/abs/target-repo" },
+    stubs: {
+      agent: reportStub({
+        report: {
+          written: true,
+          report_path: "/elsewhere/docs/audit/2026-01-01-000000-dr-drift.md",
+        },
+        stat: { exists: true, bytes: 1200 },
+      }),
+    },
+  });
+
+  assert.equal(result.report_written, false);
+  assert.equal(result.report_unconfirmed.reason, "the claimed path is not the shape adrift writes");
+});
+
 test("does not report a file as written when the confirming agent cannot find it", async () => {
   const { result } = await runWorkflow(adriftJs, {
     args: { repo: "/abs/target-repo" },
@@ -742,7 +787,11 @@ test("T-104 a DR whose status is accepted, empty, or unrecognised reaches the re
 // (`status: "Superseded by DR-0055"`), so the check has to be a case-insensitive prefix match.
 // T-101 feeds the bare constant values, which an equality test also passes.
 test("T-105 a status carrying the successor id after the expired word keeps the DR out of the fan-out", async () => {
-  for (const status of ["Superseded by DR-0055", "DEPRECATED as of 2026-01", "Rejected (see #12)"]) {
+  for (const status of [
+    "Superseded by DR-0055",
+    "DEPRECATED as of 2026-01",
+    "Rejected (see #12)",
+  ]) {
     const { calls } = await runWorkflow(adriftJs, {
       args: { repo: "/abs/target-repo" },
       stubs: { agent: expiredStatusStub(status) },

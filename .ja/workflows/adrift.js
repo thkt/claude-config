@@ -504,7 +504,13 @@ const report = (await agent(
 
 // written は Report agent の自己申告で、この workflow は他のどの数字も作った当人から取って
 // いない。script は FS に触れないので、確認には agent が 1 体要る。
-const claimedPath = String(report.report_path || "");
+// リポジトリ配下に書いた agent は絶対パスでも報告してくるので、形を判定する前にリポジトリの
+// 接頭辞を外す。それ以外の場所を指すパスは報告どおりのまま残し、形の判定で落ちる。
+const repoPrefix = `${repo.replace(/\/+$/, "")}/`;
+const rawClaimedPath = String(report.report_path || "");
+const claimedPath = rawClaimedPath.startsWith(repoPrefix)
+  ? rawClaimedPath.slice(repoPrefix.length)
+  : rawClaimedPath;
 const pathOk = report.written && REPORT_PATH_SHAPE.test(claimedPath);
 const stat = pathOk
   ? await agent(
