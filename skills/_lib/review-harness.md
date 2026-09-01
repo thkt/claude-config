@@ -11,13 +11,13 @@ Labels, expectations, or hints in the dispatch prompt contaminate Recall (found 
 3. Fix the comparison criteria before dispatch. Do not move them afterwards
 4. Pick each case's verdict from the table below and record the run as an array of `{file, verdict}` in `<skill>/test/results/YYYY-MM-DD-*.json`
 5. Run `python3 skills/_lib/review_score.py <skill>/test/expected.json <results> [previous-results]`. Do not count the metrics by hand
-6. Run `python3 skills/_lib/harness_hash.py <skill>` and write the three printed keys as top-level keys of the record
+6. Run `node skills/_lib/harness_hash.ts <skill>` and write the three printed keys as top-level keys of the record
 
 The sequential naming and the paired structure still let an agent guess it is looking at a test set. Going fully blind would mean embedding the cases in realistic scaffolding; removing label leakage comes first.
 
 ## Record freshness
 
-A record names by hash what the run measured. `skills/_lib/tests/harness_hash_test.py` matches the newest record's hashes against the current content and fails a skill with no record as unmeasured. Hashes rather than dates, because CI checks out shallow and cannot read `git log` dates. The gate reads the last record by name, so a second run on one date takes a name that sorts after the run it supersedes.
+A record names by hash what the run measured. `skills/_lib/tests/harness-freshness.test.ts` matches the newest record's hashes against the current content and fails a skill with no record as unmeasured. Hashes rather than dates, because CI checks out shallow and cannot read `git log` dates. The gate reads the last record by name, so a second run on one date takes a name that sorts after the run it supersedes.
 
 | Key                 | Covers                                      |
 | ------------------- | ------------------------------------------- |
