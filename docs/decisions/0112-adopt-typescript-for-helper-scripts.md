@@ -30,7 +30,7 @@ Chosen option: "helper script を TypeScript へ段階移行する", because 起
 ### Consequences
 
 - Good, because helper 同士が型を共有でき、契約が手書きガードから型へ移る
-- Good, because hook 1 本あたりの起動が 34ms から 23ms へ下がる。`PreToolUse` の Bash matcher は 8 本あるので Bash 1 回あたり約 90ms 縮む
+- Good, because hook 1 本あたりの起動は実測で下がる。ただし当初見積もった 34ms から 23ms への下がり幅は #606 の実測と食い違い、正しくは python3 24.6ms、node 30.4ms（`node -e ''` の空プロセスのみ）、bun 14.7ms である。下がるのは bun を採った場合に限られ、node は python3 より遅いため hooks 層の runtime から外れる。`PreToolUse` の Bash matcher は 8 本あるので、bun 採用時は Bash 1 回あたり約 79ms 縮む。runtime の選び直しは DR-0114 に記録する
 - Bad, because 移行中は Python と TypeScript が同居し、CI が ruff と型検査の両方を持つ
 - Bad, because 実行に必要なランタイムの床が `python3` から Node 24 以上へ上がる
 
