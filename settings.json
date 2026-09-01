@@ -158,6 +158,18 @@
           },
           {
             "type": "command",
+            "command": "~/.claude/hooks/edit/rumdl_check.py",
+            "if": "Write(**/*.md)",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/edit/rumdl_check.py",
+            "if": "Edit(**/*.md)",
+            "timeout": 30
+          },
+          {
+            "type": "command",
             "command": "~/.claude/hooks/edit/mirror_prose_guard.py",
             "if": "Write(**/.ja/**)",
             "timeout": 10

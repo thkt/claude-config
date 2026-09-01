@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "_lib"))
 
-from hook_payload import edited_file
+from hook_payload import edited_file, notify
 
 path = edited_file(sys.stdin.read())
 if path is None or not path.endswith(".md"):
@@ -35,4 +35,4 @@ except FileNotFoundError:
 # signal that separates the two.
 output = result.stdout.strip()
 if result.returncode != 0 and output:
-    print(output)
+    notify(output)

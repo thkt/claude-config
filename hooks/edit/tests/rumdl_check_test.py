@@ -7,6 +7,7 @@
 Run: python3 hooks/edit/tests/rumdl_check_test.py
 """
 
+import json
 import os
 import subprocess
 import sys
@@ -53,11 +54,20 @@ class TestRumdlCheck(unittest.TestCase):
         payload = {"tool_name": tool, "tool_input": {"file_path": str(path)}}
         return hook_harness.checked(HOOK, payload, env)
 
-    def test_violation_is_printed(self) -> None:
-        """T-001 a markdown file carrying a rule violation makes the hook print the violation"""
+    def test_violation_reaches_both_channels(self) -> None:
+        """T-001 a markdown file carrying a rule violation makes the hook name it on both channels
+
+        Stdout from a hook that exits 0 reaches no one on its own, so the violation goes out in
+        the envelope hooks/_lib/hook_payload.py's notify writes: systemMessage for the human,
+        additionalContext for whoever wrote the file.
+        """
         path = self.write("violation.md", VIOLATING_MD)
         result = self.run_hook("Write", path)
-        self.assertIn("MD022", result.stdout)
+        emitted = json.loads(result.stdout)
+        self.assertIn("MD022", emitted["systemMessage"])
+        specific = emitted["hookSpecificOutput"]
+        self.assertEqual(specific["hookEventName"], "PostToolUse")
+        self.assertIn("MD022", specific["additionalContext"])
 
     def test_file_unchanged(self) -> None:
         """T-002 the hook leaves the edited file byte-identical to what it received"""
