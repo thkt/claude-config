@@ -1,8 +1,9 @@
-"""List source files in a tree, largest first.
+"""List source files in a tree, largest first; equal line counts order by path ascending.
 
 Usage: list-source-files.py <repo-root>
 Output: "<lines> <path>" per line.
-Exit: 0, or 3 when the count exceeds SOURCE_CAP (the list is still printed, and stderr says so).
+Exit: 0, or 3 when the count exceeds SOURCE_CAP (the list is still printed, and stderr says so),
+      or 2 when the argument is missing or names no directory.
 """
 
 import os
@@ -42,12 +43,17 @@ def main() -> int:
     if len(sys.argv) < 2:
         print("usage: list-source-files.py <repo-root>", file=sys.stderr)
         return 2
+    root = sys.argv[1]
+    # os.walk yields nothing for a missing path, which would read as an empty tree.
+    if not os.path.isdir(root):
+        print(f"error: not a directory: {root}", file=sys.stderr)
+        return 2
     results: list[tuple[int, str]] = []
-    for path in source_files(sys.argv[1]):
+    for path in source_files(root):
         lines = count_lines(path)
         if lines is not None:
             results.append((lines, str(path)))
-    for lines, path in sorted(results, reverse=True):
+    for lines, path in sorted(results, key=lambda r: (-r[0], r[1])):
         print(f"{lines} {path}")
     if len(results) > SOURCE_CAP:
         print(f"over cap: {len(results)} files exceed SOURCE_CAP={SOURCE_CAP}", file=sys.stderr)

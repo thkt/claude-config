@@ -1,8 +1,9 @@
-"""ツリー内のソースファイルを行数降順で一覧する。
+"""ツリー内のソースファイルを行数降順で一覧する。同じ行数はパス昇順。
 
 Usage: list-source-files.py <repo-root>
 Output: 1 行 1 ファイルで "<行数> <パス>"。
 Exit: 0。件数が SOURCE_CAP を超えたら 3 (一覧は出し切り、stderr にその旨を書く)。
+      引数が無いか、ディレクトリを指していなければ 2。
 """
 
 import os
@@ -41,12 +42,17 @@ def main() -> int:
     if len(sys.argv) < 2:
         print("usage: list-source-files.py <repo-root>", file=sys.stderr)
         return 2
+    root = sys.argv[1]
+    # 存在しないパスでも os.walk は何も返さず、空のツリーと区別が付かない。
+    if not os.path.isdir(root):
+        print(f"error: not a directory: {root}", file=sys.stderr)
+        return 2
     results: list[tuple[int, str]] = []
-    for path in source_files(sys.argv[1]):
+    for path in source_files(root):
         lines = count_lines(path)
         if lines is not None:
             results.append((lines, str(path)))
-    for lines, path in sorted(results, reverse=True):
+    for lines, path in sorted(results, key=lambda r: (-r[0], r[1])):
         print(f"{lines} {path}")
     if len(results) > SOURCE_CAP:
         print(f"over cap: {len(results)} files exceed SOURCE_CAP={SOURCE_CAP}", file=sys.stderr)
