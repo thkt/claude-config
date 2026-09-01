@@ -123,9 +123,12 @@ const relayStdout = async (unit, label, command) => {
 
 const gateScript = bundled("workflows/_lib/gate.ts");
 
+// relay は写したレポートの前にツール管理の警告を付けることがある (実走で mise が出した) ので、
+// 最初の波括弧から最後の波括弧までを切り出してから parse する。
 const parsedReport = (stdout) => {
   try {
-    const report = JSON.parse(stdout);
+    const text = String(stdout);
+    const report = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
     return report && typeof report.verdict === "string" ? report : null;
   } catch {
     return null;

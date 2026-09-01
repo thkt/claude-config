@@ -125,6 +125,56 @@ test("T-012 an anchor matching no complete line fails as missing_required_output
   });
 });
 
+// A live code run trimmed the relay tail to 800 bytes while a TAP reporter printed its `not ok`
+// lines first, so the calibration found no candidate and the sealed line failed the official run.
+test("a planned failure line outside the report tail is still a calibration candidate and a matching anchor", () => {
+  withTempDir((cwd) => {
+    const filler = "x".repeat(400);
+    const command = `printf 'not ok 1 - T-001 x\\n%s\\n%s\\n' ${filler} ${filler}; exit 1`;
+    const calibrated = runCli([
+      "--cwd",
+      cwd,
+      "--command",
+      command,
+      "--calibrate",
+      "--planned-test",
+      "T-001:T-001 x",
+      "--tail-bytes",
+      "100",
+    ]);
+    assert.equal(calibrated.report.verdict, "pass", "calibration: verdict");
+    const candidates = calibrated.report.candidates as { text: string }[];
+    assert.deepEqual(
+      candidates.map((c) => c.text),
+      ["not ok 1 - T-001 x"],
+      "the line beyond the tail is offered",
+    );
+    assert.doesNotMatch(
+      String((calibrated.report.evidence as { stdout_tail: string }).stdout_tail),
+      /not ok/,
+      "the report tail itself still leaves the line out",
+    );
+
+    const official = runCli([
+      "--cwd",
+      cwd,
+      "--command",
+      command,
+      "--expect",
+      "fail",
+      "--require-output",
+      "not ok 1 - T-001 x",
+      "--tail-bytes",
+      "100",
+    ]);
+    assert.equal(
+      official.report.verdict,
+      "pass",
+      "official run: the anchor matches beyond the tail",
+    );
+  });
+});
+
 test("T-013 calibrate runs without an anchor, prefixes its classification, and refuses an anchor or an expect pass", () => {
   withTempDir((cwd) => {
     const noAnchorRun = runCli([

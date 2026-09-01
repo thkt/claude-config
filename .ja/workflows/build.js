@@ -1336,7 +1336,9 @@ const prVerification = async () => {
     return { verified: false, why: "PR verifier が出力を返さなかった" };
   }
   try {
-    const report = JSON.parse(relayed.stdout);
+    // 最初の波括弧から最後の波括弧までを切り出す。relay がツール管理の警告を前に付けることがある。
+    const text = relayed.stdout;
+    const report = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
     if (report && report.verdict === "pass") return { verified: true, why: "" };
     const blockers = Array.isArray(report?.blockers) ? report.blockers : [];
     return { verified: false, why: blockers.join(" / ") || "PR が宣言と一致しなかった" };

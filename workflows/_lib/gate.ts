@@ -481,9 +481,15 @@ export function classifyObservation(
   const command = options.command;
   const { timedOut, executionError, returncode, signalName, stdout, stderr, durationMs } = observed;
 
+  // The tails go into the report alone. Anchors, forbidden text, and calibration candidates are
+  // matched against the whole output: a TAP reporter prints its `not ok` lines first and its
+  // YAML detail after, so a caller trimming the tail for relay size would otherwise lose every
+  // line it could seal on.
+  const stdoutText = stdout.toString("utf8");
+  const stderrText = stderr.toString("utf8");
   const stdoutTail = tail(stdout, options.tail_bytes);
   const stderrTail = tail(stderr, options.tail_bytes);
-  const combined = `${stdoutTail}\n${stderrTail}`;
+  const combined = `${stdoutText}\n${stderrText}`;
   const commandPassed = returncode === 0;
   const commandFailed = returncode !== null && returncode > 0;
   const matchesExpectedExit = expect === "pass" ? commandPassed : commandFailed;
@@ -501,7 +507,7 @@ export function classifyObservation(
     checks.push({
       kind: "output_includes",
       value,
-      passed: hasExactOutputLine(stdoutTail, stderrTail, value),
+      passed: hasExactOutputLine(stdoutText, stderrText, value),
     });
   }
   for (const value of options.forbidden_output) {
@@ -548,7 +554,7 @@ export function classifyObservation(
             return [entry.slice(0, separator), entry.slice(separator + 1)];
           })
         : null;
-    candidates = calibrationCandidates(stdoutTail, stderrTail, planned);
+    candidates = calibrationCandidates(stdoutText, stderrText, planned);
     // The command failing is not the same as the planned scenario failing. With no line
     // naming one, there is nothing an anchor could be sealed on.
     if (verdict === "pass" && candidates.length === 0) {

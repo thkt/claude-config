@@ -478,9 +478,14 @@ export function classifyObservation(
   const command = options.command;
   const { timedOut, executionError, returncode, signalName, stdout, stderr, durationMs } = observed;
 
+  // tail はレポートに載せるためだけのもの。anchor、禁止文字列、calibration の候補は出力全体と照合する。
+  // TAP reporter は `not ok` 行を先に、YAML の詳細を後に出すので、relay のために tail を切り詰めた
+  // 呼び出し側は、そうしないと封印できる行をすべて失う。
+  const stdoutText = stdout.toString("utf8");
+  const stderrText = stderr.toString("utf8");
   const stdoutTail = tail(stdout, options.tail_bytes);
   const stderrTail = tail(stderr, options.tail_bytes);
-  const combined = `${stdoutTail}\n${stderrTail}`;
+  const combined = `${stdoutText}\n${stderrText}`;
   const commandPassed = returncode === 0;
   const commandFailed = returncode !== null && returncode > 0;
   const matchesExpectedExit = expect === "pass" ? commandPassed : commandFailed;
@@ -498,7 +503,7 @@ export function classifyObservation(
     checks.push({
       kind: "output_includes",
       value,
-      passed: hasExactOutputLine(stdoutTail, stderrTail, value),
+      passed: hasExactOutputLine(stdoutText, stderrText, value),
     });
   }
   for (const value of options.forbidden_output) {
@@ -545,7 +550,7 @@ export function classifyObservation(
             return [entry.slice(0, separator), entry.slice(separator + 1)];
           })
         : null;
-    candidates = calibrationCandidates(stdoutTail, stderrTail, planned);
+    candidates = calibrationCandidates(stdoutText, stderrText, planned);
     // コマンドが失敗することと、計画したシナリオが失敗することは別である。それを名指す
     // 行が 1 本も無ければ、アンカーを seal する対象が存在しない。
     if (verdict === "pass" && candidates.length === 0) {

@@ -1370,7 +1370,9 @@ const prVerification = async () => {
     return { verified: false, why: "the PR verifier returned no output" };
   }
   try {
-    const report = JSON.parse(relayed.stdout);
+    // Cut from the first brace to the last: a relay can prepend a tool-manager warning.
+    const text = relayed.stdout;
+    const report = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
     if (report && report.verdict === "pass") return { verified: true, why: "" };
     const blockers = Array.isArray(report?.blockers) ? report.blockers : [];
     return { verified: false, why: blockers.join(" / ") || "the PR did not match its declaration" };

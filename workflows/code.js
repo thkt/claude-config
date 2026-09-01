@@ -122,9 +122,12 @@ const relayStdout = async (unit, label, command) => {
 
 const gateScript = bundled("workflows/_lib/gate.ts");
 
+// A relay can prepend a tool-manager warning (mise printed one on a live run) to the report it
+// copied, so the object is cut out from the first brace to the last before parsing.
 const parsedReport = (stdout) => {
   try {
-    const report = JSON.parse(stdout);
+    const text = String(stdout);
+    const report = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
     return report && typeof report.verdict === "string" ? report : null;
   } catch {
     return null;
