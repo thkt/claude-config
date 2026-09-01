@@ -33,11 +33,11 @@ python3 skills/_lib/harness_elements.py .
 
 ## Phase 2: アーム実行
 
-要素ごとに、`${CLAUDE_SKILL_DIR}/references/measurement-criteria.md` の表からその要素の行を引き、Trigger task ID と Task を取る。行がない要素は observation の `trigger_task` を null にして Phase 3 へ渡す。
+要素ごとに、`${CLAUDE_SKILL_DIR}/references/measurement-criteria.md` の表からその要素の行を引き、Trigger task ID と Task を取る。行がない要素は observation の `trigger_task` を null にする。
 
 行がある要素は、`arms.ARMS` の各アームについて `arms.arm_command(arm, task, element, root)` が返すコマンドを `arms.RUN_COUNT` 回走らせる。wiped アームの各 run について、その要素の指示を transcript が守っているかを読んで True/False を付ける。結果を読めなかった run は `runs` に入れない。
 
-observation は要素ごとに 1 件。
+observation は要素ごとに 1 件で、全要素を 1 つの JSON 配列ファイルに書く。
 
 | キー           | 値                                                      |
 | -------------- | ------------------------------------------------------- |
@@ -45,8 +45,6 @@ observation は要素ごとに 1 件。
 | `trigger_task` | 表の Trigger task ID。行がなければ null                 |
 | `task_set`     | この実行で走らせた Trigger task ID の一覧               |
 | `runs`         | wiped アームの run ごとの True / False。読めた run のみ |
-
-全要素の observation を 1 つの JSON 配列ファイルに書く。
 
 ## Phase 3: レポート
 

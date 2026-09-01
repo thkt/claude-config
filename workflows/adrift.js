@@ -465,7 +465,7 @@ log(
 // ---- Report: report output (the structure lives in the prompt, no template) ----
 phase("Report");
 const focusNote = focus.length
-  ? `This run is narrowed by focus [${focus.join(", ")}] to ${scanned.length}/${detect.drs.length} DRs. State this in one line right after the Summary.\n\n`
+  ? `This run is narrowed by focus [${focus.join(", ")}] to ${scanned.length}/${detect.drs.length} DRs. State this in one line directly under the "## Summary" heading, before its table.\n\n`
   : "";
 const report = (await agent(
   anchor(

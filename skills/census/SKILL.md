@@ -28,7 +28,7 @@ Every criterion lives in ${CLAUDE_SKILL_DIR}/references/decision-criteria.md: im
 
 ## Phase 2: Mine
 
-Record findings under the table columns in ${CLAUDE_SKILL_DIR}/templates/report-template.md, Source File Decisions for source and Prose Document Decisions for docs. Leave the Impact and Reversibility columns for Phase 4. Evidence is a comment, a name, a module-doc, or a commit, and a commit-derived one reads `commit <sha>`.
+Record findings under the table columns in ${CLAUDE_SKILL_DIR}/templates/report-template.md, Source File Decisions for source and Prose Document Decisions for docs. Leave the Impact and Reversibility columns empty; tagging fills them. Evidence is a comment, a name, a module-doc, or a commit, and a commit-derived one reads `commit <sha>`.
 
 ### Step 1: From source
 

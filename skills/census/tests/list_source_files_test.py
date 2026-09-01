@@ -2,9 +2,9 @@
 
 Run: python3 skills/census/tests/list_source_files_test.py
 
-Every case drives the script through its CLI, since its contract is stdout and the exit code.
-Expectations are literals written here, never read back from the module: a fixture built from
-the constant under test moves with it and cannot observe a regression.
+Every case drives the script through its CLI, since its contract is stdout, stderr, and the
+exit code. Expectations are literals written here, never read back from the module: a fixture
+built from the constant under test moves with it and cannot observe a regression.
 """
 
 import os
@@ -23,6 +23,7 @@ EXIT_OVER_CAP = 3
 EXIT_USAGE = 2
 # The directories the script must leave out, spelled out for the same reason.
 PRUNED = ["target", "node_modules", ".git", "dist", "build", ".venv", "__pycache__", ".ja"]
+SOURCE_NAMES = ["a.rs", "b.ts", "c.tsx", "d.js", "e.jsx", "f.mjs", "g.cjs", "h.py", "i.go", "j.swift"]
 
 
 def _touch(root: Path, rel: str, lines: int = 1) -> None:
@@ -84,19 +85,29 @@ class Selection(unittest.TestCase):
     def test_every_source_extension_is_listed_and_other_files_are_not(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            for name in ["a.rs", "b.ts", "c.tsx", "d.js", "e.jsx", "f.mjs", "g.cjs", "h.py", "i.go", "j.swift"]:
-                _touch(root, name)
-            for name in ["README.md", "notes.txt", "Cargo.toml"]:
+            for name in SOURCE_NAMES + ["README.md", "notes.txt", "Cargo.toml"]:
                 _touch(root, name)
 
             result = _run(str(root))
 
-        self.assertEqual(
-            sorted(_names(result)),
-            ["a.rs", "b.ts", "c.tsx", "d.js", "e.jsx", "f.mjs", "g.cjs", "h.py", "i.go", "j.swift"],
-        )
+        self.assertEqual(sorted(_names(result)), SOURCE_NAMES)
 
-    def test_an_unreadable_file_is_skipped_while_its_siblings_are_listed(self) -> None:
+    def test_a_file_argument_lists_that_file_alone(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _touch(root, "one.py", lines=4)
+            _touch(root, "other.py")
+
+            result = _run(str(root / "one.py"))
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, f"4 {root}/one.py\n")
+
+
+class SkippedEntries(unittest.TestCase):
+    """Each skipped entry leaves one stderr line, so the listing never undercounts silently."""
+
+    def test_a_broken_symlink_is_skipped_and_named(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _touch(root, "ok.py")
@@ -105,8 +116,48 @@ class Selection(unittest.TestCase):
             result = _run(str(root))
 
         self.assertEqual(result.returncode, 0)
-        self.assertEqual(result.stderr, "")
         self.assertEqual(_names(result), ["ok.py"])
+        self.assertIn("broken.py", result.stderr)
+
+    def test_a_named_pipe_is_skipped_rather_than_read(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _touch(root, "ok.py")
+            os.mkfifo(root / "pipe.py")
+
+            result = _run(str(root))
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(_names(result), ["ok.py"])
+        self.assertIn("pipe.py", result.stderr)
+
+    def test_a_name_carrying_a_line_break_is_skipped(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _touch(root, "ok.py")
+            _touch(root, "two\nlines.py")
+
+            result = _run(str(root))
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(len(result.stdout.splitlines()), 1)
+        self.assertIn("line break", result.stderr)
+
+    @unittest.skipIf(os.geteuid() == 0, "root can list any directory")
+    def test_an_unlistable_directory_is_named_on_stderr_and_the_rest_listed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _touch(root, "ok.py")
+            _touch(root, "locked/hidden.py")
+            os.chmod(root / "locked", 0o000)
+            try:
+                result = _run(str(root))
+            finally:
+                os.chmod(root / "locked", 0o755)
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(_names(result), ["ok.py"])
+        self.assertIn("cannot list", result.stderr)
 
 
 class Ordering(unittest.TestCase):
@@ -131,13 +182,13 @@ class Usage(unittest.TestCase):
         self.assertEqual(result.stdout, "")
         self.assertIn("usage:", result.stderr)
 
-    def test_a_path_that_is_not_a_directory_exits_two_rather_than_reading_as_empty(self) -> None:
+    def test_an_absent_path_exits_two_rather_than_reading_as_empty(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             result = _run(str(Path(tmp) / "absent"))
 
         self.assertEqual(result.returncode, EXIT_USAGE)
         self.assertEqual(result.stdout, "")
-        self.assertIn("not a directory", result.stderr)
+        self.assertIn("neither a directory nor a file", result.stderr)
 
     def test_an_empty_tree_exits_zero_with_empty_output(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

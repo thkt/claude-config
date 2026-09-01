@@ -467,7 +467,7 @@ log(
 // ---- Report: レポート出力 (構成は prompt に内包し template を持たない) ----
 phase("Report");
 const focusNote = focus.length
-  ? `この実行は focus [${focus.join(", ")}] で対象を ${scanned.length}/${detect.drs.length} DR に絞っている。Summary の直後にその旨を 1 行で明記する。\n\n`
+  ? `この実行は focus [${focus.join(", ")}] で対象を ${scanned.length}/${detect.drs.length} DR に絞っている。「## Summary」見出しの直下、表の前にその旨を 1 行で明記する。\n\n`
   : "";
 const report = (await agent(
   anchor(

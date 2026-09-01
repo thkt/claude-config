@@ -28,7 +28,7 @@ argument-hint: "[file or directory]"
 
 ## Phase 2: 発掘
 
-検出事項は ${CLAUDE_SKILL_DIR}/templates/report-template.md の表の列で記録する。source 由来は Source File Decisions、doc 由来は Prose Document Decisions。Impact と Reversibility の列は Phase 4 で埋める。Evidence はコメント、命名、module-doc、commit のいずれかで、commit 由来は `commit <sha>` と書く。
+検出事項は ${CLAUDE_SKILL_DIR}/templates/report-template.md の表の列で記録する。source 由来は Source File Decisions、doc 由来は Prose Document Decisions。Impact と Reversibility の列は空けておき、タグ付けで埋める。Evidence はコメント、命名、module-doc、commit のいずれかで、commit 由来は `commit <sha>` と書く。
 
 ### Step 1: source から
 

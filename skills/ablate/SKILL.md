@@ -33,11 +33,11 @@ python3 skills/_lib/harness_elements.py .
 
 ## Phase 2: Run the arms
 
-For each element, look up its row in the table in `${CLAUDE_SKILL_DIR}/references/measurement-criteria.md` and take the Trigger task ID and the Task. An element with no row goes to Phase 3 with `trigger_task` null.
+For each element, look up its row in the table in `${CLAUDE_SKILL_DIR}/references/measurement-criteria.md` and take the Trigger task ID and the Task. An element with no row keeps `trigger_task` null in its observation.
 
 For an element with a row, build the command with `arms.arm_command(arm, task, element, root)` for each arm in `arms.ARMS` and run it `arms.RUN_COUNT` times. For each wiped-arm run, read the transcript and mark True when it honors the element's directive, False when it does not. A run whose result cannot be read stays out of `runs`.
 
-One observation per element.
+One observation per element, all written into one JSON array file.
 
 | Key            | Value                                                            |
 | -------------- | ---------------------------------------------------------------- |
@@ -45,8 +45,6 @@ One observation per element.
 | `trigger_task` | The table's Trigger task ID, or null when the element has no row |
 | `task_set`     | The Trigger task IDs run in this session                         |
 | `runs`         | One True / False per wiped-arm run, readable runs only           |
-
-Write every element's observation into one JSON array file.
 
 ## Phase 3: Report
 
