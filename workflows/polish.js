@@ -219,7 +219,7 @@ if (mode !== "cleanup") {
   const codexResult = await agent(
     anchor(
       `External Codex review stage. ${detectNote}\n` +
-        `Then check \`which codex\`. If missing, return available: false with empty findings.\n` +
+        `Then check \`which codex\`. If missing, return available: false with empty findings. If codex reports that it cannot initialize its app-server client (a sandbox denial), rerun the command once with dangerouslyDisableSandbox.\n` +
         `When diff_kind is branch, run \`codex review --base ${base}\` with no PROMPT. codex rejects a scope flag (--uncommitted / --base / --commit) combined with the PROMPT argument (confirmed through 0.152.0), so the simplicity lens falls back to Codex's default lens for a branch diff.\n` +
         `Otherwise run \`codex review "Review for logic, architecture, data flow, and code simplicity (flag over-complexity and unnecessary indirection)"\`. Pass no scope flag when sending the PROMPT (Codex reads git status itself). Omitting the PROMPT drops the simplicity lens, so always pass it for uncommitted.\n` +
         `Structure the output into findings. Assign ids F1, F2, ..., and copy Codex's P1/P2/P3 as severity (judge from impact when absent). ` +

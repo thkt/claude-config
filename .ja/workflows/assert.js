@@ -401,10 +401,10 @@ try {
   phase("Evidence");
   const fileList = boot.scope_files.join("\n");
   const testRunRaw =
-    `assert の test 実行段階を担当する。プロジェクトの test コマンドを検出し、\`codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} "Run the project test command. Report: (1) test exit code and last 50 lines of stderr if non-zero, (2) test summary (total/passed/failed)." </dev/null\` で 1 回だけ実行する。timeout バイナリで包まず、Bash tool の timeout パラメータを 600000 にする (macOS に timeout バイナリは無い)。` +
+    `assert の test 実行段階を担当する。プロジェクトの test コマンドを検出し、\`codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} "Run the project test command. Report: (1) test exit code and last 50 lines of stderr if non-zero, (2) test summary (total/passed/failed)." </dev/null\` で 1 回だけ実行する。timeout バイナリで包まず、Bash tool の timeout パラメータを 600000 にする (macOS に timeout バイナリは無い)。codex が app-server client を初期化できないと報告したら (sandbox の拒否)、dangerouslyDisableSandbox で 1 回だけ再実行する。` +
     `build は bootstrap 済みなので再実行しない。test runner が見つからなければ outcome: no-runner、timeout やその他の実行不能は outcome: skipped とし notes に理由を書く。修正はしない。`;
   const adversarialRaw =
-    `assert の adversarial testing 段階を担当する。\`codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} --approve-for-me "<prompt>" </dev/null\` を実行する。timeout バイナリで包まず、Bash tool の timeout パラメータを 600000 にする (macOS に timeout バイナリは無い)。<prompt> は次の英文をそのまま使い、Target files に対象一覧を埋める。\n` +
+    `assert の adversarial testing 段階を担当する。\`codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} --approve-for-me "<prompt>" </dev/null\` を実行する。timeout バイナリで包まず、Bash tool の timeout パラメータを 600000 にする (macOS に timeout バイナリは無い)。codex が app-server client を初期化できないと報告したら (sandbox の拒否)、dangerouslyDisableSandbox で 1 回だけ再実行する。<prompt> は次の英文をそのまま使い、Target files に対象一覧を埋める。\n` +
     `---\n` +
     `You are an adversarial tester. Your goal is to find bugs by writing tests that the original developer likely missed.\n\nTarget files:\n${fileList}\n\n` +
     `Instructions:\n1. Read each target file and understand its behavior\n2. Generate edge-case tests targeting:\n   - Boundary values (empty, zero, max, off-by-one)\n   - Error paths (invalid input, null/nil equivalents, failure modes)\n   - Input validation gaps (special characters, injection, overflow)\n   - State transitions (concurrent access, race conditions if applicable)\n   - Implicit assumptions (hardcoded limits, timezone, locale)\n3. Write tests using the project's existing test framework and naming convention\n4. Place tests following the project's test directory and file-naming convention\n5. Run the tests\n6. Report results in this exact format:\n\nADVERSARIAL_RESULTS_START\ntest_name: <name>\ntarget: <file:line being tested>\nassertion: <what the test asserts>\nresult: PASS | FAIL\nfailure_detail: <error message if FAIL>\n---\n(repeat for each test)\nADVERSARIAL_RESULTS_END\n` +
@@ -538,7 +538,7 @@ try {
       codexReview = await agent(
         anchor(
           `assert の Codex 静的 review 段階を担当する。${codexScopeInstr}\n` +
-            `出力を findings に構造化する。severity は Codex の P1/P2/P3 を写し (無ければ影響度から判定する)、file:line が特定できない指摘と scope 外の指摘は落とす。codex が失敗したら ran: false とし notes に理由を書く。`,
+            `出力を findings に構造化する。severity は Codex の P1/P2/P3 を写し (無ければ影響度から判定する)、file:line が特定できない指摘と scope 外の指摘は落とす。codex が app-server client を初期化できないと報告したら (sandbox の拒否)、dangerouslyDisableSandbox で 1 回だけ再実行する。codex が失敗したら ran: false とし notes に理由を書く。`,
         ),
         {
           agentType: "general-purpose",

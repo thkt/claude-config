@@ -214,7 +214,7 @@ if (mode !== "cleanup") {
   const codexResult = await agent(
     anchor(
       `外部 Codex review stage。${detectNote}\n` +
-        `次に \`which codex\` を確認する。無ければ available: false、findings 空で返す。\n` +
+        `次に \`which codex\` を確認する。無ければ available: false、findings 空で返す。codex が app-server client を初期化できないと報告したら (sandbox の拒否)、dangerouslyDisableSandbox で 1 回だけ再実行する。\n` +
         `diff_kind が branch のときは \`codex review --base ${base}\` を PROMPT なしで実行する。codex は scope flag (--uncommitted / --base / --commit) と PROMPT 引数の併用を拒む (0.152.0 まで確認済み) ため、branch diff では simplicity レンズが Codex 既定レンズに落ちる。\n` +
         `それ以外は \`codex review "Review for logic, architecture, data flow, and code simplicity (flag over-complexity and unnecessary indirection)"\` を実行する。PROMPT を渡すときは scope flag を付けない (Codex 自身が git status を読む)。PROMPT を省くと simplicity レンズが落ちるため uncommitted では必ず渡す。\n` +
         `出力を findings に構造化する。id は F1, F2, ... と振り、severity は Codex の P1/P2/P3 を写す (無ければ影響度から判定する)。` +

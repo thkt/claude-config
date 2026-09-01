@@ -405,9 +405,10 @@ try {
   const fileList = boot.scope_files.join("\n");
   const testRunRaw =
     `You handle the test run stage of assert. Detect the project's test command and run it exactly once via \`codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} "Run the project test command. Report: (1) test exit code and last 50 lines of stderr if non-zero, (2) test summary (total/passed/failed)." </dev/null\`. Set the Bash tool's timeout parameter to 600000 instead of wrapping the command in a timeout binary, which macOS does not ship. ` +
+    `If codex reports that it cannot initialize its app-server client (a sandbox denial), rerun the command once with dangerouslyDisableSandbox. ` +
     `The build already ran in bootstrap; do not rerun it. If no test runner is found, outcome: no-runner; on timeout or any other inability to run, outcome: skipped with the reason in notes. Do not fix anything.`;
   const adversarialRaw =
-    `You handle the adversarial testing stage of assert. Run \`codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} --approve-for-me "<prompt>" </dev/null\`. Set the Bash tool's timeout parameter to 600000 instead of wrapping the command in a timeout binary, which macOS does not ship. Use the following English text verbatim as <prompt>, with the target list filled into Target files.\n` +
+    `You handle the adversarial testing stage of assert. Run \`codex exec -c sandbox_workspace_write.network_access=true -C ${boot.worktree_path} --approve-for-me "<prompt>" </dev/null\`. Set the Bash tool's timeout parameter to 600000 instead of wrapping the command in a timeout binary, which macOS does not ship. If codex reports that it cannot initialize its app-server client (a sandbox denial), rerun the command once with dangerouslyDisableSandbox. Use the following English text verbatim as <prompt>, with the target list filled into Target files.\n` +
     `---\n` +
     `You are an adversarial tester. Your goal is to find bugs by writing tests that the original developer likely missed.\n\nTarget files:\n${fileList}\n\n` +
     `Instructions:\n1. Read each target file and understand its behavior\n2. Generate edge-case tests targeting:\n   - Boundary values (empty, zero, max, off-by-one)\n   - Error paths (invalid input, null/nil equivalents, failure modes)\n   - Input validation gaps (special characters, injection, overflow)\n   - State transitions (concurrent access, race conditions if applicable)\n   - Implicit assumptions (hardcoded limits, timezone, locale)\n3. Write tests using the project's existing test framework and naming convention\n4. Place tests following the project's test directory and file-naming convention\n5. Run the tests\n6. Report results in this exact format:\n\nADVERSARIAL_RESULTS_START\ntest_name: <name>\ntarget: <file:line being tested>\nassertion: <what the test asserts>\nresult: PASS | FAIL\nfailure_detail: <error message if FAIL>\n---\n(repeat for each test)\nADVERSARIAL_RESULTS_END\n` +
@@ -548,7 +549,7 @@ try {
       codexReview = await agent(
         anchor(
           `You handle the Codex static review stage of assert. ${codexScopeInstr}\n` +
-            `Structure the output into findings. Copy Codex's P1/P2/P3 as severity (judge from impact when absent), and discard findings without an identifiable file:line as well as findings outside the scope. If codex fails, set ran: false with the reason in notes.`,
+            `Structure the output into findings. Copy Codex's P1/P2/P3 as severity (judge from impact when absent), and discard findings without an identifiable file:line as well as findings outside the scope. If codex reports that it cannot initialize its app-server client (a sandbox denial), rerun the command once with dangerouslyDisableSandbox. If codex fails, set ran: false with the reason in notes.`,
         ),
         {
           agentType: "general-purpose",
