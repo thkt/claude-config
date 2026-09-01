@@ -48,10 +48,10 @@ One observation per element, all written into one JSON array file.
 
 ## Phase 3: Report
 
-Feed the observations JSON to the command below. `write_report` classifies each observation, holds back delete candidates a live DR governs, and folds in the fire counts from `usage_counts`. It writes `docs/audit/<YYYY-MM-DD>-<HHMMSS>-ablate.md` (UTC) in the section order of `${CLAUDE_SKILL_DIR}/templates/report-template.md`.
+Feed the observations JSON to the command below. `write_report` classifies each observation, holds back delete candidates a live DR governs, and folds in the fire counts from `usage_counts`. It writes `docs/audit/<YYYY-MM-DD>-<HHMMSS>-ablate.md` (UTC) in the section order of `${CLAUDE_SKILL_DIR}/templates/report-template.md`, and the command prints the written path.
 
 ```bash
-python3 -c 'import sys, json, pathlib; sys.path[:0] = ["skills/ablate/scripts", "skills/_lib"]; import report; print(report.write_report(pathlib.Path("."), json.load(sys.stdin)))' < <observations.json>
+python3 skills/ablate/scripts/report.py <observations.json>
 ```
 
 ## Output

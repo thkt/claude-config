@@ -48,10 +48,10 @@ observation は要素ごとに 1 件で、全要素を 1 つの JSON 配列フ�
 
 ## Phase 3: レポート
 
-observation の JSON を渡して次を走らせる。`write_report` が verdict の分類、DR ゲートによる保留、`usage_counts` の発火回数の合流を行い、`docs/audit/<YYYY-MM-DD>-<HHMMSS>-ablate.md` (UTC) を `${CLAUDE_SKILL_DIR}/templates/report-template.md` の節順で書く。
+observation の JSON を渡して次を走らせる。`write_report` が verdict の分類、DR ゲートによる保留、`usage_counts` の発火回数の合流を行い、`docs/audit/<YYYY-MM-DD>-<HHMMSS>-ablate.md` (UTC) を `${CLAUDE_SKILL_DIR}/templates/report-template.md` の節順で書き、このコマンドは書いたパスを表示する。
 
 ```bash
-python3 -c 'import sys, json, pathlib; sys.path[:0] = ["skills/ablate/scripts", "skills/_lib"]; import report; print(report.write_report(pathlib.Path("."), json.load(sys.stdin)))' < <observations.json>
+python3 skills/ablate/scripts/report.py <observations.json>
 ```
 
 ## Output
