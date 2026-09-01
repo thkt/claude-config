@@ -24,7 +24,7 @@ ${CLAUDE_SKILL_DIR}/scripts/validate-outcome.py .claude/OUTCOME.md を実行し�
 
 1. ${CLAUDE_SKILL_DIR}/templates/outcome.md を読む
 2. Behavior、Non-goals、Constraints の 3 項目を AskUserQuestion 1 回で各 1 問ずつ収集する。Behavior は 1 つ以上で主体を明示する
-3. 各 Behavior をアウトカムテストに通す。fail なら書き直してユーザーに再提示する
+3. 各 Behavior を `rules/core/OUTCOME.md` § Outcome test に通す。fail なら書き直してユーザーに再提示する
 4. テンプレートに流し込み、`.claude/OUTCOME.md` を Write。冒頭文と Indicators はどちらも収集しない。冒頭文を書かず、Indicators はセクションごと落とす
 5. validate-outcome.py を再実行し、`errors` が空になるまで直す。`placeholder_left` はプレースホルダの残り、`missing_section` は見出しの欠落
 
@@ -32,6 +32,6 @@ ${CLAUDE_SKILL_DIR}/scripts/validate-outcome.py .claude/OUTCOME.md を実行し�
 
 1. `.claude/OUTCOME.md` を読み、現状の各セクションを提示する。生成時に落とした冒頭文と Indicators は、未記入であることを示す
 2. 変更するセクションとその内容を AskUserQuestion で確認する。冒頭文と Indicators を足せるのはこの経路だけ
-3. 変更後の Behavior をアウトカムテストに通してから Edit する
+3. 変更後の Behavior を `rules/core/OUTCOME.md` § Outcome test に通してから Edit する
 4. validate-outcome.py を再実行し、`errors` が空であることを確認する
 5. `warnings` に `missing_indicator` があれば、その指標を足すかをユーザーに確認する。Indicators セクションを持ちながら Time/Error rate/Value のどれかを欠く状態を指す

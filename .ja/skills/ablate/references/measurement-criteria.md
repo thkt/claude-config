@@ -41,12 +41,12 @@ Phase 2 が各要素の観測を組む際と、`${CLAUDE_SKILL_DIR}/scripts/verd
 | `rules/development/TESTING.md`             | path-triggered  | `T-test-edit`       | 変わった振る舞いに対して、対象言語のテストファイルを追加、または編集する                        |
 | `rules/development/TIDYINGS.md`            | path-triggered  | `T-cleanup-pass`    | 本タスクの後、コミットの前に、編集したファイルへ加える片付けの一手                             |
 
-## `complies` が指すもの
+## `runs` が指すもの
 
-各観測の `complies` は、wiped アームの transcript が、起動タスクが発火させるその規則自身の指示を
-既に満たしているかを記録する。そこから verdict を決めるのは `verdict.classify` であり、この本文は
-その対応を繰り返さない。
+各観測の `runs` は、wiped アームの run ごとに、起動タスクが発火させるその規則自身の指示を transcript が
+守っていたかを True / False で記録する。`arms.judge_runs` がこれを `complies` へ畳み、`verdict.classify`
+が verdict を決める。この本文はその対応を繰り返さない。
 
-違反がそれ自体で keep になることはない。`arms.PASS_THRESHOLD` は `arms.RUN_COUNT` 回のうち何回が
-揃えば `complies` を定めるかを決めるだけなので、その違反が外した要素に起因するのか実行のばらつきか
-は人間が確認を挟む。
+違反がそれ自体で keep になることはない。`arms.RUN_COUNT` と `arms.PASS_THRESHOLD` は、何回の run が
+どれだけ揃えば `complies` を定めるかを決めるだけなので、その違反が外した要素に起因するのか実行の
+ばらつきかは人間が確認を挟む。

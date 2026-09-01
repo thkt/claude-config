@@ -45,6 +45,17 @@ A statement-of-fact config (`deny.toml`, `Cargo.toml`) is itself the single sour
 - For monolithic-boundary candidates, would the DR justify the status quo and reduce pressure to split?
 - Bug or invariant. If the current code is wrong and should change, surface it as a bug-fix follow-up, not a DR. If the current code is intentional and should be preserved, consider the DR. Never document wrong behavior as intentional.
 
+## Verdict mapping
+
+Map the verdict and weaknesses `critic-design` returns for one candidate by reading top to bottom and taking the first row that matches.
+
+| Condition                                                                                                           | Verdict                                                           |
+| ------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| verdict = needs_revision                                                                                            | `drop`                                                            |
+| verdict = weakened, and a weakness says config / types / lint / a test already holds the line, or the code is a bug | `drop`                                                            |
+| verdict = weakened (any other weakness)                                                                             | `downgrade`, naming the absorbing DR or the comment to strengthen |
+| verdict = confirmed                                                                                                 | `keep`                                                            |
+
 ## Verdict
 
 Only `keep` and `downgrade` with its target DR named become DRs. `drop` becomes no DR, and the verdict still lands in the report.

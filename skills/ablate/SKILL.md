@@ -9,47 +9,59 @@ argument-hint: "[element path]"
 
 # /ablate - one-sided harness ablation
 
+Run from the repository root. Every number and criterion the verdict rests on lives in a script, never in this body (`docs/wiki/deterministic-script-judgment.md`).
+
+| Criterion                                | Lives in                                                 |
+| ---------------------------------------- | -------------------------------------------------------- |
+| Arm list, run count, agreement threshold | `${CLAUDE_SKILL_DIR}/scripts/arms.py`                    |
+| Verdict table                            | `${CLAUDE_SKILL_DIR}/scripts/verdict.py`                 |
+| DR gate                                  | `${CLAUDE_SKILL_DIR}/scripts/dr_gate.py`                 |
+| Measurement window, rare-by-design set   | `${CLAUDE_SKILL_DIR}/scripts/usage_counts.py`            |
+| Trigger task per rule                    | `${CLAUDE_SKILL_DIR}/references/measurement-criteria.md` |
+
 ## Input
 
 `$ARGUMENTS` is an element path narrowing the measurement to one element. Omitted, every element Phase 1 enumerates is measured.
 
-## Where the criteria and thresholds live
-
-The arm list, the run count per arm, and the pass threshold are all constants in `${CLAUDE_SKILL_DIR}/scripts/arms.py`. The classification criteria live in `${CLAUDE_SKILL_DIR}/scripts/verdict.py`. The DR-gate criteria, the confirmed-unmet marker and where the records are read from, live in `${CLAUDE_SKILL_DIR}/scripts/dr_gate.py`. The measurement window and the rare-by-design set live in `${CLAUDE_SKILL_DIR}/scripts/usage_counts.py`. The per-rule trigger tasks and the fixed task set live in `${CLAUDE_SKILL_DIR}/references/measurement-criteria.md`. Do not copy a number into this body (`docs/wiki/deterministic-script-judgment.md`).
-
 ## Phase 1: Enumerate
 
-Call `enumerate_elements(root)` in `skills/_lib/harness_elements.py` for the harness elements and each one's classification. When `$ARGUMENTS` names an element path, hand Phase 2 that one alone.
+The command below prints the element list, one `{path, classification}` per element. When `$ARGUMENTS` is set, keep the one element whose path matches it.
 
 ```bash
-python3 -c 'import sys; sys.path.insert(0, "skills/_lib"); import harness_elements, json; print(json.dumps(harness_elements.enumerate_elements(".")))'
+python3 skills/_lib/harness_elements.py .
 ```
 
 ## Phase 2: Run the arms
 
-For each element Phase 1 returned, and each arm in `arms.ARMS`, assemble the command `arms.arm_command(arm, element)` returns and run it `arms.RUN_COUNT` times. Take that element's triggering task from `${CLAUDE_SKILL_DIR}/references/measurement-criteria.md`. Build one observation for that element out of the run results.
+For each element, look up its row in the table in `${CLAUDE_SKILL_DIR}/references/measurement-criteria.md` and take the Trigger task ID and the Task. An element with no row goes to Phase 3 with `trigger_task` null.
 
-| Situation                                     | Treatment                                                                     |
-| --------------------------------------------- | ----------------------------------------------------------------------------- |
-| The run count falls short of `arms.RUN_COUNT` | Proceed with `arms.measurement_status(runs)` still returning `unmeasured`     |
-| The element `wiped+1` restores is unsettled   | `arm_command` stops with ValueError, so settle the element before calling it  |
-| A run fails and its result cannot be read     | Leave that run uncounted and put only the runs that landed in the observation |
+For an element with a row, build the command with `arms.arm_command(arm, task, element, root)` for each arm in `arms.ARMS` and run it `arms.RUN_COUNT` times. For each wiped-arm run, read the transcript and mark True when it honors the element's directive, False when it does not. A run whose result cannot be read stays out of `runs`.
+
+One observation per element.
+
+| Key            | Value                                                            |
+| -------------- | ---------------------------------------------------------------- |
+| `path`         | The path from Phase 1                                            |
+| `trigger_task` | The table's Trigger task ID, or null when the element has no row |
+| `task_set`     | The Trigger task IDs run in this session                         |
+| `runs`         | One True / False per wiped-arm run, readable runs only           |
+
+Write every element's observation into one JSON array file.
 
 ## Phase 3: Report
 
-Call `report.write_report(root, observations)`. Before a delete candidate reaches the report, `dr_gate.gate` reads `docs/decisions/` and holds back any element a live record governs, so the Summary counts them apart. It also runs `usage_counts.py` and folds each element's fire count and last-used date into the same Harness Elements table, so there is one route to see them, not a second one running alongside it. It writes to `docs/audit/` by default, naming the file `<YYYY-MM-DD>-<HHMMSS>-ablate.md` in UTC, in the section order `${CLAUDE_SKILL_DIR}/templates/report-template.md` carries.
+Feed the observations JSON to the command below. `write_report` classifies each observation, holds back delete candidates a live DR governs, and folds in the fire counts from `usage_counts`. It writes `docs/audit/<YYYY-MM-DD>-<HHMMSS>-ablate.md` (UTC) in the section order of `${CLAUDE_SKILL_DIR}/templates/report-template.md`.
 
 ```bash
-python3 -c 'import sys; sys.path.insert(0, "skills/ablate/scripts"); sys.path.insert(0, "skills/_lib"); import report, json, pathlib; print(report.write_report(pathlib.Path("."), json.load(sys.stdin)))' < <observations.json>
+python3 -c 'import sys, json, pathlib; sys.path[:0] = ["skills/ablate/scripts", "skills/_lib"]; import report; print(report.write_report(pathlib.Path("."), json.load(sys.stdin)))' < <observations.json>
 ```
 
 ## Output
 
-Removing anything the report names is a separate run: hand the delete candidates to `docs/wiki/retire-rename-procedure.md`, which owns the detection layer a retirement loses and the trigger for reviving it. This skill stops at the verdict.
+This skill stops at the verdict. Removal is a separate run: hand the delete candidates to `docs/wiki/retire-rename-procedure.md`.
 
-| Item              | Content                                                           |
-| ----------------- | ----------------------------------------------------------------- |
-| Report path       | The path `write_report` returned                                  |
-| Delete candidates | The report's Delete Candidates section, or that there are none    |
-| Measured count    | Rows in Verdicts that are not `unmeasured`                        |
-| Usage             | Each element's fire count and last-used date, in Harness Elements |
+| Item              | Content                                                                            |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| Report path       | The path `write_report` returned                                                   |
+| Delete candidates | The report's Delete Candidates section, or that there are none                     |
+| Unmeasured        | The `unmeasured` rows in Verdicts, with the reason (no table row, or too few runs) |

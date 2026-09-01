@@ -51,9 +51,9 @@ test("the phase numbers the references cite exist in SKILL.md", async () => {
     const present = new Set([...skill.matchAll(/^## Phase (\d+):/gm)].map((m) => m[1]));
     for (const [name, paths] of Object.entries({ criteria, targets, templates })) {
       const doc = await readFile(paths[lang], "utf8");
-      for (const [, cited] of doc.matchAll(/Phase (\d+)/g)) {
-        assert.ok(present.has(cited), `${lang}: ${name} cites Phase ${cited}, which SKILL.md has`);
-      }
+      const cited = [...doc.matchAll(/Phase (\d+)/g)].map((m) => m[1]);
+      const missing = cited.filter((n) => !present.has(n));
+      assert.deepEqual(missing, [], `${lang}: ${name} cites only phases SKILL.md has`);
     }
   }
 });
@@ -100,9 +100,9 @@ test("the criteria path handed to a subagent names this skill's own copy", () =>
 test("the template carries the columns the mining step records", () =>
   eachLanguage(templates, (doc, lang) => {
     const header = doc.split("\n").find((line) => line.includes("Incomplete-contract?")) || "";
-    for (const col of ["Line", "Decision", "Evidence", "Documented?"]) {
-      assert.ok(header.includes(col), `${lang}: Source File Decisions carries ${col}`);
-    }
+    const columns = ["Line", "Decision", "Evidence", "Documented?"];
+    const missing = columns.filter((col) => !header.includes(col));
+    assert.deepEqual(missing, [], `${lang}: Source File Decisions carries every mining column`);
   }));
 
 // MARKDOWN.md § Do not forbids a paragraph immediately after a table.
@@ -110,8 +110,9 @@ test("the tally row sits before the DR Promotion Candidates table", () =>
   eachLanguage(templates, (doc, lang) => {
     const tally = doc.indexOf("keep {N} / downgrade {N} / drop {N}");
     const table = doc.search(/^\| #\s+\| Candidate/m);
-    assert.ok(tally >= 0 && table >= 0, `${lang}: both the tally row and the table are present`);
-    assert.ok(tally < table, `${lang}: the tally sits before the table`);
+    assert.notEqual(tally, -1, `${lang}: the tally row is present`);
+    assert.notEqual(table, -1, `${lang}: the candidates table is present`);
+    assert.equal(tally < table, true, `${lang}: the tally sits before the table`);
   }));
 
 // One pattern accepting either wording would pass when .ja carries the English phrase.

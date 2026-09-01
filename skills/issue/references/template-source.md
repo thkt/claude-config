@@ -2,7 +2,7 @@
 
 Settle where the skeleton of a filed issue comes from. Both `/issue` and `/slice` choose in this order. When one of them chooses differently, the same repository ends up with two shapes of body.
 
-Enumerate the templates via `gh api "repos/{owner}/{repo}/contents/.github/ISSUE_TEMPLATE" --jq '.[].name'`. Look for the skeleton matching the type by working down the table and take the first that answers. The repository's own comes first so that a web-UI filing and a CLI filing carry the same skeleton.
+Look under `<git-root>/.github/ISSUE_TEMPLATE/` for the skeleton matching the type. Work down the table and take the first file that exists. `hooks/pre-bash/issue_body_gate.py` runs the same lookup in the same order at filing time, so hand the file chosen here to `validate-issue-body.py` as it is. The repository's own comes first so that a web-UI filing and a CLI filing carry the same skeleton.
 
 The top two state the minimum the web UI asks someone to fill in. Adding sections at CLI filing time is not a deviation. A feature carries `Acceptance Criteria` and `Testing Decisions` even when the skeleton omits them. A bug carries `Steps to Reproduce` and `Expected vs Actual`. Those two live in `validate-issue-body.py`'s `FLOOR` per type, which adds them whatever the skeleton requires.
 

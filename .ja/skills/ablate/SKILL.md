@@ -9,47 +9,59 @@ argument-hint: "[要素のパス]"
 
 # /ablate - ハーネスの片側アブレーション
 
+リポジトリルートで実行する。判定に使う数値と基準はすべて script が持ち、この本文には書かない (`docs/wiki/deterministic-script-judgment.md`)。
+
+| 基準                           | 所在                                                     |
+| ------------------------------ | -------------------------------------------------------- |
+| アーム一覧、実行回数、合意閾値 | `${CLAUDE_SKILL_DIR}/scripts/arms.py`                    |
+| verdict の対応表               | `${CLAUDE_SKILL_DIR}/scripts/verdict.py`                 |
+| DR ゲート                      | `${CLAUDE_SKILL_DIR}/scripts/dr_gate.py`                 |
+| 計測窓、rare-by-design の集合  | `${CLAUDE_SKILL_DIR}/scripts/usage_counts.py`            |
+| 規則ごとの起動タスク           | `${CLAUDE_SKILL_DIR}/references/measurement-criteria.md` |
+
 ## Input
 
-`$ARGUMENTS` は測定対象を 1 つに絞る要素のパス。省略したときは Phase 1 が列挙した全要素を対象にする。
-
-## 判定と閾値の所在
-
-アームの一覧、1 アームあたりの実行回数、通過閾値はすべて `${CLAUDE_SKILL_DIR}/scripts/arms.py` の定数が持つ。分類の基準は `${CLAUDE_SKILL_DIR}/scripts/verdict.py` が持つ。DR ゲートの基準、未達の記録を表す印、記録を読む先は `${CLAUDE_SKILL_DIR}/scripts/dr_gate.py` が持つ。計測窓と rare-by-design の集合は `${CLAUDE_SKILL_DIR}/scripts/usage_counts.py` が持つ。規則ごとの起動タスクと固定タスクセットは `${CLAUDE_SKILL_DIR}/references/measurement-criteria.md` が持つ。この本文に数値を書き写さない (`docs/wiki/deterministic-script-judgment.md`)。
+`$ARGUMENTS` は測定対象を 1 つに絞る要素のパス。省略時は Phase 1 が列挙した全要素を対象にする。
 
 ## Phase 1: 列挙
 
-`skills/_lib/harness_elements.py` の `enumerate_elements(root)` を呼び、ハーネス要素とその分類を得る。`$ARGUMENTS` が要素のパスを指すときは、その 1 件だけを Phase 2 へ渡す。
+次のコマンドの出力が要素一覧で、1 件が `{path, classification}`。`$ARGUMENTS` がある場合は、その path の 1 件だけを残す。
 
 ```bash
-python3 -c 'import sys; sys.path.insert(0, "skills/_lib"); import harness_elements, json; print(json.dumps(harness_elements.enumerate_elements(".")))'
+python3 skills/_lib/harness_elements.py .
 ```
 
 ## Phase 2: アーム実行
 
-Phase 1 が返した要素それぞれについて、`arms.ARMS` の各アームで `arms.arm_command(arm, element)` が返す命令を組み、`arms.RUN_COUNT` 回実行する。その要素の起動タスクは `${CLAUDE_SKILL_DIR}/references/measurement-criteria.md` から取る。各 run の結果から、その要素についての観測 1 件を組む。
+要素ごとに、`${CLAUDE_SKILL_DIR}/references/measurement-criteria.md` の表からその要素の行を引き、Trigger task ID と Task を取る。行がない要素は observation の `trigger_task` を null にして Phase 3 へ渡す。
 
-| 状況                                  | 扱い                                                             |
-| ------------------------------------- | ---------------------------------------------------------------- |
-| run 数が `arms.RUN_COUNT` に届かない  | `arms.measurement_status(runs)` が `unmeasured` を返すまま進める |
-| `wiped+1` に渡す要素が決まらない      | `arm_command` が ValueError で止まるので、要素を確定してから呼ぶ |
-| 実行が失敗し結果を読めない run がある | その run を数えず、observation に届いた run 数だけを載せる       |
+行がある要素は、`arms.ARMS` の各アームについて `arms.arm_command(arm, task, element, root)` が返すコマンドを `arms.RUN_COUNT` 回走らせる。wiped アームの各 run について、その要素の指示を transcript が守っているかを読んで True/False を付ける。結果を読めなかった run は `runs` に入れない。
+
+observation は要素ごとに 1 件。
+
+| キー           | 値                                                      |
+| -------------- | ------------------------------------------------------- |
+| `path`         | Phase 1 の path                                         |
+| `trigger_task` | 表の Trigger task ID。行がなければ null                 |
+| `task_set`     | この実行で走らせた Trigger task ID の一覧               |
+| `runs`         | wiped アームの run ごとの True / False。読めた run のみ |
+
+全要素の observation を 1 つの JSON 配列ファイルに書く。
 
 ## Phase 3: レポート
 
-`report.write_report(root, observations)` を呼ぶ。削除候補がレポートへ届く前に `dr_gate.gate` が `docs/decisions/` を読み、生きている記録が支配する要素を保留するので、Summary はその件数を分けて数える。同時に `usage_counts.py` も実行し、各要素の発火回数と最終使用日を同じ Harness Elements 表へ組み込む。見る経路は 1 つで、別経路を並走させない。書き出し先の既定は `docs/audit/` で、ファイル名は UTC の `<YYYY-MM-DD>-<HHMMSS>-ablate.md`。節の順は `${CLAUDE_SKILL_DIR}/templates/report-template.md` が持つ。
+observation の JSON を渡して次を走らせる。`write_report` が verdict の分類、DR ゲートによる保留、`usage_counts` の発火回数の合流を行い、`docs/audit/<YYYY-MM-DD>-<HHMMSS>-ablate.md` (UTC) を `${CLAUDE_SKILL_DIR}/templates/report-template.md` の節順で書く。
 
 ```bash
-python3 -c 'import sys; sys.path.insert(0, "skills/ablate/scripts"); sys.path.insert(0, "skills/_lib"); import report, json, pathlib; print(report.write_report(pathlib.Path("."), json.load(sys.stdin)))' < <observations.json>
+python3 -c 'import sys, json, pathlib; sys.path[:0] = ["skills/ablate/scripts", "skills/_lib"]; import report; print(report.write_report(pathlib.Path("."), json.load(sys.stdin)))' < <observations.json>
 ```
 
 ## Output
 
-レポートが名指したものを実際に外すのは別の実行。削除候補は `docs/wiki/retire-rename-procedure.md` へ渡す。retire で失われる検出層と、それを復活させる判断トリガーはそちらが持つ。この skill は判定までで止まる。
+この skill は判定で止まる。削除は別の実行で、削除候補を `docs/wiki/retire-rename-procedure.md` へ渡す。
 
-| 項目           | 内容                                                |
-| -------------- | --------------------------------------------------- |
-| レポートのパス | `write_report` が返したパス                         |
-| 削除候補       | レポートの Delete Candidates 節。0 件のときはその旨 |
-| 測定できた数   | Verdicts 節のうち `unmeasured` でない行数           |
-| Usage          | 各要素の発火回数と最終使用日。Harness Elements 内   |
+| 項目           | 内容                                                                      |
+| -------------- | ------------------------------------------------------------------------- |
+| レポートのパス | `write_report` が返したパス                                               |
+| 削除候補       | レポートの Delete Candidates 節。0 件のときはその旨                       |
+| unmeasured     | Verdicts 節の `unmeasured` 行と、その理由 (表に行がない、または run 不足) |

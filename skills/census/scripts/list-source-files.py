@@ -2,6 +2,7 @@
 
 Usage: list-source-files.py <repo-root>
 Output: "<lines> <path>" per line.
+Exit: 0, or 3 when the count exceeds SOURCE_CAP (the list is still printed, and stderr says so).
 """
 
 import os
@@ -10,7 +11,13 @@ from collections.abc import Iterator
 from pathlib import Path
 
 EXTS = (".rs", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".go", ".swift")
-PRUNE = {"target", "node_modules", ".git"}
+# .ja is a translation mirror and counts as one element with its English side
+# (rules/conventions/MIRROR.md).
+PRUNE = {"target", "node_modules", ".git", "dist", "build", ".venv", "__pycache__", ".ja"}
+
+# Past this many files, Phase 1 asks the user to narrow the scope before the reviewer fan-out.
+SOURCE_CAP = 20
+EXIT_OVER_CAP = 3
 
 
 def source_files(root: str) -> Iterator[Path]:
@@ -42,6 +49,9 @@ def main() -> int:
             results.append((lines, str(path)))
     for lines, path in sorted(results, reverse=True):
         print(f"{lines} {path}")
+    if len(results) > SOURCE_CAP:
+        print(f"over cap: {len(results)} files exceed SOURCE_CAP={SOURCE_CAP}", file=sys.stderr)
+        return EXIT_OVER_CAP
     return 0
 
 

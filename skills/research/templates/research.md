@@ -79,12 +79,12 @@ Prior research: {slug of inherited file, or "none found"}
 
 ## Coverage Notes
 
-<!-- Phase 6 advisor outcome (or skip reason) and the Phase 7 coverage check. List questions noted as unknown and how to close them, tool disagreements from cross-method verification, and `unverified external claim` findings. -->
+<!-- Phase 6 critic-design verdict (or skip reason) and the Phase 7 coverage check. List questions noted as unknown and how to close them, tool disagreements from cross-method verification, and `unverified external claim` findings. -->
 
 - {unknown item and how to close it}
 - {tool disagreement, if any}
 - {unverified external claim, if any}
-- Advisor: {no missed area, or skip reason}
+- Challenge: {critic-design verdict, or skip reason}
 
 ## Next Steps
 

@@ -1,6 +1,6 @@
 ---
 name: research
-description: プロジェクトと技術的な質問を調査する。発見事項は結論ではなく、明示的なソース付きで反証にさらすべき主張として扱う。Phase 6 では統合が確定する前に advisor がそれへ反論する。設計計画や plan 生成には使わない (代わりに /think を使う)。
+description: プロジェクトと技術的な質問を調査する。発見事項は結論ではなく、明示的なソース付きで反証にさらすべき主張として扱う。Phase 6 では統合の前に critic-design が発見事項へ反論する。設計計画や plan 生成には使わない (代わりに /think を使う)。
 when_to_use: 調査して, 調べて, リサーチ, investigate, 分析して, issueやろう, issue見て, 横並びチェック, 類似パターン検出, refactor 横展開
 allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Agent AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) Bash(${CLAUDE_SKILL_DIR}/scripts/*)
 model: opus
@@ -9,8 +9,6 @@ argument-hint: "[research subject or question]"
 ---
 
 # /research - プロジェクト / 技術調査
-
-コードベースを調査し、発見事項をソース付きで記録する。実装は伴わない。
 
 ## 入力
 
@@ -58,9 +56,9 @@ finding が出そろったら ${CLAUDE_SKILL_DIR}/references/verification.md を
 
 ${CLAUDE_SKILL_DIR}/../../rules/core/OPERATION.md § Debug Investigation Protocol を適用してバグを消去する。root cause を確定したら ${CLAUDE_SKILL_DIR}/references/verification.md § Same-origin sweep を実施する。
 
-## Phase 6: Advisor 事前統合チェック
+## Phase 6: 統合前の反論
 
-パラメータなしで `advisor()` を起動する。advisor は会話履歴全体を参照する。見落とし領域や弱い推論を指摘されたら、Phase 4 に戻ってスコープを絞り直す。
+`Agent(subagent_type: critic-design)` を起動し、`$ARGUMENTS` の問いと Phase 4 の発見事項をソース付きで渡す。返る verdict と weaknesses は agent 定義が決める。weakness が見落とし領域や弱い推論を指すときは、Phase 4 に戻ってスコープを絞り直す。
 
 以下の条件がすべて成立するときのみ起動を省略し、その理由を出力に記録する。
 
@@ -94,7 +92,7 @@ ${CLAUDE_SKILL_DIR}/templates/research.md の骨格に従ってレポートを�
 | Cross-method      | Phase 4 | 網羅性主張に Cross-method 検証を実施した (該当する主張がある場合)                                                   |
 | 一次ソース        | Phase 4 | 動作を左右する外部仕様 claim に一次ソース検証を実施した、または unverified とマークした (該当する claim がある場合) |
 | Same-origin sweep | Phase 5 | Bug intent で root cause 確定時に sweep を実施した (該当する場合)                                                   |
-| advisor           | Phase 6 | advisor を起動した、または省略理由を記録した                                                                        |
+| 反論              | Phase 6 | critic-design を起動した、または省略理由を記録した                                                                        |
 | ソース            | Phase 7 | すべての発見事項に明示的なソース、または `unknown, requires X` 注記がある                                           |
 | triage            | Phase 7 | すべての次のアクションに紐付け先 (質問 / OUTCOME / incident) の明記、または「記録のみ」がある                       |
 | 保存              | Phase 8 | 出力を `.claude/workspace/research/` に保存した                                                                     |

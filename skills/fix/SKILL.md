@@ -46,7 +46,7 @@ Obvious skips both RCA and regression test generation, so it is limited to findi
 
 ## Reading the rules
 
-Once the files to change are settled, run `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <the bug's words> <the files to touch> --scene implement` before starting. Read every page under `matched`, since its rule bears on a file this fix touches. Read every page under `scenes` as well. This route never passes through `/think`, so this is the one place a rule reaches it; with no plan to carry them, there is no second chance.
+Once the files to change are settled, run `${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <the bug's words> <the files to touch> --scene implement` before starting. Read every page under `matched`, since its rule bears on a file this fix touches. Read every page under `scenes` as well. This route never passes through `/think`, so this is the one place a rule reaches it; with no plan to carry them, there is no second chance.
 
 ## Obvious
 
@@ -81,10 +81,10 @@ Branch on objective triggers, not confidence self-assessment. When delegating fr
 
 ## Error Handling
 
-| Error                  | Action                                 |
-| ---------------------- | -------------------------------------- |
-| resolver-build fails   | Present error, ask user for guidance   |
-| generator-test timeout | Skip regression test, proceed with fix |
+| Error                  | Action                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------- |
+| resolver-build fails   | Present error, ask user for guidance                                                        |
+| generator-test timeout | Skip the regression test, proceed with the fix, and state the skip in the completion report |
 
 ## Completion
 

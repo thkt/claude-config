@@ -26,19 +26,17 @@ argument-hint: "[task description]"
 1. 関連コードを読む。タスク、issue、調査レポートのいずれかがモック画像を参照しているなら、その画像も Read で開く。テキスト側に記載が無いことを、その要素が存在しない根拠にしない
 2. タスクの語から小文字ハイフン区切りの slug を作る。${CLAUDE_SKILL_DIR}/../research/scripts/find-prior-research.py <slug> .claude/workspace/research を実行する。標準出力の候補から該当するレポートを読み、各箇所を ${CLAUDE_SKILL_DIR}/references/research-report-intake.md の表のとおり扱う。候補が 0 件なら調査レポートは無いものとして進む
 3. reference_module の候補を探す。対象は画面の組か layer の組が一致する既存モジュールで、ドメインは問わない。もっとも近い 1 つを選び、他は名前を控える。結果は kind (module/no-module/new-shape) と理由で控える。一致が無ければ新規である理由を控える
-4. `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <触りそうなパス> --scene plan` を実行し、`matched` と `scenes` のページを読む。決まりごとは unit の切り方と files の選び方を決めるので、分割の後に読むと割り直しになる
+4. `${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <触りそうなパス> --scene plan` を実行し、`matched` と `scenes` のページを読む。決まりごとは unit の切り方と files の選び方を決めるので、分割の後に読むと割り直しになる
 5. 異なる視点 (動く最小解/構造と拡張性/開発体験) から 2 つ以上の案を生成する。独立した技術判断は 1 つの質問に束ねず、推奨とトレードオフを添えて別々に問う
-6. 案に `critic-design` を起動する。プロンプトにタスクのタイトルを一字一句そのまま含め、結果は `{ verdict: "GO" | "NO-GO", weaknesses: string[], actionable: string[] }` の JSON オブジェクト 1 つで返させる
-7. NO-GO は blocker をその場で解消してから進む。生き残った設計をトレードオフの根拠とともにユーザーに提示し、承認を待つ
+6. 案に `critic-design` を起動する。プロンプトにタスクのタイトルを一字一句そのまま含める。返る verdict (confirmed / weakened / needs_revision) と weaknesses は agent 定義が決める
+7. needs_revision は weaknesses をその場で解消してから進む。生き残った設計をトレードオフの根拠とともにユーザーに提示し、承認を待つ
 8. 承認後、技術判断に DR が必要か問う
 
 ## Phase 3: Plan 生成
 
-承認された設計を unit へ実装順で分解する。unit は独立して実装できる成果 1 つ分。結果は PLAN_SCHEMA 相当の JSON へ直列化する。
+承認された設計を unit へ実装順で分解する。unit は独立して実装できる成果 1 つ分。分解はテスト先行で行う。設計全体から受け入れテスト候補を列挙し、成果ごとにまとめる。そのまとまりが unit の単位になり、大きさもテストの数で決まる。結果は PLAN_SCHEMA 相当の JSON へ直列化する。
 
 `{ test_command, reference_module, units: [{ id, goal, contract, files: string[], tests: [{ id, name }], seam }] }`
-
-分解はテスト先行で行う。設計全体から受け入れテスト候補を列挙し、成果ごとにまとめる。そのまとまりが unit の単位になり、大きさもテストの数で決まる。
 
 1. reference_module を記録する。Phase 2 手順 3 の控えをそのまま写す (§ reference_module)
 2. test_command を決める (§ test_command)
@@ -53,7 +51,7 @@ argument-hint: "[task description]"
 11. non-seam unit の上限は files 3 つ、tests 4 個。seam unit の tests は unit 境界を跨ぐので files が増え、この上限の対象外になる。上限を超えた unit は成果を軸に分割し、生じた新しい unit 構成をユーザーと確認する。スコープ外へ切り出した候補は plan から外し、backlog candidates に回す。この上限の正は `workflows/build.js` の `UNIT_CAPS`。変更はこの記述と `UNIT_CAPS` を同一コミットで揃える
 12. tests を持つ unit が 2 つ以上なら、seam unit を 1 つだけ最後に置く。`seam: true` を付ける。unit ごとに green でも、unit どうしを繋ぐ配線は誰も通していない。seam の tests は unit 間の境界を跨いで実モジュールを動かし、その接続を assert する。ここでテストダブルへ置き換えてよいのはシステム外部との I/O に限る
 13. seam unit の files には、その接続を作る非テストファイルを 1 つ以上入れる。それを持つ unit を seam にし、step 12 に従って最後に置く。非テストファイルを持つ unit がいないときは、step 11 に従って unit を切り直す
-14. unit が出そろったら `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <units[].files を並べる> --scene plan` を実行する。Phase 2 で読んだ分との差を取る。`matched` の各ページは、引用するか、この plan には当たらない理由を散文に書くかのどちらかにする。`related` は語が重なるだけなので、引くときは当たる理由を添える。`scenes` の各ページは読む
+14. unit が出そろったら `${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <units[].files を並べる> --scene plan` を実行する。Phase 2 で読んだ分との差を取る。`matched` の各ページは、引用するか、この plan には当たらない理由を散文に書くかのどちらかにする。`related` は語が重なるだけなので、引くときは当たる理由を添える。`scenes` の各ページは読む
 15. 自己点検を通す。見るのは必須フィールドの欠落、id の重複、そして units、files、goal、contract の空。続けて ${CLAUDE_SKILL_DIR}/references/pre-write-check.md の書き出し前検証を通す。通ったら ${CLAUDE_SKILL_DIR}/templates/plan.md の骨格で `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md` に書き出す。slug はタイトルの小文字ハイフン区切り。`## Plan` と `## Backlog candidates` の両節を含める
 
 ### test_command
@@ -77,9 +75,7 @@ contract が引用できるのは 1 箇所の振る舞いだけなので、周�
 
 ### contract
 
-生成でなく選択で書く。散文で振る舞いを描いたりコード片を新造したりせず、contract は引用 + やりたいこと 1 行のセットにする。
-
-複数の unit に掛かる決まりごとは contract でなく `### 決まりごと` へ書く。引用できる出典が無い新規の形は signature を発明しない。形の決定は実装に委ね、受け入れテストが振る舞いを固定する。モックや設計資料が UI 文言を逐語で持つなら、出典のパスを添えてそのまま写す。対象はラベル、placeholder、ボタン名、選択肢名。
+生成でなく選択で書く。散文で振る舞いを描いたりコード片を新造したりせず、contract は引用 + やりたいこと 1 行のセットにする。複数の unit に掛かる決まりごとは contract でなく `### 決まりごと` へ書く。引用できる出典が無い新規の形は signature を発明しない。形の決定は実装に委ね、受け入れテストが振る舞いを固定する。モックや設計資料が UI 文言を逐語で持つなら、出典のパスを添えてそのまま写す。対象はラベル、placeholder、ボタン名、選択肢名。
 
 引用元は下表の上から順に探し、最初に見つかったものを採る。外部ライブラリは SOURCING.md に従う。
 

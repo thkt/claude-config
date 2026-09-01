@@ -76,7 +76,7 @@ def build_report(
         raw_verdict = verdict.classify(
             trigger_task=observation.get("trigger_task"),
             task_set=observation.get("task_set"),
-            complies=observation.get("complies"),
+            complies=arms.judge_runs(observation.get("runs", [])),
         )
         verdicts[path] = dr_gate.gate(path=path, verdict=raw_verdict, root=root)
 

@@ -50,10 +50,12 @@ commit なし、Git リポジトリでない、gh 認証失敗のいずれかを
 
 ## Base ブランチ検出
 
-分岐元を HEAD の reflog から取る。取れないか、それが HEAD の祖先でなければ origin の既定ブランチへ落とす。
+分岐元を HEAD の reflog から取る。1 つ目の出力 `checkout: moving from <base> to <branch>` の `<base>` を採る。出力が無いか、2 つ目が非 0 で終わる (HEAD の祖先でない) ときは 3 つ目の出力を採り、それも失敗したら main にする。
 
 ```bash
-BASE=$(git reflog --format='%gs' | grep "moving from .* to $(git branch --show-current)$" | tail -1 | sed 's/.*from \(.*\) to .*/\1/'); git merge-base --is-ancestor "$BASE" HEAD 2>/dev/null || BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'); BASE=${BASE:-main}
+git reflog --format=%gs --grep-reflog="moving from .* to $(git branch --show-current)$" -1
+git merge-base --is-ancestor <base> HEAD
+gh repo view --json defaultBranchRef --jq .defaultBranchRef.name
 ```
 
 ## UI 変更検出

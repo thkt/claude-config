@@ -1,6 +1,6 @@
 # Pre-writeout verification
 
-Referenced from /think Phase 3 step 8. Pass it once before writing the plan out.
+Referenced from /think Phase 3 step 15. Pass it once before writing the plan out.
 
 Verify from the same repository root as the build workflow's Revalidate; fix or drop any failing line. When `base:` names a branch other than the current checkout, verify file existence via `git cat-file -e <base>:<path>` instead of `test -f <path>`, and anchors via `git show <base>:<path> | ugrep -F '<pattern>'`.
 

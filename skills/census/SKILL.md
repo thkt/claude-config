@@ -9,17 +9,11 @@ argument-hint: "[file or directory]"
 
 # /census - DR gap audit
 
+Every criterion lives in ${CLAUDE_SKILL_DIR}/references/decision-criteria.md: impact / reversibility, the incomplete-contract definition, the DR-worth rule of thumb, the challenge angles, and the verdict mapping.
+
 ## Input
 
-`$ARGUMENTS` is an optional path naming the audit scope. What gets collected is set by the Phase 1 table. When scoped to a path, record the target in the report Summary's Scope row.
-
-## Criteria
-
-Every criterion lives in ${CLAUDE_SKILL_DIR}/references/decision-criteria.md. That file holds impact / reversibility, the incomplete-contract definition, the DR-worth rule of thumb, and the challenge angles.
-
-## Phase 1: Collect
-
-List source by running ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py with python3. Scan for docs using the file patterns in ${CLAUDE_SKILL_DIR}/references/detection-targets.md. When source exceeds the guideline of 20, confirm narrowing via AskUserQuestion before the Phase 2 reviewer fan-out. Options are a subdirectory, top-N, or a specific module. Where each stream looks is set by the table below.
+`$ARGUMENTS` is an optional path naming the audit scope. The table below sets what gets collected. When scoped to a path, record the target in the report Summary's Scope row.
 
 | $ARGUMENTS  | source          | doc                   |
 | ----------- | --------------- | --------------------- |
@@ -27,32 +21,38 @@ List source by running ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py with pyt
 | a directory | that path       | that subtree          |
 | a file      | that file alone | nothing               |
 
+## Phase 1: Collect
+
+1. Run `python3 ${CLAUDE_SKILL_DIR}/scripts/list-source-files.py <source>` to list source. Exit code 3 means the count exceeds the script's `SOURCE_CAP`. Narrow to a subdirectory, top-N, or one module via AskUserQuestion before Phase 2
+2. Find docs by the file patterns in ${CLAUDE_SKILL_DIR}/references/detection-targets.md
+
 ## Phase 2: Mine
 
-Record findings under the table columns in ${CLAUDE_SKILL_DIR}/templates/report-template.md, Source File Decisions for source and Prose Document Decisions for docs. Evidence is a comment, a name, a module-doc, or a commit, and a commit-derived one reads `commit <sha>`.
+Record findings under the table columns in ${CLAUDE_SKILL_DIR}/templates/report-template.md, Source File Decisions for source and Prose Document Decisions for docs. Leave the Impact and Reversibility columns for Phase 4. Evidence is a comment, a name, a module-doc, or a commit, and a commit-derived one reads `commit <sha>`.
 
 ### Step 1: From source
 
-Two streams feed this step, the code itself and the git history. Census runs `git log --follow --format='%h %s' -- <file>` over the history once and extracts commits containing decision verbs. The decision verb list is in ${CLAUDE_SKILL_DIR}/references/detection-targets.md. For the code, spawn the reviewer subagent matching each source file's language via Agent and have it answer the following.
+1. Per file, run `git log --follow --format='%h %s' -- <file>` and take the commits containing a decision verb from ${CLAUDE_SKILL_DIR}/references/detection-targets.md as candidates
+2. Per file, spawn a general-purpose Agent with the file path and the criteria file's incomplete-contract section, and have it answer the four questions below
 
 - Why does this file have this granularity and shape
 - Does it carry invariants or contracts unreadable from the code
 - Is there a comment or module-doc recording the rationale
-- Does it match the `incomplete-contract` pattern, where a comment states only the present state and omits the rule for future contributors
+- Does it match incomplete-contract, where a comment states only the present state and omits the rule for future contributors
 
 ### Step 2: From docs
 
-For each detected document, find sentences containing decision verbs; each match is a candidate.
+In each detected document, search with ugrep for sentences containing a decision verb; each match is a candidate.
 
 ## Phase 3: DR cross-reference
 
-Cross-reference every Phase 2 candidate against the existing DRs. Drop the covered ones and record the excluded count in the Summary as "DR-covered (excluded)". The cross-reference runs when a DR directory exists; without one, every candidate moves on to Phase 4 unchanged.
+When the DR directory exists (`<git-root>/docs/decisions/`, or `DR_DIR` when set), cross-reference every Phase 2 candidate against it. Drop the covered ones and record the count in the Summary as "DR-covered (excluded)". Without the directory, every candidate moves on to Phase 4 unchanged.
 
 ## Phase 4: Judge
 
 ### Step 1: Tagging and initial ranking
 
-Assign impact and reversibility to each candidate. Read the table top to bottom and take the first row that matches to decide whether it is promoted.
+Assign impact and reversibility to each candidate, then read the table top to bottom and take the first row that matches to decide promotion.
 
 | Condition                                          | Treatment                            |
 | -------------------------------------------------- | ------------------------------------ |
@@ -62,18 +62,14 @@ Assign impact and reversibility to each candidate. Read the table top to bottom 
 
 ### Step 2: Devil's Advocate Challenge
 
-1. Spawn `critic-design` via Agent with the initial promotion candidate list and ${CLAUDE_SKILL_DIR}/references/decision-criteria.md
-2. Take the verdict (confirmed / weakened / needs_revision) and weaknesses the agent returns. Its own definition decides what comes back
-3. Match those weaknesses against each candidate and assign keep / downgrade / drop from the table in the criteria file
-4. Record the assignment alongside the initial ranking
+Per promotion candidate, spawn `critic-design` via Agent with that candidate and ${CLAUDE_SKILL_DIR}/references/decision-criteria.md. Map the verdict it returns (confirmed / weakened / needs_revision) and its weaknesses to keep / downgrade / drop with the criteria file's mapping table. Record the result alongside the initial ranking.
 
 ## Phase 5: Emit the report
 
-Write into `docs/audit/`, naming the file with the output of `date -u +%Y-%m-%d-%H%M%S` followed by `-dr-gaps.md`. UTC keeps same-day reruns from colliding.
-
-1. Write it following ${CLAUDE_SKILL_DIR}/templates/report-template.md, substituting placeholders from findings
-2. Put a single repo-wide summary line `keep N / downgrade N / drop N` right before the DR Promotion Candidates table
-3. Print the candidate count and the DR promotion candidate count to the console
+1. Write into `docs/audit/`, naming the file with the output of `date -u +%Y-%m-%d-%H%M%S` followed by `-dr-gaps.md`. UTC keeps same-day reruns from colliding
+2. Substitute the placeholders in ${CLAUDE_SKILL_DIR}/templates/report-template.md from the findings
+3. Put the tally line `keep N / downgrade N / drop N` right before the DR Promotion Candidates table
+4. Print the candidate count and the DR promotion candidate count to the console
 
 ## Handoff
 

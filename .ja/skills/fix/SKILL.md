@@ -46,7 +46,7 @@ Obvious は RCA と regression test 生成の双方を省くため、誤修正�
 
 ## 決まりごとの参照
 
-修正するファイルが定まったら、着手の前に `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <バグの語> <触るファイル> --scene implement` を実行する。`matched` のページは今回触るファイルに効く決まりごとなので全て読んでから直す。`scenes` のページも読む。`/think` を通らないこの経路にも決まりごとが届くようにするための手順で、plan が無いぶん引くのはこの 1 回きりになる。
+修正するファイルが定まったら、着手の前に `${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <バグの語> <触るファイル> --scene implement` を実行する。`matched` のページは今回触るファイルに効く決まりごとなので全て読んでから直す。`scenes` のページも読む。`/think` を通らないこの経路にも決まりごとが届くようにするための手順で、plan が無いぶん引くのはこの 1 回きりになる。
 
 ## Obvious
 
@@ -84,7 +84,7 @@ RCA の起点は経路で変わる。下表に無い経路はバグ説明から�
 | エラー                      | 動作                                     |
 | --------------------------- | ---------------------------------------- |
 | resolver-build 失敗         | エラーを提示しユーザーに指示を仰ぐ       |
-| generator-test タイムアウト | regression test をスキップして修正を続行 |
+| generator-test タイムアウト | regression test を省いて修正を続け、省いたことを完了報告に書く |
 
 ## 完了条件
 

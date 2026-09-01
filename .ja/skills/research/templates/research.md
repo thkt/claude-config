@@ -79,12 +79,12 @@ Prior research: {引き継いだファイルの slug、または "none found"}
 
 ## カバレッジ注記
 
-<!-- Phase 6 advisor 結果 (または省略理由) と Phase 7 のカバレッジチェック。unknown と注記した質問と解消方法、cross-method 検証のツール不一致、`unverified external claim` の finding を列挙。 -->
+<!-- Phase 6 の critic-design verdict (または省略理由) と Phase 7 のカバレッジチェック。unknown と注記した質問と解消方法、cross-method 検証のツール不一致、`unverified external claim` の finding を列挙。 -->
 
 - {unknown 項目と解消方法}
 - {ツール不一致があれば記録}
 - {unverified external claim があれば記録}
-- Advisor: {見落とし領域なし、または省略理由}
+- 反論: {critic-design の verdict、または省略理由}
 
 ## Next Steps
 

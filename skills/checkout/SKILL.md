@@ -13,7 +13,7 @@ The manual counterpart of build's Branch stage. Both assemble the name by the sa
 
 ## Input
 
-`$ARGUMENTS` may contain context or a ticket number. Trim whitespace; if empty, analyze the Git changes alone. If non-empty, treat it as a hint for the branch name scope or ticket ID.
+`$ARGUMENTS` may contain context or a ticket number. Trim whitespace; if empty, analyze the Git changes alone. If non-empty, treat it as a hint for the branch name scope or ticket ID, and settle the name from it alone when there are no changes.
 
 ## Execution
 
@@ -27,8 +27,8 @@ Assemble the name and read the type per ${CLAUDE_SKILL_DIR}/references/branch-na
 
 ## Error Handling
 
-| Error             | Treatment                                                  |
-| ----------------- | ---------------------------------------------------------- |
-| No changes        | Do not create a branch; report that there are no changes   |
-| Branch exists     | Settle on another name and create that instead             |
-| No git repository | Do not create a branch; report that this is not a git repo |
+| Error                          | Treatment                                                  |
+| ------------------------------ | ---------------------------------------------------------- |
+| No changes and no `$ARGUMENTS` | Do not create a branch; report that there are no changes   |
+| Branch exists                  | Settle on another name and create that instead             |
+| No git repository              | Do not create a branch; report that this is not a git repo |

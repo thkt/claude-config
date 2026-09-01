@@ -10,14 +10,30 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "scripts"))
 sys.path.insert(0, str(HERE.parent.parent / "_lib"))
 
+import arms  # noqa: E402
 import dr_gate  # noqa: E402
 import report  # noqa: E402
 import verdict  # noqa: E402
+
+# build_report scans TRANSCRIPTS_ROOT on every call. Pointed at an empty directory here so no
+# test reads the real ~/.claude/projects tree.
+_EMPTY_TRANSCRIPTS = tempfile.TemporaryDirectory()
+_TRANSCRIPTS_PATCH = patch.object(report, "TRANSCRIPTS_ROOT", Path(_EMPTY_TRANSCRIPTS.name))
+
+
+def setUpModule() -> None:
+    _TRANSCRIPTS_PATCH.start()
+
+
+def tearDownModule() -> None:
+    _TRANSCRIPTS_PATCH.stop()
+    _EMPTY_TRANSCRIPTS.cleanup()
 
 
 def _write(root: Path, rel: str, content: str = "# content\n") -> Path:
@@ -48,7 +64,7 @@ Chosen option governs `{CANDIDATE_PATH}`.
 
 
 def _observations() -> list[dict]:
-    """One observation whose trigger_task/task_set/complies feed verdict.classify to
+    """One observation whose trigger_task/task_set/runs feed verdict.classify to
     DELETE_CANDIDATE (the same fixture values skills/ablate/tests/report_test.py's
     EndToEnd test uses), so the DR gate is the only thing standing between this element
     and the report's delete candidates."""
@@ -57,7 +73,7 @@ def _observations() -> list[dict]:
             "path": CANDIDATE_PATH,
             "trigger_task": "task-a",
             "task_set": {"task-a"},
-            "complies": True,
+            "runs": [True] * arms.RUN_COUNT,
         }
     ]
 

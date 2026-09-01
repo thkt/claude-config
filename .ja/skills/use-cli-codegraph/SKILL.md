@@ -10,15 +10,15 @@ user-invocable: false
 
 ## 使いどころ
 
-構造の問い合わせに限る。誰が X を呼ぶか、何が壊れるかといったシンボル単位の構造の問いを codegraph へ回し、自由記述の内容検索は Grep と Explore に残す。
+構造の問い合わせに限る。誰が X を呼ぶか、何が壊れるかといったシンボル単位の構造の問いを codegraph へ回し、自由記述の内容検索は ugrep と Explore に残す。
 
 | 問い                                       | ツール                                   |
 | ------------------------------------------ | ---------------------------------------- |
-| X を変えると何が壊れるか / 誰が X を呼ぶか | codegraph。Grep は構造をたどれない       |
+| X を変えると何が壊れるか / 誰が X を呼ぶか | codegraph。ugrep は構造をたどれない       |
 | シンボルの定義元と呼び出し元 / 先の経路    | codegraph node / explore                 |
 | 変更したファイルが影響するテスト           | codegraph affected                       |
-| 自由記述や文字列の内容検索                 | Grep / Explore。codegraph はシンボル単位 |
-| `.codegraph` index を持たないリポジトリ    | Grep / Explore。または init を促す       |
+| 自由記述や文字列の内容検索                 | ugrep / Explore。codegraph はシンボル単位 |
+| `.codegraph` index を持たないリポジトリ    | ugrep / Explore。または init を促す       |
 
 ## コマンド
 

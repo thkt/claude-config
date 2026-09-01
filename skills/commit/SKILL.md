@@ -19,7 +19,7 @@ The manual counterpart of the commit build's Code stage takes per unit. The subj
 
 1. Run `git status` and `git diff --staged` in parallel to read the staged changes
 2. Generate one message from the changes and `$ARGUMENTS` (§ Type Detection, § Rules)
-3. Run the commit directly via the sandbox-compatible commit
+3. Run the commit directly (§ Sandbox-Compatible Commit)
 
 ## Type Detection
 
@@ -43,7 +43,7 @@ Assemble the message as `<type>(<scope>): <subject>`. A breaking change takes a 
 
 | Part    | Rule                                                                             |
 | ------- | -------------------------------------------------------------------------------- |
-| Subject | 72 chars or fewer, imperative, lowercase, no trailing period     |
+| Subject | 72 chars or fewer, imperative, lowercase, no trailing period                     |
 | Body    | The why the diff cannot show, such as motivation or rationale. Omit when obvious |
 | Footer  | `BREAKING CHANGE:`, `Closes #123`, `Co-authored-by:`                             |
 

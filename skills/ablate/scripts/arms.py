@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Arm command construction and run-count judgment for the ablate skill.
+"""Arm command construction and run judgment for the ablate skill.
 
 Not a CLI entry point: skills/ablate/SKILL.md imports this module for the constants and
 functions below rather than shelling out to it (docs/wiki/deterministic-script-judgment.md
@@ -8,6 +8,9 @@ script constants, not as prose in SKILL.md).
 """
 
 from __future__ import annotations
+
+from collections.abc import Sequence
+from pathlib import Path
 
 # The three arms an ablation run compares (skills/ablate's unit goal). Held as a tuple so a
 # caller that needs "every arm" reads this constant instead of hand-copying the three names
@@ -23,45 +26,59 @@ ARMS = (WIPED, WIPED_PLUS_ONE, FULL_HARNESS)
 # (verified against https://docs.claude.com/en/docs/claude-code/cli-reference).
 BASE_COMMAND = ["claude", "--print", "--output-format", "json"]
 
-# How many times one arm is run before its result counts as measured. 5 is a provisional
-# floor against single-run noise; revisit once the first ablation run's variance is
-# measured (see skills/scribe/scripts/triage.py's COMMIT_CAP for the same provisional shape).
+# How many runs of the wiped arm judge_runs needs before it returns a verdict. 5 is a
+# provisional floor against single-run noise; revisit once the first ablation run's variance
+# is measured (see skills/scribe/scripts/triage.py's COMMIT_CAP for the same provisional
+# shape).
 RUN_COUNT = 5
 
-# The share of an arm's runs that must reproduce the harness-present behavior for the arm to
-# be judged passed. Held here per docs/wiki/deterministic-script-judgment.md so the number
-# lives in one script constant rather than in SKILL.md prose; wiring it into a pass/fail
-# verdict is deferred to the unit that scores run output, since that judgment needs a
-# comparison this module does not yet have (see this unit's reported deferred list).
+# The share of the wiped arm's runs that must agree before judge_runs sets compliance either
+# way. Below it the runs are noise, and judge_runs returns None so the element reads as
+# unmeasured rather than as a verdict picked from a split.
 PASS_THRESHOLD = 0.8
 
 UNMEASURED = "unmeasured"
-MEASURED = "measured"
 
 
-def arm_command(arm: str, element: str | None = None) -> list[str]:
-    """The CLI command for one arm.
+def arm_command(arm: str, task: str, element: str | None = None, root: Path | None = None) -> list[str]:
+    """The CLI command for one arm, with `task` as the prompt.
 
     wiped restricts settings loading to the project source alone (--setting-sources
     project), which is the ablation baseline. wiped+1 starts from that same baseline and
-    restores exactly one harness element by appending it to the system prompt
-    (--append-system-prompt), rather than reloading it through normal discovery — the
-    contract this unit implements: "wiped は --setting-sources project",
-    "復元は --append-system-prompt で作る". full-harness runs unmodified, with no
-    restricting flag, as the upper-bound comparison point.
+    restores exactly one harness element by appending the file's text to the system prompt
+    (--append-system-prompt), rather than reloading it through normal discovery, so the
+    element under test is the only difference between the two arms. full-harness runs
+    unmodified, with no restricting flag, as the upper-bound comparison point.
     """
     command = list(BASE_COMMAND)
     if arm in (WIPED, WIPED_PLUS_ONE):
         command += ["--setting-sources", "project"]
     if arm == WIPED_PLUS_ONE:
-        if element is None:
-            raise ValueError(f"arm {WIPED_PLUS_ONE!r} requires an element to restore")
-        command += ["--append-system-prompt", f"[ablate] restoring element: {element}"]
+        if element is None or root is None:
+            raise ValueError(f"arm {WIPED_PLUS_ONE!r} requires an element to restore and its root")
+        restored = (root / element).read_text(encoding="utf-8")
+        command += ["--append-system-prompt", f"# {element}\n\n{restored}"]
+    command.append(task)
     return command
 
 
-def measurement_status(runs: int) -> str:
-    """MEASURED once an arm has reached RUN_COUNT runs, otherwise UNMEASURED. Reads
-    RUN_COUNT from the module namespace (not a captured default) so lowering the constant
-    at runtime changes which already-collected run counts are reported as measured."""
-    return MEASURED if runs >= RUN_COUNT else UNMEASURED
+def judge_runs(runs: Sequence[bool]) -> bool | None:
+    """Folds one wiped arm's per-run compliance into the `complies` value verdict.classify
+    takes. Reads RUN_COUNT and PASS_THRESHOLD from the module namespace (not captured
+    defaults) so lowering either at runtime changes which run lists get a verdict.
+
+    | Condition                                    | Result |
+    | -------------------------------------------- | ------ |
+    | fewer than RUN_COUNT runs                    | None   |
+    | share of True runs >= PASS_THRESHOLD         | True   |
+    | share of False runs >= PASS_THRESHOLD        | False  |
+    | Anything else (the runs disagree)            | None   |
+    """
+    if len(runs) < RUN_COUNT:
+        return None
+    share = sum(1 for run in runs if run) / len(runs)
+    if share >= PASS_THRESHOLD:
+        return True
+    if 1 - share >= PASS_THRESHOLD:
+        return False
+    return None

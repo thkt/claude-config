@@ -22,6 +22,20 @@ import enforcer_map  # noqa: E402
 import harness_elements  # noqa: E402
 import report  # noqa: E402
 
+# build_report scans TRANSCRIPTS_ROOT on every call. Pointed at an empty directory here so no
+# test reads the real ~/.claude/projects tree.
+_EMPTY_TRANSCRIPTS = tempfile.TemporaryDirectory()
+_TRANSCRIPTS_PATCH = patch.object(report, "TRANSCRIPTS_ROOT", Path(_EMPTY_TRANSCRIPTS.name))
+
+
+def setUpModule() -> None:
+    _TRANSCRIPTS_PATCH.start()
+
+
+def tearDownModule() -> None:
+    _TRANSCRIPTS_PATCH.stop()
+    _EMPTY_TRANSCRIPTS.cleanup()
+
 
 def _write(root: Path, rel: str, content: str) -> Path:
     path = root / rel

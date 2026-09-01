@@ -1,6 +1,6 @@
 # 書き出し前検証
 
-/think の Phase 3 手順 6 から参照する。plan を書き出す前に 1 回だけ通す。
+/think の Phase 3 手順 15 から参照する。plan を書き出す前に 1 回だけ通す。
 
 build workflow の Revalidate と同じリポジトリルートで検証し、失敗した行は修正するか落とす。`base:` が現在の checkout と異なるブランチを指すときは、base ブランチ側の内容で検証する。ファイルの実在は `test -f <path>` の代わりに `git cat-file -e <base>:<path>` を使い、anchor は `git show <base>:<path> | ugrep -F '<pattern>'` を使う。
 

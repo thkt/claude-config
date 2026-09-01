@@ -26,19 +26,17 @@ Ground the approaches in the real code and existing research before making them.
 1. Read the relevant code. When the task, the issue, or a research report cites a mock image or screenshot, open that image file with Read as well. Absence from the text is not evidence the element does not exist
 2. Derive a lowercase hyphenated slug from the task's words and run ${CLAUDE_SKILL_DIR}/../research/scripts/find-prior-research.py <slug> .claude/workspace/research. Read the matching report from the candidates on stdout, and take each of its parts per the table in ${CLAUDE_SKILL_DIR}/references/research-report-intake.md. With no candidate, proceed as though no research report exists
 3. Search for the reference_module candidate: an existing module whose set of screens or layers matches the one being planned, in any domain. Pick the closest one and note the names of the others. Record the result as kind (module/no-module/new-shape) with a reason, and when none matches, note why this shape is new
-4. Run `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <the paths likely touched> --scene plan` and read the `matched` pages and `scenes` pages. A rule bears on how units are cut and which files they take, so reading it after the decomposition means cutting them again
+4. Run `${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <the paths likely touched> --scene plan` and read the `matched` pages and `scenes` pages. A rule bears on how units are cut and which files they take, so reading it after the decomposition means cutting them again
 5. Generate 2+ approaches from distinct perspectives (simplest thing that works / structure and extensibility / developer experience). Do not bundle independent technical decisions into one question; ask each separately with a recommendation and trade-offs
-6. Launch `critic-design` on the approaches. Include the task title verbatim in the prompt, and have it return a single JSON object `{ verdict: "GO" | "NO-GO", weaknesses: string[], actionable: string[] }`
-7. On NO-GO, resolve blockers inline before proceeding. Present the surviving design to the user with trade-off rationale, and wait for approval
+6. Launch `critic-design` on the approaches. Include the task title verbatim in the prompt. Its definition decides what comes back: a verdict (confirmed / weakened / needs_revision) and weaknesses
+7. On needs_revision, resolve the weaknesses inline before proceeding. Present the surviving design to the user with trade-off rationale, and wait for approval
 8. After approval, ask whether the technical decision needs a DR
 
 ## Phase 3: Plan Generation
 
-Decompose the approved design into units in implementation order. A unit is one independently implementable outcome. Serialize the result into PLAN_SCHEMA-equivalent JSON.
+Decompose the approved design into units in implementation order. A unit is one independently implementable outcome. Decompose tests-first: enumerate acceptance-test candidates from the whole design and group them per outcome. Each group becomes a unit, and its size follows from that test count. Serialize the result into PLAN_SCHEMA-equivalent JSON.
 
 `{ test_command, reference_module, units: [{ id, goal, contract, files: string[], tests: [{ id, name }], seam }] }`
-
-Decompose tests-first. Enumerate acceptance-test candidates from the whole design and group them per outcome. Each group becomes a unit, and its size follows from that test count.
 
 1. Record reference_module by copying over what Phase 2's step 3 noted (§ reference_module)
 2. Settle test_command (§ test_command)
@@ -53,7 +51,7 @@ Decompose tests-first. Enumerate acceptance-test candidates from the whole desig
 11. A non-seam unit's caps are 3 files and 4 tests. A seam unit's tests cross the unit boundary, so its file count legitimately grows and the caps do not apply to it. Split any unit over the caps along outcomes, and confirm the resulting new unit composition with the user. Candidates carved out of scope stay out of the plan and go to backlog candidates. `UNIT_CAPS` in `workflows/build.js` owns these numbers. Change this description and `UNIT_CAPS` in the same commit
 12. Once 2 or more units carry tests, place exactly one seam unit last and mark it `seam: true`. Every unit can be green while nothing has run the wiring that connects them. The seam unit's tests run the real modules across the unit boundary and assert that connection. Only I/O with external systems may be faked there
 13. A seam unit's files include at least one non-test file: the one that makes the connection. Make the unit carrying it the seam, and order it last per step 12. When no unit carries a non-test file, re-cut the units per step 11 until one does
-14. Once the units are settled, run `python3 ${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <the units[].files> --scene plan` and diff it against what Phase 2 read. Every page under `matched` is either cited or written off in the prose with the reason it does not bear on this plan. A page under `related` only shares a word, so state why it bears when citing one. Every page under `scenes` is read
+14. Once the units are settled, run `${CLAUDE_SKILL_DIR}/../scribe/scripts/find_wiki_rule.py docs/wiki <slug> <the units[].files> --scene plan` and diff it against what Phase 2 read. Every page under `matched` is either cited or written off in the prose with the reason it does not bear on this plan. A page under `related` only shares a word, so state why it bears when citing one. Every page under `scenes` is read
 15. Pass the self-check (missing required fields, duplicate ids, empty units / files / goal / contract) and the pre-writeout verification in ${CLAUDE_SKILL_DIR}/references/pre-write-check.md, then write the plan following the ${CLAUDE_SKILL_DIR}/templates/plan.md skeleton to `.claude/workspace/planning/YYYY-MM-DD-<slug>.plan.md`. The slug is the lowercase hyphenated title. Include both the `## Plan` and `## Backlog candidates` sections
 
 ### test_command
@@ -77,9 +75,7 @@ List existing dependencies only, each line repo-root-relative in one of two form
 
 ### contract
 
-Select, do not generate. Never sketch behavior in prose or invent new code fragments; a contract is a citation plus one intent line.
-
-A rule bearing across units goes in `### Rules`, not in a contract. For a new shape with no citable source, do not invent a signature: leave the shape to implementation and let the acceptance tests pin the behavior. When a mock or design document carries UI wording verbatim (labels, placeholders, button text, option names), copy it in with the source path attached.
+Select, do not generate. Never sketch behavior in prose or invent new code fragments; a contract is a citation plus one intent line. A rule bearing across units goes in `### Rules`, not in a contract. For a new shape with no citable source, do not invent a signature: leave the shape to implementation and let the acceptance tests pin the behavior. When a mock or design document carries UI wording verbatim (labels, placeholders, button text, option names), copy it in with the source path attached.
 
 Look for the source down the table below and take the first that answers. External libraries follow SOURCING.md.
 

@@ -1,6 +1,6 @@
 ---
 name: research
-description: Probe project and technical questions. Findings are positions to be challenged with explicit sources, not conclusions. Phase 6 advisor pass argues against the synthesis before it lands. Do NOT use for design planning or plan generation (use /think instead).
+description: Probe project and technical questions. Findings are positions to be challenged with explicit sources, not conclusions. Phase 6 spawns critic-design to argue against the findings before synthesis. Do NOT use for design planning or plan generation (use /think instead).
 when_to_use: 調査して, 調べて, リサーチ, investigate, 分析して, issueやろう, issue見て, 横並びチェック, 類似パターン検出, refactor 横展開
 allowed-tools: Bash(tree:*) Bash(git log:*) Bash(git diff:*) Bash(git show:*) Bash(wc:*) Bash(scout:*) Read LS Agent AskUserQuestion Bash(ugrep:*) Bash(bfs:*) Bash(codegraph:*) Bash(node:*) Bash(${CLAUDE_SKILL_DIR}/scripts/*)
 model: opus
@@ -9,8 +9,6 @@ argument-hint: "[research subject or question]"
 ---
 
 # /research - Project & Technical Investigation
-
-Investigate the codebase and record findings with sources, without implementation.
 
 ## Input
 
@@ -58,9 +56,9 @@ Once the findings are in, read ${CLAUDE_SKILL_DIR}/references/verification.md an
 
 Apply ${CLAUDE_SKILL_DIR}/../../rules/core/OPERATION.md § Debug Investigation Protocol to eliminate the bug, then once the root cause is confirmed, run ${CLAUDE_SKILL_DIR}/references/verification.md § Same-origin sweep.
 
-## Phase 6: Advisor Pre-Synthesis Check
+## Phase 6: Pre-Synthesis Challenge
 
-Invoke `advisor()` with no parameters. Advisor sees the full conversation history. If it flags a missed area or weak inference, return to Phase 4 to narrow the scoping.
+Spawn `Agent(subagent_type: critic-design)` with the `$ARGUMENTS` question and the Phase 4 findings with their sources. Its definition decides the verdict and weaknesses that come back. When a weakness names a missed area or a weak inference, return to Phase 4 and narrow the scoping.
 
 Skip the invocation only when all conditions hold, and record the skip reason in the output.
 
@@ -94,7 +92,7 @@ Not done until all are satisfied. An item whose Condition carries "(...)" is req
 | Cross-method      | Phase 4 | Cross-method verification performed for exhaustiveness claims (when such a claim exists)             |
 | Primary source    | Phase 4 | Primary-source verification run on load-bearing external claims, or marked unverified (when present) |
 | Same-origin sweep | Phase 5 | Sweep performed when Bug intent confirmed a root cause (when applicable)                             |
-| advisor           | Phase 6 | advisor invoked, or skip reason recorded                                                             |
+| Challenge         | Phase 6 | critic-design spawned, or skip reason recorded                                                       |
 | Source            | Phase 7 | Every finding has an explicit source or an `unknown, requires X` note                                |
 | Triage            | Phase 7 | Every Next Action states its linkage (question / OUTCOME / incident) or reads `record only`          |
 | Save              | Phase 8 | Output saved to `.claude/workspace/research/`                                                        |

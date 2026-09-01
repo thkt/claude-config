@@ -33,7 +33,6 @@ test("the mode tokens pr branches on are the ones pageshot emits", () => {
   }
 });
 
-
 // The order itself is checked. Matching sets in a swapped order change which template gets used.
 const PRIORITY = [
   ".github/pull_request_template.md",
@@ -67,7 +66,11 @@ test("the shared body rules carry the template priority in order", () => {
     found.forEach((idx, i) => {
       assert.ok(idx >= 0, `${lang}: the rules write ${PRIORITY[i]}`);
     });
-    assert.deepEqual(found, [...found].sort((a, b) => a - b), `${lang}: it keeps the order`);
+    assert.deepEqual(
+      found,
+      [...found].sort((a, b) => a - b),
+      `${lang}: it keeps the order`,
+    );
   }
 });
 
@@ -133,8 +136,16 @@ test("base detection reads the reflog and guards the result with an ancestor che
     assert.ok(block, `${lang}: the detection carries a bash block`);
     assert.match(block, /git reflog/, `${lang}: it reads the reflog`);
     assert.match(block, /--is-ancestor/, `${lang}: it guards the result against HEAD`);
-    assert.match(block, /symbolic-ref refs\/remotes\/origin\/HEAD/, `${lang}: it falls back`);
-    assert.match(block, /BASE=\$\{BASE:-main\}/, `${lang}: main is the last resort`);
+    assert.match(block, /gh repo view --json defaultBranchRef/, `${lang}: it falls back`);
+    // The commands stay within allowed-tools (git / gh / cat), so no grep or sed pipeline.
+    assert.doesNotMatch(block, /\|/, `${lang}: git and gh alone read the base, with no pipeline`);
+    const section =
+      skill(lang).match(/## Base (?:Branch Detection|ブランチ検出)([\s\S]*?)```bash/)?.[1] ?? "";
+    assert.match(
+      section,
+      lang === "ja" ? /main にする/ : /fall back to main/,
+      `${lang}: main is the last resort`,
+    );
   }
 });
 
@@ -159,6 +170,10 @@ test("the title rule lives with the shared writing rules, not in build.js", () =
     assert.match(rules, /^## (Title|タイトル)$/m, `${lang}: the rules carry a title section`);
     assert.match(rules, /feat:/, `${lang}: it names the prefix to strip`);
     const ship = read(at(lang, "workflows", "build.js"));
-    assert.doesNotMatch(ship, /Conventional Commits subject/, `${lang}: build.js states no title rule`);
+    assert.doesNotMatch(
+      ship,
+      /Conventional Commits subject/,
+      `${lang}: build.js states no title rule`,
+    );
   }
 });

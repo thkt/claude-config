@@ -50,10 +50,12 @@ If there are no commits, the directory is not a git repository, or gh auth fails
 
 ## Base Branch Detection
 
-Take the branch this one was cut from out of HEAD's reflog. Fall back to origin's default branch when that fails, or when the result is not an ancestor of HEAD.
+Take the branch this one was cut from out of HEAD's reflog. The first command prints `checkout: moving from <base> to <branch>`; take `<base>` from it. When it prints nothing, or the second command exits non-zero (the result is not an ancestor of HEAD), take the third command's output. When that fails too, fall back to main.
 
 ```bash
-BASE=$(git reflog --format='%gs' | grep "moving from .* to $(git branch --show-current)$" | tail -1 | sed 's/.*from \(.*\) to .*/\1/'); git merge-base --is-ancestor "$BASE" HEAD 2>/dev/null || BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'); BASE=${BASE:-main}
+git reflog --format=%gs --grep-reflog="moving from .* to $(git branch --show-current)$" -1
+git merge-base --is-ancestor <base> HEAD
+gh repo view --json defaultBranchRef --jq .defaultBranchRef.name
 ```
 
 ## UI Change Detection
@@ -85,7 +87,7 @@ Pass the body through `--body-file` rather than `--body`. A template-derived bod
 
 ## Pageshot Integration
 
-Call `Skill("use-workflow-pageshot")` with the current PR body string as input. The body must contain a `Preview URL: <URL>` line near the top and a `## How to Test` section as a numbered list. The skill returns a single mode line on stdout.
+Call `Skill("use-workflow-pageshot")` with the current PR body string as input. The body must contain a `Preview URL: <URL>` line near the top and a `## How to Test` section as a numbered list. The skill returns a single mode line.
 
 - `mode=screenshot artifact=<path>` / `mode=video artifact=<path>` display the path and advise dragging it into the PR description or first comment on GitHub
 - `mode=failed` report missing items, skip pageshot, and continue PR creation

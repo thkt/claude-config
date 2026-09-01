@@ -1,6 +1,6 @@
 ---
 name: challenge
-description: Two-phase challenge that judges whether a discovered problem is real and whether a proposed idea is usable. Phase 1 loops subagent verification and advisor judgment over evidence (OUTCOME.md + parallel subagents) to self-resolve design-tree branches. It asks the user only the irreversible branches that remain and proceeds on stated assumptions for the rest. Phase 2 spawns two critic-design subagents (internal attack / OUTCOME.md attack) as devil's advocate input. The verdict leads the output as a simple GO / NO-GO. Do NOT use for code review findings (use the audit workflow) or outcome assertion (use /assert which has built-in adversarial testing).
+description: Two-phase challenge that judges whether a discovered problem is real and whether a proposed idea is usable. Phase 1 runs a verification loop over evidence (OUTCOME.md + parallel subagents) to self-resolve design-tree branches. It asks the user only the irreversible branches that remain and proceeds on stated assumptions for the rest. Phase 2 spawns two critic-design subagents (internal attack / OUTCOME.md attack) as devil's advocate input. The verdict leads the output as a simple GO / NO-GO. Do NOT use for code review findings (use the audit workflow) or outcome assertion (use /assert which has built-in adversarial testing).
 when_to_use: devils advocate, 反論, チャレンジ, challenge, 叩いて, 穴探し, grill me, 壁打ち
 allowed-tools: Read LS Agent AskUserQuestion
 model: opus
@@ -21,20 +21,20 @@ Verify the proposal from evidence, then return only the unsettled questions to t
 
 ### Step 1: Settle the questions with evidence
 
-Every judgment below is decided by the table, never by advisor confidence.
+Every judgment below is decided by the table, never by confidence.
 
-| Subject               | Condition                                                                                                | Treatment when it holds                     | Treatment when it does not                                                       |
-| --------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------- |
-| A question            | Evidence settles it to one answer. One needing a choice, such as priority or scope, does not settle      | subagents verify its answer in parallel     | Send it unverified to the unsettled pile                                         |
-| A verified fact       | The targeted state already holds, or it contradicts the proposal. advisor opinion alone does not meet it | Skip Phase 2 and put the grounds in the Why | Proceed on the claims that still hold                                            |
-| An unsettled question | It is irreversible or high-impact                                                                        | Ask it via AskUserQuestion. Cap 7 questions | Proceed on the advisor hypothesis as an assumption, and keep them all in the Why |
+| Subject               | Condition                                                                                                      | Treatment when it holds                         | Treatment when it does not                                                |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------- |
+| A question            | Evidence settles it to one answer. One needing a choice, such as priority or scope, does not settle            | Explore subagents verify its answer in parallel | Send it unverified to the unsettled pile                                  |
+| A verified fact       | The targeted state already holds, or it contradicts the proposal. An opinion with no evidence does not meet it | Skip Phase 2 and put the grounds in the Why     | Proceed on the claims that still hold                                     |
+| An unsettled question | It is irreversible or high-impact                                                                              | Ask it via AskUserQuestion. Cap 7 questions     | Proceed on your hypothesis as an assumption, and keep them all in the Why |
 
 1. Read `.claude/OUTCOME.md`. If absent, infer the outcome from $ARGUMENTS and the conversation and confirm it via AskUserQuestion. The Phase 2 outcome attack uses it as its evaluation axis, so settle it rather than leaving it out
 2. List the open questions in the proposal and sort them by the table
-3. Run the verification loop. subagents verify the answers in parallel while advisor re-checks the sorting and names the next evidence
+3. Run the verification loop. Explore subagents verify the answers in parallel; after each round, re-sort the questions and name the evidence the next round needs
 4. Break when more evidence no longer changes the sorting. Cap 3 rounds. Send whatever the loop left unsettled to the unsettled pile
 5. Apply the table to the verified facts. When the treatment skips Phase 2, drop straight to the Output
-6. Have advisor attach a hypothesis plus reversibility and blast-radius to each unsettled question, then route them by the table
+6. Attach a hypothesis, its reversibility, and its blast radius to each unsettled question. Mark one `underspecified` when no one-sentence hypothesis can be stated. Then route them by the table
 
 ### Step 2: Build the handoff
 
@@ -54,7 +54,7 @@ Land the handoff on two critic-design, adversarially probing for holes.
 
 ### Step 1: Spawn the two
 
-Both spawn prompts carry the target title, the handoff, and the path of a design document like `ARCHITECTURE.md`. Omit the outcome Pass when no outcome is available. The table below decides what differs per Pass.
+Both spawn prompts carry the target title, the handoff, and the path of a design document like `ARCHITECTURE.md` when one exists. The table below decides what differs per Pass.
 
 | Pass                     | Target of the attack                           | Extra input   |
 | ------------------------ | ---------------------------------------------- | ------------- |
@@ -66,7 +66,7 @@ Both spawn prompts carry the target title, the handoff, and the path of a design
 
 ### Step 2: Reach the verdict
 
-Reconcile the weaknesses, drop the overlap, and aggregate the assumptions into VERDICT_SCHEMA `{ verdict, assumptions: [{ text, irreversible, underspecified }] }`. Apply the table below top to bottom and take the verdict of the first row that matches.
+Reconcile the two weakness lists and drop the overlap. Aggregate the questions Phase 1 Step 1 advanced on an assumption into `{ verdict, assumptions: [{ text, irreversible, underspecified }] }`. Apply the table below top to bottom and take the verdict of the first row that matches.
 
 | Condition                                                                         | Verdict                             |
 | --------------------------------------------------------------------------------- | ----------------------------------- |

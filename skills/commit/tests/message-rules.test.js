@@ -103,7 +103,7 @@ test("the repository is confirmed before the commit", async () => {
 test("every section a step cites exists", () =>
   eachLanguage((doc, lang) => {
     const cited = [...doc.matchAll(/§ ([^,)]+)/g)].map((m) => m[1].trim());
-    assert.equal(cited.length, 2, `${lang}: the generate step cites two sections`);
+    assert.equal(cited.length, 3, `${lang}: the execution steps cite three sections`);
     for (const name of cited) {
       assert.match(doc, new RegExp(`^## ${name}$`, "m"), `${lang}: ## ${name} exists`);
     }
