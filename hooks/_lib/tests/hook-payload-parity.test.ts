@@ -3,9 +3,10 @@
 // same payload the two must read out the same value (contract: docs/decisions/0112-adopt-
 // typescript-for-helper-scripts.md's Success Criteria, "the CLI contract does not change across
 // the migration; the first slice confirms it with a differential test diffing the Python and
-// TypeScript outputs"). hook_payload.ts is a Red-step scaffold, so every test here is expected
-// to fail against it until a later unit fills in the real parity implementation. No consumer
-// switches to hook_payload.ts in this unit -- hook_payload.py stays the one every hook imports.
+// TypeScript outputs"). The read path is what this slice diffs: field and editedFile, the two
+// every consumer reaches for. notify and deny write to stdout rather than returning, so their
+// parity moves with the first consumer that switches. No consumer switches here -- every hook
+// still imports hook_payload.py.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
