@@ -38,7 +38,8 @@ def fail(message: str) -> NoReturn:
 
 
 def git_paths(repo: str, args: list[str]) -> list[str]:
-    """-z 区切りの stdout をパスの一覧にする。-z は名前に空白や非 ASCII を含むパスの引用符を外す。"""
+    """-z 区切りの stdout をパスの一覧にする。-z は名前に空白や非 ASCII を含むパスの
+    引用符を外す。"""
     completed = subprocess.run(
         ["git", "-C", repo, *args, "-z"], capture_output=True, text=True, check=False
     )

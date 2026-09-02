@@ -126,7 +126,7 @@ class VerifyPrTest(unittest.TestCase):
         report = self.verify(title="[実装] サンプル機能を追加する")
         self.assertEqual(report["verdict"], "fail")
         self.assertTrue(
-            any("pull request title is 'Add the sample feature'" in str(b) for b in report["blockers"]),
+            any("title is 'Add the sample feature'" in str(b) for b in report["blockers"]),
             report["blockers"],
         )
 
