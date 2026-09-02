@@ -1,6 +1,6 @@
 # PREFLIGHT
 
-Confirm scope before implementation. Skip for questions / read-only / follow-up edits to same files / same-session plan continuation.
+Confirm scope before implementation. Skip for follow-up edits to the same files and same-session plan continuation.
 
 ## Outcome Reference
 
@@ -15,12 +15,9 @@ Read `.claude/OUTCOME.md` at task start and judge scope against the outcome. Ski
 
 ## Interpretation Clarity
 
-| Trigger                                              | Action                                                    |
-| ---------------------------------------------------- | --------------------------------------------------------- |
-| Interpretations differ and change the resulting work | List them all and wait for confirmation                   |
-| Interpretations differ but the work stays the same   | Decide it yourself, state the assumption, and proceed     |
-| Task intent is unclear                               | Name what is unclear and stop                             |
-| Issue URL or external spec referenced                | Present plan (changes, files, TODO) and wait for approval |
+| Trigger                               | Action                                                    |
+| ------------------------------------- | --------------------------------------------------------- |
+| Issue URL or external spec referenced | Present plan (changes, files, TODO) and wait for approval |
 
 ### How to ask
 

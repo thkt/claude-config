@@ -78,24 +78,28 @@ memory は次の 3 つをすべて満たすとき付与し、project スコー�
 
 ## 指摘の重要度
 
-reviewer- 系は `~/.claude/agents/_lib/finding-schema.md` の Severity (critical/high/medium/low) に従う。何を先に直すかは同ファイルの Disposition が持ち、値の一覧はそこにある。独自のゲート判定を返すエージェント (critic- 系の confirmed/disputed など) は自分の方式に従う。
+reviewer- 系は `agents/_lib/finding-schema.md` の Severity (critical/high/medium/low) に従う。何を先に直すかは `agents/_lib/finding-disposition.md` の Disposition が持ち、値の一覧はそこにある。独自のゲート判定を返すエージェント (critic- 系の confirmed/disputed など) は自分の方式に従う。
 
 ## 検出項目の追加可否
 
 検出項目を reviewer に持たせるのは、出力を読み流す人がその項目の捉える問題を見落とすときにする。読み流しても同じ問題に行き着くなら持たせない。
 
-この判断は reviewer が何を持つかを決めるもので、項目ごとに 1 回、定義を書く時点でかかる。`agents/_lib/finding-schema.md` § Calibration Filters は run が出した finding のどれを報告するかを決めるもので、finding ごとに 1 回、reviewer が走る時点でかかる。
+この判断は reviewer が何を持つかを決めるもので、項目ごとに 1 回、定義を書く時点でかかる。`agents/_lib/finding-disposition.md` § Calibration Filters は run が出した finding のどれを報告するかを決めるもので、finding ごとに 1 回、reviewer が走る時点でかかる。
 
 ## 参照記法
 
-相対パスの解決先は起動プロジェクトに依存する。
+相対パスの解決先は起動プロジェクトに依存する。agent 本文には dev tree と plugin install の両方で展開される変数が無い。`${CLAUDE_SKILL_DIR}` は skill 専用で、`${CLAUDE_PLUGIN_ROOT}` は plugin install でだけ展開され、dev tree では文字のまま残る。そのため同梱資産は plugin 形式で書き、下の文言どおりの代替文 1 文を導入段落の直後に置く。`tests/live-instructions.test.js` が代替文の有無と、裸の home 起点パスが無いことを検査する。
 
-| 形式                                         | 用途                   | 理由                                                     |
-| -------------------------------------------- | ---------------------- | -------------------------------------------------------- |
-| `skills: [skill-name]` frontmatter           | スキル内容の再利用     | preload 制御として起動時に全文がコンテキストへ注入される |
-| `~/.claude/skills/<skill>/references/foo.md` | 補足資料の遅延読み込み | cwd に依存せず Read で解決できる                         |
-| `skills/<skill>/references/foo.md`           | 避ける                 | cwd が `~/.claude` のときしか解決できない                |
-| `${CLAUDE_SKILL_DIR}`                        | 不可                   | スキル本文専用の変数                                     |
+> 下のパスが `${` のまま始まっているときは harness が変数を展開していないので、代わりに `~/.claude/` 配下の同じパスを読む。
+
+| 形式                                                                          | 用途                   | 理由                                                                 |
+| ----------------------------------------------------------------------------- | ---------------------- | -------------------------------------------------------------------- |
+| `skills: [skill-name]` frontmatter                                            | スキル内容の再利用     | preload 制御として起動時に全文がコンテキストへ注入される             |
+| `${CLAUDE_PLUGIN_ROOT}/agents/_lib/foo.md` を裸で                             | 同梱資産の遅延読み込み | plugin install で展開される。dev tree は代替文が `~/.claude/` へ送る |
+| `~/.claude/settings.json`, `~/.claude/cache/<file>`, `$HOME/.claude/history/` | 実行側のファイル       | 配布資産ではないので plugin でも同じパスが成り立つ                   |
+| `~/.claude/agents/_lib/foo.md` 単独                                           | 禁止                   | dev tree を指す。plugin install は別のコピーを読むか、何も読めない   |
+| `skills/<skill>/references/foo.md`                                            | 避ける                 | cwd が `~/.claude` のときしか解決できない                            |
+| `${CLAUDE_SKILL_DIR}`                                                         | 不可                   | スキル本文専用の変数                                                 |
 
 ## サイズ制限
 

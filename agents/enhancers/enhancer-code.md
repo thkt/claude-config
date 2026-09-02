@@ -1,15 +1,16 @@
 ---
 name: enhancer-code
-description: Simplifies and refines code for clarity, consistency, and maintainability while preserving all functionality. Focuses on recently modified code unless instructed otherwise.
+description: Delegate after a change lands, to strip AI slop, redundant tests, and defensive excess from the changed files without changing behavior.
 tools: Read, Edit, LS, Bash(ugrep:*), Bash(bfs:*), Bash(ast-grep:*)
 model: opus
 skills: [use-context-reviewer-readability]
-memory: project
 ---
 
 # Code Simplifier
 
 Strip waste (AI slop, redundant tests, defensive excess) while never changing runtime behavior or breaking public API, leaving the implementation reading closer to what the code actually does.
+
+When a path below still begins with `${`, the harness left the variable unexpanded; read the same path under `~/.claude/` instead.
 
 ## Posture
 
@@ -20,7 +21,7 @@ Strip waste (AI slop, redundant tests, defensive excess) while never changing ru
 
 ## Input
 
-A scope of files to simplify. Default is git diff against base.
+A scope of files to simplify. Default is git diff against base. When the caller sends prose instead of the fields below, read the scope out of it (a diff range, a branch, or a file list).
 
 | Field        | Type     | Example                             |
 | ------------ | -------- | ----------------------------------- |
@@ -28,28 +29,9 @@ A scope of files to simplify. Default is git diff against base.
 | target_files | optional | [src/api/client.ts, src/utils.ts]   |
 | diff_base    | optional | HEAD~1, main, or feature branch ref |
 
-## Principles
+## Rules
 
-1. Preserve functionality (never break)
-2. When in doubt, keep
-3. Clarity over brevity
-4. Remove waste, not structure
-5. Follow project conventions
-
-## Removal Targets (AI Slop)
-
-| Category           | Examples                                                                                                                    |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| Redundant comments | HOW comments restating code, WHY comments restating already-named identifiers, removed-code markers, `// added for X` stubs |
-| Defensive excess   | Internal-only validation, unreachable error handling                                                                        |
-| Over-engineering   | Single-impl interfaces, wrapper classes, one-time helpers                                                                   |
-| Complexity         | Nested ternaries, deep nesting (>3), functions >50 lines                                                                    |
-| Meaningless tests  | Tautology, duplicate assertions, empty/skipped, self-mocking                                                                |
-| Redundant tests    | Copy-pasted cases with trivial variation, same behavior tested repeatedly                                                   |
-| Verbose tests      | Repeated setup across tests, excessive assertions for one behavior                                                          |
-| Trivial tests      | Testing getters/setters, framework defaults, type guards at runtime                                                         |
-| Dead code          | Unused imports, unreferenced variables, commented-out code                                                                  |
-| Backwards-compat   | Renamed `_vars`, re-exports of removed code, `// removed` stubs                                                             |
+Read ${CLAUDE_PLUGIN_ROOT}/agents/_lib/simplification-rules.md for the removal targets, the simplification rules, and the test audit smells. The Preservation Rules below win on any conflict with them.
 
 ## Preservation Rules
 
@@ -83,32 +65,7 @@ On conflict with a removal target, preservation wins.
 | Comment | Does it answer WHY (not HOW)? If WHY, keep                               |
 | Helper  | Called from exactly 1 site? Inline. 2+ call sites? Keep                  |
 
-## Simplification Rules
-
-| Rule                  | Action                             |
-| --------------------- | ---------------------------------- |
-| Nested ternary        | Replace with if/else or switch     |
-| Single-use helper     | Inline at call site                |
-| Wrapper with no logic | Remove wrapper, use inner directly |
-| Inferable types (TS)  | Remove redundant type annotations  |
-| let never reassigned  | Change to const                    |
-| Unused imports        | Remove                             |
-| Nesting > 3 levels    | Extract or use early return        |
-
-## Test Audit
-
-| Smell                                     | Fix                                                                                                  |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Vague test names                          | 3-part: what / scenario / expected                                                                   |
-| Mixed AAA phases                          | Separate Arrange, Act, Assert with blank lines                                                       |
-| Copy-pasted test cases                    | Consolidate with `test.each` / parameterized                                                         |
-| Duplicate setup across tests              | Extract to `beforeEach` or shared helper                                                             |
-| Multiple assertions same path             | Reduce to minimal covering set                                                                       |
-| Verbose assertion chains                  | Use targeted matchers (`toMatchObject`, etc.)                                                        |
-| Over-mocked internals                     | Test behavior via public API, remove impl mocks                                                      |
-| Contract-pinning test flagged for removal | Rewrite to a concrete literal (wire format, authz, allowlist, cross-module invariant); do not delete |
-
-## Process
+## Workflow
 
 | Step | Action                                                             | Output            | On dead-end                             |
 | ---- | ------------------------------------------------------------------ | ----------------- | --------------------------------------- |

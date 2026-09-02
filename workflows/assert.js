@@ -580,7 +580,7 @@ try {
         () =>
           agent(
             anchor(
-              `As critic-evidence, verify the external Codex review findings. Base verdicts on positive evidence from tracing concrete execution paths, not intuition. Reference each finding by file:line, and attach execution-path evidence and a severity. The findings are as follows.\n${codexJson}`,
+              `As critic-evidence, verify the external Codex review findings. Base verdicts on positive evidence from tracing concrete execution paths, not intuition. Reference each finding by file:line, and attach execution-path evidence. The findings are as follows.\n${codexJson}`,
             ),
             {
               agentType: "critic-evidence",
