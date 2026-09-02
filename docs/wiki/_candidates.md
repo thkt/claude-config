@@ -66,6 +66,9 @@
 - skills 配下の Python を TypeScript へ移すとき、.github/workflows/test.yml の Node tests step は glob を手動で足さないと拾わない。Python 側は find なので .py を消せば自動で外れるが、.ts を足しても自動では入らない #615
 - exit 0 の hook の stdout print は単独では届かず hook_payload の notify (systemMessage/additionalContext) 経由が要る #618
 - settings.json で matcher 共通 command が if だけ Write/Edit に分かれる複数登録は重複でない #618
+- commitPostcondition 等の返り値は agent の自己申告でなく verifier report の head や実在する PR など検証済みの事実を根拠にする。判定できない commit を落とすと呼び出し元は分岐点以降のコミットを無かった扱いにする #623
+- haiku 等 agent 経由の relay に literal な sha を埋め込んだ shell command (git diff <sha>) を実行させると HEAD へ置き換えて実行されることがあるため、固定値は command 文字列でなく構造化 payload で渡す #623
+- PR タイトルは、取得できた issue タイトルから script が一意に決め、agent の作文に委ねない #623
 
 ## 棄却
 
