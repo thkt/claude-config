@@ -7,34 +7,42 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const sides = {
   ja: {
-    cal: join(root, ".ja", "agents", "_lib", "calibration-examples.md"),
+    cal: join(root, ".ja", "agents", "_lib", "calibration"),
     rev: join(root, ".ja", "agents", "reviewers"),
   },
   en: {
-    cal: join(root, "agents", "_lib", "calibration-examples.md"),
+    cal: join(root, "agents", "_lib", "calibration"),
     rev: join(root, "agents", "reviewers"),
   },
 };
 
-// Takes the section symbol and the owning reviewer from a heading of the form
-// "## CHX (reviewer-resilience)".
-const sectionsOf = (calPath) =>
-  new Map(
-    [...readFileSync(calPath, "utf8").matchAll(/^## ([A-Z0-9]+) \((reviewer-[a-z-]+)\)$/gm)].map(
-      (m) => [m[1], m[2]],
-    ),
-  );
+const mdFiles = (dir) =>
+  readdirSync(dir)
+    .filter((f) => f.endsWith(".md"))
+    .sort();
+
+// Takes the section symbol and the owning reviewer from each file's H1 of the form
+// "# CHX (reviewer-resilience)". The filename carries the same symbol.
+const sectionsOf = (calDir) => {
+  const out = new Map();
+  for (const file of mdFiles(calDir)) {
+    const m = readFileSync(join(calDir, file), "utf8").match(
+      /^# ([A-Z0-9]+) \((reviewer-[a-z-]+)\)$/m,
+    );
+    assert.ok(m, `${file} opens with a section heading`);
+    assert.equal(file, `${m[1]}.md`, `${file} is named after its symbol`);
+    out.set(m[1], m[2]);
+  }
+  return out;
+};
 
 // The section symbol a reviewer definition references. A reviewer with no Calibration section is
 // null.
 const refsOf = (revDir) => {
   const out = new Map();
-  for (const file of readdirSync(revDir).filter((f) => f.endsWith(".md"))) {
+  for (const file of mdFiles(revDir)) {
     const doc = readFileSync(join(revDir, file), "utf8");
-    // The symbol sits on opposite sides: "section SEC" in en and "の SEC セクション" in ja.
-    const m =
-      doc.match(/calibration-examples\.md[^\n]*?section ([A-Z0-9]+)/) ||
-      doc.match(/calibration-examples\.md[^\n]*?の ([A-Z0-9]+) セクション/);
+    const m = doc.match(/calibration\/([A-Z0-9]+)\.md/);
     out.set(file.replace(/\.md$/, ""), m ? m[1] : null);
   }
   return out;
@@ -73,11 +81,17 @@ test("every section has a reader", () => {
 // section broke this way and the section itself stopped being detectable.
 test("every top-level heading is a section heading", () => {
   for (const [lang, { cal }] of Object.entries(sides)) {
-    const doc = readFileSync(cal, "utf8").replace(/^```[a-z]*\n.*?^```/gms, "");
-    const strays = [...doc.matchAll(/^## (.+)$/gm)]
-      .map((m) => m[1])
-      .filter((h) => !/^[A-Z0-9]+ \(reviewer-[a-z-]+\)$/.test(h));
-    assert.deepEqual(strays, [], `${lang}: something other than a section heading floats`);
+    for (const file of mdFiles(cal)) {
+      const doc = readFileSync(join(cal, file), "utf8").replace(/^```[a-z]*\n.*?^```/gms, "");
+      const strays = [...doc.matchAll(/^# (.+)$/gm)]
+        .map((m) => m[1])
+        .filter((h) => !/^[A-Z0-9]+ \(reviewer-[a-z-]+\)$/.test(h));
+      assert.deepEqual(
+        strays,
+        [],
+        `${lang}: ${file}: something other than a section heading floats`,
+      );
+    }
   }
 });
 
@@ -85,10 +99,13 @@ test("every top-level heading is a section heading", () => {
 // while claiming to give the same calibration.
 test("the code examples match between ja and en", () => {
   const blocks = (p) => readFileSync(p, "utf8").match(/^```[a-z]*\n[\s\S]*?^```/gm) || [];
-  const ja = blocks(sides.ja.cal);
-  const en = blocks(sides.en.cal);
-  assert.equal(ja.length, en.length, "the code block counts match");
-  ja.forEach((block, i) => assert.equal(block, en[i], `code block ${i + 1} matches`));
+  assert.deepEqual(mdFiles(sides.ja.cal), mdFiles(sides.en.cal), "both sides hold the same files");
+  for (const file of mdFiles(sides.en.cal)) {
+    const ja = blocks(join(sides.ja.cal, file));
+    const en = blocks(join(sides.en.cal, file));
+    assert.equal(ja.length, en.length, `${file}: the code block counts match`);
+    ja.forEach((block, i) => assert.equal(block, en[i], `${file}: code block ${i + 1} matches`));
+  }
 });
 
 // A routed reviewer's findings are validated against audit.js's findingsSchema, whose severity
@@ -102,7 +119,7 @@ const routedReviewers = () => {
   return new Set([...block[1].matchAll(/"([a-z-]+)"/g)].map((m) => m[1]));
 };
 
-// DR-0078 has blast_radius replace severity for reviewer-resilience, so either names the scale.
+// reviewer-resilience takes its severity from blast radius scoring, so either names the scale.
 const SEVERITY_ROW = /^\|\s*(Severity|blast_radius)\s*\|/m;
 
 test("every reviewer audit routes to states the severity scale it answers on", () => {

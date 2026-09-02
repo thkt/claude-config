@@ -569,7 +569,7 @@ try {
         () =>
           agent(
             anchor(
-              `critic-evidence として、外部 Codex review の finding を検証する。直感ではなく、具体的な実行経路を辿った positive evidence に基づく。各 finding を file:line で参照し、実行経路の evidence と severity を与える。Findings は次のとおり。\n${codexJson}`,
+              `critic-evidence として、外部 Codex review の finding を検証する。直感ではなく、具体的な実行経路を辿った positive evidence に基づく。各 finding を file:line で参照し、実行経路の evidence を与える。Findings は次のとおり。\n${codexJson}`,
             ),
             {
               agentType: "critic-evidence",

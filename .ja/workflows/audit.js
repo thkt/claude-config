@@ -816,7 +816,7 @@ const [challenged, verified] = await parallel([
   () =>
     agent(
       anchor(
-        `critic-evidence として、これらの finding を検証する。直感ではなく、具体的な実行経路を辿った positive evidence に基づく。各 finding を file:line で参照し、実行経路の evidence と severity を与える。Findings は次のとおり。\n${fenced(findingsJson)}`,
+        `critic-evidence として、これらの finding を検証する。直感ではなく、具体的な実行経路を辿った positive evidence に基づく。各 finding を file:line で参照し、実行経路の evidence を与える。Findings は次のとおり。\n${fenced(findingsJson)}`,
       ),
       {
         agentType: "critic-evidence",

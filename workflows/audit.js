@@ -370,7 +370,7 @@ const findingsSchema = ({ withSourceIds = false } = {}) => ({
             type: "string",
             enum: ["must", "want", "imo", "nits"],
             description:
-              "what the reader does next, per agents/_lib/finding-schema.md § Disposition. Omit it to take the default",
+              "what the reader does next, per agents/_lib/finding-disposition.md § Disposition. Omit it to take the default",
           },
           disposition_reason: {
             type: "string",
@@ -671,7 +671,7 @@ const raw = await parallel(
   ),
 );
 const findings = raw.filter(Boolean).flatMap((r) => r.findings || []);
-// Pinned rather than derived from severity (agents/_lib/finding-schema.md § Disposition):
+// Pinned rather than derived from severity (agents/_lib/finding-disposition.md § Disposition):
 // assert's gate ignores severity, so a derived default would put nits on a blocking finding.
 // Derived from the schema, not hand-listed: a field the schema admits but this copy forgets is
 // silently dropped, which is the gap #425 closed. file / line / severity / summary are renamed on
@@ -829,7 +829,7 @@ const [challenged, verified] = await parallel([
   () =>
     agent(
       anchor(
-        `critic-evidence. Verify these findings by tracing concrete execution paths (positive evidence, not intuition). For each finding, reference it by file:line and supply the execution-path evidence plus a severity. The findings are as follows.\n${fenced(findingsJson)}`,
+        `critic-evidence. Verify these findings by tracing concrete execution paths (positive evidence, not intuition). For each finding, reference it by file:line and supply the execution-path evidence. The findings are as follows.\n${fenced(findingsJson)}`,
       ),
       {
         agentType: "critic-evidence",
