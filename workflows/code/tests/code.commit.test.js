@@ -83,13 +83,14 @@ test("runs the commit agent once per unit with commit: true and lists the unit i
     ["commit:U-1", "commit:U-2"],
     "the commit agent runs once per unit, in implementation order",
   );
+  // verify is unset here, so no verifier ran and the commits carry the agent's word alone.
   assert.deepEqual(
     result.commits,
     [
-      { unit: "U-1", subject: "feat: sample subject" },
-      { unit: "U-2", subject: "feat: sample subject" },
+      { unit: "U-1", subject: "feat: sample subject", verified: false },
+      { unit: "U-2", subject: "feat: sample subject", verified: false },
     ],
-    "the returned commits carries the unit id and subject",
+    "the returned commits carries the unit id, subject, and whether the verifier passed it",
   );
   assert.equal(result.anomalies.length, 0, "a successful commit creates no anomaly");
 });

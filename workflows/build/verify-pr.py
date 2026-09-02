@@ -7,17 +7,19 @@ field. build.js returns whatever url the Ship agent hands back; a url string is 
 evidence that a PR was created, that it is a draft, or that it targets the branch
 the build cut.
 
-stdin: JSON {branch, base_branch, repository, cwd}
+stdin: JSON {branch, base_branch, repository, cwd, title}
   One of repository or cwd is required, so gh knows which repository to ask.
   repository   "owner/name" of the GitHub repository; omit to let cwd select it
   branch       the head branch the build pushed
   base_branch  the base branch the PR must target
   cwd          optional absolute directory to run gh from
+  title        optional title the PR must carry: the string build.js settled from the
+               issue title. Omitted, the title goes unchecked
 
 stdout: JSON {verdict, classification, reason_codes, failure_route, blockers, ...}
   verdict pass only when gh returns a PR for the branch and every field below
-  matches: isDraft is true, baseRefName is base_branch, headRefName is branch, and
-  url is a non-empty string.
+  matches: isDraft is true, baseRefName is base_branch, headRefName is branch,
+  url is a non-empty string, and title is the given string when one was passed.
 exit 0 on a completed run (read the verdict from JSON). exit 1 on usage / parse
 error -- fail-closed: a malformed payload is never reported as a verified PR. A gh
 failure is a fail verdict, not an exit-1: the run completed and the answer is "no".
@@ -30,7 +32,7 @@ from pathlib import Path
 from typing import NoReturn
 
 PROTOCOL = "claude-build-ship/v1"
-FIELDS = "url,isDraft,baseRefName,headRefName"
+FIELDS = "url,isDraft,baseRefName,headRefName,title"
 
 
 def fail(message: str) -> NoReturn:
@@ -42,6 +44,16 @@ def required_string(payload: dict[str, object], key: str) -> str:
     value = payload.get(key)
     if not isinstance(value, str) or not value.strip():
         fail(f"{key} must be a non-empty string")
+    return value.strip()
+
+
+def optional_string(payload: dict[str, object], key: str) -> str:
+    """Omitted reads as the empty string. Passed, it must be a non-empty string."""
+    value = payload.get(key)
+    if value is None:
+        return ""
+    if not isinstance(value, str) or not value.strip():
+        fail(f"{key} must be a non-empty string when present")
     return value.strip()
 
 
@@ -65,10 +77,7 @@ def view_pr(repository: str, branch: str, cwd: str | None) -> tuple[int, dict[st
 def verify(payload: object) -> dict[str, object]:
     if not isinstance(payload, dict):
         fail("payload must be a JSON object")
-    repository = payload.get("repository")
-    if repository is not None and (not isinstance(repository, str) or not repository.strip()):
-        fail("repository must be a non-empty string when present")
-    repository = repository.strip() if isinstance(repository, str) else ""
+    repository = optional_string(payload, "repository")
     branch = required_string(payload, "branch")
     base_branch = required_string(payload, "base_branch")
     cwd = payload.get("cwd")
@@ -76,6 +85,7 @@ def verify(payload: object) -> dict[str, object]:
         fail("cwd must be an absolute path when present")
     if not repository and not isinstance(cwd, str):
         fail("either repository or cwd is required, so gh knows which repository to ask")
+    title = optional_string(payload, "title")
 
     code, view, stderr = view_pr(repository, branch, cwd if isinstance(cwd, str) else None)
     blockers: list[str] = []
@@ -95,6 +105,10 @@ def verify(payload: object) -> dict[str, object]:
         url = view.get("url")
         if not isinstance(url, str) or not url.strip():
             blockers.append("pull request carries no url")
+        if title and view.get("title") != title:
+            blockers.append(
+                f"pull request title is {view.get('title')!r}, not the declared {title!r}"
+            )
 
     return {
         "protocol": PROTOCOL,
@@ -107,6 +121,7 @@ def verify(payload: object) -> dict[str, object]:
         "is_draft": view.get("isDraft"),
         "base_ref_name": view.get("baseRefName"),
         "head_ref_name": view.get("headRefName"),
+        "title": view.get("title"),
     }
 
 

@@ -65,7 +65,9 @@ const stub = (overrides = {}) => {
     "gate-red": gateReport({ classification: "expected_failure" }),
     "gate-green": gateReport(),
     "gate-impl": gateReport(),
-    commitcheck: { verdict: "pass", blockers: [] },
+    // head is the HEAD the verifier read after the commit; it differs from the baseline below
+    // because the commit agent did land something.
+    commitcheck: { verdict: "pass", blockers: [], head: "bbbb2222" },
     head: "aaaa1111\n",
     ...overrides,
   };
@@ -296,22 +298,62 @@ test("a direct unit runs its gate on the direct route", async () => {
   assert.match(implGate.prompt, /'direct:U-1'/);
 });
 
-test("a commit the verifier rejects is an anomaly and never reaches commits", async () => {
-  const { result } = await run(
+// A build run once reported unit_commits: 0 while the rejected commit sat in history and in the
+// PR. The commit exists whenever HEAD moved, so it stays in commits marked unverified; only the
+// anomaly says what the verifier rejected.
+test("a commit the verifier rejects is an anomaly and stays in commits as unverified when HEAD moved", async () => {
+  const { result, calls } = await run(
     { commit: true },
     {
-      commitcheck: { verdict: "fail", blockers: ["committed paths outside the unit scope: a.js"] },
+      commitcheck: {
+        verdict: "fail",
+        blockers: ["committed paths outside the unit scope: a.js"],
+        head: "bbbb2222",
+      },
     },
   );
-  assert.deepEqual(result.commits, [], "an unverified commit is not counted as a commit");
+  assert.deepEqual(
+    result.commits,
+    [{ unit: "U-1", subject: "feat(x): collapse spaces", verified: false }],
+    "the commit that landed is counted, and marked as not verified",
+  );
   const anomaly = result.anomalies.find((a) => a.kind === "commit-unverified");
   assert.ok(anomaly, "the rejected commit is recorded");
   assert.match(String(anomaly.notes), /outside the unit scope/);
+  assert.equal(
+    labels(calls).filter((l) => l.startsWith("head")).length,
+    1,
+    "HEAD is read off the verifier's report, not by a second relay",
+  );
+});
+
+test("a rejected commit whose HEAD did not move never reaches commits", async () => {
+  const { result } = await run(
+    { commit: true },
+    {
+      commitcheck: {
+        verdict: "fail",
+        blockers: ["HEAD did not move, so no commit was created"],
+        head: "aaaa1111",
+      },
+    },
+  );
+  assert.deepEqual(result.commits, [], "nothing landed, so nothing is counted");
+  assert.ok(result.anomalies.some((a) => a.kind === "commit-unverified"));
+});
+
+test("a commit whose verifier report is unparseable is not counted rather than guessed", async () => {
+  const { result } = await run({ commit: true }, { commitcheck: "not a report" });
+  assert.deepEqual(result.commits, [], "no report means no HEAD, and no HEAD is no evidence");
+  const anomaly = result.anomalies.find((a) => a.kind === "commit-unverified");
+  assert.match(String(anomaly.notes), /no parseable report/);
 });
 
 test("a verified commit reaches commits and reads the head before the commit agent runs", async () => {
   const { result, calls } = await run({ commit: true });
-  assert.deepEqual(result.commits, [{ unit: "U-1", subject: "feat(x): collapse spaces" }]);
+  assert.deepEqual(result.commits, [
+    { unit: "U-1", subject: "feat(x): collapse spaces", verified: true },
+  ]);
   const order = labels(calls);
   assert.ok(
     order.indexOf("head:U-1") < order.indexOf("commit:U-1"),

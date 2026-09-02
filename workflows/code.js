@@ -253,8 +253,10 @@ const correctionCtx = (unit, correction) => {
   );
 };
 
+// status is skipped when the verifier was not run, pass, fail, or unreported when it returned
+// nothing parseable. head is the HEAD the verifier read, used to tell whether the commit exists.
 const commitPostcondition = async (unit, baselineHead, body, files) => {
-  if (!verifyDeterministically || !baselineHead) return null;
+  if (!verifyDeterministically || !baselineHead) return { status: "skipped", why: "", head: null };
   const payload = JSON.stringify({
     repo,
     baseline_head: baselineHead.trim(),
@@ -266,14 +268,27 @@ const commitPostcondition = async (unit, baselineHead, body, files) => {
     "commitcheck",
     `printf %s ${shq(payload)} | python3 ${verifyCommitScript}`,
   );
-  if (relayed === null) return "the commit verifier returned no output";
-  const report = parsedReport(relayed.stdout);
-  if (!report) return "the commit verifier returned no parseable report";
-  if (report.verdict !== "pass") {
-    const blockers = Array.isArray(report?.blockers) ? report.blockers : [];
-    return blockers.length ? blockers.join(" / ") : "the commit did not satisfy its postconditions";
+  if (relayed === null) {
+    return { status: "unreported", why: "the commit verifier returned no output", head: null };
   }
-  return null;
+  const report = parsedReport(relayed.stdout);
+  if (!report) {
+    return {
+      status: "unreported",
+      why: "the commit verifier returned no parseable report",
+      head: null,
+    };
+  }
+  const head = typeof report.head === "string" ? report.head : null;
+  if (report.verdict !== "pass") {
+    const blockers = Array.isArray(report.blockers) ? report.blockers : [];
+    return {
+      status: "fail",
+      why: blockers.length ? blockers.join(" / ") : "the commit did not satisfy its postconditions",
+      head,
+    };
+  }
+  return { status: "pass", why: "", head };
 };
 
 // The plan lists units in implementation order. An id becomes an agent label, a commit trailer,
@@ -423,17 +438,31 @@ const commitUnit = async (unit, tests, testFiles) => {
     },
   );
   if (res && res.committed) {
-    const unverified = await commitPostcondition(unit, baselineHead, commitBody(unit, tests), [
+    const check = await commitPostcondition(unit, baselineHead, commitBody(unit, tests), [
       ...unitFiles(unit),
       ...testFiles,
     ]);
-    if (unverified) {
-      anomalies.push({ unit: unit.id, kind: "commit-unverified", notes: unverified });
-      log(`${unit.id}: commit reported but not verified (${unverified}).`);
+    // A commit the verifier rejected still exists in history when HEAD moved. Dropped from
+    // commits, the caller reports unit_commits: 0 and treats a commit that sits in the diff from
+    // the branch point as absent. A unit whose verifier returned nothing knows no HEAD, so it is
+    // not counted rather than guessed. A run that never ran the verifier has only the commit
+    // agent's own word, so verified stays false.
+    const landed =
+      check.status === "skipped" || (check.head !== null && check.head !== baselineHead.trim());
+    if (landed) {
+      commits.push({ unit: unit.id, subject: res.subject, verified: check.status === "pass" });
+    }
+    if (check.status === "pass" || check.status === "skipped") {
+      log(`${unit.id}: committed (${res.subject}).`);
       return;
     }
-    commits.push({ unit: unit.id, subject: res.subject });
-    log(`${unit.id}: committed (${res.subject}).`);
+    anomalies.push({ unit: unit.id, kind: "commit-unverified", notes: check.why });
+    log(
+      `${unit.id}: commit reported but not verified (${check.why}). ` +
+        (landed
+          ? "HEAD moved, so it lands in commits as unverified."
+          : "HEAD did not move or could not be read, so it is not counted."),
+    );
     return;
   }
   const why = res ? (res.left_unstaged || []).join(" / ") : "the commit agent returned no result";

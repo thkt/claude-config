@@ -72,12 +72,12 @@ const kindOf = (opts) => {
   }
   if ("branch" in p) return "branch";
   if ("untracked" in p) return "untracked";
-  if ("files" in p) return "diff";
   if ("edits" in p) return "cleanup";
   if ("spec_found" in p) return "conformance";
   if ("translations" in p) return "translate";
   if ("pr_url" in p) return "ship";
-  if ("stdout" in p) return "prverify";
+  // The two stdout relays share one schema, so the label tells them apart.
+  if ("stdout" in p) return opts.label === "diff-files" ? "diff" : "prverify";
   return "plain";
 };
 
@@ -128,11 +128,17 @@ const makeStubs = ({
             ],
           }
         );
-      case "diff":
-        // The default diff matches the plan's files (no scope escape). A null override takes
-        // the fail-open route.
-        if (diff !== undefined) return typeof diff === "function" ? diff(prompt) : diff;
-        return { files: ["sample.js"] };
+      case "diff": {
+        // Stands in for diff-files.py's stdout. The default matches the plan's files (no scope
+        // escape). A null override takes the fail-open route; an object override is the report.
+        const report =
+          diff === undefined
+            ? { files: ["sample.js"] }
+            : typeof diff === "function"
+              ? diff(prompt)
+              : diff;
+        return report === null ? null : { stdout: JSON.stringify(report) };
+      }
       case "presence": {
         // The default reads the checks JSON at the tail of the prompt and returns every name
         // as found: true, the same shape as verify-tests.py's happy relay.
@@ -1379,10 +1385,11 @@ test("Verify's diff, conformance, and structure measure from Branch's branch-poi
     stubs: makeStubs({ plan: refPlan() }),
   });
   const sha = "a1b2c3d4e5f6a7b8";
+  // The two LLM reviews run git themselves; the diff-files relay is pinned by the test below.
   const reviewPrompts = calls.agent
-    .filter((c) => ["diff-files", "conformance", "structure"].includes(c.opts.label))
+    .filter((c) => ["conformance", "structure"].includes(c.opts.label))
     .map((c) => ({ label: c.opts.label, prompt: c.prompt }));
-  assert.equal(reviewPrompts.length, 3, "all three of diff-files, conformance, structure run");
+  assert.equal(reviewPrompts.length, 2, "both of conformance and structure run");
   for (const { label, prompt } of reviewPrompts) {
     assert.ok(
       prompt.includes(`git diff ${sha}`),
@@ -1393,6 +1400,42 @@ test("Verify's diff, conformance, and structure measure from Branch's branch-poi
       `${label} holds no bare git diff HEAD, which would be empty after the unit commits`,
     );
   }
+});
+
+// A haiku relay told to run `git diff <sha>` resolved HEAD itself and measured from there, so
+// the committed unit file read as untouched in the PR. The listing is a script call whose
+// payload carries the baseline, and the agent only copies its stdout.
+test("Verify's diff listing is a diff-files.py relay carrying the repo and the branch-point base in its payload", async () => {
+  const { calls } = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const diffCall = calls.agent.find((c) => c.opts.label === "diff-files");
+  assert.ok(diffCall, "the diff-files relay ran");
+  assert.match(diffCall.prompt, /diff-files\.py/, "it names the deterministic verifier");
+  assert.ok(
+    diffCall.prompt.includes(`'{"repo":"${repo}","base":"a1b2c3d4e5f6a7b8"}'`),
+    "the payload carries the repo and the branch-point sha as a single-quoted argv element",
+  );
+  assert.doesNotMatch(
+    diffCall.prompt,
+    /git (diff|status)/,
+    "the agent is not asked to run git itself",
+  );
+  assert.deepEqual(
+    Object.keys(diffCall.opts.schema.properties),
+    ["stdout"],
+    "the agent copies stdout verbatim rather than extracting the files array",
+  );
+});
+
+test("a diff-files report whose files is null reads as scope not run, with git's error on the log", async () => {
+  const { result, logs } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ diff: { files: null, error: "fatal: bad object 0123" } }),
+  });
+  assert.equal(result.scope_status, "agent-failed");
+  assert.ok(
+    logs.some((l) => l.includes("fatal: bad object 0123")),
+    "the git error the script relayed reaches the run log",
+  );
 });
 
 test("code receives commit: true, issue, and untracked_baseline, and the return value carries the unit_commits count", async () => {
@@ -1575,7 +1618,7 @@ test("code's commit becomes false and the diff baseline returns to HEAD when hea
     assert.equal(codeArgs.commit, false, `head=${JSON.stringify(branch.head)} gives commit: false`);
     const diffCall = calls.agent.find((c) => c.opts.label === "diff-files");
     assert.ok(
-      diffCall.prompt.includes("git diff HEAD --name-only"),
+      diffCall.prompt.includes('"base":"HEAD"'),
       "with the per-unit commits off, the diff measures from HEAD as before",
     );
     assert.equal(result.stopped, undefined, "an unavailable sha does not fail closed");
@@ -2433,13 +2476,85 @@ test("Ship writes the PR body to run-scoped paths the script names, truncating r
   );
 });
 
-// Interpolating the title into the command hands plan- and issue-derived text to the shell as
-// syntax. Reading it back from a file inside double quotes does not.
-test("Ship passes the PR title through a file rather than interpolating it into the command", async () => {
+// A title the agent settles is issue-derived text; interpolated bare, it would reach the shell
+// as syntax. Reading it back from a file inside double quotes does not.
+test("Ship passes an agent-settled PR title through a file rather than interpolating it into the command", async () => {
   const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
   const ship = agentCallsOf(run.calls, "ship")[0];
 
   assert.match(ship.prompt, /--title "\$\(cat "\$HOME\/\.claude\/history\/build\/[^"]+\.title"\)"/);
+});
+
+// ---- the PR title comes from the issue, settled by the script ----
+// The Ship agent once opened the PR under an English title it wrote itself, never reading the
+// Japanese issue title Load had already fetched. The script applies pr-writing.md's title rule,
+// puts the title on the gh command as one quoted argv element so no agent transcribes it, and
+// the PR verifier checks GitHub carries that exact string.
+
+test("Ship's gh command carries the issue title, minus a Conventional Commits prefix, and the PR verifier checks it", async () => {
+  const run = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ title: "feat(deploy): [実装] fallback 資産を S3 へコピーする" }),
+  });
+  const ship = agentCallsOf(run.calls, "ship")[0];
+  assert.ok(
+    ship.prompt.includes("--title '[実装] fallback 資産を S3 へコピーする' --body-file"),
+    "the title rides the command as a single-quoted argument",
+  );
+  assert.doesNotMatch(ship.prompt, /feat\(deploy\):/, "the feat: prefix is stripped");
+  assert.doesNotMatch(ship.prompt, /\.title"/, "no title file is written or read");
+  assert.doesNotMatch(
+    ship.prompt,
+    /the title you settled on/,
+    "the agent is not asked to settle a title of its own",
+  );
+  const prVerify = agentCallsOf(run.calls, "prverify")[0];
+  assert.ok(
+    prVerify.prompt.includes('"title":"[実装] fallback 資産を S3 へコピーする"'),
+    "the verifier payload declares the same title",
+  );
+});
+
+test("an issue title starting with a word that is not a commit type keeps that word", async () => {
+  const run = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ title: "WIP: keep the leading word" }),
+  });
+  const ship = agentCallsOf(run.calls, "ship")[0];
+  assert.ok(ship.prompt.includes("--title 'WIP: keep the leading word'"));
+});
+
+test("Ship settles the title itself and the verifier skips the title when Load could not fetch one", async () => {
+  const run = await runWorkflow(buildJs, { args, stubs: makeStubs() });
+  const ship = agentCallsOf(run.calls, "ship")[0];
+  assert.match(ship.prompt, /the title you settled on/);
+  const prVerify = agentCallsOf(run.calls, "prverify")[0];
+  assert.doesNotMatch(prVerify.prompt, /"title":/);
+});
+
+// ---- committed is read off the verified PR, not the Ship agent's reading ----
+// With the units already committed, Ship correctly skipped the remainder commit and then
+// reported committed: false. A PR that verifies carries commits between base and head.
+
+test("a verified PR reports committed: true even when Ship reported committed: false", async () => {
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({ ship: { committed: false, pr_url: "https://example.com/pr/1" } }),
+  });
+  assert.equal(result.pr_verified, true);
+  assert.equal(result.committed, true);
+});
+
+test("an unverified PR falls back to Ship's own committed reading", async () => {
+  const { result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      ship: { committed: false, pr_url: "https://example.com/pr/1" },
+      prVerify: { stdout: JSON.stringify({ verdict: "fail", blockers: ["not a draft"] }) },
+    }),
+  });
+  assert.equal(result.pr_verified, false);
+  assert.equal(result.committed, false);
 });
 
 // build always runs where the repository's test command runs, so the nested code workflow reads

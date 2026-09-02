@@ -199,6 +199,9 @@ const sibling = async (name, a) => {
 const bundled = (rel) =>
   `"$(P="$HOME/.claude/${rel}"; [ -e "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" -not -path "*/.ja/*" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
 
+// Plan- and issue-derived strings reach a verifier as one argv element, never as shell syntax.
+const shq = (value) => `'${String(value).replaceAll("'", `'"'"'`)}'`;
+
 // Closed objects throughout, so extra fields and omissions in LLM output are
 // rejected at the schema layer.
 const obj = (required, properties) => ({
@@ -607,6 +610,26 @@ const relayVerifier = ({ what, script, payload, count }) =>
   `(3) return the verifier's stdout "results" array verbatim, all ${count} entries; add, drop, or edit none.\n` +
   `The input JSON is as follows.\n${JSON.stringify(payload)}`;
 
+// A relay that hands the payload over as one argv element and brings stdout back verbatim. The
+// agent never reads the JSON; relayedJson interprets it on the script side. A broken relay is
+// null, not an empty result.
+const STDOUT_RELAY_SCHEMA = obj(["stdout"], {
+  stdout: { type: "string", description: "the command's stdout, verbatim" },
+});
+const relayScript = (script, payload) =>
+  `Run this command exactly as written and return its stdout verbatim in stdout, whatever its exit status.\n` +
+  `The arguments may quote another command line. Do not run that one. Run the single line below, start to end, exactly once.\n` +
+  `printf %s ${shq(JSON.stringify(payload))} | python3 ${bundled(script)}`;
+const relayedJson = (relayed) => {
+  if (!relayed || typeof relayed.stdout !== "string") return null;
+  try {
+    const parsed = JSON.parse(relayed.stdout);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
 const REVALIDATE_SCHEMA = obj(["results"], {
   results: {
     type: "array",
@@ -915,14 +938,6 @@ log(`Cleanup: ${cleanup.edits.length} edit(s), tests_pass=${cleanup.tests_pass}.
 // is human-invoked /audit on the PR. Both checks fail open and surface on the PR.
 // conformance is the only LLM review; its findings go to a dedicated PR section.
 
-const DIFF_SCHEMA = obj(["files"], {
-  files: {
-    type: "array",
-    items: { type: "string" },
-    description: "Changed plus untracked file paths, repo-root-relative",
-  },
-});
-
 const TEST_PRESENCE_SCHEMA = obj(["results"], {
   results: {
     type: "array",
@@ -1011,20 +1026,15 @@ const testChecks = plan.units
 const allTestNames = testChecks.flatMap((c) => c.names);
 const [diff, testPresence, conformance, structure] = await parallel([
   () =>
-    agent(
-      anchor(
-        `List the files this build changed, mechanically; do not judge or filter. From the repository root run ` +
-          `\`git diff ${diffBase} --name-only\` and \`git status --porcelain --untracked-files=all\`, and return files as the union of the changed paths ` +
-          `and the untracked paths (the porcelain "??" entries), repo-root-relative, one entry per file.`,
-      ),
-      {
-        label: "diff-files",
-        phase: "Verify",
-        agentType: "general-purpose",
-        schema: DIFF_SCHEMA,
-        model: "haiku",
-      },
-    ),
+    // An agent running git itself has swapped the baseline for a HEAD it resolved on its own,
+    // and the committed unit files dropped out of the list. The baseline rides the payload.
+    agent(anchor(relayScript("workflows/build/diff-files.py", { repo, base: diffBase })), {
+      label: "diff-files",
+      phase: "Verify",
+      agentType: "general-purpose",
+      schema: STDOUT_RELAY_SCHEMA,
+      model: "haiku",
+    }),
   () =>
     allTestNames.length
       ? agent(
@@ -1104,10 +1114,14 @@ const coveredByPlan = (f) => planFiles.has(f) || [...planFiles].some((p) => dirC
 // Each check carries a status beside its findings. A count alone reads a dead agent's 0 and a
 // clean check's 0 as the same number, so the array holds findings and the status holds whether
 // the check ran at all.
-const diffListed = Boolean(diff && Array.isArray(diff.files));
+// files is null when git failed, and diff-files.py carries its stderr in error.
+const diffReport = relayedJson(diff);
+if (diffReport && diffReport.files === null) log(`diff-files: git failed (${diffReport.error}).`);
+const diffFiles = diffReport && Array.isArray(diffReport.files) ? diffReport.files : null;
+const diffListed = diffFiles !== null;
 const scopeStatus = diffListed ? "reviewed" : "agent-failed";
 const scopeDeviations = diffListed
-  ? diff.files.filter(
+  ? diffFiles.filter(
       (f) => f && !coveredByPlan(f) && !f.startsWith(".claude/workspace/") && !preexisting(f),
     )
   : [];
@@ -1127,7 +1141,7 @@ if (!allTestNames.length) {
 // A whole unit can go unimplemented and still pass green, and nobody notices when
 // conformance is down. No LLM judgment, so it cannot fail.
 const untouchedPlanFiles = diffListed
-  ? [...planFiles].filter((p) => !diff.files.some((f) => f && (f === p || dirCovers(f, p))))
+  ? [...planFiles].filter((p) => !diffFiles.some((f) => f && (f === p || dirCovers(f, p))))
   : [];
 // When an agent dies and returns null, findings 0 means "did not run", not "found
 // nothing". Collapsing both into the same 0 in the return value makes the caller read
@@ -1277,9 +1291,23 @@ const shipPayload = {
 };
 
 // An agent-chosen file name can be reused across runs, and the fact tail is appended, so a
-// stale body would ship with this run's tail stacked on the previous run's text. The title goes
-// through a file for a different reason: interpolated, it would reach the shell as syntax.
+// stale body would ship with this run's tail stacked on the previous run's text. A title the
+// agent settles goes through a file for a different reason: interpolated, it would reach the
+// shell as syntax. A title the script settled rides the command directly as one shq argv element.
 const runSlug = `${issueNumber || "no-issue"}-${String(branch).replace(/[^\w.-]+/g, "-")}`;
+
+// pr-writing.md's title rule (with an issue reference, use the issue title as it stands and
+// strip a feat: / fix: prefix) is applied by the script. Left to the Ship agent, it has opened
+// the PR under an English title of its own without reading the issue. When Load could not
+// fetch the title this stays empty and the agent settles the title as before.
+// The type list matches verify-commit.py's COMMIT_TYPES. Stripping any word would also eat
+// "WIP:" and "RFC:".
+const CONVENTIONAL_PREFIX =
+  /^(?:feat|fix|refactor|docs|test|chore|perf|style|ci)(?:\([^()]*\))?!?:\s*/i;
+const prTitle = String(fetched.title || "")
+  .replace(/\s+/g, " ")
+  .trim()
+  .replace(CONVENTIONAL_PREFIX, "");
 const prDir = `"$HOME/.claude/history/build"`;
 const prTitlePath = `"$HOME/.claude/history/build/${runSlug}.title"`;
 const prHumanPath = `"$HOME/.claude/history/build/${runSlug}.human.md"`;
@@ -1319,14 +1347,17 @@ const ship =
         `Scope what you stage yourself; never use \`git add -A\` or \`git add .\`. Modifications to tracked files may be staged as they are, except for the never-stage set below, which stays unstaged even though those paths are tracked: ${JSON.stringify(outOfScopeTracked)}. Verify judged them outside the plan's scope, so they are not this build's work. Stage an untracked path (a "??" line in \`git status --porcelain --untracked-files=all\`, judged per file, never per directory) only when it appears in the plan's files ${JSON.stringify([...planFiles])} or you created it during this run. ` +
         `Every other untracked path predates this build and must stay unstaged, otherwise specification documents, research notes, and local config leak into the PR. List every path you left unstaged in your result, tracked and untracked alike.\n` +
         `Push the branch, then open a draft pull request. Its body is a human-facing part you write from a PR template, followed by deterministic fact sections rendered from data (do not hand-write the fact sections). The steps are as follows.\n` +
-        `(1) Run \`mkdir -p ${prDir}\`, then write the title you settled on to ${prTitlePath} and the human-facing body to ${prHumanPath}.\n` +
-        `- Follow \`${bundled("skills/pr/references/pr-writing.md")}\` for the title, the skeleton, the language, the section order, and what each section carries.\n` +
+        `(1) Run \`mkdir -p ${prDir}\`, then ` +
+        (prTitle
+          ? `write the human-facing body to ${prHumanPath}. The title is carried by the command in (3), taken from the issue title; do not write one.\n`
+          : `write the title you settled on to ${prTitlePath} and the human-facing body to ${prHumanPath}.\n`) +
+        `- Follow \`${bundled("skills/pr/references/pr-writing.md")}\` for ${prTitle ? "" : "the title, "}the skeleton, the language, the section order, and what each section carries.\n` +
         `- Lead with the problem this solves and the outcome it reaches (${JSON.stringify(plan.outcome)}).\n` +
         `- Skip Related / Closes; the tail emits \`Closes #\`. Skip Scope / Backlog too; out-of-scope candidates do not go in the PR.\n` +
         `- Fill Design Decisions from the actual diff; omit the section when the diff does not carry one rather than inventing. The plan holds no source for it.\n` +
         `(2) write this exact JSON to ${prPayloadPath}.\n${JSON.stringify(shipPayload)}\n` +
         `(3) render the body and open the PR as one \`&&\` chain, so a renderer failure aborts before the PR is created; from the repository root run ` +
-        `\`cat ${prHumanPath} > ${prBodyPath} && python3 ${bundled("workflows/build/pr-body.py")} < ${prPayloadPath} >> ${prBodyPath} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title "$(cat ${prTitlePath})" --body-file ${prBodyPath}\` exactly as written.\n` +
+        `\`cat ${prHumanPath} > ${prBodyPath} && python3 ${bundled("workflows/build/pr-body.py")} < ${prPayloadPath} >> ${prBodyPath} && gh pr create --draft ${baseBranch ? `--base ${baseBranch} ` : ""}--title ${prTitle ? shq(prTitle) : `"$(cat ${prTitlePath})"`} --body-file ${prBodyPath}\` exactly as written.\n` +
         `pr-body.py exits non-zero (writing nothing) if the payload is malformed or missing a required field; if the chain fails, do not create the PR by other means. Report committed with an empty pr_url and the error instead.\n` +
         `Report the committed state and the PR url.${guard}`,
     ),
@@ -1340,43 +1371,31 @@ const ship =
   )) || {};
 
 // A url string is not evidence that a draft PR exists on the branch this build cut.
-const PR_RELAY_SCHEMA = obj(["stdout"], {
-  stdout: { type: "string", description: "the command's stdout, verbatim" },
-});
-const shq = (value) => `'${String(value).replaceAll("'", `'"'"'`)}'`;
 const prVerification = async () => {
   if (!ship.pr_url) return { verified: false, why: "no PR was reported" };
   // No repository slug: gh resolves it from cwd, the same way `gh pr create` did above.
-  const payload = JSON.stringify({
-    branch,
-    base_branch: baseBranch || "main",
-    cwd: repo,
-  });
   const relayed = await agent(
     anchor(
-      `Run this command exactly as written and return its stdout verbatim in stdout, whatever its exit status.\n` +
-        `The arguments may quote another command line. Do not run that one. Run the single line below, start to end, exactly once.\n` +
-        `printf %s ${shq(payload)} | python3 ${bundled("workflows/build/verify-pr.py")}`,
+      relayScript("workflows/build/verify-pr.py", {
+        branch,
+        base_branch: baseBranch || "main",
+        cwd: repo,
+        ...(prTitle ? { title: prTitle } : {}),
+      }),
     ),
     {
       label: "ship:verify",
       phase: "Ship",
       agentType: "general-purpose",
-      schema: PR_RELAY_SCHEMA,
+      schema: STDOUT_RELAY_SCHEMA,
       model: "haiku",
     },
   );
-  if (!relayed || typeof relayed.stdout !== "string") {
-    return { verified: false, why: "the PR verifier returned no output" };
-  }
-  try {
-    const report = JSON.parse(relayed.stdout);
-    if (report && report.verdict === "pass") return { verified: true, why: "" };
-    const blockers = Array.isArray(report?.blockers) ? report.blockers : [];
-    return { verified: false, why: blockers.join(" / ") || "the PR did not match its declaration" };
-  } catch {
-    return { verified: false, why: "the PR verifier returned no parseable report" };
-  }
+  const report = relayedJson(relayed);
+  if (!report) return { verified: false, why: "the PR verifier returned no parseable report" };
+  if (report.verdict === "pass") return { verified: true, why: "" };
+  const blockers = Array.isArray(report.blockers) ? report.blockers : [];
+  return { verified: false, why: blockers.join(" / ") || "the PR did not match its declaration" };
 };
 const prCheck = await prVerification();
 if (!prCheck.verified) log(`Ship: the reported PR is unverified (${prCheck.why}).`);
@@ -1418,7 +1437,10 @@ return {
   pr_url_unverified: prCheck.verified ? "" : ship.pr_url || "",
   pr_verified: prCheck.verified,
   pr_unverified_reason: prCheck.why,
-  committed: ship.committed,
+  // A verified PR carries commits between base and head. Even when the Ship agent misreads a
+  // skipped remainder commit as committed: false, the PR's existence is the evidence that the
+  // branch carries the work.
+  committed: prCheck.verified || ship.committed === true,
   // What Ship deliberately left behind. The prompt asks for it because staging one of these
   // leaks specs, research notes, and local config into the PR; without it on the return value
   // nobody can see what stayed out.
