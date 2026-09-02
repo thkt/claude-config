@@ -64,7 +64,7 @@ clippy を先に実行する。reviewer は clippy が拾えない領域 (設計
 
 ## finding 前のドキュメントスキャン
 
-rationale が無いと reasoning に書く前に、周辺コンテキストで rationale を探す。下のどれかに decision rationale が記録されていれば、それを evidence へ引用する。rationale の不在を断定せず、finding の disposition は want 以下に留める。
+rationale が無いと reasoning へ書く前に、周辺コンテキストで rationale を探す。下のどれかに decision rationale が記録されていれば、それを evidence へ引用する。rationale の不在を断定せず、finding の disposition は want 以下に留める。
 
 | Scope                       | 確認対象                                                                               |
 | --------------------------- | -------------------------------------------------------------------------------------- |
