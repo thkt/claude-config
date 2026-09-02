@@ -1,5 +1,4 @@
 {
-  "autoMemoryEnabled": false,
   "cleanupPeriodDays": 9999,
   "env": {
     "CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD": "1",
@@ -444,6 +443,7 @@
   "promptSuggestionEnabled": false,
   "autoUpdatesChannel": "latest",
   "plansDirectory": "./.claude/workspace/planning",
+  "autoMemoryEnabled": false,
   "showThinkingSummaries": true,
   "skipWorkflowUsageWarning": true,
   "theme": "dark",
@@ -480,5 +480,6 @@
     "classifyAllShell": true
   },
   "disableDeepLinkRegistration": "disable",
-  "voiceEnabled": true
+  "voiceEnabled": true,
+  "model": "claude-fable-5-1[1m]"
 }
