@@ -21,10 +21,10 @@ Once an outcome is set, derive the minimal path by working backward from the ide
 
 ## Rules
 
-| Rule     | Directive                                                                     |
-| -------- | ----------------------------------------------------------------------------- |
-| Response | Conclusion first. Recommend first. Declare then act. Seek decisions concisely |
-| Verify   | Facts cite source. Assumptions state basis. Unknowns name verification path   |
+| Rule     | Directive                                                                   |
+| -------- | --------------------------------------------------------------------------- |
+| Response | Recommend first. Seek decisions concisely                                   |
+| Verify   | Facts cite source. Assumptions state basis. Unknowns name verification path |
 
 ## Completion
 

@@ -66,11 +66,11 @@ Judge by whether removal causes misreading. Angle-brackets like `<branch>` are t
 
 Depth goes 1 level in Skills and 3 levels in Rules / Docs.
 
-| Forbidden pattern     | Reason                                        |
-| --------------------- | --------------------------------------------- |
-| Circular (A → B → A)  | Creates unresolvable dependencies             |
-| Already in CLAUDE.md  | Globally loaded files don't need re-reference |
-| Speculative reference | Reference only what the current context reads |
+| Forbidden pattern                        | Reason                                                                                              |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Circular (A → B → A)                     | Creates unresolvable dependencies                                                                   |
+| A Read of a file CLAUDE.md already loads | Globally loaded files need no re-read. A reference that only names the file and its § section stays |
+| Speculative reference                    | Reference only what the current context reads                                                       |
 
 ## Section vocabulary
 
@@ -88,7 +88,6 @@ For a skill with a sequential procedure, the top-level sequential unit is `## Ph
 | Duplicate of                                       | Deletable                                                                   |
 | -------------------------------------------------- | --------------------------------------------------------------------------- |
 | System prompt                                      | Only when every line and section is covered. Re-check on model updates      |
-| `output-styles/**`                                 | Never delete from `rules/`. Output styles can be switched                   |
 | Another always-loaded `rules/` file                | Delete the compressed restatement, keep the table that carries the criteria |
 | Anything whose removal relaxes a threshold or gate | Keep until a false positive shows up in practice                            |
 | A duplicate that works as a reverse index          | Keep it. The path from situation to principle exists only in the index      |

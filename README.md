@@ -95,9 +95,11 @@ For using this as your personal `.claude` configuration:
    git clone https://github.com/thkt/dotclaude.git ~/.claude
    ```
 
-**Note**: Manual installation includes all commands, agents, rules, and personal
-configurations. Plugin installation only includes shared commands and agents
-(excludes personal `CLAUDE.md`, `rules/`, and `settings.json`).
+**Note**: Manual installation applies all skills, agents, rules, and personal
+configuration. Plugin installation also clones the whole repository, but Claude
+Code loads only its skills, agents, and workflows; personal `CLAUDE.md`,
+`rules/`, and `settings.json` are not applied as rules or settings. A skill that
+cites `rules/` reads the copy inside the plugin.
 
 ## 📦 Dependencies & Setup
 

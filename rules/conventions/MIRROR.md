@@ -15,10 +15,9 @@ Conventions for how `.ja/` and the English files correspond.
 
 ## Mirroring form
 
-The form is decided by content. Never sync translated files with `cp`. `output-styles/**` has its directives bound to the output language (connectives, sentence endings), so an English translation loses the concrete forms.
+The form is decided by content. Never sync translated files with `cp`.
 
 | File                                              | Mirroring                                                                                                                                      |
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | Carries prose (Markdown, prompt-embedding script) | Translate the prose (comments / prompts / message strings). Code structure, identifiers, stopped values, JSON keys, and schemas stay identical |
 | No prose                                          | Identical copy                                                                                                                                 |
-| `output-styles/**`                                | No mirror. Write it in Japanese directly as a single file at the real path                                                                     |

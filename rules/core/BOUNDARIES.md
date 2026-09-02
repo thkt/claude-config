@@ -15,7 +15,7 @@ A sum of local optima is not a global optimum. Judge a change by its impact on t
 
 ## Readable Code
 
-Write for your later self and one teammate who shares the context. If shrinking the code makes it read easier, that is refinement; pursue it. If shrinking leaves code only you can decode, revert it. Carry intent in names, types, and test names, and treat comments as the last resort for the why and why-not code cannot hold. Review each comment you write against `../conventions/PROSE.md` § Delete Redundant Sentences. When a why-not holds, keep that alone rather than pairing it with the why.
+Write for your later self and one teammate who shares the context. If shrinking the code makes it read easier, that is refinement; pursue it. If shrinking leaves code only you can decode, revert it. Carry intent in names, types, and test names, and treat comments as the last resort for the why and why-not code cannot hold. Review each comment you write against `../conventions/PROSE.md` § Delete the Excess. When a why-not holds, keep that alone rather than pairing it with the why.
 
 ## DRY
 
@@ -66,7 +66,7 @@ Premature interfaces add indirection without value, so consider adding an interf
 
 ## Overeagerness
 
-Concretizes AI-Assisted Development. Build only the deliverables the task requires, and return decisions that split opinion to the user.
+Concretizes AI-Assisted Development.
 
 - A bug fix changes the cause site alone, and a small feature runs on the config that already exists
 - Add comments and types to the code you changed, where the logic is non-obvious

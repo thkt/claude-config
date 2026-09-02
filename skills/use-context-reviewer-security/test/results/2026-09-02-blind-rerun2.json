@@ -1,0 +1,167 @@
+{
+  "run_date": "2026-09-02",
+  "skill": "use-context-reviewer-security",
+  "agent": "reviewer-security",
+  "model": "opus-5",
+  "definition_sha256": "9b7a12769ba2eee2e632f6a0b68570f3dd39b9c14c552ab2faf7ef0245072f3a",
+  "skill_sha256": "ae84e04d0c6cfe63217563d578fb4f82f15200c7f6b0a34102888e8a60c218f7",
+  "corpus_sha256": "13918e0c60afd3da2a0072a8382bfc64c6bcb1f403b6537168350a109dacacbf",
+  "invocation": "Agent tool, direct subagent. BLIND protocol: 21 files copied to a temp dir under case-NN names, flag and clean interleaved in the 2026-08-24 order plus the paired route as case-21; the dispatch prompt carried the target path, the output format, and the pairing of case-20 / case-21, and nothing else.",
+  "protocol_note": "The judging rules were written down before the output was read. Three of them decided a verdict here: a category other than the expected one is other_finding even when the defect was found (case-05, A02 expected, A05 reported); LLM01 counts as the expected category for the prompt-injection cases the corpus labels A03; and a finding on the paired route does not count toward the middleware, so case-20 with one of its two findings at or above severity_min is below_min_findings, the state the 2026-08-24 record asked for.",
+  "counts": {
+    "flagged": 12,
+    "clean": 8,
+    "hit": 7,
+    "below_severity": 3,
+    "other_finding": 1,
+    "miss": 0,
+    "false_positive": 0,
+    "below_min_findings": 1
+  },
+  "metrics": {
+    "recall_detection": 0.917,
+    "recall_expected": 0.833,
+    "recall_strict": 0.583,
+    "fp_rate": 0.0
+  },
+  "byCategory": {
+    "A03": {
+      "total": 9,
+      "hit": 6,
+      "recall_strict": 0.667
+    },
+    "A02": {
+      "total": 1,
+      "hit": 0,
+      "recall_strict": 0.0
+    },
+    "A01": {
+      "total": 1,
+      "hit": 0,
+      "recall_strict": 0.0
+    },
+    "A10": {
+      "total": 1,
+      "hit": 1,
+      "recall_strict": 1.0
+    }
+  },
+  "diff": {
+    "recall_detection": -0.083,
+    "recall_expected": -0.084,
+    "recall_strict": -0.084,
+    "fp_rate": 0.0
+  },
+  "diff_note": "Measured after the reviewer-security definition was rewritten (description in trigger form, Reporting Bar table folded into the preloaded skill, Phase 4 without an audit command, Phase 6 pointing at the skill's taint references, Categories carrying LLM01). recall_detection fell by one case: case-20 is now recorded as below_min_findings, the state that did not exist on 2026-08-24, where the same shape was recorded as below_severity.",
+  "observations": [
+    "The four LLM01 prompt-injection cases were all reported; two of the easy ones landed at medium against a severity_min of high, the same understatement the 2026-08-24 run showed.",
+    "case-05 hardcoded key: found at critical and filed under A05 again, so the corpus category A02 stays unmatched.",
+    "case-19 system spoof: the role interpolation was filed under A01 at high and the docs concatenation under LLM01 at medium, so neither of the two expected findings reached severity_min in the expected category.",
+    "case-20 middleware: the unsigned cookie was reported at critical; the matcher gap surfaced only as a missing check on the route (case-21), which the protocol does not count toward the middleware."
+  ],
+  "blind_mapping": {
+    "case-01.ts": "cases/vuln/sql-injection.ts",
+    "case-02.ts": "cases/safe/parameterized-query.ts",
+    "case-03.tsx": "cases/vuln/dangerous-html.tsx",
+    "case-04.tsx": "cases/safe/sanitized-html.tsx",
+    "case-05.ts": "cases/vuln/hardcoded-key.ts",
+    "case-06.ts": "cases/safe/env-key.ts",
+    "case-07.ts": "cases/hard-vuln/fake-escape.ts",
+    "case-08.ts": "cases/hard-safe/parameterized-like.ts",
+    "case-09.tsx": "cases/hard-vuln/indirect-xss.tsx",
+    "case-10.tsx": "cases/hard-safe/wrapped-sanitize.tsx",
+    "case-11.ts": "cases/hard-vuln/ssrf.ts",
+    "case-12.ts": "cases/hard-safe/allowlist-fetch.ts",
+    "case-13.ts": "cases/hard-vuln/second-order-injection.ts",
+    "case-14.ts": "cases/safe/prompt-injection-isolated.ts",
+    "case-15.ts": "cases/vuln/prompt-injection-rag.ts",
+    "case-16.ts": "cases/hard-safe/prompt-injection-explainer.ts",
+    "case-17.ts": "cases/vuln/prompt-injection-doc-trailer.ts",
+    "case-18.ts": "cases/hard-vuln/prompt-injection-exfiltration.ts",
+    "case-19.ts": "cases/hard-vuln/prompt-injection-system-spoof.ts",
+    "case-20.ts": "cases/cross-file/middleware.ts",
+    "case-21.ts": "cases/cross-file/analytics-route.ts"
+  },
+  "results": [
+    {
+      "file": "cases/vuln/sql-injection.ts",
+      "verdict": "hit"
+    },
+    {
+      "file": "cases/safe/parameterized-query.ts",
+      "verdict": "pass"
+    },
+    {
+      "file": "cases/vuln/dangerous-html.tsx",
+      "verdict": "hit"
+    },
+    {
+      "file": "cases/safe/sanitized-html.tsx",
+      "verdict": "pass"
+    },
+    {
+      "file": "cases/vuln/hardcoded-key.ts",
+      "verdict": "other_finding"
+    },
+    {
+      "file": "cases/safe/env-key.ts",
+      "verdict": "pass"
+    },
+    {
+      "file": "cases/cross-file/middleware.ts",
+      "verdict": "below_min_findings"
+    },
+    {
+      "file": "cases/hard-vuln/fake-escape.ts",
+      "verdict": "hit"
+    },
+    {
+      "file": "cases/hard-vuln/indirect-xss.tsx",
+      "verdict": "hit"
+    },
+    {
+      "file": "cases/hard-vuln/ssrf.ts",
+      "verdict": "hit"
+    },
+    {
+      "file": "cases/hard-vuln/second-order-injection.ts",
+      "verdict": "hit"
+    },
+    {
+      "file": "cases/hard-safe/parameterized-like.ts",
+      "verdict": "pass"
+    },
+    {
+      "file": "cases/hard-safe/wrapped-sanitize.tsx",
+      "verdict": "pass"
+    },
+    {
+      "file": "cases/hard-safe/allowlist-fetch.ts",
+      "verdict": "pass"
+    },
+    {
+      "file": "cases/vuln/prompt-injection-rag.ts",
+      "verdict": "below_severity"
+    },
+    {
+      "file": "cases/vuln/prompt-injection-doc-trailer.ts",
+      "verdict": "below_severity"
+    },
+    {
+      "file": "cases/safe/prompt-injection-isolated.ts",
+      "verdict": "pass"
+    },
+    {
+      "file": "cases/hard-vuln/prompt-injection-exfiltration.ts",
+      "verdict": "hit"
+    },
+    {
+      "file": "cases/hard-vuln/prompt-injection-system-spoof.ts",
+      "verdict": "below_severity"
+    },
+    {
+      "file": "cases/hard-safe/prompt-injection-explainer.ts",
+      "verdict": "pass"
+    }
+  ]
+}
