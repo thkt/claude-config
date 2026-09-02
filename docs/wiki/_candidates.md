@@ -66,6 +66,11 @@
 - skills 配下の Python を TypeScript へ移すとき、.github/workflows/test.yml の Node tests step は glob を手動で足さないと拾わない。Python 側は find なので .py を消せば自動で外れるが、.ts を足しても自動では入らない #615
 - exit 0 の hook の stdout print は単独では届かず hook_payload の notify (systemMessage/additionalContext) 経由が要る #618
 - settings.json で matcher 共通 command が if だけ Write/Edit に分かれる複数登録は重複でない #618
+- script が決めた値 (比較対象の sha、PR タイトル) は agent に書き写させず、shq で argv 1 要素としてコマンドに直接載せる。relay agent には stdout の逐語中継だけをさせる。git を打たせると比較対象を自分で解決した HEAD に置き換える #623
+- 検証に落ちた成果物も実在すれば数え、verified フラグで区別する。commits から落とすと呼び出し元が unit_commits: 0 と報告し、履歴にあるコミットを無いものとして扱う #623
+- 同じ事実を 2 体の agent に聞かない。verifier の report が持つフィールド (head) を使い、再取得の relay を足さない #623
+- prefix 除去の正規表現は正準の列挙 (verify-commit.py の COMMIT_TYPES) と同じ集合に限定する。任意語だと WIP: や RFC: の先頭語が消える #623
+- 手元の gate (oxlint / oxfmt) は Python を見ないので、push 前に CI と同じ版の ruff (0.16.4) を手元で走らせる。E501 だけで CI が落ちた #623
 
 ## 棄却
 
