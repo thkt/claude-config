@@ -78,24 +78,28 @@ Grant memory when all three below hold, and remove it when the project scope sta
 
 ## Finding severity
 
-reviewer- agents follow the Severity (critical / high / medium / low) in `~/.claude/agents/_lib/finding-schema.md`. What to fix first is the Disposition in the same file, which is where the values are listed. An agent returning its own gate verdict (critic- agents with confirmed / disputed) follows its own scheme.
+reviewer- agents follow the Severity (critical / high / medium / low) in `agents/_lib/finding-schema.md`. What to fix first is the Disposition in `agents/_lib/finding-disposition.md`, which is where the values are listed. An agent returning its own gate verdict (critic- agents with confirmed / disputed) follows its own scheme.
 
 ## Detection item inclusion
 
 Give a reviewer a detection item when a reader skimming the output would miss what it catches. Leave it out when the reader arrives at the same problem without it.
 
-This decides which items the reviewer carries, once per item, while its definition is written. `agents/_lib/finding-schema.md` § Calibration Filters decides which of the findings a run produced get reported, once per finding, while the reviewer runs.
+This decides which items the reviewer carries, once per item, while its definition is written. `agents/_lib/finding-disposition.md` § Calibration Filters decides which of the findings a run produced get reported, once per finding, while the reviewer runs.
 
 ## Reference notation
 
-Where a relative path resolves depends on the launching project.
+Where a relative path resolves depends on the launching project. An agent body has no variable that expands in both the dev tree and a plugin install: `${CLAUDE_SKILL_DIR}` is skill-only, and `${CLAUDE_PLUGIN_ROOT}` expands under a plugin install alone and stays literal in the dev tree. So a bundled asset takes the plugin form plus one fallback sentence, placed right after the intro paragraph, worded exactly as below. `tests/live-instructions.test.js` checks both the sentence and the absence of a bare home-anchored path.
 
-| Form                                         | Use                       | Reason                                                              |
-| -------------------------------------------- | ------------------------- | ------------------------------------------------------------------- |
-| `skills: [skill-name]` frontmatter           | Reusing skill content     | As preload control, the full text is injected into context at spawn |
-| `~/.claude/skills/<skill>/references/foo.md` | Lazy-loading a supplement | Resolves with Read regardless of cwd                                |
-| `skills/<skill>/references/foo.md`           | Avoid                     | Resolves only when cwd is `~/.claude`                               |
-| `${CLAUDE_SKILL_DIR}`                        | Not available             | Skill-body-only variable                                            |
+> When a path below still begins with `${`, the harness left the variable unexpanded; read the same path under `~/.claude/` instead.
+
+| Form                                                                          | Use                          | Reason                                                                                   |
+| ----------------------------------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------- |
+| `skills: [skill-name]` frontmatter                                            | Reusing skill content        | As preload control, the full text is injected into context at spawn                      |
+| `${CLAUDE_PLUGIN_ROOT}/agents/_lib/foo.md` bare                               | Lazy-loading a bundled asset | Expands under a plugin install. The fallback sentence sends the dev tree to `~/.claude/` |
+| `~/.claude/settings.json`, `~/.claude/cache/<file>`, `$HOME/.claude/history/` | A file on the running side   | Not a distributed asset, so the same path holds under a plugin too                       |
+| `~/.claude/agents/_lib/foo.md` alone                                          | Never                        | Names the dev tree. A plugin install reads another copy, or none                         |
+| `skills/<skill>/references/foo.md`                                            | Avoid                        | Resolves only when cwd is `~/.claude`                                                    |
+| `${CLAUDE_SKILL_DIR}`                                                         | Not available                | Skill-body-only variable                                                                 |
 
 ## Size limit
 

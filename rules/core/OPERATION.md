@@ -41,12 +41,10 @@ A Bash error's wording and the shape of its output can hide the real cause. A pe
 
 | Symptom                                                                        | What to do                                                                                                                                                   |
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `$TMPDIR` points somewhere else inside the sandbox than outside it             | Read and write files that cross the boundary through the absolute path `/tmp/claude/<name>`                                                                  |
 | bun ends at one `PermissionDenied` line                                        | Pass `dangerouslyDisableSandbox` and prefix with `TMPDIR=/tmp`                                                                                               |
 | A `run_in_background` output file stays at 0 bytes                             | Drop the pipe into `tail` and let it write directly                                                                                                          |
 | `bun outdated` prints no table rows                                            | The dependencies are current; do not re-query. Only a missing lockfile exits 1, so branch on the exit code                                                   |
 | macOS `mktemp` ignores `$TMPDIR`                                               | Pass a template: `mktemp -d "${TMPDIR:-/tmp}/name-XXXXXX"`                                                                                                   |
-| `uvx <tool>` fails writing to `~/.cache/uv`'s `.git`                           | Rerun with `dangerouslyDisableSandbox: true`                                                                                                                 |
 | `git stash push <pathspec>` or `git log --since=<date>` looks scoped but isn't | A pathspec also stashes staged changes outside it, and a missing timestamp falls back to run time. Cross-check with `--name-only` or a timestamped `--since` |
 | Shell `timeout <cmd>` errors `command not found`                               | macOS zsh has no `timeout` binary. Pass the Bash tool's own `timeout` (ms) parameter instead                                                                 |
 

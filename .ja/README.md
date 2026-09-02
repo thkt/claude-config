@@ -84,7 +84,7 @@ Claude AI のためのカスタムコマンド、開発原則、ワークフロ�
    git clone https://github.com/thkt/dotclaude.git ~/.claude
    ```
 
-注意: 手動インストールには、すべてのコマンド、エージェント、ルール、個人設定が含まれる。プラグインインストールでは共有コマンドとエージェントのみが含まれ、個人の `CLAUDE.md`、`rules/`、`settings.json` は除外される。
+注意: 手動インストールでは、すべてのスキル、エージェント、ルール、個人設定が読み込まれる。プラグインインストールもリポジトリ全体を clone するが、Claude Code が読み込むのは skill、agent、workflow だけで、個人の `CLAUDE.md`、`rules/`、`settings.json` はルールや設定として適用されない。skill が `rules/` を引用するときは plugin 内のコピーを読む。
 
 ## 📦 依存関係とセットアップ
 
