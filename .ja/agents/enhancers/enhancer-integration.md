@@ -79,7 +79,7 @@ For standalone:   Impact × Reach × Fixability
 
 ### Auto-fix マーキング
 
-このスキーマに専用の fix_type フィールドも score フィールドもない。auto-fixable と判断した finding (既知の修正パターンが曖昧さなく適用できる、location が単一行) は、その根拠を summary に書き、優先度スコアは配列の順序としてだけ表す。
+このスキーマには fix_type と score のどちらの専用フィールドも無い。auto-fixable と判断した finding (既知の修正パターンが曖昧さなく適用できる、location が単一行) は、その根拠を summary に書き、優先度スコアは配列の順序としてだけ表す。
 
 ## 制約
 

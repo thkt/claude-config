@@ -49,7 +49,7 @@ background: true
 
 ## 参照モジュールとの比較
 
-呼び出し元が、plan が再現対象に選んだ参照モジュールを名指ししたときは、上の出所ではなくそのモジュールと diff を比較し、欠陥ではなく構造の逸脱だけを報告する。`reference_checked` (参照モジュールが名指しされ読めたとき true) と、category が missing_file (対応ファイルの欠落)、hand_rolled (共有コンポーネントを再利用せず再実装)、naming (名前の乖離)、convention (共有規約の破れ) のいずれかである findings を返す。各 finding は location (diff 内の file:line)、reference (参照モジュール側の対応パスとシンボル)、detail (1 文 1 主張で 3 文以内) を持つ。
+呼び出し元が、plan が再現対象に選んだ参照モジュールを名指ししたときは、上の出所ではなくそのモジュールと diff を比較し、欠陥ではなく構造の逸脱だけを報告する。`reference_checked` (参照モジュールが名指しされ読めたとき true) と findings を返す。findings の category は missing_file (対応ファイルの欠落)、hand_rolled (共有コンポーネントを再利用せず再実装)、naming (名前の乖離)、convention (共有規約の破れ) のいずれかとする。各 finding は location (diff 内の file:line)、reference (参照モジュール側の対応パスとシンボル)、detail (1 文 1 主張で 3 文以内) を持つ。
 
 ## キャリブレーション
 

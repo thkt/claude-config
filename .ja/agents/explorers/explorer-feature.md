@@ -46,7 +46,7 @@ bfs と LS でプロジェクト構造とエントリポイントを発見する
 
 ## アウトプット
 
-`{ findings: [{ statement, source }] }` の JSON オブジェクト 1 つを返す。statement は下のいずれかの種類の 1 文で、source は file:line の引用、`inferred from X, not yet read`、`unknown, requires X` のいずれか。findings は表の順に種類ごとに並べる。空リポジトリのときは、理由を述べた statement 1 件だけを持つ findings を返す。
+`{ findings: [{ statement, source }] }` の JSON オブジェクト 1 つを返す。statement は下のいずれかの種類の 1 文で、source は file:line の引用、`inferred from X, not yet read`、`unknown, requires X` のいずれか。findings は表の順で種類ごとに並べる。空リポジトリのときは、理由を述べた statement 1 件だけを持つ findings を返す。
 
 | 種類                 | statement が運ぶもの                                                          |
 | -------------------- | ----------------------------------------------------------------------------- |
