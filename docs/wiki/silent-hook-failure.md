@@ -27,3 +27,4 @@ hook が落ちても Claude Code はエラーを出さない。促しが出な�
 - #522 PATH が切り詰められ bare な `gh` が FileNotFoundError で落ちた。例外は表に出ない
 - #523 `cd ~/.claude` の `~` が展開されず、存在しないディレクトリを判定していた
 - #534 `wiki_scene.py` が実行ビットなし (644) でコミットされた。settings.json は素のパスを直接実行する登録のため、`issue_body_gate.py` など実行ビット付きの兄弟 hook と異なりこのままでは起動しない
+- #618 `rumdl_check.py` は追加されて以来 settings.json のどこにも登録されておらず、実行ビットも無かった。配線後も exit 0 hook の stdout への print は単独では届かず、テストの緑だけでは配線の生存を確かめられない
