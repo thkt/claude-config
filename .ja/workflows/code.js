@@ -253,8 +253,10 @@ const correctionCtx = (unit, correction) => {
   );
 };
 
+// status は verifier を走らせなかった skipped、pass、fail、出力が無いか解釈できなかった
+// unreported。head は verifier が読んだ HEAD で、コミットが履歴に実在するかの判定に使う。
 const commitPostcondition = async (unit, baselineHead, body, files) => {
-  if (!verifyDeterministically || !baselineHead) return null;
+  if (!verifyDeterministically || !baselineHead) return { status: "skipped", why: "", head: null };
   const payload = JSON.stringify({
     repo,
     baseline_head: baselineHead.trim(),
@@ -266,14 +268,27 @@ const commitPostcondition = async (unit, baselineHead, body, files) => {
     "commitcheck",
     `printf %s ${shq(payload)} | python3 ${verifyCommitScript}`,
   );
-  if (relayed === null) return "commit verifier が出力を返さなかった";
-  const report = parsedReport(relayed.stdout);
-  if (!report) return "commit verifier が解釈可能な report を返さなかった";
-  if (report.verdict !== "pass") {
-    const blockers = Array.isArray(report?.blockers) ? report.blockers : [];
-    return blockers.length ? blockers.join(" / ") : "コミットが事後条件を満たさなかった";
+  if (relayed === null) {
+    return { status: "unreported", why: "commit verifier が出力を返さなかった", head: null };
   }
-  return null;
+  const report = parsedReport(relayed.stdout);
+  if (!report) {
+    return {
+      status: "unreported",
+      why: "commit verifier が解釈可能な report を返さなかった",
+      head: null,
+    };
+  }
+  const head = typeof report.head === "string" ? report.head : null;
+  if (report.verdict !== "pass") {
+    const blockers = Array.isArray(report.blockers) ? report.blockers : [];
+    return {
+      status: "fail",
+      why: blockers.length ? blockers.join(" / ") : "コミットが事後条件を満たさなかった",
+      head,
+    };
+  }
+  return { status: "pass", why: "", head };
 };
 
 // plan の units は実装順に並んでいる。id は agent の label、コミットの trailer、返り値の識別子に
@@ -418,17 +433,30 @@ const commitUnit = async (unit, tests, testFiles) => {
     },
   );
   if (res && res.committed) {
-    const unverified = await commitPostcondition(unit, baselineHead, commitBody(unit, tests), [
+    const check = await commitPostcondition(unit, baselineHead, commitBody(unit, tests), [
       ...unitFiles(unit),
       ...testFiles,
     ]);
-    if (unverified) {
-      anomalies.push({ unit: unit.id, kind: "commit-unverified", notes: unverified });
-      log(`${unit.id}: コミットは報告されたが未検証 (${unverified})。`);
+    // verifier が落としたコミットも、HEAD が動いていれば履歴に実在する。commits から落とすと
+    // 呼び出し元は unit_commits: 0 と報告し、分岐点以降の diff に載っているコミットを無い
+    // ものとして扱う。verifier の出力が無い unit は HEAD を知らないので、推測せず数えない。
+    // verifier を走らせなかった run では commit agent の自己申告しかなく、verified は false。
+    const landed =
+      check.status === "skipped" || (check.head !== null && check.head !== baselineHead.trim());
+    if (landed) {
+      commits.push({ unit: unit.id, subject: res.subject, verified: check.status === "pass" });
+    }
+    if (check.status === "pass" || check.status === "skipped") {
+      log(`${unit.id}: コミット済み (${res.subject})。`);
       return;
     }
-    commits.push({ unit: unit.id, subject: res.subject });
-    log(`${unit.id}: コミット済み (${res.subject})。`);
+    anomalies.push({ unit: unit.id, kind: "commit-unverified", notes: check.why });
+    log(
+      `${unit.id}: コミットは報告されたが未検証 (${check.why})。` +
+        (landed
+          ? "HEAD は動いているので commits に未検証として載せる。"
+          : "HEAD は動いていないか読めないので数えない。"),
+    );
     return;
   }
   const why = res ? (res.left_unstaged || []).join(" / ") : "commit agent が結果を返さなかった";

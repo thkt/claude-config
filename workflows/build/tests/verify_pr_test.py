@@ -113,6 +113,28 @@ class VerifyPrTest(unittest.TestCase):
         self.assertEqual(report["verdict"], "fail")
         self.assertGreaterEqual(len(list(report["blockers"])), 1)
 
+    # The Ship agent once opened a PR under an English title of its own instead of the
+    # Japanese issue title build.js handed it. The declared title is checked against GitHub.
+    def test_passes_when_the_pull_request_carries_the_declared_title(self) -> None:
+        self.stub_gh(json.dumps({**VALID, "title": "[実装] サンプル機能を追加する"}))
+        report = self.verify(title="[実装] サンプル機能を追加する")
+        self.assertEqual(report["verdict"], "pass")
+        self.assertEqual(report["title"], "[実装] サンプル機能を追加する")
+
+    def test_fails_when_the_pull_request_title_differs_from_the_declared_one(self) -> None:
+        self.stub_gh(json.dumps({**VALID, "title": "Add the sample feature"}))
+        report = self.verify(title="[実装] サンプル機能を追加する")
+        self.assertEqual(report["verdict"], "fail")
+        self.assertTrue(
+            any("pull request title is 'Add the sample feature'" in str(b) for b in report["blockers"]),
+            report["blockers"],
+        )
+
+    def test_leaves_the_title_unchecked_when_none_is_declared(self) -> None:
+        self.stub_gh(json.dumps({**VALID, "title": "Add the sample feature"}))
+        report = self.verify()
+        self.assertEqual(report["verdict"], "pass")
+
 
 class CliTest(unittest.TestCase):
     def test_exits_1_when_neither_repository_nor_cwd_says_which_repository_to_ask(self) -> None:

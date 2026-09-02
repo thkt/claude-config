@@ -6,17 +6,19 @@ agent の `pr_url` フィールドではなく GitHub に照会して検証す�
 が返した url をそのまま返すが、url 文字列は PR が作られた証拠でも、draft である証拠でも、
 build が切ったブランチを対象にしている証拠でもない。
 
-stdin: JSON {branch, base_branch, repository, cwd}
+stdin: JSON {branch, base_branch, repository, cwd, title}
   repository と cwd のどちらかは必須である。gh にどのリポジトリを問うかを決めるため。
   repository   GitHub リポジトリの "owner/name"。省略すると cwd が対象を決める
   branch       build が push した head ブランチ
   base_branch  PR が対象とすべき base ブランチ
   cwd          gh を実行するディレクトリの絶対パス (任意)
+  title        PR が持つべきタイトル (任意)。build.js が issue タイトルから決めた文字列で、
+               省略するとタイトルは検査しない
 
 stdout: JSON {verdict, classification, reason_codes, failure_route, blockers, ...}
   verdict が pass になるのは、gh がそのブランチの PR を返し、次のすべてが一致する
   ときだけである。isDraft が true、baseRefName が base_branch、headRefName が branch、
-  url が空でない文字列。
+  url が空でない文字列、title を渡したときは title がその文字列。
 exit 0 は実行完了 (判定は JSON から読む)。exit 1 は usage / parse エラー。fail-closed:
 不正な payload を検証済み PR として報告することはない。gh の失敗は exit 1 ではなく fail
 判定である。実行は完了しており、答えが「ない」だからである。
@@ -29,7 +31,7 @@ from pathlib import Path
 from typing import NoReturn
 
 PROTOCOL = "claude-build-ship/v1"
-FIELDS = "url,isDraft,baseRefName,headRefName"
+FIELDS = "url,isDraft,baseRefName,headRefName,title"
 
 
 def fail(message: str) -> NoReturn:
@@ -41,6 +43,16 @@ def required_string(payload: dict[str, object], key: str) -> str:
     value = payload.get(key)
     if not isinstance(value, str) or not value.strip():
         fail(f"{key} must be a non-empty string")
+    return value.strip()
+
+
+def optional_string(payload: dict[str, object], key: str) -> str:
+    """省略は空文字列。渡すなら空でない文字列に限る。"""
+    value = payload.get(key)
+    if value is None:
+        return ""
+    if not isinstance(value, str) or not value.strip():
+        fail(f"{key} must be a non-empty string when present")
     return value.strip()
 
 
@@ -64,10 +76,7 @@ def view_pr(repository: str, branch: str, cwd: str | None) -> tuple[int, dict[st
 def verify(payload: object) -> dict[str, object]:
     if not isinstance(payload, dict):
         fail("payload must be a JSON object")
-    repository = payload.get("repository")
-    if repository is not None and (not isinstance(repository, str) or not repository.strip()):
-        fail("repository must be a non-empty string when present")
-    repository = repository.strip() if isinstance(repository, str) else ""
+    repository = optional_string(payload, "repository")
     branch = required_string(payload, "branch")
     base_branch = required_string(payload, "base_branch")
     cwd = payload.get("cwd")
@@ -75,6 +84,7 @@ def verify(payload: object) -> dict[str, object]:
         fail("cwd must be an absolute path when present")
     if not repository and not isinstance(cwd, str):
         fail("either repository or cwd is required, so gh knows which repository to ask")
+    title = optional_string(payload, "title")
 
     code, view, stderr = view_pr(repository, branch, cwd if isinstance(cwd, str) else None)
     blockers: list[str] = []
@@ -94,6 +104,10 @@ def verify(payload: object) -> dict[str, object]:
         url = view.get("url")
         if not isinstance(url, str) or not url.strip():
             blockers.append("pull request carries no url")
+        if title and view.get("title") != title:
+            blockers.append(
+                f"pull request title is {view.get('title')!r}, not the declared {title!r}"
+            )
 
     return {
         "protocol": PROTOCOL,
@@ -106,6 +120,7 @@ def verify(payload: object) -> dict[str, object]:
         "is_draft": view.get("isDraft"),
         "base_ref_name": view.get("baseRefName"),
         "head_ref_name": view.get("headRefName"),
+        "title": view.get("title"),
     }
 
 
