@@ -1,6 +1,6 @@
 ---
 name: use-workflow-pageshot
-description: /pr の内部ヘルパー。PR 本文 (Preview URL + How to Test) を読み取り、agent-browser を駆動してスクリーンショット (1 step) または動画 (2+ step) を撮影し、GitHub web UI への手動添付用に成果物のパスを返す。
+description: /pr の内部ヘルパー。PR 本文 (Preview URL + How to Test) を読み取り、agent-browser を駆動してスクリーンショット (1 step) または動画 (2+ step) を撮影し、/pr が gh pr create --attach に渡す成果物のパスを返す。
 when_to_use: /pr workflow UI変更検出時のスクショ/動画撮影, screenshot capture, video capture
 allowed-tools: Read Bash(agent-browser:*) Bash(ffmpeg:*) Bash(mkdir:*) Bash(date:*)
 model: opus

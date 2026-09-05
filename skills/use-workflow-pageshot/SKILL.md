@@ -1,6 +1,6 @@
 ---
 name: use-workflow-pageshot
-description: Internal helper for /pr. Reads PR body (Preview URL + How to Test), drives agent-browser to capture a screenshot (1 step) or a video (2+ steps), and returns the artifact path for manual attachment on GitHub web UI.
+description: Internal helper for /pr. Reads PR body (Preview URL + How to Test), drives agent-browser to capture a screenshot (1 step) or a video (2+ steps), and returns the artifact path that /pr passes to gh pr create --attach.
 when_to_use: /pr workflow UI変更検出時のスクショ/動画撮影, screenshot capture, video capture
 allowed-tools: Read Bash(agent-browser:*) Bash(ffmpeg:*) Bash(mkdir:*) Bash(date:*)
 model: opus

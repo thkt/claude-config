@@ -33,6 +33,18 @@ test("the mode tokens pr branches on are the ones pageshot emits", () => {
   }
 });
 
+// The pageshot artifact reaches the PR through gh's --attach flag. With the flag gone from the
+// create step, the capture runs and the PR goes up without it, and the only remaining signal is
+// a stale instruction to upload the file by hand.
+test("the create step attaches the pageshot artifact through gh --attach", () => {
+  for (const lang of LANGS) {
+    const doc = skill(lang);
+    assert.match(doc, /--attach "<path>#<title>"/, `${lang}: the screenshot branch passes the artifact and alt text`);
+    assert.match(doc, /--attach "<path>"/, `${lang}: the video branch passes the artifact without alt text`);
+    assert.doesNotMatch(doc, /drag|ドラッグ/, `${lang}: no manual upload instruction remains`);
+    assert.doesNotMatch(pageshot(lang), /manual|手動/, `${lang}: pageshot no longer hands off to a manual step`);
+  }
+});
 
 // The order itself is checked. Matching sets in a swapped order change which template gets used.
 const PRIORITY = [
