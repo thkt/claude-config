@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # sandbox/hako/hako.sh: host 側 CLI that assembles the `container run` invocation for one
-# agent (U-005), plus the `login` subcommand that opens an interactive session for that
-# agent's own auth flow (U-006).
+# agent, plus the `login` subcommand that opens an interactive session for that
+# agent's own auth flow.
 #
 # Usage: hako.sh <agent-name> [--live]
 #        hako.sh login <agent-name>
@@ -14,7 +14,7 @@
 # Auth directory: a named volume, `container volume create` (docs/command-reference.md),
 # scoped per agent so agent A's credentials are never mounted into agent B's container.
 # Both forms take the agent name as their first positional argument (after `login`, for the
-# login form) and validate it against agents.sh (U-001) before assembling any run argument.
+# login form) and validate it against agents.sh before assembling any run argument.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -66,8 +66,7 @@ run_container() {
     "$IMAGE" "$agent_name"
 }
 
-# Assembles and runs the ordinary (non-interactive) container invocation for a known agent
-# name (U-005).
+# Assembles and runs the ordinary (non-interactive) container invocation for a known agent name.
 run_agent() {
   local agent_name="$1" live_flag="${2:-}"
   local auth_dir workspace_src
@@ -78,11 +77,11 @@ run_agent() {
   run_container "$agent_name" "$auth_dir" "$workspace_src"
 }
 
-# U-006: `hako.sh login <agent-name>` opens an interactive session so the agent's own login
+# `hako.sh login <agent-name>` opens an interactive session so the agent's own login
 # flow (browser auth, device code, etc.) can run to completion and persist into the
 # per-agent auth volume mounted at auth_dir. The permission-skipping flag lives in
 # agents.sh's per-agent exec command, applied inside the container by entrypoint.sh for the
-# ordinary run path (U-003); this invocation never reads that field, so it carries no such
+# ordinary run path; this invocation never reads that field, so it carries no such
 # flag.
 run_login() {
   local agent_name="$1"

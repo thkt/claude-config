@@ -29,8 +29,7 @@ TRANSCRIPTS_ROOT = Path.home() / ".claude" / "projects"
 # ablation apparatus 自身の script tree。ここ配下のパスは観測を生成したコードそのものであり
 # 検査対象の harness 要素ではないため、delete_candidates に決して現れてはならない —
 # 観測を続ける apparatus 自身を削除してしまうと、harness 要素を測り続ける能力そのものが
-# 失われる (このユニットの T-015 契約「ablation apparatus 自身が delete candidates から
-# 除かれている」)。
+# 失われる。
 APPARATUS_DIR = "skills/ablate/"
 
 REPORT_NAME = "ablate"

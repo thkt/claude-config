@@ -29,8 +29,7 @@ RUN_COUNT = 5
 
 # 1 アームが合格と判定されるために、harness ありの挙動を再現しなければならない実行の割合。
 # docs/wiki/deterministic-script-judgment.md に倣い、この数値を SKILL.md の散文でなくここに
-# 1 箇所だけ持つ。合否判定へ配線する処理は、このモジュールがまだ持たない比較を必要とするため、
-# 実行結果を採点するユニットへ持ち越す (このユニットの deferred を参照)。
+# 1 箇所だけ持つ。
 PASS_THRESHOLD = 0.8
 
 UNMEASURED = "unmeasured"

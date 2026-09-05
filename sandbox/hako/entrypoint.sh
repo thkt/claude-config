@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # sandbox/hako/entrypoint.sh: apply the firewall as root, demote to the unprivileged node
-# user, and exec the agent's command (U-003).
+# user, and exec the agent's command.
 #
 # Runs as root inside the guest container. Order matters for the security guarantee:
-#   1. Apply the firewall (init-firewall.sh, U-002) while still root; a non-zero exit means
+#   1. Apply the firewall (init-firewall.sh) while still root; a non-zero exit means
 #      the guest network is not locked down, so the agent must never run.
 #   2. Probe, via gosu, that the demoted node user cannot run iptables. Node has neither
 #      NET_ADMIN nor sudo, so the probe should fail; if it instead succeeds, demotion did
 #      not shed the privilege it claims to, so abort rather than exec the agent under it.
-#   3. exec the agent's command (read from agents.sh, U-001; never hardcoded here) as node.
+#   3. exec the agent's command (read from agents.sh, never hardcoded here) as node.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

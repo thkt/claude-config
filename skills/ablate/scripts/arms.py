@@ -30,9 +30,7 @@ RUN_COUNT = 5
 
 # The share of an arm's runs that must reproduce the harness-present behavior for the arm to
 # be judged passed. Held here per docs/wiki/deterministic-script-judgment.md so the number
-# lives in one script constant rather than in SKILL.md prose; wiring it into a pass/fail
-# verdict is deferred to the unit that scores run output, since that judgment needs a
-# comparison this module does not yet have (see this unit's reported deferred list).
+# lives in one script constant rather than in SKILL.md prose.
 PASS_THRESHOLD = 0.8
 
 UNMEASURED = "unmeasured"
