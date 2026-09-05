@@ -71,6 +71,7 @@
 - 同じ事実を 2 体の agent に聞かない。verifier の report が持つフィールド (head) を使い、再取得の relay を足さない #623
 - prefix 除去の正規表現は正準の列挙 (verify-commit.py の COMMIT_TYPES) と同じ集合に限定する。任意語だと WIP: や RFC: の先頭語が消える #623
 - 手元の gate (oxlint / oxfmt) は Python を見ないので、push 前に CI と同じ版の ruff (0.16.4) を手元で走らせる。E501 だけで CI が落ちた #623
+- PR 本文の Review focus 節で、振る舞いが変わったファイルと comment のみの変更ファイルを分けて示す #648
 
 ## 棄却
 
