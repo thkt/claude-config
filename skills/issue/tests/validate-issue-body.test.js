@@ -348,11 +348,20 @@ test("T-017 a body meeting the form but missing the type's floor is an error", a
     const floor = floorFor(type);
     assert.ok(floor.length > 0, `${type}: the floor is readable`);
     const path = join(dir, form);
-    const labels = [...readFileSync(path, "utf8").matchAll(/^\s*label:\s*(.+?)\s*$/gm)];
-    const body = labels.map((m) => `## ${m[1]}\n\nx\n`).join("\n");
+    const labels = [...readFileSync(path, "utf8").matchAll(/^\s*label:\s*(.+?)\s*$/gm)].map(
+      (m) => m[1],
+    );
+    const body = labels.map((label) => `## ${label}\n\nx\n`).join("\n");
+    const uncovered = floor.filter(
+      (name) => !labels.some((label) => label.toLowerCase() === name.toLowerCase()),
+    );
+    assert.ok(
+      uncovered.length > 0,
+      `${form}: the form leaves at least one floor section uncovered`,
+    );
     const { status, out } = runValidate(path, `[${type[0].toUpperCase()}${type.slice(1)}] x`, body);
     assert.equal(status, 1, `${form}: it exits 1 without the floor`);
-    for (const name of floor) {
+    for (const name of uncovered) {
       assert.ok(
         out.errors.includes(`missing_section:${name}`),
         `${form}: ${name} is reported missing (${out.errors.join(", ")})`,
@@ -514,4 +523,102 @@ test("T-024 braces inside a fenced block are not read as prompts", () => {
   const { status, out } = runContentOnly(body);
   assert.equal(status, 0, `it exits 0, got ${JSON.stringify(out.errors)}`);
   assert.ok(out.checks.includes("placeholder=none"), "it records that no prompt is left");
+});
+
+test("T-026 a form label that differs from the bug floor only in case satisfies the floor", () => {
+  const dir = mkdtempSync(join(tmpdir(), "validate-issue-body-"));
+  try {
+    const form = join(dir, "bug.yml");
+    writeFileSync(
+      form,
+      [
+        "name: Bug report",
+        "body:",
+        "  - type: textarea",
+        "    attributes:",
+        "      label: What happened?",
+        "    validations:",
+        "      required: true",
+        "  - type: textarea",
+        "    attributes:",
+        "      label: Steps to reproduce",
+        "",
+      ].join("\n"),
+    );
+    const body = [
+      "## What happened?",
+      "",
+      "x",
+      "",
+      "## Steps to reproduce",
+      "",
+      "1. x",
+      "",
+      "## Expected vs Actual",
+      "",
+      "- x",
+      "",
+    ].join("\n");
+    const { status, out } = runValidate(form, "[Bug] x", body);
+    assert.equal(status, 0, `it exits 0, got ${JSON.stringify(out.errors)}`);
+    assert.ok(
+      !out.errors.includes("missing_section:Steps to Reproduce"),
+      "the lowercase form label stands in for the floor's capitalization",
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// A repository form written in Japanese requires 再現手順 and 期待 / 実際. Those are the bug floor
+// under another name, so a body carrying them must not also have to carry the English headings.
+test("T-025 a Japanese form's required sections satisfy the bug floor", () => {
+  const dir = mkdtempSync(join(tmpdir(), "validate-issue-body-"));
+  try {
+    const form = join(dir, "bug.yml");
+    writeFileSync(
+      form,
+      [
+        "name: バグ",
+        "body:",
+        "  - type: textarea",
+        "    attributes:",
+        "      label: 事象",
+        "    validations:",
+        "      required: true",
+        "  - type: textarea",
+        "    attributes:",
+        "      label: 再現手順",
+        "    validations:",
+        "      required: true",
+        "  - type: textarea",
+        "    attributes:",
+        "      label: 期待 / 実際",
+        "    validations:",
+        "      required: true",
+        "",
+      ].join("\n"),
+    );
+    const body = [
+      "## 事象",
+      "",
+      "x",
+      "",
+      "## 再現手順",
+      "",
+      "1. x",
+      "",
+      "## 期待 / 実際",
+      "",
+      "- x",
+      "",
+    ].join("\n");
+    const { status, out } = runValidate(form, "[Bug] x", body);
+    assert.equal(status, 0, `it exits 0, got ${JSON.stringify(out.errors)}`);
+    for (const name of floorFor("bug")) {
+      assert.ok(!out.errors.includes(`missing_section:${name}`), `${name} is not reported missing`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

@@ -1,6 +1,6 @@
 ---
 name: pr
-description: ブランチ変更を分析し、draft の pull request を作成する。base ブランチは分岐元から検出し、本文は prose review で精査してから上げる。UI 変更があればスクリーンショットを撮る。
+description: ブランチ変更を分析し、draft の pull request を作成する。base ブランチは分岐元から検出し、本文は prose review で精査してから上げる。UI 変更があればスクリーンショットを撮って PR に添付する。
 when_to_use: PR作って, プルリクエスト, pull request, PR作成
 allowed-tools: Bash(git:*) Bash(gh:*) Bash(cat:*) Read Skill
 model: opus
@@ -34,8 +34,8 @@ commit なし、Git リポジトリでない、gh 認証失敗のいずれかを
 
 1. UI 変更があれば Skill で `use-workflow-pageshot` を PR 本文と共に呼ぶ (§ Pageshot 統合)
 2. `git push -u origin HEAD` で現在ブランチを push する
-3. 本文を一時ファイルに書き出し、`gh pr create --draft --title "<title>" --body-file <path>` で PR を作成する (§ 作成の制約)
-4. pageshot 成果物があれば表示 (§ Pageshot 統合)。成功時は `Created draft PR: #<number> <title> (base: <base>) <PR URL>` を出す
+3. 本文を一時ファイルに書き出し、`gh pr create --draft --title "<title>" --body-file <path>` で PR を作成する (§ 作成の制約)。pageshot 成果物があれば § Pageshot 統合の `--attach` を足す
+4. 成功時は `Created draft PR: #<number> <title> (base: <base>) <PR URL>` を出す。添付の失敗は § 作成の制約に従う
 
 ## 分析ソース
 
@@ -83,9 +83,12 @@ draft で上げるのは、人が本文を読んでから ready に変えるた�
 
 本文は `--body` でなく `--body-file` で渡す。テンプレート由来の本文は backtick や `$` を含み、`--body` では shell がそれを解釈する。
 
+pageshot 成果物は本文へ手書きせず `--attach` で渡す。gh が upload し、本文末尾へ追記する。upload が失敗しても PR は作られ、終了コードが非ゼロでも URL は stdout に出る。この場合も結果行を出し、失敗した成果物のパスと `gh pr edit <number> --attach <path>` を案内する。
+
 ## Pageshot 統合
 
 `Skill("use-workflow-pageshot")` を現在の PR 本文文字列を入力に呼ぶ。本文には上部近くの `Preview URL: <URL>` 行と、番号付きリストの `## How to Test` セクションが必要。skill は stdout に mode 行を 1 つ返す。
 
-- `mode=screenshot artifact=<path>`/`mode=video artifact=<path>` パスを表示し、GitHub の PR 説明か最初のコメントへドラッグ & ドロップするよう案内
+- `mode=screenshot artifact=<path>` `gh pr create` に `--attach "<path>#<title>"` を足す。`#` の後ろが alt text になり、PR タイトルを使う
+- `mode=video artifact=<path>` `gh pr create` に `--attach "<path>"` を足す。動画は alt text を持たない
 - `mode=failed` 欠落項目を報告し、pageshot をスキップして PR 作成を続行
