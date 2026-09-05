@@ -1,6 +1,6 @@
 ---
 name: pr
-description: Analyzes branch changes and opens a draft pull request. Detects the base branch from where this one was cut, refines the body through a prose review before it goes up, and captures a screenshot when the change touches the UI.
+description: Analyzes branch changes and opens a draft pull request. Detects the base branch from where this one was cut, refines the body through a prose review before it goes up, and captures a screenshot and attaches it to the PR when the change touches the UI.
 when_to_use: PR作って, プルリクエスト, pull request, PR作成
 allowed-tools: Bash(git:*) Bash(gh:*) Bash(cat:*) Read Skill
 model: opus
@@ -34,8 +34,8 @@ If there are no commits, the directory is not a git repository, or gh auth fails
 
 1. If UI changes, invoke `use-workflow-pageshot` via Skill with the PR body (§ Pageshot Integration)
 2. Push the current branch with `git push -u origin HEAD`
-3. Write the body to a temp file and create the PR with `gh pr create --draft --title "<title>" --body-file <path>` (§ Creation Constraints)
-4. If a pageshot artifact exists, display it (§ Pageshot Integration). On success, display `Created draft PR: #<number> <title> (base: <base>) <PR URL>`
+3. Write the body to a temp file and create the PR with `gh pr create --draft --title "<title>" --body-file <path>` (§ Creation Constraints). If a pageshot artifact exists, add the `--attach` from § Pageshot Integration
+4. On success, display `Created draft PR: #<number> <title> (base: <base>) <PR URL>`. A failed attachment follows § Creation Constraints
 
 ## Analysis Sources
 
@@ -83,9 +83,12 @@ Nothing confirms during this phase. The draft state and the base on the result l
 
 Pass the body through `--body-file` rather than `--body`. A template-derived body contains backticks and `$`, and `--body` lets the shell interpret them.
 
+Pass the pageshot artifact through `--attach` rather than writing it into the body. gh uploads it and appends it to the end of the body. When the upload fails the PR is still created, and the URL still goes to stdout even though the exit code is non-zero. Display the result line in that case too, along with the path of the failed artifact and `gh pr edit <number> --attach <path>`.
+
 ## Pageshot Integration
 
 Call `Skill("use-workflow-pageshot")` with the current PR body string as input. The body must contain a `Preview URL: <URL>` line near the top and a `## How to Test` section as a numbered list. The skill returns a single mode line on stdout.
 
-- `mode=screenshot artifact=<path>` / `mode=video artifact=<path>` display the path and advise dragging it into the PR description or first comment on GitHub
+- `mode=screenshot artifact=<path>` add `--attach "<path>#<title>"` to `gh pr create`. The text after `#` becomes the alt text, and the PR title is used
+- `mode=video artifact=<path>` add `--attach "<path>"` to `gh pr create`. Video carries no alt text
 - `mode=failed` report missing items, skip pageshot, and continue PR creation
