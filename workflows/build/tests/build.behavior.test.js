@@ -416,12 +416,9 @@ test("a plan carrying both kind and reason clears validate", async () => {
   assert.notEqual(result.stopped, "invalid-plan", "kind plus reason clears validate");
 });
 
-// U-003: the extract prompt (line ~500) still only describes the legacy
-// `reference_module: null (reason)` prose, not the current `reference_module: {kind, reason}`
-// skeleton form skills/think now writes (DR-0093's Transition Plan). Until that prompt catches
-// up, a still-imperfect extraction can drop kind or reason even though the raw issue body states
-// them plainly. A deterministic regex fallback recovers them from planSection, the same way
-// bodyUnitIds scans planSection with a line-anchored regex rather than reading the whole body.
+// An extraction can drop kind or reason even though the raw issue body states them plainly. A
+// deterministic regex fallback recovers them from planSection, the same way bodyUnitIds scans
+// planSection with a line-anchored regex rather than reading the whole body.
 const bodyWithRefModule = (refModuleLine) =>
   [
     "Background on the issue.",
@@ -464,9 +461,6 @@ test("the fill reads kind and reason off the body line when the extraction omits
     args,
     stubs: makeStubs({ body, plan: makePlan({ reference_module: {} }) }),
   });
-  // An object with no "kind" key already clears validate() unchecked (its own legacy-compat
-  // branch: "goes unchecked for backward compatibility"), so clearing validate alone would not
-  // prove the fill ran; the code workflow's structured payload is read directly instead.
   assert.notEqual(result.stopped, "invalid-plan");
   const codeCall = calls.workflow.find((c) => c.name === "code");
   assert.ok(codeCall, "the code workflow runs");
@@ -507,31 +501,61 @@ test("the fill reads an unquoted kind and reason, the form /think writes", async
   );
 });
 
-test("the legacy `reference_module: null (reason)` form fills a kind rather than being left absent", async () => {
-  const reason = "adds one line to an existing skill; no new module needed";
-  const body = bodyWithRefModule(`reference_module: null (${reason})`);
+test("the body line's kind and reason override the ones the extraction returned", async () => {
+  const reason = "no equivalent structure exists yet";
+  const body = bodyWithRefModule(`reference_module: {kind: "new-shape", reason: "${reason}"}`);
+  const { calls, result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      body,
+      plan: makePlan({ reference_module: { kind: "no-module", reason: "paraphrased by extract" } }),
+    }),
+  });
+  assert.notEqual(result.stopped, "invalid-plan");
+  const codeCall = calls.workflow.find((c) => c.name === "code");
+  assert.equal(codeCall.args.plan.reference_module.kind, "new-shape", "kind comes from the body");
+  assert.equal(codeCall.args.plan.reference_module.reason, reason, "reason comes from the body");
+});
+
+test("a `reference_module: null (reason)` body line stops as invalid-plan instead of being read as a kind", async () => {
+  const body = bodyWithRefModule("reference_module: null (adds one line to an existing skill)");
   const { calls, result } = await runWorkflow(buildJs, {
     args,
     stubs: makeStubs({ body, plan: makePlan({ reference_module: null }) }),
   });
-  assert.notEqual(
-    result.stopped,
-    "invalid-plan",
-    "the legacy null(reason) form fills a kind and reason instead of stopping",
+  assert.equal(result.stopped, "invalid-plan");
+  assert.equal(
+    calls.workflow.find((c) => c.name === "code"),
+    undefined,
+    "the code workflow does not run",
   );
-  const codeCall = calls.workflow.find((c) => c.name === "code");
-  assert.ok(codeCall, "the code workflow runs");
-  const filled = codeCall.args.plan.reference_module;
-  assert.ok(
-    filled && typeof filled === "object",
-    "reference_module becomes an object rather than staying the bare null the extraction produced",
+  assert.equal(
+    result.blockers.filter((b) => /reference_module is null/.test(String(b))).length,
+    1,
+    "blockers names the bare null once",
   );
-  assert.match(
-    filled.kind,
-    /^(no-module|new-shape)$/,
-    "a kind is filled; the fill never produces module, since it never fabricates a path",
+});
+
+test("a reference_module object without kind stops as invalid-plan", async () => {
+  const body = bodyWithRefModule('reference_module: {path: "src/x", files: ["src/x/a.ts"]}');
+  const { calls, result } = await runWorkflow(buildJs, {
+    args,
+    stubs: makeStubs({
+      body,
+      plan: makePlan({ reference_module: { path: "src/x", files: ["src/x/a.ts"] } }),
+    }),
+  });
+  assert.equal(result.stopped, "invalid-plan");
+  assert.equal(
+    calls.workflow.find((c) => c.name === "code"),
+    undefined,
+    "the code workflow does not run",
   );
-  assert.equal(filled.reason, reason, "the reason is carried over verbatim");
+  assert.equal(
+    result.blockers.filter((b) => /reference_module\.kind is missing/.test(String(b))).length,
+    1,
+    "blockers names the missing kind once",
+  );
 });
 
 // The outside quotation shares the reference_module shape but carries kind: "module" and a
@@ -1031,6 +1055,7 @@ const refModulePreconditionsPlan = (reference_module) => makePlan({ reference_mo
 
 test("a reference_module path that does not exist stops the run at plan-drift", async () => {
   const plan = refModulePreconditionsPlan({
+    kind: "module",
     path: "src/existing",
     files: ["src/existing/index.ts"],
   });
@@ -1097,6 +1122,7 @@ test("a plan whose kind is no-module with a path clears validate and takes the e
 
 test("a reference_module whose files include one that does not exist stops the run at plan-drift", async () => {
   const plan = refModulePreconditionsPlan({
+    kind: "module",
     path: "src/existing",
     files: ["src/existing/index.ts", "src/existing/missing.ts"],
   });
@@ -1131,6 +1157,7 @@ test("a reference_module with no path puts no reference_module row in the revali
     reason: "no existing module shares this shape",
   });
   const withPath = refModulePreconditionsPlan({
+    kind: "module",
     path: "src/existing",
     files: ["src/existing/index.ts"],
   });
@@ -1376,7 +1403,7 @@ test("a unit with no tests is not invalid-plan, and zero declared statements cal
 
 const refPlan = () =>
   makePlan({
-    reference_module: { path: "src/existing", files: ["src/existing/index.ts"] },
+    reference_module: { kind: "module", path: "src/existing", files: ["src/existing/index.ts"] },
   });
 
 test("Verify's diff, conformance, and structure measure from Branch's branch-point sha and never use a bare git diff HEAD", async () => {

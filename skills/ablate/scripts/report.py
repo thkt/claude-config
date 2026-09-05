@@ -29,8 +29,7 @@ TRANSCRIPTS_ROOT = Path.home() / ".claude" / "projects"
 # The ablation apparatus's own script tree. A path under here is the code that produced the
 # observation, not a harness element under test, so it must never appear in
 # delete_candidates: deleting the apparatus that measures harness elements would remove the
-# ability to keep measuring them (this unit's T-015 contract, "the ablation apparatus itself
-# is absent from the delete candidates").
+# ability to keep measuring them.
 APPARATUS_DIR = "skills/ablate/"
 
 REPORT_NAME = "ablate"

@@ -14,22 +14,16 @@ export const meta = {
   ],
 };
 
-// 設計上の要点は 4 つ。
-// 1. 静的 reviewer fan-out は routing 表を複製せず workflow("audit") の入れ子で再利用する
-//    (routing 表の変更が assert に直接伝播する性質を保つため)。audit 内で
-//    critic-audit / critic-evidence を通過済みのため、assert 側の Challenge は Codex findings
-//    のみに掛け、同一 agent による二重 challenge を避ける。
-// 2. gate 判定は schema + script で計算する。gate を enhancer の散文から decode するのではなく、
-//    (build, tests, issues) から script が規則で計算するため、re-spawn / fail-close の機構自体が
-//    不要になる。
-// 3. worktree.py / bootstrap.py は決定論 script なので agent にそのまま実行させる。
-//    session id は agent 環境の $CLAUDE_SESSION_ID で解決し、生成と cleanup が同じ id から
-//    branch / path を導出するため drift しない。
-// 4. adversarial (codex 600s) は Evidence と同時に始め、Challenge / Triage の裏で走らせる
-//    (barrier に入れると最長 stage が全体を塞ぐ)。
-//
-// OUTCOME.md 不在時に /outcome で stub 生成しない。assert は検証であり、対象 repo への
-// 書き込み副作用を持たない。不在は report に記録して前進する。
+// 1. 静的 reviewer fan-out は workflow("audit") の入れ子で、routing 表を複製しない。audit 内で
+//    critic-audit / critic-evidence を通過済みなので、assert の Challenge は Codex findings のみ。
+// 2. gate は (build, tests, issues) から schema + script の規則で計算し、enhancer の散文から
+//    decode しない。
+// 3. worktree.py / bootstrap.py は決定論 script で、生成と cleanup は $CLAUDE_SESSION_ID から
+//    同じ branch / path を導く。
+// 4. adversarial (codex 600s) は Evidence と同時に始め、Challenge / Triage の裏で走らせる。
+//    barrier に入れると最長 stage が全体を塞ぐ。
+// OUTCOME.md 不在時に stub は生成しない。assert は対象 repo への書き込み副作用を持たない。不在は
+// report に記録する。
 
 const parseArgs = () => {
   if (typeof args === "object" && args) return args;
@@ -59,9 +53,8 @@ if (!repo) {
 const anchor = (p) =>
   `git / ファイル / ビルドのコマンドはすべて ${repo} の repository から実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`;
 
-// plugin 配布を考慮した資産解決。この script が plugin として配られると、同梱資産は
-// ~/.claude ではなく ~/.claude/plugins 配下に置かれる。shell 片は dev tree のパスを先に
-// 試すので、dev tree はそのまま動く。-e 判定はディレクトリも通し、下の SCRIPTS が要る。
+// plugin 配布では同梱資産は ~/.claude/plugins 配下に置かれる。shell 片は dev tree のパスを先に
+// 試す。-e 判定はディレクトリも通し、下の SCRIPTS が要る。
 const bundled = (rel) =>
   `"$(P="$HOME/.claude/${rel}"; [ -e "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" -not -path "*/.ja/*" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
 // この workflow の付属 script。loader は workflows/ 直下の .js しか読まないため、
@@ -71,10 +64,9 @@ const SCRIPTS = bundled("workflows/assert");
 // その判定結果を読む。
 const OUTCOME_VALIDATOR = bundled("skills/outcome/scripts/validate-outcome.py");
 
-// merge-findings.py の 2 規則を JS に inline する。P1 -> high、P2 -> medium、P3 -> 落とす。
-// critical / high / medium / low は素通し。認識できない severity は順位付け不能なので落とす。
-// dedup key は file:line のみ (source ごとに category schema が違う)。衝突時は高い severity を
-// 残し、source を和集合にする。
+// merge-findings.py の 2 規則を inline する。P1 -> high、P2 -> medium、P3 -> 落とす。critical /
+// high / medium / low は素通し、認識できない severity は落とす。dedup key は file:line のみ
+// (source ごとに category schema が違う)。衝突時は高い severity を残し、source を和集合にする。
 const SEVERITY_MAP = {
   P1: "high",
   P2: "medium",
@@ -290,8 +282,8 @@ if (boot.mode === "none") {
 }
 
 // env fail (worktree 不可 / install fail) と build smoke fail (対象がビルドできない) を区別する。
-// 動的 evidence の欠落のうち caveat 落としを許すのは env fail のみ。build smoke fail を caveat に
-// 落とすと壊れたビルドが merge に届く false-Ready を生む。
+// caveat 落としを許すのは env fail のみ。build smoke fail まで落とすと壊れたビルドが Ready で merge
+// に届く。
 const envFail = !boot.worktree_ok || boot.install === "fail";
 const buildCol = envFail ? "skipped" : boot.build;
 const dynamicOk = !envFail && buildCol !== "fail";

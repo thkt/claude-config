@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# sandbox/hako/agents.sh: single source of truth for the per-agent CLI shape (U-001).
+# sandbox/hako/agents.sh: single source of truth for the per-agent CLI shape.
 #
 # One row per agent: name | guest 内の exec コマンド | 認証ディレクトリ | agent 固有の allowlist ドメイン (space 区切り)。
 # entrypoint.sh と init-firewall.sh はそれぞれ別プロセスからこの表を読むため、source では

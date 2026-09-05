@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# sandbox/hako/init-firewall.sh: apply the guest firewall for one agent and verify it (U-002).
+# sandbox/hako/init-firewall.sh: apply the guest firewall for one agent and verify it.
 #
 # Structure follows anthropics/claude-code's own .devcontainer/init-firewall.sh: flush ->
 # allowlist construction -> default DROP -> post-check. Two deltas from that script:
-#   - The allowed domain set is not a constant here; it comes from agents.sh (U-001), read
+#   - The allowed domain set is not a constant here; it comes from agents.sh, read
 #     as a sibling CLI call the same way sandbox/hako/tests/agents.test.sh resolves AGENTS.
 #   - This guest has no Docker-managed embedded resolver to special-case, so there is no
 #     DNS-rule extract/restore step. DNS is allowed as a single udp/53 rule to whichever

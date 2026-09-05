@@ -18,8 +18,6 @@ from typing import TypedDict, cast
 # 1 回の run を背後の履歴から切り分けられない。
 COMMIT_PREFIX = "docs(wiki):"
 
-NOT_A_PAGE = {"_candidates.md", "README.md"}
-
 WIKI_DIR = "docs/wiki"
 
 WAITING = "## 昇格待ち"
@@ -77,21 +75,6 @@ def run_commits(repo: Path, base: str) -> list[str]:
         if subject.startswith(COMMIT_PREFIX):
             hashes.append(commit_hash)
     return hashes
-
-
-def pages_added(repo: Path, commit_hash: str) -> int:
-    out = _git(
-        repo, "diff-tree", "--no-commit-id", "--name-status", "-r", commit_hash, "--", WIKI_DIR
-    )
-    count = 0
-    for line in out.splitlines():
-        if not line:
-            continue
-        status, path = line.split("\t", 1)
-        name = Path(path).name
-        if status == "A" and name.endswith(".md") and name not in NOT_A_PAGE:
-            count += 1
-    return count
 
 
 def section_rows(text: str, heading: str) -> int:

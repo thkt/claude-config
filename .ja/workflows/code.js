@@ -132,10 +132,9 @@ const parsedReport = (stdout) => {
   }
 };
 
-// レポートは agent を経由して戻るので、長いものは途中で切れて戻る。ある run では 1.5 KB から
-// 8.7 KB のレポートが中継され、解析できない形で届いたものは 5.7 KB だった。その長さの大半は
-// 2 つの出力 tail で、ここはそれを一度も読まない。読むのは verdict と classification と
-// candidates である。gate.ts の既定は tail 1 つあたり 12 KB。
+// レポートは agent を経由して戻るので、長いものは途中で切れる (5.7 KB のものが解析できない形で
+// 届いた)。長さの大半は 2 つの出力 tail で、ここは読まない。読むのは verdict と classification と
+// candidates。gate.ts の既定は tail 1 つあたり 12 KB。
 const GATE_TAIL_BYTES = "800";
 
 // gate.ts は Node の TypeScript 型ストリップの上で動く。それより古い node のシェルでは最初の
@@ -300,6 +299,14 @@ const completed = [];
 const skipped = [];
 const anomalies = [];
 const commits = [];
+// codex-herdr の pane 状態。panes は claude の run では null のままで、close 後も id を保つので
+// どの return path でも報告できる。closed は stopUnit と loop 終端からの二重 close を防ぐ。
+const herdrState = { panes: null, closed: false, opens: 0, closes: 0 };
+const herdrReport = () => ({
+  herdr_panes: herdrState.panes,
+  pane_opens: herdrState.opens,
+  pane_closes: herdrState.closes,
+});
 // run 級の配列を閉じ込めるので、途中終了でも呼び出し元は部分進捗を受け取る。
 const stopUnit = async (stopped, unit, why) => {
   await closeHerdrPanes();
@@ -311,16 +318,13 @@ const stopUnit = async (stopped, unit, why) => {
     skipped,
     anomalies,
     commits,
-    herdr_panes: herdrPanesResolved,
-    pane_opens: paneOpens,
-    pane_closes: paneCloses,
+    ...herdrReport(),
   };
 };
-// 経路と呼び先をこの 1 関数だけで決める。herdrPanes は下で let 宣言されるが、この関数の
-// 呼び出しはすべて for loop の中、その代入より後に起きる。
+// 経路と呼び先をこの 1 関数だけで決める。
 const implementDestination = (role) =>
   implementer === "codex-herdr"
-    ? { opts: {}, paneId: herdrPanes ? herdrPanes[role] : undefined }
+    ? { opts: {}, paneId: herdrState.panes ? herdrState.panes[role] : undefined }
     : { opts: { model: input.model || "sonnet", effort: "high" }, paneId: undefined };
 
 const RED_SCHEMA = {
@@ -383,9 +387,8 @@ const COMMIT_SCHEMA = {
   },
 };
 
-// agent の prompt 文をそのまま載せない。prompt には issue 由来 (untrusted) の文が混ざり、
-// コミットメッセージは改変不能な記録になる。trailer 形式は plan のアンカーを機械可読に保つ
-// (git interpret-trailers / git log --format)。
+// agent の prompt 文はメッセージに載せない。issue 由来 (untrusted) の文が混ざり、コミット
+// メッセージは改変不能な記録になる。trailer 形式は plan のアンカーを機械可読に保つ。
 const commitBody = (unit, tests) =>
   [
     flatten(unit.goal),
@@ -398,9 +401,9 @@ const commitBody = (unit, tests) =>
     ...(issueRef ? [`Issue: #${issueRef}`] : []),
   ].join("\n");
 
-// working tree がその unit の作業だけを持っている間に取る。混ざった後の分割は hunk の帰属
-// を LLM に推測させることになる。コミット失敗 (pre-commit gate のブロック) で
-// stop しないのは、作業がツリーに残り呼び出し元の最終コミットが拾うため。
+// working tree がその unit の作業だけを持っている間に取る。混ざった後の分割は hunk の帰属を LLM
+// に推測させる。コミット失敗 (pre-commit gate のブロック) で止めないのは、作業がツリーに残り
+// 呼び出し元の最終コミットが拾うため。
 const commitUnit = async (unit, tests, testFiles) => {
   if (!commitPerUnit) return;
   // commit agent の後に読むと、着地先の head はもう残っていない。
@@ -464,10 +467,8 @@ const commitUnit = async (unit, tests, testFiles) => {
   log(`${unit.id}: 未コミット (${why})。作業ツリーに残す。`);
 };
 
-// agent tool の schema は形しか保証しない: courier が読んだ codex のファイルが
-// `{"red_confirmed": "false"}` のように文字列で書かれていても RED_SCHEMA の宣言する
-// プロパティ自体は満たしてしまう。呼び出し側が truthy 判定でそれを信頼する直前、ここで実際の
-// 型を検査する。
+// agent tool の schema は形しか保証しない: courier が `{"red_confirmed": "false"}` と文字列で
+// 返しても RED_SCHEMA は満たす。呼び出し側が truthy 判定で信頼する直前、ここで型を検査する。
 const boolMismatch = (result, field) => !!result && typeof result[field] !== "boolean";
 
 const courierTypeStop = (unit, result, field) =>
@@ -490,9 +491,9 @@ const recordDeferred = (unit, result) => {
 // realm に fs が無い)、unit と role が決まれば同じ 1 ファイルを初回・retry で使い回す。
 const responsePath = (unit, role) => `.codex-response/${unit.id}-${role}.json`;
 
-// role は Red step が "tester"、Green / 直接実装が "coder"。まだ失敗している結果をどう
-// 扱うかは呼び出し元が持つ。Red 未確認は anomaly に記録し、impl / Green の失敗は run を止める。
-// 1 回目が null なら retry しないので、死んだ agent を 2 度叩かない。
+// role は Red が "tester"、Green / 直接実装が "coder"。まだ失敗している結果の扱いは呼び出し元が
+// 持つ。Red 未確認は anomaly、impl / Green の失敗は run 停止。1 回目が null なら retry せず、死んだ
+// agent を 2 度叩かない。
 const stepWithRetry = async (unit, label, role, schema, ok, prompt, retryPrompt) => {
   const dest = implementDestination(role);
   // 初回と retry の両方の prompt へ前置くので、codex-herdr の retry も初回と同じ pane・同じ
@@ -550,11 +551,10 @@ const PANE_CLOSE_SCHEMA = {
   },
 };
 
-// herdr CLI リファレンス (https://herdr.dev/ja/docs/cli-reference/, 2026-08-27 取得) より:
-// `pane split` の応答は新しい pane id を `.result.pane.pane_id` に持つ。`agent start <name>
-// --kind KIND --pane ID` は既存のシェル pane を起動対象にし、name は `[a-z][a-z0-9_-]{0,31}` に
-// 一致する必要がある。検出状態が blocked だと即座に `agent_not_ready` を返す。`pane close
-// <pane_id>` は pane split で読んだ id をそのまま渡す。
+// herdr CLI リファレンス (https://herdr.dev/ja/docs/cli-reference/) より: `pane split` の応答は
+// 新しい pane id を `.result.pane.pane_id` に持つ。`agent start <name> --kind KIND --pane ID` は
+// 既存のシェル pane を対象にし、name は `[a-z][a-z0-9_-]{0,31}` に一致させる。検出状態が blocked
+// だと即座に `agent_not_ready` を返す。`pane close <pane_id>` は split で読んだ id を渡す。
 const startPane = (role) =>
   agent(
     anchor(
@@ -589,32 +589,19 @@ const closePane = (role, paneId) =>
     },
   );
 
-// codex-herdr でない run では null のままで、closeHerdrPanes は何もしない。
-let herdrPanes = null;
-// run-workflow.js の calls.agent は各 agent の {prompt, opts} しか記録しないので、pane split
-// から解決した pane id や開閉回数がこの workflow 自身の返り値 (build.js がさらに自分の返り値へ
-// 転送する値) に実際に届いたことをそこからは示せない。herdrPanesResolved は closeHerdrPanes が
-// herdrPanes を null に戻したあとも id を保つので、後片付けの前後どちらの返り値にも id が残る。
-let herdrPanesResolved = null;
-let paneOpens = 0;
-let paneCloses = 0;
-
-// 後片付け (loop 終端の closeHerdrPanes と、下の起動失敗時に開いた tester pane 1 つだけを閉じる
-// 分岐の両方) の close は必ずここを通すので、paneCloses は実際に閉じた pane 数の唯一の集計になる。
+// close は必ずここを通すので、herdrState.closes は実際に閉じた pane 数の唯一の集計になる。
 const closePaneCounted = async (role, paneId) => {
   const res = await closePane(role, paneId);
-  if (res && res.closed) paneCloses++;
+  if (res && res.closed) herdrState.closes++;
   return res;
 };
 
-// stopUnit 経由の早期 return と loop 終端後の正常終了のどちらからも呼ぶので、呼び出しの都度
-// null に戻して二重 close を防ぐ。close が失敗しても run 自体は止めず、anomaly に記録する。
+// close が失敗しても run 自体は止めず、anomaly に記録する。
 const closeHerdrPanes = async () => {
-  if (!herdrPanes) return;
-  const panes = herdrPanes;
-  herdrPanes = null;
-  for (const role of ["tester", "coder"]) {
-    const res = await closePaneCounted(role, panes[role]);
+  if (!herdrState.panes || herdrState.closed) return;
+  herdrState.closed = true;
+  for (const [role, paneId] of Object.entries(herdrState.panes)) {
+    const res = await closePaneCounted(role, paneId);
     if (res && res.closed) continue;
     const why = res
       ? res.notes || `${role} pane の close が closed: false を返した`
@@ -624,9 +611,8 @@ const closeHerdrPanes = async () => {
   }
 };
 
-// herdr は Unix socket 越しに話すので sandboxed Bash からは届かず、agent 側で
-// dangerouslyDisableSandbox が要る。assert.js の codex_available と同じ形で、command の
-// 有無と実疎通の両方を確認してから実装に入る。
+// herdr は Unix socket 越しに話すので、agent 側で dangerouslyDisableSandbox が要る。assert.js の
+// codex_available と同じく、command の有無と実疎通の両方を確認してから実装に入る。
 if (implementer === "codex-herdr") {
   const herdr = await agent(
     anchor(
@@ -650,9 +636,7 @@ if (implementer === "codex-herdr") {
       why: herdr
         ? herdr.notes || "herdr に到達できなかった。"
         : "herdr の到達性確認 agent が結果を返さなかった。",
-      herdr_panes: herdrPanesResolved,
-      pane_opens: paneOpens,
-      pane_closes: paneCloses,
+      ...herdrReport(),
     };
   }
 
@@ -666,35 +650,29 @@ if (implementer === "codex-herdr") {
       why: testerStart
         ? testerStart.notes || "tester pane の起動に失敗した。"
         : "tester pane-start agent が結果を返さなかった。",
-      herdr_panes: herdrPanesResolved,
-      pane_opens: paneOpens,
-      pane_closes: paneCloses,
+      ...herdrReport(),
     };
   }
-  paneOpens++;
+  herdrState.opens++;
   // 2 つ揃ってからではなく pane ごとに記録する。coder の起動失敗は 2 つの間で止まるので、
-  // 残った pane を追う呼び出し側には、その停止が既に解決している tester の id が要る。
-  herdrPanesResolved = { tester: testerStart.pane_id };
+  // 残った pane を追う呼び出し側には tester の id が要る。
+  herdrState.panes = { tester: testerStart.pane_id };
 
   // coder pane の起動に失敗したら、先に開いた tester pane を閉じてから止まる。
   const coderStart = await startPane("coder");
   if (!coderStart || !coderStart.started) {
-    await closePaneCounted("tester", testerStart.pane_id);
+    await closeHerdrPanes();
     return {
       stopped: "pane-start-failed",
       why: coderStart
         ? coderStart.notes || "coder pane の起動に失敗した。"
         : "coder pane-start agent が結果を返さなかった。",
-      herdr_panes: herdrPanesResolved,
-      pane_opens: paneOpens,
-      pane_closes: paneCloses,
+      ...herdrReport(),
     };
   }
-  paneOpens++;
-
+  herdrState.opens++;
   // 全 unit を通してこの 2 pane を使い回す。close は loop 終端 (closeHerdrPanes) が担う。
-  herdrPanes = { tester: testerStart.pane_id, coder: coderStart.pane_id };
-  herdrPanesResolved = herdrPanes;
+  herdrState.panes.coder = coderStart.pane_id;
 }
 
 // contract が引用するのは 1 つの振る舞いなので、plan の参照モジュールが無いと周辺構造が
@@ -709,11 +687,10 @@ const referenceModuleCtx = ref?.path
     `参照モジュールからの逸脱は plan が明記したときのみ許され、逸脱は結果に記す。\n`
   : "";
 
-// リファレンスの発見を LLM の自発探索に任せると探索スキップという脱落点が増え、読了の検証も
-// できないため、読む行為を明示の agent 呼び出しにし、units[].files との glob 照合は script が
-// 握って決定的にする。
-// plan が運ぶ決まりごとを、実装の prompt へそのまま流す。実装の時点で索引や wiki を
-// 引きに行かないので、agent へ何が届いたかは issue 本文の ### 決まりごと だけで読める。
+// リファレンスの読了は明示の agent 呼び出しにし、units[].files との glob 照合は script が持つ。
+// LLM の自発探索に任せると探索がスキップされうるうえ、読了を検証できない。plan の決まりごとは
+// prompt へそのまま流す。実装の時点で何も引きに行かないので、agent へ何が届いたかは issue の
+// ### 決まりごと だけで読める。
 const RULES_START = "---- rules start ----";
 const RULES_END = "---- rules end ----";
 
@@ -966,8 +943,7 @@ for (const [index, unit] of units.entries()) {
   await commitUnit(unit, tests, red.test_files || []);
 }
 
-// 全 unit の実装が終わったので、codex-herdr で開いた pane を閉じる。implementer が claude の
-// run では herdrPanes が null のままで、ここは何もしない。
+// 全 unit の実装が終わったので、codex-herdr で開いた pane を閉じる。
 await closeHerdrPanes();
 
 const VERIFY_SCHEMA = {
@@ -1023,9 +999,6 @@ return {
   tests_pass: verify.tests_pass,
   gates_pass: verify.gates_pass,
   verify_output: verify.output_tail,
-  // claude の run では herdrPanesResolved / paneOpens / paneCloses に一切触れないので null の
-  // まま。build.js はこの 3 つをそのまま自分の返り値へ転送する。
-  herdr_panes: herdrPanesResolved,
-  pane_opens: paneOpens,
-  pane_closes: paneCloses,
+  // build.js はこの 3 つをそのまま自分の返り値へ転送する。
+  ...herdrReport(),
 };

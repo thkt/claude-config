@@ -15,9 +15,8 @@ export const meta = {
   ],
 };
 
-// build は人間の ## Plan 節を再計画しない。Plan 節なし issue は no-plan で
-// 停止し、issue の精緻化に差し戻す。抽出は LLM に委ね、検証は script が持つ。
-// fan-out を持つ stage は入れ子 workflow (code) に委譲する。
+// build は人間の ## Plan 節を再計画せず、Plan 節なし issue は no-plan で止める。抽出は LLM、
+// 検証は script、fan-out を持つ stage は入れ子の code workflow が持つ。
 
 phase("Load");
 
@@ -44,9 +43,8 @@ const issueRef = String(typeof argsValue === "string" ? argsValue : input.issue 
 const issueNumber =
   (issueRef.match(/^#?(\d+)$/) || issueRef.match(/\/issues\/(\d+)(?:[/?#]|$)/) || [])[1] || "";
 // ---- run の記録: build の 1 実行につき jsonl 1 行 ----
-// PLAN_QUALITY は、その停止を issue の ## Plan 節の側で防げたかどうかを持つ。true の件数が
-// /qualify を build の前段で必須にするか (DR-0084 の再評価条件) を決める。どのファイルにも
-// 届かない返り値のままでは、その問いに答えられない。
+// PLAN_QUALITY は issue の ## Plan 節の側で防げた停止を印す。その件数が /qualify を build の
+// 前段で必須にするか (DR-0084 の再評価条件) を決める。
 const PLAN_QUALITY = {
   "no-issue": false,
   "no-repo": false,
@@ -63,9 +61,8 @@ const PLAN_QUALITY = {
   "plan-drift": true,
   "code-failed": false,
 };
-// record.py の stdout が path/run_id と並べて持つ window tally の key。型をここで 1 度だけ
-// 名付け、下の RECORD_SCHEMA の properties をそこから導くことで、key の追加・改名・型変更で
-// 両者がずれるのを防ぐ。
+// record.py が path/run_id の横に出す window tally の key。RECORD_SCHEMA の properties はここから
+// 導くので、key の追加・改名・型変更は 1 箇所で済む。
 const RECORD_COUNT_TYPES = {
   started: "number",
   stops: "number",
@@ -157,9 +154,8 @@ if (!issueRef || !issueNumber) {
   });
 }
 
-// repo が無いと agent は自身の cwd から「リポジトリ」を解決し、別の checkout で
-// step を実行しうる。anchor が全 step を対象リポジトリへ固定し、guard が取り消し
-// にくい git 変更 (branch / commit / push / PR) の前に repo ルートを確認させる。
+// repo が無いと agent は自身の cwd から「リポジトリ」を解決する。anchor が全 step を対象
+// リポジトリへ固定し、guard が branch / commit / push / PR の前に repo ルートを確認させる。
 const repo = typeof input.repo === "string" ? input.repo : "";
 // base は epic ブランチへスライス PR を集約するフローで、新規 checkout の起点と
 // PR の base の両方に使う。
@@ -180,10 +176,9 @@ if (baseBranch && !BRANCH_NAME_SHAPE.test(baseBranch)) {
 const anchor = (p) =>
   `すべての git / ファイル / ビルドコマンドを ${repo} のリポジトリから実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`;
 const guard = ` この step で最初の commit / push / ブランチ変更を行う前に \`cd ${repo} && git rev-parse --show-toplevel\` を実行し、出力が ${repo} であることを確認する。異なる場合は git を変更せず中断し、不一致を報告する。`;
-// plugin 配布では sibling が build: 名前空間、bundled が ~/.claude/plugins を解決する。
-// どちらも素の dev tree 形を先に試すので、dev tree はそのまま動く。名前解決の失敗以外で
-// 退避すると、入れ子が投げた真の失敗を捨てて退避先の名前解決エラーだけが残る。入れ子の
-// 失敗は子の stack を message に運ぶので、文言でなく呼んだ名前ごと照合する。
+// plugin 配布では sibling が build: 名前空間、bundled が ~/.claude/plugins を解決し、どちらも
+// dev tree 形を先に試す。退避は名前解決の失敗に限り、文言でなく名前で照合する。それ以外で
+// 退避すると入れ子が投げた真の失敗が名前解決エラーに置き換わる。
 const sibling = async (name, a) => {
   try {
     return await workflow(name, a);
@@ -225,9 +220,8 @@ recordable = true;
 await recordRun("started");
 
 // ---- Load: 逐語 fetch → Plan 見出し確認 → 決定論 id 収集 → 抽出 → validate + クロスチェック ----
-// 渡すのは抽出した番号で、受け取った参照そのものではない。URL は /issues/N がどこかに
-// あれば一致するので、そのまま渡すと後続の文字列ごとシェルへ入る。番号なら anchor が
-// 既に cd している対象リポジトリで gh が解決する。
+// gh に渡すのは抽出した番号で、受け取った参照そのものではない。URL は /issues/N がどこかに
+// あれば一致するので、そのまま渡すと後続の文字列ごとシェルへ入る。
 const fetched = await agent(
   anchor(
     `\`gh issue view ${issueNumber} --json title,body\` を正確に実行し、その title フィールドを title として、body フィールドを body として、いずれも逐語で返す。` +
@@ -249,10 +243,9 @@ if (!fetched || !fetched.found || !String(fetched.body || "").trim()) {
 }
 const body = fetched.body;
 
-// schema 層が表せない検証。tests の空配列は合法 (その unit は code が直接実装で扱う) で、
-// 以下が見るのは unit どうしの関係。seam 規則があるのは、unit ごとのテストが自分の境界を stub するため、各 unit
-// が緑のまま層と層が結線されていない実装を ship しうるから。テストを持つ unit が
-// 2 つ以上あれば両者の間に継ぎ目があり、そこを横断するテストだけが結線漏れで落ちる。
+// schema 層が表せない、unit どうしの関係の検証。unit ごとのテストは自分の境界を stub するので、
+// 各 unit が緑のまま層が結線されていない実装を ship しうる。テストを持つ unit が 2 つあれば、
+// その継ぎ目を横断するテストだけが結線漏れで落ちる。
 const validate = (plan, isBug) => {
   const errors = [];
   // root_cause を書かない Bug plan は症状だけを code で回避しがち。schema の required には
@@ -274,8 +267,7 @@ const validate = (plan, isBug) => {
   // reference_module は複製する既存モジュールか、複製しない理由のいずれかを運ぶ。素の
   // null もフィールドごとの欠落もその理由を運べないので blocker にする。schema の
   // required には入れない。extract が key を落としたとき blockers 文言を持たない
-  // extraction-failed で止まり、書き直す手がかりが残らないため。extract は既存の
-  // `null (理由)` 書式を null のまま残さず kind 付き object へ変換する想定。
+  // extraction-failed で止まり、書き直す手がかりが残らないため。
   const refModule = plan.reference_module;
   if (refModule === undefined) {
     errors.push(
@@ -287,10 +279,10 @@ const validate = (plan, isBug) => {
       "reference_module が理由の無い null。素の null ではなく " +
         "{ kind, reason } (kind: module/no-module/new-shape) の object として記録する",
     );
-  } else if (refModule && typeof refModule === "object" && "kind" in refModule) {
-    // kind フィールドの無い旧形式の object (path/files だけ) は後方互換のため
-    // 検査しない。
-    if (refModule.kind === "module") {
+  } else if (typeof refModule === "object") {
+    if (!String(refModule.kind || "").trim()) {
+      errors.push("reference_module.kind が無い (module/no-module/new-shape)");
+    } else if (refModule.kind === "module") {
       if (!String(refModule.path || "").trim())
         errors.push("kind が module なのに reference_module.path が空");
     } else if (!String(refModule.reason || "").trim()) {
@@ -444,12 +436,10 @@ const PLAN_SCHEMA = obj(
   },
 );
 
-// /think Phase 3 の unit サイズ指針と結合しているので、片方だけを変えない。seam unit
-// のテストは unit 間の境界を跨いで実モジュールを動かすため files が正当に増える。
-// 検査対象は非 seam unit に限る。
-// この数値の正はここ。skills/think/SKILL.md が散文で述べ直し、ずれたら unit-caps-ssot.test.js が
-// 落ちる。3 つ目の複製 .agents/skills/build/scripts/validate-plan.ts はここのテストから届かず、
-// 手で合わせるしかない。
+// /think Phase 3 の unit サイズ指針と結合しているので、両側を一緒に変える。seam unit のテストは
+// unit 間の境界を跨ぐため、検査対象は非 seam unit に限る。
+// 正はここ。skills/think/SKILL.md が述べ直し、ずれたら unit-caps-ssot.test.js が落ちる。
+// .agents/skills/build/scripts/validate-plan.ts はテストから届かず、手で合わせる。
 const UNIT_CAPS = { files: 3, tests: 4 };
 const oversizedUnits = (p) =>
   p.units.filter((u) => {
@@ -473,9 +463,8 @@ if (!planHeading) {
 const afterHeading = body.slice(planHeading.index + planHeading[0].length);
 const nextSection = afterHeading.search(/^##[^#]/m);
 const planSection = nextSection === -1 ? afterHeading : afterHeading.slice(0, nextSection);
-// id は定義位置のみ照合し、prose 中の参照は数えない (think templates/plan.md 参照)。
-// テスト id の接頭辞は任意。doc に [T-SK077] のような接頭辞つき id を書く規約の
-// repo で plan が接頭辞なししか書けないと、実装時の改番に頼ることになる。
+// id は定義位置のみ照合し、prose 中の参照は数えない (think templates/plan.md)。テスト id の
+// 接頭辞は任意。doc に `[T-SK077]` と書く規約の repo で、実装時の改番に頼らずに済ませる。
 const idSet = (re) => new Set([...planSection.matchAll(re)].map((m) => m[1]));
 const bodyUnitIds = idSet(/^###\s+(U-\d{3})\b/gm);
 const bodyTestIds = idSet(/^[ \t]*[-*+][ \t]+(T-[A-Z]*\d{3})\b/gm);
@@ -487,7 +476,7 @@ const plan = await agent(
       `preconditions は plan が前提にする既存コードの {path, pattern} の一覧、backlog_candidates は issue に書かれたスコープ外候補。本文に無ければ空配列。\n` +
       `rules は ### 決まりごと (### Rules) 節を {source, quote} の組にしたもの。source は行に書かれた文書のパス、quote はコロンより後ろの文を逐語で。節が無ければ空配列。\n` +
       `seam は本文が \`seam: true\` と記した unit だけ true、他はすべて false。unit の内容から推測しない。\n` +
-      `reference_module: 本文は object \`{kind, reason}\` (kind: module/no-module/new-shape) で書く。path/files/instances/conventions は kind が module のときだけ加わる。kind と reason は原文のまま写し、kind が module のときは path/files/instances/conventions も本文から写す。旧来の本文は今も \`null (理由)\` の散文で書くことがあり、その場合も素の null に潰さず同じ object 形に変換する。本文の reference_module に理由が一切無いときだけ素の null を出す。本文に reference_module の行が無ければフィールドを省く。\n` +
+      `reference_module: 本文は object \`{kind, reason}\` (kind: module/no-module/new-shape) で書く。path/files/instances/conventions は kind が module のときだけ加わる。kind と reason は原文のまま写し、kind が module のときは path/files/instances/conventions も本文から写す。本文の reference_module に理由が一切無いときだけ素の null を出す。本文に reference_module の行が無ければフィールドを省く。\n` +
       `root_cause: 本文が記載していれば (Root Cause / 原因の行など) 原文のまま写す。本文に記載が無ければフィールドを省く。\n\n${fencedBody}`,
   ),
   {
@@ -503,52 +492,33 @@ if (!plan) {
   return await stop("extraction-failed", { why: "extract agent が plan を返さなかった。" });
 }
 
-// reference_module.kind/reason の決定的フォールバック: 上の extract prompt はまだ
-// skills/think に遅れている。think は DR-0093 により object 形式で書くようになったので、
-// 追いついていない抽出は本文が明記する kind や reason を今も落としうる。上の
-// bodyUnitIds/bodyTestIds と同じ手段で回収する: fencedBody 全体ではなく planSection に
-// 絞った行頭アンカー付き正規表現で、本文中の他所にあるテンプレート引用を一致に数えない。
-// planSection に reference_module 行がちょうど1件あるときだけ補完し、補完するのは
-// kind/reason だけで path は作らない。
-// クォートの有無どちらも取る。`/think` はこの行を `{ kind: no-module, reason: ... }` と
-// クォート無しで書くので、クォート前提の式ではこの補完が存在する理由である本文で何も埋まらない。
-// reason は散文でコンマを含むため、閉じ波括弧まで取る。
+// extract agent は本文が明記する kind や reason を落とすことがあるので、planSection 内の
+// reference_module 行 1 件で両方を上書きする。本文の他所にあるテンプレート引用は一致に数えず、
+// path は作らない。/think はこの行をクォート無しで書くので両形を取り、reason はコンマを含むため
+// 閉じ波括弧まで取る。
 const REFERENCE_MODULE_KIND_RE = /kind:\s*"?([A-Za-z][\w-]*)"?/;
 const REFERENCE_MODULE_REASON_RE = /reason:\s*"?([\s\S]*?)"?\s*\}?\s*$/;
 const REFERENCE_MODULE_LINE_RE = /^reference_module:[ \t]*(.+)$/gm;
 const refModuleLines = [...planSection.matchAll(REFERENCE_MODULE_LINE_RE)];
 if (refModuleLines.length === 1) {
   const refModuleLine = refModuleLines[0][1].trim();
-  const kindMatch = refModuleLine.match(REFERENCE_MODULE_KIND_RE);
-  const reasonMatch = refModuleLine.match(REFERENCE_MODULE_REASON_RE);
-  // 旧形式との互換 (DR-0093): 分割前の本文は kind を持たない `null (理由)` の散文で書く。
-  // reason しか記録していなかった plan の読み替えとして "no-module" が最も近い。
-  const legacyMatch = kindMatch ? null : refModuleLine.match(/^null\s*\(([\s\S]*)\)$/);
-  const filledKind = kindMatch ? kindMatch[1] : legacyMatch ? "no-module" : undefined;
-  const filledReason = reasonMatch ? reasonMatch[1] : legacyMatch ? legacyMatch[1] : undefined;
-  if (filledKind !== undefined || filledReason !== undefined) {
-    const existingRefModule =
-      plan.reference_module &&
-      typeof plan.reference_module === "object" &&
-      !Array.isArray(plan.reference_module)
+  const kind = refModuleLine.match(REFERENCE_MODULE_KIND_RE)?.[1];
+  const reason = refModuleLine.match(REFERENCE_MODULE_REASON_RE)?.[1];
+  if (kind !== undefined || reason !== undefined) {
+    const extracted =
+      plan.reference_module && typeof plan.reference_module === "object" && !Array.isArray(plan.reference_module)
         ? plan.reference_module
         : {};
-    const hasKind = typeof existingRefModule.kind === "string" && existingRefModule.kind.trim();
-    const hasReason =
-      typeof existingRefModule.reason === "string" && existingRefModule.reason.trim();
-    if (!hasKind || !hasReason) {
-      plan.reference_module = {
-        ...existingRefModule,
-        ...(!hasKind && filledKind !== undefined ? { kind: filledKind } : {}),
-        ...(!hasReason && filledReason !== undefined ? { reason: filledReason } : {}),
-      };
-    }
+    plan.reference_module = {
+      ...extracted,
+      ...(kind !== undefined ? { kind } : {}),
+      ...(reason !== undefined ? { reason } : {}),
+    };
   }
 }
 
-// Bug issue はタイトルに `[Bug]` prefix を持つ。fetch が title を取得できなかったときは
-// 分類不能なので、空 fallback の startsWith は Bug ではない側に倒れる (どちらかへの
-// 当て推量はしない)。
+// Bug issue はタイトルに `[Bug]` prefix を持つ。fetch が title を取得できなかったときは空の
+// fallback が Bug ではない側に倒れ、どちらかへの当て推量はしない。
 const blockers = validate(plan, String(fetched.title || "").startsWith("[Bug]"));
 if (blockers.length) {
   return await stop("invalid-plan", { blockers, why: "抽出した plan が構造 validation に失敗。" });
@@ -590,8 +560,8 @@ const relayVerifier = ({ what, script, payload, count }) =>
   `(3) verifier の stdout の "results" 配列を、全 ${count} 件そのまま返す。追加 / 削除 / 編集をしない。\n` +
   `入力 JSON は以下。\n${JSON.stringify(payload)}`;
 
-// payload を argv 1 要素で渡し、stdout を逐語で持ち帰らせる relay。agent には JSON の中身を
-// 読ませず、解釈は relayedJson で script 側が行う。壊れた中継は null であって空の結果ではない。
+// payload を argv 1 要素で渡し、stdout を逐語で持ち帰らせる relay。解釈は relayedJson で script
+// 側が行う。壊れた中継は null であって空の結果ではない。
 const STDOUT_RELAY_SCHEMA = obj(["stdout"], {
   stdout: { type: "string", description: "コマンドの stdout を逐語で" },
 });
@@ -622,17 +592,14 @@ const REVALIDATE_SCHEMA = obj(["results"], {
 });
 
 // ---- Revalidate: 前提を現在のコードベースに対して再検証する ----
-// 起票から build までに前提コードが動いた可能性を fail-close で捕まえる。Branch と並列
-// (両者は plan のみに依存)。drift 停止時は作成済みブランチを stopped に載せて surface する。
+// 起票から build までに動いた前提コードを fail-close で捕まえる。Branch と並列に走り、drift
+// 停止時は作成済みブランチを stopped に載せる。
 phase("Revalidate");
 const preconditions = plan.preconditions || [];
-// reference_module も preconditions と同じくらい plan が前提にする既存コードを名指しする。
-// path と files を revalidate.py が受ける同じ {path} 形に畳み込み、参照モジュールが
-// 移動・削除されていたときも drift として検出する。kind は見ない。no-module でも
-// 引用した形の path を書けるので、path があれば実在検査の対象にする。
-// preconditions と異なり、reference_module の結果が欠落しても fail-open のまま進める
-// (unreported-retry / revalidate-incomplete の対象にしない)。参照モジュールは後続 unit
-// 向けの構造ドキュメントであり、precondition のように build をゲートする前提ではない。
+// reference_module の path と files も preconditions と同じ {path} 形に畳み込み、参照モジュールの
+// 移動を drift として検出する。kind は見ない。no-module でも path を書けるためである。
+// preconditions と異なり、結果が欠落しても fail-open で進める。後続 unit 向けの構造ドキュメント
+// であり、build をゲートする前提ではない。
 const refModule = plan.reference_module;
 const refModuleEntries =
   refModule && typeof refModule === "object" && String(refModule.path || "").trim()
@@ -640,13 +607,11 @@ const refModuleEntries =
         path,
       }))
     : [];
-// 1 回の relay payload にまとめて送り、下の resultByKey が単一の relay 呼び出しから
-// 両方を突き合わせられるようにする。unreported-retry / revalidate-incomplete のゲートは
-// 引き続き preconditions だけで判定する。
+// 1 回の relay payload にまとめ、下の resultByKey が単一の relay 呼び出しから両方を突き合わせる。
+// unreported-retry / revalidate-incomplete のゲートは preconditions だけで判定する。
 const revalidationTargets = [...preconditions, ...refModuleEntries];
-// Code が unit ごとに commit するため run の途中で HEAD は分岐点でなくなり、下流の
-// `git diff HEAD` はすべて空を返す。可視の失敗でなく無言の pass になるので、基準を
-// 分岐点の sha で持つ。
+// Code が unit ごとに commit するため run の途中で HEAD は分岐点でなくなり、`git diff HEAD` は
+// 空を返す。基準は分岐点の sha で持つ。
 const BRANCH_SCHEMA = obj(["branch", "head", "ahead_of_base"], {
   branch: { type: "string", description: "checkout 済みブランチ名のみ" },
   head: {
@@ -727,9 +692,8 @@ const [reval, branchRes, baseline] = await parallel([
 ]);
 const branch = (branchRes && branchRes.branch) || "";
 recordedBranch = branch;
-// build 以前から作業ツリーにある私物を Verify の scope 逸脱から差し引き、同じ一覧を
-// build 以前から作業ツリーにある私物を Verify の scope 逸脱から差し引き、commit agent の
-// never-stage 集合にも渡す。
+// build 以前から作業ツリーにある私物を Verify の scope 逸脱から差し引き、同じ一覧を commit
+// agent の never-stage 集合にも渡す。
 const baselineUntracked = baseline && Array.isArray(baseline.untracked) ? baseline.untracked : [];
 // sha が使えないまま commit を有効にすると、HEAD が動いた後に比較対象が消え、scope /
 // conformance を未検証のまま出荷する。従来の末尾 1 コミットへ退避する。
@@ -737,9 +701,8 @@ const startPoint = String((branchRes && branchRes.head) || "").trim();
 const perUnitCommits = /^[0-9a-f]{7,40}$/.test(startPoint);
 const diffBase = perUnitCommits ? startPoint : "HEAD";
 if (!perUnitCommits) log("分岐点 sha を取得できず、Ship で 1 回 commit し HEAD 基準で diff する。");
-// base 起点の呼び出しで分岐点が base より進んでいれば、その差分は今回の実装ではない。
-// 破棄したブランチや前タスクのブランチの上に積むと、Verify も PR もそれを今回の成果として
-// 扱う。scope 逸脱にも conformance にも現れないので、ここで止める。
+// base 起点で分岐点が base より進んでいれば、その差分は今回の実装ではない。前のブランチの上に
+// 積むと Verify も PR もそれを今回の成果として扱い、scope 逸脱にも conformance にも現れない。
 if (baseBranch && Number(branchRes && branchRes.ahead_of_base) > 0) {
   return await stop("dirty-branch-point", {
     branch,
@@ -877,8 +840,8 @@ log(
 );
 
 // ---- Cleanup: simplify skill + test 検証 ----
-// review lens は build に置かない。/polish は人間が PR に起動する。cleanup
-// を Verify の前に走らせ、検証の対象を出荷する tree にする。
+// Verify の前に走らせ、検証の対象を出荷する tree にする。review lens は人間が PR に起動する
+// /polish のもの。
 const CLEANUP_SCHEMA = obj(["edits", "tests_pass", "stashed"], {
   edits: {
     type: "array",
@@ -909,10 +872,9 @@ const cleanup = (await agent(
 log(`Cleanup: 編集 ${cleanup.edits.length} 件、tests_pass=${cleanup.tests_pass}。`);
 
 // ---- Verify: 決定論の選択チェック (diff スコープ + T-NNN 照合) ∥ conformance ----
-// 正しさの確認は欠陥探索でなく plan のアンカーとの比較で行う。静的解析は
-// edit 時の gates hooks、重い担保は人間の /audit が受け持つ。2 チェックは fail-open で
-// PR に surface する。conformance は唯一の LLM レビューで、findings は専用の PR 節に
-// 出して他へ混ぜない。
+// 欠陥探索でなく plan のアンカーとの比較。静的解析は gates hooks、重い担保は人間が起動する
+// /audit が受け持つ。2 チェックは fail-open で PR に surface し、conformance だけが LLM レビューで
+// 専用の PR 節に出す。
 
 const TEST_PRESENCE_SCHEMA = obj(["results"], {
   results: {
@@ -924,9 +886,8 @@ const TEST_PRESENCE_SCHEMA = obj(["results"], {
   },
 });
 
-// plan の参照モジュールからの構造 drift。conformance は「spec の求めを満たすか」に、
-// こちらは「隣人と同じ形か」に答える。contract が引用するのは 1 つの振る舞いなので、
-// 周辺構造はどのアンカーにも捕まらず手組みされうる。
+// plan の参照モジュールからの構造 drift。conformance は「spec の求めを満たすか」、こちらは
+// 「隣人と同じ形か」に答える。周辺構造は振る舞いの contract には捕まらない。
 const STRUCTURE_SCHEMA = obj(["reference_checked", "findings"], {
   reference_checked: {
     type: "boolean",
@@ -1079,15 +1040,14 @@ const [diff, testPresence, conformance, structure] = await parallel([
 const planFiles = new Set(plan.units.flatMap((u) => u.files));
 // ディレクトリは "dir/" の 1 行で届くことがある。porcelain も、--untracked-files=all を
 // 守らなかった diff agent も同じなので、末尾が "/" の行は配下すべてを指す。
-const dirCovers = (line, path) => line.endsWith("/") && path.startsWith(line);
-// baseline の項目は末尾の "/" が無くてもディレクトリとして読む。畳まれうる列挙から来るので、
-// ファイルとしてだけ扱うと配下が scope 逸脱へ戻ってしまう。
-const preexisting = (f) =>
-  baselineUntracked.some((b) => b && (f === b || f.startsWith(b.endsWith("/") ? b : `${b}/`)));
+const under = (dir, path) => path.startsWith(dir.endsWith("/") ? dir : `${dir}/`);
+const dirCovers = (line, path) => line.endsWith("/") && under(line, path);
+// baseline の項目は末尾の "/" が無くてもディレクトリとして読む。列挙は "/" を畳みうるので、
+// ファイルとして扱うと配下が scope 逸脱に数えられる。
+const preexisting = (f) => baselineUntracked.some((b) => b && (f === b || under(b, f)));
 const coveredByPlan = (f) => planFiles.has(f) || [...planFiles].some((p) => dirCovers(f, p));
-// 各チェックは findings の横に status を持つ。件数だけでは死んだ agent の 0 と綺麗な結果の 0 が
-// 同じ数字になるので、配列は findings を、status は実行されたかどうかを持つ。
-// files が null なのは git が失敗したときで、diff-files.py はその stderr を error に載せる。
+// status を findings の横に持つのは、死んだ agent の 0 と綺麗な結果の 0 が同じ数字になるため。
+// files が null なのは git が失敗したときで、diff-files.py の stderr は error に載る。
 const diffReport = relayedJson(diff);
 if (diffReport && diffReport.files === null) log(`diff-files: git が失敗 (${diffReport.error})。`);
 const diffFiles = diffReport && Array.isArray(diffReport.files) ? diffReport.files : null;
@@ -1109,10 +1069,9 @@ if (!allTestNames.length) {
 } else {
   testPresenceStatus = "agent-failed";
 }
-// plan が files に挙げたのに一度も変更されていないファイル。scope 逸脱が「plan に無い
-// ファイルを触った」を見るのに対し、こちらは「plan にあるファイルを触っていない」を見る。
-// unit が丸ごと実装されないまま green で通ることがあり、conformance が
-// 落ちていると誰も気づかない。LLM 判断が要らないので落ちようがない。
+// plan の files にあるのに一度も変更されていないファイル。scope 逸脱は「plan に無いファイルを
+// 触った」を、こちらは「plan にあるファイルを触っていない」を見る。unit が丸ごと未実装でも
+// green で通るので必要になる。LLM 判断が要らないので落ちようがない。
 const untouchedPlanFiles = diffListed
   ? [...planFiles].filter((p) => !diffFiles.some((f) => f && (f === p || dirCovers(f, p))))
   : [];
@@ -1152,8 +1111,8 @@ if (backlogCandidates.length) {
 }
 
 // ---- Ship: commit + draft PR (外向きの操作なので draft = 可逆) ----
-// fact tail は pr-body.py が決定論で描画し、fact 節を黙って落とさせない。追記と
-// gh pr create を && で連結し、レンダラー失敗時は PR 作成前に中断させる。
+// fact tail は pr-body.py が決定論で描画し、fact 節を黙って落とさせない。追記と gh pr create は
+// && で連結し、レンダラー失敗時は PR 作成前に中断する。
 phase("Ship");
 
 // 情報系セクションの自由記述だけを対象言語へ翻訳 + 圧縮する。安全系の事実と構造化
@@ -1164,10 +1123,8 @@ const shipConformance = conf.spec_found ? conf.findings.map((f) => ({ ...f })) :
 // 書き戻しは set() 経由に限り、構造化フィールドへ触れない。kind は圧縮の強さを
 // 分ける。finding の detail は根拠を location / spec_line が別に持つので削れる。
 const shipStructure = struct.reference_checked ? struct.findings.map((f) => ({ ...f })) : [];
-// anomaly の evidence は slot に入れない。finding の location / spec_line と同じ扱い。
-// prompt が中身を逐語で残す以上、翻訳で変わるのは末尾の説明句だけ。一方で slot を 1 つ
-// 増やすたびに全か無かの書き戻しが突合する id が増え、1 つでも欠けると tail 全体が英語の
-// まま ship される。
+// anomaly の evidence は finding の location / spec_line と同じく slot に入れない。prompt が中身を
+// 逐語で残すうえ、slot は 1 つ増えるごとに全か無かの書き戻しが突合する id を増やす。
 const slots = [];
 for (const [items, field, kind] of [
   [shipConformance, "detail", "finding"],
@@ -1255,18 +1212,15 @@ const shipPayload = {
   manual_checks: manualChecks,
 };
 
-// agent が選んだファイル名は run をまたいで再利用されうるうえ、fact tail は追記されるので、古い
-// 本文の上に今回の tail が積まれた状態で ship してしまう。agent が決めるタイトルをファイル経由
-// にするのは別の理由で、展開すると shell の構文として届くためである。script が決めたタイトルは
-// shq で argv 1 要素にしてコマンドに直接載せる。
+// 本文をファイル経由にするのは、agent が選ぶファイル名が run をまたいで再利用されうるうえ fact
+// tail が追記されるため。agent が決めるタイトルは展開すると shell の構文として届くのでファイル
+// 経由にし、script が決めたタイトルは shq で argv 1 要素にして直接載せる。
 const runSlug = `${issueNumber || "no-issue"}-${String(branch).replace(/[^\w.-]+/g, "-")}`;
 
-// pr-writing.md のタイトル規則 (issue 参照があれば issue タイトルをそのまま使い、feat: / fix: の
-// prefix は外す) を script 側で適用する。Ship agent に任せると、issue を引かずに自作した
-// 英語のタイトルで PR を開くことがある。Load が title を取得できなかった run では空のまま
-// で、従来どおり agent が決める。
-// type の一覧は verify-commit.py の COMMIT_TYPES と同じ。任意の単語を外すと "WIP:" や "RFC:" が
-// 消える。
+// pr-writing.md のタイトル規則 (issue タイトルから feat: / fix: の prefix を外す) は script が
+// 適用する。Ship agent は issue を引かずに自作のタイトルで PR を開くことがある。Load が title を
+// 取得できなかった run では空。type の一覧は verify-commit.py の COMMIT_TYPES と同じで、任意の
+// 単語を外すと "WIP:" や "RFC:" が消える。
 const CONVENTIONAL_PREFIX =
   /^(?:feat|fix|refactor|docs|test|chore|perf|style|ci)(?:\([^()]*\))?!?:\s*/i;
 const prTitle = String(fetched.title || "")

@@ -15,14 +15,11 @@ export const meta = {
   ],
 };
 
-// Routing lives in the script, not an agent: an agent re-deriving the glob
-// table would reintroduce the exact drift this workflow exists to remove.
-// Reviewers run on sonnet because opus + deep analysis stalls the stream
-// watchdog.
+// Routing lives in the script: an agent re-deriving the glob table would reintroduce the drift
+// this workflow exists to remove. Reviewers run on sonnet; opus stalls the stream watchdog.
 
-// args may arrive as an object or, if a caller stringifies it, as a JSON-encoded
-// string. Normalize once: a string that parses to an object is that object; any
-// other string is the scope shorthand.
+// args arrives as an object or, stringified by a caller, as JSON. A string that parses to an
+// object is that object; any other string is the scope shorthand.
 const parseArgs = () => {
   if (typeof args === "object" && args) return args;
   if (typeof args !== "string") return {};
@@ -54,23 +51,15 @@ const noLimit = opts.noLimit === true;
 const skipPreflight = opts.skipPreflight === true;
 const anchor = (p) =>
   `Run every git command from the repository at ${repo} (begin each shell command with \`cd ${repo} && \`).\n\n${p}`;
-// A finding's summary is LLM free text folded verbatim into the next stage's prompt,
-// so an injected directive hiding in it must not read as an instruction. This is why
-// fenced differs from build.js's fencedBody: a fixed marker can be closed early by a
-// payload string equal to it, since JSON.stringify does not escape hyphens. No random
-// source exists in the sandbox, and one would change value across a resume even if it did.
-// The base's contents carry no meaning. It only has to be unlikely in a payload. Both the
-// base and the padding go into the regex below, so pick them from characters that carry
-// no regex meaning.
+// A finding's summary is LLM free text folded verbatim into the next stage's prompt, so the
+// fence marker must not be closable by a payload string equal to it. With no random source in
+// the sandbox, the marker is FENCE_BASE padded one longer than the longest run in the payload;
+// both go into the regex below, so neither holds a regex metacharacter.
 const FENCE_BASE = "e5f9a2";
 const FENCE_PAD = "0";
 const FENCE_RUNS = new RegExp(`${FENCE_BASE}${FENCE_PAD}*`, "g");
-// Growing the marker one character at a time re-scans the payload on every step, and
-// the payload is exactly where an attacker writes: seeding `base`, `base0`, `base00`, ...
-// makes the step count rise with the payload's own length. A marker padded one longer
-// than the longest run cannot occur, because a longer run would have been the longest,
-// so predicting the marker does not let an attacker close the fence early either.
-// longest starts at -1 so a payload that never collides needs no branch of its own.
+// One scan for the longest run keeps the cost linear; growing the marker one character at a
+// time would let a payload seeded `base`, `base0`, `base00`, ... raise the step count.
 const fenceMarker = (value) => {
   let longest = -1;
   for (const [hit] of value.matchAll(FENCE_RUNS)) {
@@ -85,23 +74,16 @@ const fenced = (value) => {
     `----- BEGIN UNTRUSTED FINDINGS ${marker} -----\n${value}\n----- END UNTRUSTED FINDINGS ${marker} -----`
   );
 };
-// Plugin-aware asset resolution. When this script ships as a plugin, bundled assets
-// live under ~/.claude/plugins instead of ~/.claude; the shell fragment tries the
-// dev-tree path first, so the dev tree keeps working unchanged.
+// As a plugin, bundled assets live under ~/.claude/plugins; the shell fragment tries the
+// dev-tree path first.
 const bundled = (rel) =>
   `"$(P="$HOME/.claude/${rel}"; [ -e "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" -not -path "*/.ja/*" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
 
-// audit/snapshot.py resolves the timestamp and branch. The agent only writes the
-// payload to a temp file and runs the script once; the disk side-effect is the
-// goal, its result is not consumed.
-// snapshot.py's build_record turns the payload keys into the record's fields verbatim.
-// Anything that lives only on the return value cannot be read back from the record, so
-// whatever a reader must find there has to be passed here.
-//
-// The payload only reaches the agent embedded in a prompt, and summarizing while
-// transcribing leaves the record alone thinned out. Having the agent report the counts
-// would make the party that cut them the one reporting on it, so they come from
-// snapshot.py, which counted the stdin it received.
+// audit/snapshot.py resolves the timestamp and branch; the agent only writes the payload to a
+// temp file and runs it once, for the disk side-effect. build_record turns the payload keys
+// into the record's fields verbatim, so whatever a reader must find in the record is passed here.
+// The counts come from snapshot.py, which counted the stdin it received: an agent transcribing
+// the payload through a prompt can thin it, and must not be the one reporting on the cut.
 const SNAPSHOT_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -201,10 +183,9 @@ const writeSnapshot = async ({
   return { written: true, path: written.path, truncated: lost.length > 0, lost, expected, actual };
 };
 
-// /audit routing table. react-pattern only attaches to JSX files (jsx / tsx), so a
-// pure-js audit does not fire it on empty. Heuristic: React written without JSX
-// loses react-pattern. A file takes the first matching row via classify(). Mechanical
-// type checks (any / assertions / strict mode) belong to the gates linters, not a reviewer.
+// /audit routing table. A file takes the first matching row via classify(). react-pattern
+// attaches to jsx / tsx only, so React written without JSX loses it. Mechanical type checks
+// (any / assertions / strict mode) belong to the gates linters, not a reviewer.
 const ROUTING = {
   "*.sh": ["security", "silence", "duplication", "reuse", "efficiency", "operations", "resilience"],
   "*.js": [
@@ -335,10 +316,9 @@ const classify = (p) => {
   if (e === ".css" || e === ".html") return ROUTING["*.css,*.html"];
   return ROUTING.default;
 };
-// Only Integrate returns source_ids. Kept optional on the shared schema, an Integrate run
-// that omits it still passes validation and R-N tracking breaks per run. The reviewer
-// variant lacks the property entirely, so additionalProperties: false rejects a reviewer
-// that invents ids.
+// Only Integrate returns source_ids. Optional on the shared schema, an Integrate run omitting it
+// would pass validation and break R-N tracking; the reviewer variant lacks the property, so
+// additionalProperties: false rejects a reviewer that invents ids.
 const findingsSchema = ({ withSourceIds = false } = {}) => ({
   type: "object",
   additionalProperties: false,
@@ -465,10 +445,8 @@ const SCOPE_STATUS_SCHEMA = {
 };
 
 // ---- Scope resolution ----
-// git takes a revision and a path in the same position, so passing a path collapses into
-// the uncommitted changes under it. This script owns the branch table and the command it
-// builds, leaving the agent stage nothing but the git call. Moving that judgment into the
-// prompt undoes the reason the header comment gives for keeping routing in the script.
+// git takes a revision and a path in the same position, so a path collapses into the uncommitted
+// changes under it. The script owns the branch table and the command; the agent only runs git.
 const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 // rev-parse returns 40-hex SHA lines alone once it resolves a revision, with a leading ^ on
 // the excluded side of a range. A path comes back verbatim.
@@ -673,9 +651,8 @@ const raw = await parallel(
 const findings = raw.filter(Boolean).flatMap((r) => r.findings || []);
 // Pinned rather than derived from severity (agents/_lib/finding-disposition.md § Disposition):
 // assert's gate ignores severity, so a derived default would put nits on a blocking finding.
-// Derived from the schema, not hand-listed: a field the schema admits but this copy forgets is
-// silently dropped, which is the gap #425 closed. file / line / severity / summary are renamed on
-// the way in and disposition goes through dispositionOf, so those six are excluded.
+// Derived from the schema so a field this copy forgets is not silently dropped; file / line /
+// severity / summary are renamed on the way in and disposition goes through dispositionOf.
 const MAPPED_FIELDS = new Set([
   "file",
   "line",
@@ -764,9 +741,8 @@ if (!findings.length) {
 // Two independent passes over the same findings run concurrently. Only Challenge's
 // verdicts decide membership; Verify's evidence never reaches Integrate.
 const findingsJson = JSON.stringify(findings);
-// Mirrors workflows/polish.js's VERDICTS_SCHEMA shape (id/verdict/severity/why); the
-// severity enum tracks this file's own FINDINGS_SCHEMA (critical/high/medium/low) rather
-// than polish's P1/P2/P3, since the two workflows score severity on different scales.
+// Same shape as polish.js's VERDICTS_SCHEMA (id/verdict/severity/why), but the severity enum
+// follows this file's FINDINGS_SCHEMA; polish scores severity as P1/P2/P3.
 const VERDICTS_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -802,9 +778,8 @@ const toCriticRef = (f) => ({
   severity: f.severity,
   summary: f.message,
 });
-// The critic's input is rawFindings (the source of the R-N ids triage keys off of) with
-// the reviewer field left out, so the challenge verdict cannot be biased by which
-// reviewer raised the finding.
+// The critic gets rawFindings (the source of the R-N ids triage keys off) without the reviewer
+// field, so the verdict cannot be biased by which reviewer raised the finding.
 const challengeInput = rawFindings.map(toCriticRef);
 const [challenged, verified] = await parallel([
   () =>
@@ -842,10 +817,9 @@ const [challenged, verified] = await parallel([
 ]);
 
 // ---- Triage: script owns survivor determination, the critic only returns verdicts ----
-// Loop the finding side, not the verdict side. A finding the challenge agent dropped a
-// verdict for is not silently lost; it defaults to confirmed and lands in no_verdict.
-// A run where challenge failed entirely takes the same path, so the degradation survives
-// as a count.
+// Loop the finding side, not the verdict side: a finding the critic gave no verdict defaults to
+// confirmed and lands in no_verdict, and a run where challenge failed entirely takes the same
+// path, so the degradation survives as a count.
 const verdictById = new Map(((challenged && challenged.verdicts) || []).map((v) => [v.id, v]));
 const survivors = [];
 const needsContext = [];
@@ -890,14 +864,12 @@ const info = {
   disputed: { count: disputedIds.length, ids: disputedIds },
   downgraded: { count: downgradedIds.length, ids: downgradedIds },
 };
-// challenge_ran separates a run that returned verdicts from the fail-open path (an empty
-// verdictById drops every finding to confirmed via no_verdict). verify returns free-form
-// text, so it is judged by whether content came back rather than by a schema shape.
+// challenge_ran separates a run that returned verdicts from the fail-open path, where every
+// finding drops to confirmed via no_verdict. verify returns free-form text, so it is judged by
+// whether content came back.
 const challengeRan = !!(challenged && Array.isArray(challenged.verdicts));
-// Names the degraded side, as assert.js's challengeStalled does. challengeRan alone would
-// count an empty verdicts array as having run (its own definition stays out of scope here),
-// but no verdict was actually rendered for that run, so this adds a length check
-// challengeRan does not have.
+// challengeRan counts an empty verdicts array as having run, so the degradation flag adds the
+// length check.
 const challengeDegraded = !challengeRan || challenged.verdicts.length === 0;
 const verifyRan = !!String(verified || "").trim();
 const tally = {
@@ -933,9 +905,9 @@ const integrated = await agent(
 // Falling back to the pre-triage findings array would land on the state before ids were
 // assigned, silently readmitting findings the challenge pass had disputed.
 const integratedFindings = (integrated && integrated.findings) || survivorsInput;
-// toCriticRef strips disposition before Integrate sees a finding, so what Integrate returns is
-// not sourced from the survivors and is not trusted. The rank derives from
-// DECLARABLE_DISPOSITIONS rather than restating the order agents/_lib/finding-schema.md owns.
+// toCriticRef strips disposition before Integrate sees a finding, so Integrate's value is not
+// trusted. The rank derives from DECLARABLE_DISPOSITIONS rather than restating
+// agents/_lib/finding-schema.md's order.
 const DISPOSITION_RANK = Object.fromEntries(
   [...DECLARABLE_DISPOSITIONS].map((d, i) => [d, DECLARABLE_DISPOSITIONS.size - i]),
 );
@@ -946,12 +918,9 @@ const consolidatedDisposition = (sourceIds) =>
     if (!d) return strongest;
     return !strongest || DISPOSITION_RANK[d] > DISPOSITION_RANK[strongest] ? d : strongest;
   }, null) || DEFAULT_DISPOSITION;
-// Sort mirrors workflows/assert.js's mergeIssues: SEVERITY_RANK descending, then file
-// ascending (localeCompare), then line ascending. Applied once here so the return value's
-// findings and the snapshot's findings (below) share the identical order.
-// Not SEVERITY_RANK[severity] on its own: a missing entry makes the subtraction NaN, and
-// `NaN || next` falls through to the file compare, so an unranked finding sorts by filename
-// among the ranked ones instead of after them.
+// Sorted once here so the return value and the snapshot share the order assert.js's mergeIssues
+// uses: SEVERITY_RANK descending, then file, then line. `?? 0` puts an unranked severity last;
+// a bare lookup would make the subtraction NaN and fall through to the file compare.
 const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1 };
 const severityRank = (f) => SEVERITY_RANK[f.severity] ?? 0;
 const finalFindings = integratedFindings
