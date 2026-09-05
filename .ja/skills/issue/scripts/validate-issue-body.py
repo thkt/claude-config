@@ -31,6 +31,12 @@ FLOOR = {
     "feature": ("Acceptance Criteria", "Testing Decisions"),
     "bug": ("Steps to Reproduce", "Expected vs Actual"),
 }
+# リポジトリの form は底の節を自分の言語で名付ける。底の英語名ごとに、同じ節に当たるラベルを
+# 並べる。これが無いと、日本語 form の必須節と英語の底を両方置かない限り本文が通らない。
+FLOOR_ALIASES = {
+    "Steps to Reproduce": ("再現手順",),
+    "Expected vs Actual": ("期待 / 実際",),
+}
 # Plan と Backlog candidates は /think の plan を転記した issue が持ち、Parent と Blocked by は
 # /slice が骨格を挟む形で必ず付ける。骨格に無いという理由で errors にすると全て落ちる。
 ALLOWED_EXTRA = frozenset({"Plan", "Backlog candidates", "Parent", "Blocked by"})
@@ -205,8 +211,10 @@ def main() -> None:
         results["errors"].append(f"unreadable_skeleton:{template.name}")
     required = [name for name, optional in sections if not optional]
     present = body_section_names(body_text)
+    known = {n.casefold() for n in (*present, *required)}
     for name in FLOOR.get(template_type, ()):
-        if name not in present and name not in required:
+        names = (name, *FLOOR_ALIASES.get(name, ()))
+        if not any(n.casefold() in known for n in names):
             required.append(name)
     for name in required:
         if name in present:

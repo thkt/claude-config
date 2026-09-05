@@ -31,6 +31,13 @@ FLOOR = {
     "feature": ("Acceptance Criteria", "Testing Decisions"),
     "bug": ("Steps to Reproduce", "Expected vs Actual"),
 }
+# A repository form names the floor sections in its own language. Each English floor name lists
+# the labels that stand for the same section. Without this, a body passes only when it carries
+# both the Japanese form's required section and the English floor.
+FLOOR_ALIASES = {
+    "Steps to Reproduce": ("再現手順",),
+    "Expected vs Actual": ("期待 / 実際",),
+}
 # Plan and Backlog candidates come with a transferred /think plan; Parent and Blocked by come from
 # /slice, which wraps every skeleton it picks in the two. Faulting them for being absent from the
 # skeleton would fail every body those two routes produce.
@@ -209,8 +216,10 @@ def main() -> None:
         results["errors"].append(f"unreadable_skeleton:{template.name}")
     required = [name for name, optional in sections if not optional]
     present = body_section_names(body_text)
+    known = {n.casefold() for n in (*present, *required)}
     for name in FLOOR.get(template_type, ()):
-        if name not in present and name not in required:
+        names = (name, *FLOOR_ALIASES.get(name, ()))
+        if not any(n.casefold() in known for n in names):
             required.append(name)
     for name in required:
         if name in present:
