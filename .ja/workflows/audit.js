@@ -15,13 +15,11 @@ export const meta = {
   ],
 };
 
-// routing は agent ではなく script に置く。agent に glob 表を再導出させると、この workflow が
-// なくすはずの drift を持ち込み直すことになる。reviewer に sonnet を使うのは、opus で深い解析を
-// させると stream watchdog が stall するため。
+// routing は script に置く。agent に glob 表を再導出させると、この workflow がなくすはずの drift
+// を持ち込み直す。reviewer は sonnet。opus では stream watchdog が stall する。
 
-// args は object でも、呼び出し側で stringify された JSON 文字列でも渡ってくる。object に
-// parse できる文字列は parse 結果を、それ以外の文字列は scope の短縮記法とみなして、
-// ここで一度だけ正規化する。
+// args は object でも、呼び出し側で stringify された JSON 文字列でも渡ってくる。object に parse
+// できる文字列は parse 結果、それ以外の文字列は scope の短縮記法。
 const parseArgs = () => {
   if (typeof args === "object" && args) return args;
   if (typeof args !== "string") return {};
@@ -53,21 +51,15 @@ const noLimit = opts.noLimit === true;
 const skipPreflight = opts.skipPreflight === true;
 const anchor = (p) =>
   `git コマンドはすべて repo ${repo} で実行する (各シェルコマンドを \`cd ${repo} && \` で始める)。\n\n${p}`;
-// finding の summary は LLM が生成した自由文で、次段の prompt へそのまま埋め込まれる。
-// そこに紛れ込んだ指示が命令として読まれてはならない。fenced が build.js の fencedBody と
-// 違うのはこの点にある。固定 marker は、JSON.stringify がハイフンをエスケープしないため
-// payload 内の同じ文字列から閉じられる。乱数源はサンドボックスに無く、あっても resume を
-// またいで値が変わる。
-// base の中身に意味は無い。payload に現れにくければよい。base と詰め物はどちらも下の
-// regex に埋め込むので、メタ文字を含まない文字から選ぶ。
+// finding の summary は LLM が生成した自由文で、次段の prompt へそのまま埋め込まれるので、
+// fence marker は payload 内の同じ文字列から閉じられてはならない。サンドボックスに乱数源が無い
+// ため、marker は FENCE_BASE を payload 内の最長連鎖より 1 つ長く詰めたもの。どちらも下の regex
+// に埋め込むので、メタ文字を含まない。
 const FENCE_BASE = "e5f9a2";
 const FENCE_PAD = "0";
 const FENCE_RUNS = new RegExp(`${FENCE_BASE}${FENCE_PAD}*`, "g");
-// marker を 1 文字ずつ伸ばすと、1 歩ごとに payload 全体を走査し直すことになる。その payload
-// こそ攻撃者が書く場所で、`base`、`base0`、`base00` と種を蒔けば歩数が payload の長さに
-// 応じて増える。最長連鎖より 1 つ長い marker が payload に出現しないのは、出現するなら
-// それが最長連鎖になるため。marker を予測されても早期クローズが成立しないのも同じ理由に
-// よる。longest の初期値が -1 なのは、衝突しない payload を別の分岐にせずに済ませるため。
+// 最長連鎖を 1 回の走査で求め、コストを payload の長さに比例させる。marker を 1 文字ずつ伸ばすと
+// `base`、`base0`、`base00` と種を蒔いた payload が歩数を増やせる。
 const fenceMarker = (value) => {
   let longest = -1;
   for (const [hit] of value.matchAll(FENCE_RUNS)) {
@@ -82,20 +74,16 @@ const fenced = (value) => {
     `----- BEGIN UNTRUSTED FINDINGS ${marker} -----\n${value}\n----- END UNTRUSTED FINDINGS ${marker} -----`
   );
 };
-// plugin 対応の asset 解決。plugin として配布されたとき bundled asset は ~/.claude では
-// なく ~/.claude/plugins 配下に置かれる。shell 断片は dev-tree のパスを先に試すので、
-// dev tree での動作は変わらない。
+// plugin 配布では bundled asset は ~/.claude/plugins 配下に置かれる。shell 断片は dev-tree の
+// パスを先に試す。
 const bundled = (rel) =>
   `"$(P="$HOME/.claude/${rel}"; [ -e "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" -not -path "*/.ja/*" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
 
-// timestamp・branch の解決は audit/snapshot.py が行う。agent は payload を一時ファイルに
-// 書いてそのスクリプトを 1 回叩くだけで、disk への副作用が目的、戻り値は使わない。
-// payload のキーは snapshot.py の build_record がそのまま record の項目にする。返り値に
-// しか無い項目は record から読めないので、record で読ませたいものはここへ渡す。
-//
-// payload は prompt に埋め込む形でしか agent に渡せず、書き写す途中で要約されると record
-// だけが痩せる。件数を agent に自己申告させると切り詰めた当人が報告することになるので、
-// stdin を受けた snapshot.py が数えた値を持ち帰らせる。
+// timestamp・branch の解決は audit/snapshot.py が行い、agent は payload を一時ファイルに書いて
+// 1 回叩くだけ。disk への副作用が目的。build_record は payload のキーをそのまま record の項目に
+// するので、record で読ませたいものはここへ渡す。
+// 件数は stdin を受けた snapshot.py が数える。prompt 経由で payload を書き写す agent は途中で
+// 要約しうるので、切り詰めた当人に報告させない。
 const SNAPSHOT_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -193,10 +181,9 @@ const writeSnapshot = async ({
   return { written: true, path: written.path, truncated: lost.length > 0, lost, expected, actual };
 };
 
-// /audit の routing 表。react-pattern は JSX を含む拡張子 (jsx / tsx) にだけ付け、素の js の
-// audit で空振りしないようにする。JSX を使わない React には react-pattern が付かない、という
-// heuristic を含む。ファイルは classify() で最初にマッチした行に決まる。型の機械的チェック
-// (any / アサーション / strict モード) は gates のリンタが担い、reviewer は持たない。
+// /audit の routing 表。ファイルは classify() で最初にマッチした行に決まる。react-pattern は
+// jsx / tsx にだけ付けるので、JSX を使わない React には付かない。型の機械的チェック (any /
+// アサーション / strict モード) は gates のリンタが担う。
 const ROUTING = {
   "*.sh": ["security", "silence", "duplication", "reuse", "efficiency", "operations", "resilience"],
   "*.js": [
@@ -328,8 +315,8 @@ const classify = (p) => {
   return ROUTING.default;
 };
 // source_ids を返すのは Integrate だけ。共有 schema に optional で置くと Integrate が省いても
-// validation を通り、R-N の追跡が run ごとに切れる。reviewer 用は property ごと持たないので、
-// reviewer が id を捏造して返せば additionalProperties: false が弾く。
+// validation を通り、R-N の追跡が切れる。reviewer 用は property ごと持たないので、id を捏造した
+// reviewer は additionalProperties: false が弾く。
 const findingsSchema = ({ withSourceIds = false } = {}) => ({
   type: "object",
   additionalProperties: false,
@@ -457,8 +444,7 @@ const SCOPE_STATUS_SCHEMA = {
 
 // ---- Scope 解決 ----
 // git は revision と path を同じ位置で受けるため、path を渡すとその配下の未コミット変更へ潰れる。
-// 分岐表とコマンド組み立てはこの script が持ち、agent 段には git の実行だけを残す。判断を
-// prompt へ移すと、routing を script 側に置く冒頭コメントの理由が崩れる。
+// 分岐表とコマンド組み立ては script が持ち、agent は git を実行するだけ。
 const base = typeof opts.base === "string" && opts.base.trim() ? opts.base.trim() : "main";
 // rev-parse は revision を解決すると 40 桁の SHA 行だけを返し、範囲指定では除外側に ^ が付く。
 // path を渡したときはその path をそのまま返す。
@@ -661,9 +647,8 @@ const raw = await parallel(
 const findings = raw.filter(Boolean).flatMap((r) => r.findings || []);
 // severity から導かず固定する (agents/_lib/finding-schema.md § Disposition)。assert の gate は
 // severity を見ないので、導出するとマージを止める finding に nits が付く。
-// 手で並べず schema から導く。schema にあるのにこの写しに無いフィールドは黙って落ちる。
-// #425 が塞いだのがその穴。file / line / severity / summary は名前を変えて写し、disposition は
-// dispositionOf を通すので、この 6 つは除く。
+// schema から導き、この写しに無いフィールドが黙って落ちないようにする。file / line / severity /
+// summary は名前を変えて写し、disposition は dispositionOf を通す。
 const MAPPED_FIELDS = new Set([
   "file",
   "line",
@@ -752,9 +737,8 @@ if (!findings.length) {
 // 同じ findings に独立した 2 pass を並行で当てる。membership を決めるのは Challenge の
 // verdict だけで、Verify の evidence は Integrate に届かない。
 const findingsJson = JSON.stringify(findings);
-// workflows/polish.js の VERDICTS_SCHEMA (id/verdict/severity/why) の形を踏襲する。
-// severity の enum はこのファイル自身の FINDINGS_SCHEMA (critical/high/medium/low) に
-// 合わせ、polish の P1/P2/P3 は使わない。2 つの workflow は severity の物差しが異なるため。
+// workflows/polish.js の VERDICTS_SCHEMA (id/verdict/severity/why) と同じ形。severity の enum は
+// このファイルの FINDINGS_SCHEMA に合わせる。polish は P1/P2/P3 で測る。
 const VERDICTS_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -829,9 +813,8 @@ const [challenged, verified] = await parallel([
 ]);
 
 // ---- Triage: survivor 判定はスクリプトが持ち、critic は verdict を返すだけ ----
-// verdict 側でなく finding 側を回す。verdict を付け忘れた finding が黙って消えず、
-// confirmed 扱いで no_verdict に計上される。challenge が丸ごと失敗した run も全件が
-// 同じ経路を通るので、劣化が件数として残る。
+// verdict 側でなく finding 側を回す。verdict の無い finding は confirmed 扱いで no_verdict に
+// 計上され、challenge が丸ごと失敗した run も同じ経路を通るので、劣化が件数として残る。
 const verdictById = new Map(((challenged && challenged.verdicts) || []).map((v) => [v.id, v]));
 const survivors = [];
 const needsContext = [];
@@ -875,13 +858,10 @@ const info = {
   disputed: { count: disputedIds.length, ids: disputedIds },
   downgraded: { count: downgradedIds.length, ids: downgradedIds },
 };
-// challenge_ran は「verdicts を返した run」と fail-open した run (verdictById が空になり、
-// 全 finding が no_verdict 経由で confirmed に落ちる) を区別する。verify は自由記述の
-// テキストを返すため、schema の形ではなく中身の有無で判定する。
+// challenge_ran は「verdicts を返した run」と、全 finding が no_verdict 経由で confirmed に落ちる
+// fail-open の run を区別する。verify は自由記述を返すため、中身の有無で判定する。
 const challengeRan = !!(challenged && Array.isArray(challenged.verdicts));
-// assert.js の challengeStalled と同じく劣化側を指す boolean。challengeRan だけでは空の
-// verdicts 配列も走ったと数えてしまう (challengeRan 自身の定義はここでは変えない) が、その run
-// では verdict が 1 件も出ていないので、challengeRan には無い件数チェックをここに足す。
+// challengeRan は空の verdicts 配列も走ったと数えるので、劣化フラグには件数チェックを足す。
 const challengeDegraded = !challengeRan || challenged.verdicts.length === 0;
 const verifyRan = !!String(verified || "").trim();
 const tally = {
@@ -917,9 +897,8 @@ const integrated = await agent(
 // フォールバック先を triage 前の findings にすると、id が付く前の配列に落ちるので、
 // challenge が disputed と判定した finding を黙って呼び戻すことになる。
 const integratedFindings = (integrated && integrated.findings) || survivorsInput;
-// toCriticRef は Integrate に渡す前に disposition を落とすので、Integrate が返す値は
-// survivors 由来ではなく信用しない。順位は DECLARABLE_DISPOSITIONS から導き、
-// agents/_lib/finding-schema.md が持つ全順序をここへ書き写さない。
+// toCriticRef は Integrate に渡す前に disposition を落とすので、Integrate が返す値は信用しない。
+// 順位は DECLARABLE_DISPOSITIONS から導き、agents/_lib/finding-schema.md の全順序を書き写さない。
 const DISPOSITION_RANK = Object.fromEntries(
   [...DECLARABLE_DISPOSITIONS].map((d, i) => [d, DECLARABLE_DISPOSITIONS.size - i]),
 );
@@ -930,11 +909,9 @@ const consolidatedDisposition = (sourceIds) =>
     if (!d) return strongest;
     return !strongest || DISPOSITION_RANK[d] > DISPOSITION_RANK[strongest] ? d : strongest;
   }, null) || DEFAULT_DISPOSITION;
-// ソートは workflows/assert.js の mergeIssues をそのまま踏襲する。SEVERITY_RANK 降順、
-// 次に file 昇順(localeCompare)、次に line 昇順。ここ 1 箇所で適用するので、返り値の
-// findings と下の snapshot の findings は同じ並びになる。severity を持たない finding は
-// SEVERITY_RANK に該当キーが無く引き算が NaN になる。比較関数は NaN を 0(等しい)として
-// 扱うため、drop されず全ての severity 付き finding の後ろに並ぶ。
+// ソートはここ 1 箇所で適用し、返り値と snapshot を assert.js の mergeIssues と同じ順にする:
+// SEVERITY_RANK 降順、次に file、次に line。`?? 0` で rank の無い severity を最後に置く。素の
+// 参照では引き算が NaN になり file 比較へ抜ける。
 const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1 };
 const severityRank = (f) => SEVERITY_RANK[f.severity] ?? 0;
 const finalFindings = integratedFindings

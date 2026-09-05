@@ -44,7 +44,7 @@ const toHostRealmError = (err) => {
 };
 
 // The own properties production leaves on an error it hands to the script, in the order it
-// writes them. Measured 2026-08-22 (#441): the object's prototype is null, so `e instanceof
+// writes them. Measured: the object's prototype is null, so `e instanceof
 // Error` is false there and cause, errors and any custom property are gone. Handing a script
 // the host Error itself would let it branch on instanceof under test and take the other branch
 // in production.

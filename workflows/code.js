@@ -22,9 +22,8 @@ const parseArgs = () => {
   }
   return {};
 };
-// Only the presence of units is checked here. Validating the plan's structure and re-verifying
-// its preconditions belong to build's Load and Revalidate, and a standalone caller does both
-// before handing the plan over (#185).
+// Only the presence of units is checked here; validating the plan and re-verifying its
+// preconditions belong to build's Load and Revalidate, which a standalone caller runs first.
 const input = parseArgs();
 const plan = input.plan;
 if (!plan || !Array.isArray(plan.units) || !plan.units.length) {
@@ -131,10 +130,9 @@ const parsedReport = (stdout) => {
   }
 };
 
-// The report crosses back through an agent, and a long one comes back truncated: a run of
-// gate calls relayed reports of 1.5 KB to 8.7 KB and the one that arrived unparseable was
-// 5.7 KB. Most of that length is the two output tails, which nothing here reads -- the script
-// reads verdict, classification, and candidates. gate.ts defaults the tails to 12 KB each.
+// The report crosses back through an agent and a long one comes back truncated (a 5.7 KB one
+// arrived unparseable). Most of the length is the two output tails, which nothing here reads;
+// the script reads verdict, classification, and candidates. gate.ts defaults the tails to 12 KB.
 const GATE_TAIL_BYTES = "800";
 
 // gate.ts runs on Node's TypeScript type stripping. A shell whose node predates it kills the
@@ -301,6 +299,14 @@ const completed = [];
 const skipped = [];
 const anomalies = [];
 const commits = [];
+// codex-herdr pane state. panes stays null for a claude run and keeps its ids after the close,
+// so every return path reports them; closed guards the double close from stopUnit and loop end.
+const herdrState = { panes: null, closed: false, opens: 0, closes: 0 };
+const herdrReport = () => ({
+  herdr_panes: herdrState.panes,
+  pane_opens: herdrState.opens,
+  pane_closes: herdrState.closes,
+});
 // The run-level arrays are closed over, so a mid-loop stop still hands the caller its partial
 // progress.
 const stopUnit = async (stopped, unit, why) => {
@@ -313,17 +319,13 @@ const stopUnit = async (stopped, unit, why) => {
     skipped,
     anomalies,
     commits,
-    herdr_panes: herdrPanesResolved,
-    pane_opens: paneOpens,
-    pane_closes: paneCloses,
+    ...herdrReport(),
   };
 };
-// Decides the route and the destination in this one function alone. herdrPanes is declared
-// with let further below, but every call this function receives happens inside the for loop,
-// after that assignment runs.
+// Decides the route and the destination alone.
 const implementDestination = (role) =>
   implementer === "codex-herdr"
-    ? { opts: {}, paneId: herdrPanes ? herdrPanes[role] : undefined }
+    ? { opts: {}, paneId: herdrState.panes ? herdrState.panes[role] : undefined }
     : { opts: { model: input.model || "sonnet", effort: "high" }, paneId: undefined };
 
 const RED_SCHEMA = {
@@ -387,9 +389,8 @@ const COMMIT_SCHEMA = {
   },
 };
 
-// Never put the agent's prompt text in the message: the prompt carries issue-derived
-// (untrusted) prose, and a commit message becomes an unamendable record. Trailer form
-// keeps the plan's anchors machine-readable (git interpret-trailers / git log --format).
+// The agent's prompt text never enters the message: it carries issue-derived (untrusted) prose,
+// and a commit message is an unamendable record. Trailers keep the plan's anchors machine-readable.
 const commitBody = (unit, tests) =>
   [
     flatten(unit.goal),
@@ -402,10 +403,9 @@ const commitBody = (unit, tests) =>
     ...(issueRef ? [`Issue: #${issueRef}`] : []),
   ].join("\n");
 
-// Taken while the working tree still holds only that unit's work; splitting the merged
-// tree afterwards would be an LLM guess at hunk ownership. A failed commit (a blocking
-// pre-commit gate) does not stop the run because the work stays in the tree
-// and the caller's final commit sweeps it up.
+// Taken while the working tree holds only that unit's work; splitting a merged tree afterwards
+// would be an LLM guess at hunk ownership. A failed commit (a blocking pre-commit gate) does not
+// stop the run: the work stays in the tree and the caller's final commit sweeps it up.
 const commitUnit = async (unit, tests, testFiles) => {
   if (!commitPerUnit) return;
   // Read after the commit agent runs, the head it landed on is already gone.
@@ -470,9 +470,9 @@ const commitUnit = async (unit, tests, testFiles) => {
   log(`${unit.id}: not committed (${why}). Left in the working tree.`);
 };
 
-// The agent tool's schema only guarantees shape: a courier reading codex's response file can
-// hand back `{"red_confirmed": "false"}` as a string and still satisfy RED_SCHEMA's declared
-// properties. The type is checked here, right before a caller trusts it via truthiness.
+// The agent tool's schema only guarantees shape: a courier can hand back
+// `{"red_confirmed": "false"}` as a string and still satisfy RED_SCHEMA. The type is checked
+// here, right before a caller trusts it via truthiness.
 const boolMismatch = (result, field) => !!result && typeof result[field] !== "boolean";
 
 const courierTypeStop = (unit, result, field) =>
@@ -495,10 +495,9 @@ const recordDeferred = (unit, result) => {
 // no fs), so unit + role settle on one file reused across the first attempt and its retry.
 const responsePath = (unit, role) => `.codex-response/${unit.id}-${role}.json`;
 
-// role is "tester" for the Red step and "coder" for Green / direct implementation. What a
-// still-failing result means belongs to the caller: an unconfirmed Red is recorded as an
-// anomaly, while a failing impl / Green stops the run. A null first result skips the retry, so
-// a dead agent is not asked twice.
+// role is "tester" for Red and "coder" for Green / direct implementation. The caller decides
+// what a still-failing result means: an unconfirmed Red is an anomaly, a failing impl / Green
+// stops the run. A null first result skips the retry, so a dead agent is not asked twice.
 const stepWithRetry = async (unit, label, role, schema, ok, prompt, retryPrompt) => {
   const dest = implementDestination(role);
   // Prepended to both the first prompt and the retry prompt, so a codex-herdr retry addresses
@@ -556,11 +555,10 @@ const PANE_CLOSE_SCHEMA = {
   },
 };
 
-// From the herdr CLI reference (https://herdr.dev/ja/docs/cli-reference/, fetched 2026-08-27):
-// `pane split`'s response carries the new pane's id at `.result.pane.pane_id`. `agent start
-// <name> --kind KIND --pane ID` targets an existing shell pane; name must match
-// `[a-z][a-z0-9_-]{0,31}`. A blocked detection state returns `agent_not_ready` immediately.
-// `pane close <pane_id>` takes the same id read from split.
+// From the herdr CLI reference (https://herdr.dev/ja/docs/cli-reference/): `pane split` returns
+// the new pane's id at `.result.pane.pane_id`; `agent start <name> --kind KIND --pane ID` targets
+// an existing shell pane, name matching `[a-z][a-z0-9_-]{0,31}`; a blocked detection state
+// returns `agent_not_ready` immediately; `pane close <pane_id>` takes the id read from split.
 const startPane = (role) =>
   agent(
     anchor(
@@ -596,35 +594,19 @@ const closePane = (role, paneId) =>
     },
   );
 
-// Stays null for a non-codex-herdr run, so closeHerdrPanes is a no-op there.
-let herdrPanes = null;
-// run-workflow.js's calls.agent records only each agent's {prompt, opts}, which cannot show
-// that the pane id resolved from pane split, or the open/close count, actually reached this
-// workflow's own return value - the value build.js in turn forwards into its own return value.
-// herdrPanesResolved survives closeHerdrPanes nulling herdrPanes out, so the ids stay on every
-// return path after teardown, not just before it.
-let herdrPanesResolved = null;
-let paneOpens = 0;
-let paneCloses = 0;
-
-// Every close (loop-end teardown via closeHerdrPanes, and the early-failure branches below
-// that close a lone already-open tester pane) goes through here, so paneCloses stays the one
-// running count of panes actually closed.
+// Every close goes through here, so herdrState.closes is the one count of panes actually closed.
 const closePaneCounted = async (role, paneId) => {
   const res = await closePane(role, paneId);
-  if (res && res.closed) paneCloses++;
+  if (res && res.closed) herdrState.closes++;
   return res;
 };
 
-// Called both from stopUnit's early returns and from the normal path after the loop ends, so
-// it clears herdrPanes on entry to avoid closing twice. A close failure does not stop the run;
-// it is recorded as an anomaly instead.
+// A close failure is an anomaly, not a stop.
 const closeHerdrPanes = async () => {
-  if (!herdrPanes) return;
-  const panes = herdrPanes;
-  herdrPanes = null;
-  for (const role of ["tester", "coder"]) {
-    const res = await closePaneCounted(role, panes[role]);
+  if (!herdrState.panes || herdrState.closed) return;
+  herdrState.closed = true;
+  for (const [role, paneId] of Object.entries(herdrState.panes)) {
+    const res = await closePaneCounted(role, paneId);
     if (res && res.closed) continue;
     const why = res
       ? res.notes || `${role} pane close reported closed: false`
@@ -634,9 +616,9 @@ const closeHerdrPanes = async () => {
   }
 };
 
-// herdr talks over a Unix socket, so a sandboxed Bash call cannot reach it and the agent
-// needs dangerouslyDisableSandbox. Mirrors assert.js's codex_available: confirm both the
-// command's presence and a real round trip before any unit enters implementation.
+// herdr talks over a Unix socket, so the agent needs dangerouslyDisableSandbox. As with
+// assert.js's codex_available, both the command's presence and a real round trip are confirmed
+// before any unit enters implementation.
 if (implementer === "codex-herdr") {
   const herdr = await agent(
     anchor(
@@ -660,9 +642,7 @@ if (implementer === "codex-herdr") {
       why: herdr
         ? herdr.notes || "herdr is unreachable."
         : "the herdr reachability check returned no result",
-      herdr_panes: herdrPanesResolved,
-      pane_opens: paneOpens,
-      pane_closes: paneCloses,
+      ...herdrReport(),
     };
   }
 
@@ -676,35 +656,29 @@ if (implementer === "codex-herdr") {
       why: testerStart
         ? testerStart.notes || "the tester pane failed to start."
         : "the tester pane-start agent returned no result",
-      herdr_panes: herdrPanesResolved,
-      pane_opens: paneOpens,
-      pane_closes: paneCloses,
+      ...herdrReport(),
     };
   }
-  paneOpens++;
+  herdrState.opens++;
   // Recorded per pane, not once both are up: a coder-start failure stops between the two, and a
-  // caller chasing a leaked pane needs the tester id the stop already resolved.
-  herdrPanesResolved = { tester: testerStart.pane_id };
+  // caller chasing a leaked pane needs the tester id.
+  herdrState.panes = { tester: testerStart.pane_id };
 
   // A coder pane failure closes the tester pane already open before stopping.
   const coderStart = await startPane("coder");
   if (!coderStart || !coderStart.started) {
-    await closePaneCounted("tester", testerStart.pane_id);
+    await closeHerdrPanes();
     return {
       stopped: "pane-start-failed",
       why: coderStart
         ? coderStart.notes || "the coder pane failed to start."
         : "the coder pane-start agent returned no result",
-      herdr_panes: herdrPanesResolved,
-      pane_opens: paneOpens,
-      pane_closes: paneCloses,
+      ...herdrReport(),
     };
   }
-  paneOpens++;
-
+  herdrState.opens++;
   // These 2 panes are reused across every unit. closeHerdrPanes (loop end) owns closing them.
-  herdrPanes = { tester: testerStart.pane_id, coder: coderStart.pane_id };
-  herdrPanesResolved = herdrPanes;
+  herdrState.panes.coder = coderStart.pane_id;
 }
 
 // A contract cites one behavior, so without the plan's reference module the surrounding
@@ -723,12 +697,10 @@ const referenceModuleCtx = ref?.path
     `Deviating from the reference module is allowed only when the plan says so; state any deviation in your result.\n`
   : "";
 
-// Leaving reference discovery to the LLM's own initiative adds a skipped-search dropout point
-// and makes the read unverifiable, so the read is an explicit agent call and the glob match
-// against units[].files is held by the script, deterministically.
-// The plan carries the rules, and this passes them straight into the implementation prompt.
-// Nothing is looked up at implementation time, so what reached the agent is readable from the
-// issue's `### Rules` section alone.
+// The reference read is an explicit agent call, and the glob match against units[].files is the
+// script's: left to the LLM's initiative, the search can be skipped and the read cannot be
+// verified. The plan's rules pass straight into the prompt; nothing is looked up at
+// implementation time, so what reached the agent is readable from the issue's `### Rules` alone.
 const RULES_START = "---- rules start ----";
 const RULES_END = "---- rules end ----";
 
@@ -748,9 +720,8 @@ const rulesCtx = () => {
 const PRECEDING_START = "---- preceding units start ----";
 const PRECEDING_END = "---- preceding units end ----";
 
-// Built from plan.units, never from an implementation agent's self-report: a self-report
-// arrives through GREEN_SCHEMA, and a missing field there falls into the unit-failed branch
-// and ends the run mid-plan.
+// Built from plan.units, never from an implementation agent's self-report: a missing field in a
+// GREEN_SCHEMA self-report would fall into the unit-failed branch and end the run mid-plan.
 const precedingUnitsCtx = (index) =>
   index
     ? [
@@ -972,8 +943,7 @@ for (const [index, unit] of units.entries()) {
   await commitUnit(unit, tests, red.test_files || []);
 }
 
-// Every unit's implementation is done, so close the panes opened for codex-herdr. herdrPanes
-// stays null for a claude run, so this is a no-op there.
+// Every unit's implementation is done, so close the panes opened for codex-herdr.
 await closeHerdrPanes();
 
 const VERIFY_SCHEMA = {
@@ -1029,9 +999,6 @@ return {
   tests_pass: verify.tests_pass,
   gates_pass: verify.gates_pass,
   verify_output: verify.output_tail,
-  // Stays null for a claude run (herdrPanesResolved / paneOpens / paneCloses are never touched
-  // there); build.js forwards this trio into its own return value unchanged.
-  herdr_panes: herdrPanesResolved,
-  pane_opens: paneOpens,
-  pane_closes: paneCloses,
+  // build.js forwards this trio into its own return value unchanged.
+  ...herdrReport(),
 };

@@ -14,22 +14,17 @@ export const meta = {
   ],
 };
 
-// Four design points.
-// 1. The static reviewer fan-out reuses the nested workflow("audit") instead of duplicating
-//    the routing table (so a routing-table change propagates to assert directly). Audit
-//    findings already passed critic-audit / critic-evidence inside audit, so assert's Challenge
-//    applies only to Codex findings, avoiding a double challenge by the same agents.
-// 2. The gate is computed by schema + script rule. Instead of decoding the gate from the
-//    enhancer's prose, the script computes it by rule from (build, tests, issues), so the
-//    re-spawn / fail-close machinery itself becomes unneeded.
-// 3. worktree.py / bootstrap.py are deterministic scripts, so agents run them as-is.
-//    The session id resolves via the agent environment's $CLAUDE_SESSION_ID, so setup and
-//    cleanup derive the same branch / path from the same id and never drift.
-// 4. adversarial (codex 600s) starts with Evidence and runs behind Challenge / Triage
-//    (putting it in a barrier would let the longest stage block everything).
-//
-// When OUTCOME.md is absent, do NOT generate a stub via /outcome. assert is verification and
-// has no write side-effects on the target repo. Record the absence in the report and move on.
+// 1. The static reviewer fan-out is the nested workflow("audit"), so its routing table is not
+//    duplicated. Its findings already passed critic-audit / critic-evidence there, so assert's
+//    Challenge applies to Codex findings only.
+// 2. The gate is computed by schema + script rule from (build, tests, issues), never decoded
+//    from the enhancer's prose.
+// 3. worktree.py / bootstrap.py are deterministic; setup and cleanup derive the same branch /
+//    path from $CLAUDE_SESSION_ID.
+// 4. adversarial (codex 600s) starts with Evidence and runs behind Challenge / Triage; in a
+//    barrier the longest stage would block everything.
+// When OUTCOME.md is absent, no stub is generated: assert has no write side-effects on the
+// target repo. The absence goes in the report.
 
 const parseArgs = () => {
   if (typeof args === "object" && args) return args;
@@ -59,10 +54,8 @@ if (!repo) {
 const anchor = (p) =>
   `Run every git / file / build command from the ${repo} repository (start each shell command with \`cd ${repo} && \`).\n\n${p}`;
 
-// Plugin-aware asset resolution. When this script ships as a plugin, bundled assets
-// live under ~/.claude/plugins instead of ~/.claude; the shell fragment tries the
-// dev-tree path first, so the dev tree keeps working unchanged. The -e test admits a
-// directory, which the SCRIPTS constant below needs.
+// As a plugin, bundled assets live under ~/.claude/plugins; the shell fragment tries the
+// dev-tree path first. The -e test admits a directory, which SCRIPTS below needs.
 const bundled = (rel) =>
   `"$(P="$HOME/.claude/${rel}"; [ -e "$P" ] || P="$(find "$HOME/.claude/plugins" -path "*/${rel}" -not -path "*/.ja/*" 2>/dev/null | sort -V | tail -1)"; printf %s "$P")"`;
 // Scripts bundled with this workflow. The loader only reads .js directly under workflows/,
@@ -72,10 +65,10 @@ const SCRIPTS = bundled("workflows/assert");
 // instead of judging TBD markers by eye.
 const OUTCOME_VALIDATOR = bundled("skills/outcome/scripts/validate-outcome.py");
 
-// Inline the two rules of merge-findings.py in JS. P1 -> high, P2 -> medium, P3 -> dropped.
-// critical / high / medium / low pass through. Unrecognized severities cannot be ranked,
-// so they are dropped. The dedup key is file:line only (category schemas differ per
-// source). On collision, keep the higher severity and union the sources.
+// merge-findings.py's two rules, inlined. P1 -> high, P2 -> medium, P3 -> dropped; critical /
+// high / medium / low pass through; an unrecognized severity is dropped. Dedup key is file:line
+// only, since category schemas differ per source; on collision keep the higher severity and
+// union the sources.
 const SEVERITY_MAP = {
   P1: "high",
   P2: "medium",
@@ -290,10 +283,9 @@ if (boot.mode === "none") {
   return { stopped: "no-changes", why: boot.reason || "Nothing to assert." };
 }
 
-// Distinguish env fail (worktree impossible / install fail) from build smoke fail (the
-// target itself does not build). Among dynamic-evidence gaps, only env fail may demote to
-// caveat. Demoting a build smoke fail would produce a false Ready that lets a broken build
-// reach merge.
+// env fail (worktree impossible / install fail) is kept apart from build smoke fail (the target
+// does not build): only env fail may demote to caveat, or a broken build would reach merge as
+// Ready.
 const envFail = !boot.worktree_ok || boot.install === "fail";
 const buildCol = envFail ? "skipped" : boot.build;
 const dynamicOk = !envFail && buildCol !== "fail";

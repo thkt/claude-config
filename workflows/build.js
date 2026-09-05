@@ -15,10 +15,8 @@ export const meta = {
   ],
 };
 
-// build does not re-plan a human ## Plan section. A plan-less issue stops
-// and is handed back for refinement. Extraction is left to the
-// LLM; verification belongs to the script. Fan-out stages are delegated to a nested
-// workflow (code).
+// build never re-plans a human ## Plan section; a plan-less issue stops as no-plan. Extraction
+// is the LLM's, verification the script's, and fan-out stages the nested code workflow's.
 
 phase("Load");
 
@@ -45,9 +43,8 @@ const issueRef = String(typeof argsValue === "string" ? argsValue : input.issue 
 const issueNumber =
   (issueRef.match(/^#?(\d+)$/) || issueRef.match(/\/issues\/(\d+)(?:[/?#]|$)/) || [])[1] || "";
 // ---- Run recording: one jsonl row per build run ----
-// PLAN_QUALITY says whether the issue's ## Plan section could have prevented the stop. Counting
-// the true ones decides whether /qualify becomes mandatory ahead of build (DR-0084's
-// reassessment trigger), which a stopped return value reaching no file could never answer.
+// PLAN_QUALITY marks a stop the issue's ## Plan section could have prevented. Its count decides
+// whether /qualify becomes mandatory ahead of build (DR-0084's reassessment trigger).
 const PLAN_QUALITY = {
   "no-issue": false,
   "no-repo": false,
@@ -64,9 +61,8 @@ const PLAN_QUALITY = {
   "plan-drift": true,
   "code-failed": false,
 };
-// The window-tally keys record.py's stdout carries alongside path/run_id (its own docstring).
-// Naming each key's type here once and deriving RECORD_SCHEMA's matching properties below
-// keeps the two from drifting apart when a key is added, renamed, or retyped.
+// The window-tally keys record.py prints beside path/run_id. RECORD_SCHEMA derives its matching
+// properties from this map, so a key added, renamed, or retyped changes in one place.
 const RECORD_COUNT_TYPES = {
   started: "number",
   stops: "number",
@@ -158,10 +154,9 @@ if (!issueRef || !issueNumber) {
   });
 }
 
-// Without repo, agents resolve "the repository" from their own cwd and can run
-// steps in the wrong checkout. anchor pins every step to the target repository;
-// guard makes the agent confirm the repo root before the hard-to-reverse git
-// mutations (branch / commit / push / PR).
+// Without repo, an agent resolves "the repository" from its own cwd. anchor pins every step to
+// the target repository, and guard makes the agent confirm the repo root before branch /
+// commit / push / PR.
 const repo = typeof input.repo === "string" ? input.repo : "";
 // base serves the flow that aggregates slice PRs into an epic branch, used both
 // as the starting point of a fresh checkout and as the PR base.
@@ -182,11 +177,9 @@ if (baseBranch && !BRANCH_NAME_SHAPE.test(baseBranch)) {
 const anchor = (p) =>
   `Run every git, file, and build command from the repository at ${repo} (begin each shell command with \`cd ${repo} && \`).\n\n${p}`;
 const guard = ` Before the first commit / push / branch change in this step, run \`cd ${repo} && git rev-parse --show-toplevel\` and confirm the output is ${repo}. If it differs, abort without mutating git and report the mismatch.`;
-// As a plugin, sibling resolves the build: namespace and bundled resolves
-// ~/.claude/plugins. Both try the bare dev-tree form first, so the dev tree keeps working.
-// Falling back on anything but an unresolved name discards the nested workflow's own failure
-// and leaves the fallback's name-resolution error as the only one left. A nested failure
-// carries the child's stack in its message, so match on the name, not on the wording.
+// As a plugin, sibling resolves the build: namespace and bundled ~/.claude/plugins; both try the
+// dev-tree form first. The fallback runs only on an unresolved name, matched by the name rather
+// than the wording, so a nested workflow's own failure is not replaced by a resolution error.
 const sibling = async (name, a) => {
   try {
     return await workflow(name, a);
@@ -229,9 +222,8 @@ recordable = true;
 await recordRun("started");
 
 // ---- Load: verbatim fetch -> Plan heading check -> deterministic id collection -> extract -> validate + cross-check ----
-// The extracted number, never the reference as given: a URL matches as long as /issues/N
-// appears anywhere in it, so passing it through would carry whatever follows into the shell.
-// gh resolves a bare number against the repository anchor already runs in.
+// The extracted number goes to gh, never the reference as given: a URL matches on /issues/N
+// anywhere in it, so passing it through would carry whatever follows into the shell.
 const fetched = await agent(
   anchor(
     `Run exactly \`gh issue view ${issueNumber} --json title,body\` and return its title field as title and its body field as body, both verbatim; ` +
@@ -253,11 +245,9 @@ if (!fetched || !fetched.found || !String(fetched.body || "").trim()) {
 }
 const body = fetched.body;
 
-// What the schema layer cannot express: an empty tests array is legal (code implements that
-// unit directly), but the checks below are about how the units relate to each other. The seam rule exists because per-unit tests
-// stub their own boundaries, so a plan whose units are each green can still ship
-// layers that were never connected to each other. Once two units carry tests there
-// is a seam between them, and only a test crossing it fails when the wiring is absent.
+// Checks on how the units relate to each other, which the schema layer cannot express. Per-unit
+// tests stub their own boundaries, so a plan whose units are each green can still ship layers
+// never connected; once two units carry tests, only a test crossing their seam catches that.
 const validate = (plan, isBug) => {
   const errors = [];
   // A Bug plan that skips root_cause tends to code around the symptom instead of the cause.
@@ -279,11 +269,9 @@ const validate = (plan, isBug) => {
 
   // reference_module carries either an existing module to replicate or the reason for
   // not replicating one. Neither a bare null nor an absent field can carry that reason,
-  // so both are blockers;
-  // extract is expected to turn the existing `null (理由)` prose format into a kind-tagged
-  // object instead of leaving it null. The field stays out of the schema's
-  // required list: when extract drops the key, that would stop as extraction-failed,
-  // which carries no blockers text to rewrite the plan from.
+  // so both are blockers. The field stays out of the schema's required list: when extract
+  // drops the key, that would stop as extraction-failed, which carries no blockers text to
+  // rewrite the plan from.
   const refModule = plan.reference_module;
   if (refModule === undefined) {
     errors.push(
@@ -295,10 +283,10 @@ const validate = (plan, isBug) => {
       "reference_module is null with no reason. Record it as an object " +
         "{ kind, reason } (kind: module/no-module/new-shape) instead of a bare null",
     );
-  } else if (refModule && typeof refModule === "object" && "kind" in refModule) {
-    // A legacy object with no kind field (bare path/files) goes unchecked for
-    // backward compatibility.
-    if (refModule.kind === "module") {
+  } else if (typeof refModule === "object") {
+    if (!String(refModule.kind || "").trim()) {
+      errors.push("reference_module.kind is missing (module/no-module/new-shape)");
+    } else if (refModule.kind === "module") {
       if (!String(refModule.path || "").trim())
         errors.push("reference_module.path is empty while kind is module");
     } else if (!String(refModule.reason || "").trim()) {
@@ -459,12 +447,10 @@ const PLAN_SCHEMA = obj(
   },
 );
 
-// Coupled with /think Phase 3's unit-size guidance; do not change one side without
-// the other. A seam unit's tests cross the boundary between units, so its files
-// count legitimately grows. Only non-seam units are checked.
-// The canonical. skills/think/SKILL.md restates these in prose and unit-caps-ssot.test.js
-// fails on drift; a third copy in .agents/skills/build/scripts/validate-plan.ts is out of reach
-// of any test here and has to be changed by hand.
+// Coupled with /think Phase 3's unit-size guidance; change both sides together. A seam unit's
+// tests cross unit boundaries, so only non-seam units are checked.
+// Canonical here. skills/think/SKILL.md restates these and unit-caps-ssot.test.js fails on drift;
+// .agents/skills/build/scripts/validate-plan.ts is out of any test's reach and is changed by hand.
 const UNIT_CAPS = { files: 3, tests: 4 };
 const oversizedUnits = (p) =>
   p.units.filter((u) => {
@@ -474,9 +460,8 @@ const oversizedUnits = (p) =>
     return fileCount > UNIT_CAPS.files || testCount > UNIT_CAPS.tests;
   });
 
-// Implement only verified selections. A plan-less issue has nothing to implement
-// against, so build hands it back for refinement instead of drafting a plan in its
-// place.
+// A plan-less issue has nothing to implement against, so build hands it back instead of
+// drafting a plan in its place.
 const planHeading = body.match(/^##\s+Plan\b.*$/m);
 if (!planHeading) {
   return await stop("no-plan", {
@@ -489,9 +474,9 @@ if (!planHeading) {
 const afterHeading = body.slice(planHeading.index + planHeading[0].length);
 const nextSection = afterHeading.search(/^##[^#]/m);
 const planSection = nextSection === -1 ? afterHeading : afterHeading.slice(0, nextSection);
-// Match ids at their definition position only, not prose references (see think templates/plan.md).
-// A test id's prefix is optional. Where a repo's convention writes prefixed ids in test
-// docs (`[T-SK077]`), a plan restricted to bare ids leaves the rename to implementation time.
+// Ids match at their definition position only, not prose references (think templates/plan.md).
+// A test id's prefix is optional: a repo whose test docs write `[T-SK077]` would otherwise be
+// left renaming at implementation time.
 const idSet = (re) => new Set([...planSection.matchAll(re)].map((m) => m[1]));
 const bodyUnitIds = idSet(/^###\s+(U-\d{3})\b/gm);
 const bodyTestIds = idSet(/^[ \t]*[-*+][ \t]+(T-[A-Z]*\d{3})\b/gm);
@@ -503,7 +488,7 @@ const plan = await agent(
       `preconditions is the list of {path, pattern} of existing code the plan presupposes; backlog_candidates are out-of-scope candidates written in the issue. Empty arrays if absent from the body.\n` +
       `rules holds the ### Rules (### 決まりごと) section as {source, quote} pairs, where source is the document path on the line and quote is the text after the colon, verbatim. Empty array when the section is absent.\n` +
       `seam is true only for a unit the body marks \`seam: true\`; every other unit is false. Do not infer it from the unit's content.\n` +
-      `reference_module: the body writes it as an object \`{kind, reason}\` (kind: module/no-module/new-shape), with path/files/instances/conventions added only when kind is module. Copy kind and reason verbatim, and path/files/instances/conventions too when kind is module. A legacy body may still write it as \`null (reason)\` prose instead; turn that into the same object shape rather than leaving it a bare null. Emit a bare null only when the body's reference_module carries no reason at all. Omit the field when the body has no reference_module line.\n` +
+      `reference_module: the body writes it as an object \`{kind, reason}\` (kind: module/no-module/new-shape), with path/files/instances/conventions added only when kind is module. Copy kind and reason verbatim, and path/files/instances/conventions too when kind is module. Emit a bare null only when the body's reference_module carries no reason at all. Omit the field when the body has no reference_module line.\n` +
       `root_cause: copy verbatim if the body states one (e.g. a Root Cause / 原因 line). Omit the field if the body states none.\n\n${fencedBody}`,
   ),
   {
@@ -519,52 +504,33 @@ if (!plan) {
   return await stop("extraction-failed", { why: "The extract agent returned no plan." });
 }
 
-// Deterministic fallback for reference_module.kind/reason: the extract prompt above still
-// trails skills/think, which now writes the object form per DR-0093, so an extraction that has
-// not caught up can still drop kind or reason a body states plainly. Recovers them the same way
-// bodyUnitIds/bodyTestIds above recover ids: a line-anchored regex scoped to planSection, not
-// the whole fencedBody, so a template quotation used as prose elsewhere is never counted as a
-// hit. Fills only when planSection carries exactly one reference_module line, and only
-// kind/reason - it never fabricates path.
-// Both quoted and bare: `/think` writes the line as `{ kind: no-module, reason: ... }` with no
-// quotes, so a quoted-only pattern fills nothing on the very bodies this fallback exists for.
-// reason runs to the closing brace because it carries prose, commas and all.
+// The extract agent can drop kind or reason the body states, so the one reference_module line
+// inside planSection overrides both; a template quotation elsewhere in the body is not a hit,
+// and path is never fabricated. /think writes the line unquoted, so both forms match, and reason
+// runs to the closing brace because it carries commas.
 const REFERENCE_MODULE_KIND_RE = /kind:\s*"?([A-Za-z][\w-]*)"?/;
 const REFERENCE_MODULE_REASON_RE = /reason:\s*"?([\s\S]*?)"?\s*\}?\s*$/;
 const REFERENCE_MODULE_LINE_RE = /^reference_module:[ \t]*(.+)$/gm;
 const refModuleLines = [...planSection.matchAll(REFERENCE_MODULE_LINE_RE)];
 if (refModuleLines.length === 1) {
   const refModuleLine = refModuleLines[0][1].trim();
-  const kindMatch = refModuleLine.match(REFERENCE_MODULE_KIND_RE);
-  const reasonMatch = refModuleLine.match(REFERENCE_MODULE_REASON_RE);
-  // Legacy compat (DR-0093): the pre-split body writes `null (reason)` prose with no kind at
-  // all; "no-module" is the closest reading of a plan that only ever recorded a reason.
-  const legacyMatch = kindMatch ? null : refModuleLine.match(/^null\s*\(([\s\S]*)\)$/);
-  const filledKind = kindMatch ? kindMatch[1] : legacyMatch ? "no-module" : undefined;
-  const filledReason = reasonMatch ? reasonMatch[1] : legacyMatch ? legacyMatch[1] : undefined;
-  if (filledKind !== undefined || filledReason !== undefined) {
-    const existingRefModule =
-      plan.reference_module &&
-      typeof plan.reference_module === "object" &&
-      !Array.isArray(plan.reference_module)
+  const kind = refModuleLine.match(REFERENCE_MODULE_KIND_RE)?.[1];
+  const reason = refModuleLine.match(REFERENCE_MODULE_REASON_RE)?.[1];
+  if (kind !== undefined || reason !== undefined) {
+    const extracted =
+      plan.reference_module && typeof plan.reference_module === "object" && !Array.isArray(plan.reference_module)
         ? plan.reference_module
         : {};
-    const hasKind = typeof existingRefModule.kind === "string" && existingRefModule.kind.trim();
-    const hasReason =
-      typeof existingRefModule.reason === "string" && existingRefModule.reason.trim();
-    if (!hasKind || !hasReason) {
-      plan.reference_module = {
-        ...existingRefModule,
-        ...(!hasKind && filledKind !== undefined ? { kind: filledKind } : {}),
-        ...(!hasReason && filledReason !== undefined ? { reason: filledReason } : {}),
-      };
-    }
+    plan.reference_module = {
+      ...extracted,
+      ...(kind !== undefined ? { kind } : {}),
+      ...(reason !== undefined ? { reason } : {}),
+    };
   }
 }
 
-// A Bug issue carries a `[Bug]` prefix in its title. fetch omits title when it could not read
-// one, so classification then stays undecidable and startsWith on the empty fallback reads as
-// not-a-Bug rather than guessing either way.
+// A Bug issue carries a `[Bug]` title prefix. fetch omits title when it could not read one, and
+// the empty fallback then reads as not-a-Bug rather than a guess either way.
 const blockers = validate(plan, String(fetched.title || "").startsWith("[Bug]"));
 if (blockers.length) {
   return await stop("invalid-plan", {
@@ -610,9 +576,8 @@ const relayVerifier = ({ what, script, payload, count }) =>
   `(3) return the verifier's stdout "results" array verbatim, all ${count} entries; add, drop, or edit none.\n` +
   `The input JSON is as follows.\n${JSON.stringify(payload)}`;
 
-// A relay that hands the payload over as one argv element and brings stdout back verbatim. The
-// agent never reads the JSON; relayedJson interprets it on the script side. A broken relay is
-// null, not an empty result.
+// The relay hands the payload over as one argv element and brings stdout back verbatim;
+// relayedJson interprets it on the script side. A broken relay is null, not an empty result.
 const STDOUT_RELAY_SCHEMA = obj(["stdout"], {
   stdout: { type: "string", description: "the command's stdout, verbatim" },
 });
@@ -643,18 +608,14 @@ const REVALIDATE_SCHEMA = obj(["results"], {
 });
 
 // ---- Revalidate: re-verify preconditions against the current codebase ----
-// Catches, fail-closed, presupposed code that moved since issue filing. Runs in
-// parallel with Branch (both depend only on plan). On drift the created branch is
-// surfaced in the stopped return.
+// Fail-closed on presupposed code that moved since issue filing. Runs in parallel with Branch,
+// and on drift the created branch rides the stopped return.
 phase("Revalidate");
 const preconditions = plan.preconditions || [];
-// reference_module names existing code the plan presupposes just as much as
-// preconditions does; fold its path and files into the same {path} shape revalidate.py
-// accepts, so a moved-or-deleted reference module surfaces as drift too. kind is not
-// consulted: a no-module plan can still cite a shape's path, so any path is checked.
-// Unlike preconditions, a dropped reference_module result stays fail-open (no
-// unreported-retry / revalidate-incomplete): it documents structure for later units
-// rather than gating the build the way a precondition does.
+// reference_module's path and files fold into the same {path} shape as preconditions, so a moved
+// reference module surfaces as drift too; kind is not consulted, since a no-module plan can still
+// cite a path. Unlike preconditions its dropped result stays fail-open: it documents structure
+// for later units rather than gating the build.
 const refModule = plan.reference_module;
 const refModuleEntries =
   refModule && typeof refModule === "object" && String(refModule.path || "").trim()
@@ -665,9 +626,8 @@ const refModuleEntries =
 // Sent as one relay payload so resultByKey below binds both from a single relay call;
 // preconditions alone still drives the unreported-retry / revalidate-incomplete gate.
 const revalidationTargets = [...preconditions, ...refModuleEntries];
-// Code commits per unit, so HEAD stops being the branch point mid-run and every
-// downstream `git diff HEAD` comes back empty - a silent pass, not a visible failure.
-// Hold the base as the branch point's sha.
+// Code commits per unit, so HEAD stops being the branch point mid-run and `git diff HEAD` would
+// come back empty. The base is held as the branch point's sha.
 const BRANCH_SCHEMA = obj(["branch", "head", "ahead_of_base"], {
   branch: { type: "string", description: "the checked-out branch name, nothing else" },
   head: {
@@ -758,10 +718,9 @@ const perUnitCommits = /^[0-9a-f]{7,40}$/.test(startPoint);
 const diffBase = perUnitCommits ? startPoint : "HEAD";
 if (!perUnitCommits)
   log("Branch point sha unavailable; committing once at Ship and diffing against HEAD.");
-// For a base-anchored call, a branch point ahead of base means that delta is not this
-// build's work. Stacking onto a discarded or previous-task branch makes Verify and the
-// PR treat it as this run's output. It shows up in neither scope deviations nor
-// conformance, so stop here.
+// Under a base anchor, a branch point ahead of base is not this build's work; stacking onto a
+// previous branch would make Verify and the PR treat it as this run's output, unseen by scope
+// deviations and conformance alike.
 if (baseBranch && Number(branchRes && branchRes.ahead_of_base) > 0) {
   return await stop("dirty-branch-point", {
     branch,
@@ -901,8 +860,8 @@ log(
 );
 
 // ---- Cleanup: simplify skill + test validation ----
-// The review lens does not belong to build; /polish is human-invoked on
-// the PR. Cleanup runs before Verify so the verified tree is the shipped tree.
+// Runs before Verify so the verified tree is the shipped tree. The review lens is /polish's,
+// human-invoked on the PR.
 const CLEANUP_SCHEMA = obj(["edits", "tests_pass", "stashed"], {
   edits: {
     type: "array",
@@ -933,10 +892,9 @@ const cleanup = (await agent(
 log(`Cleanup: ${cleanup.edits.length} edit(s), tests_pass=${cleanup.tests_pass}.`);
 
 // ---- Verify: deterministic selection checks (diff scope + T-NNN presence) ∥ conformance ----
-// Correctness checking compares against the plan's anchors, not a defect hunt.
-// Static analysis belongs to the edit-time gates hooks; heavy assurance
-// is human-invoked /audit on the PR. Both checks fail open and surface on the PR.
-// conformance is the only LLM review; its findings go to a dedicated PR section.
+// Compares against the plan's anchors, not a defect hunt: static analysis is the gates hooks',
+// heavy assurance the human-invoked /audit's. Both checks fail open and surface on the PR;
+// conformance is the only LLM review and gets its own PR section.
 
 const TEST_PRESENCE_SCHEMA = obj(["results"], {
   results: {
@@ -948,9 +906,8 @@ const TEST_PRESENCE_SCHEMA = obj(["results"], {
   },
 });
 
-// Structural drift from the plan's reference module. Conformance answers "does it do what
-// the spec asked"; this answers "is it shaped like its neighbors". A contract cites one
-// behavior, so the structure around it can be hand-rolled without any anchor catching it.
+// Structural drift from the plan's reference module: conformance asks "does it do what the spec
+// asked", this asks "is it shaped like its neighbors", which no behavior contract catches.
 const STRUCTURE_SCHEMA = obj(["reference_checked", "findings"], {
   reference_checked: {
     type: "boolean",
@@ -1104,17 +1061,14 @@ const [diff, testPresence, conformance, structure] = await parallel([
 const planFiles = new Set(plan.units.flatMap((u) => u.files));
 // A directory can arrive as a single "dir/" line, from porcelain and from a diff agent that
 // ignored --untracked-files=all alike, so a line ending in "/" stands for everything under it.
-const dirCovers = (line, path) => line.endsWith("/") && path.startsWith(line);
-// A baseline entry is read as a directory even without the trailing slash: it comes from a
-// listing that may collapse one, and treating it as a file alone would let its contents back
-// into the scope deviations.
-const preexisting = (f) =>
-  baselineUntracked.some((b) => b && (f === b || f.startsWith(b.endsWith("/") ? b : `${b}/`)));
+const under = (dir, path) => path.startsWith(dir.endsWith("/") ? dir : `${dir}/`);
+const dirCovers = (line, path) => line.endsWith("/") && under(line, path);
+// A baseline entry is read as a directory even without the trailing slash, which the listing may
+// collapse; read as a file, its contents would count as scope deviations.
+const preexisting = (f) => baselineUntracked.some((b) => b && (f === b || under(b, f)));
 const coveredByPlan = (f) => planFiles.has(f) || [...planFiles].some((p) => dirCovers(f, p));
-// Each check carries a status beside its findings. A count alone reads a dead agent's 0 and a
-// clean check's 0 as the same number, so the array holds findings and the status holds whether
-// the check ran at all.
-// files is null when git failed, and diff-files.py carries its stderr in error.
+// status sits beside findings because a dead agent's 0 and a clean check's 0 are the same count.
+// files is null when git failed, with diff-files.py's stderr in error.
 const diffReport = relayedJson(diff);
 if (diffReport && diffReport.files === null) log(`diff-files: git failed (${diffReport.error}).`);
 const diffFiles = diffReport && Array.isArray(diffReport.files) ? diffReport.files : null;
@@ -1136,16 +1090,14 @@ if (!allTestNames.length) {
 } else {
   testPresenceStatus = "agent-failed";
 }
-// Files the plan named but that were never changed. Scope deviations answer "did it
-// touch a file outside the plan"; this answers "did it leave a planned file untouched".
-// A whole unit can go unimplemented and still pass green, and nobody notices when
-// conformance is down. No LLM judgment, so it cannot fail.
+// Planned files never changed. Scope deviations ask "did it touch a file outside the plan"; this
+// asks "did it leave a planned file untouched", which a green run with a whole unit
+// unimplemented passes. No LLM judgment, so it cannot fail.
 const untouchedPlanFiles = diffListed
   ? [...planFiles].filter((p) => !diffFiles.some((f) => f && (f === p || dirCovers(f, p))))
   : [];
-// When an agent dies and returns null, findings 0 means "did not run", not "found
-// nothing". Collapsing both into the same 0 in the return value makes the caller read
-// it as reviewed.
+// A dead agent's null and a clean review's 0 findings must not collapse into the same 0, or the
+// caller reads it as reviewed.
 const confStatus = !conformance ? "agent-failed" : conformance.spec_found ? "reviewed" : "no-spec";
 const structStatus = !structure
   ? "agent-failed"
@@ -1182,9 +1134,8 @@ if (backlogCandidates.length) {
 }
 
 // ---- Ship: commit + draft PR (outward-facing, so draft = reversible) ----
-// The fact tail is rendered by the deterministic pr-body.py so a fact section is
-// never silently dropped. The append and gh pr create are chained with && so a
-// renderer failure aborts before the PR is created.
+// pr-body.py renders the fact tail deterministically, so a fact section is never silently
+// dropped; the append and gh pr create are chained with && so a renderer failure aborts first.
 phase("Ship");
 
 // Translate + compress only the informational free-text; safety facts and structured
@@ -1192,14 +1143,11 @@ phase("Ship");
 const shipAnomalies = (code.anomalies || []).map((a) => ({ ...a }));
 const shipConformance = conf.spec_found ? conf.findings.map((f) => ({ ...f })) : [];
 
-// Writing back goes through set(), never touching structured fields. kind splits how hard the
-// text is compressed: a finding's detail can lose prose because location / spec_line carry its
-// evidence separately.
+// Writing back goes through set(), never touching structured fields. kind sets how hard the text
+// is compressed: a finding's detail can lose prose because location / spec_line carry its evidence.
 const shipStructure = struct.reference_checked ? struct.findings.map((f) => ({ ...f })) : [];
-// An anomaly's evidence stays out of the slots, the same way a finding's location and
-// spec_line do. The prompt keeps those verbatim, so translating one buys its trailing
-// explanatory clause alone, while each slot added is another id the all-or-nothing write-back
-// needs; a single missing id ships the whole tail in English.
+// An anomaly's evidence stays out of the slots, like a finding's location / spec_line: the prompt
+// keeps those verbatim, and every slot is one more id the all-or-nothing write-back needs.
 const slots = [];
 for (const [items, field, kind] of [
   [shipConformance, "detail", "finding"],
@@ -1290,18 +1238,15 @@ const shipPayload = {
   manual_checks: manualChecks,
 };
 
-// An agent-chosen file name can be reused across runs, and the fact tail is appended, so a
-// stale body would ship with this run's tail stacked on the previous run's text. A title the
-// agent settles goes through a file for a different reason: interpolated, it would reach the
-// shell as syntax. A title the script settled rides the command directly as one shq argv element.
+// The body goes through a fresh file because an agent-chosen name can be reused across runs and
+// the fact tail is appended. A title the agent settles goes through a file because interpolated
+// it would reach the shell as syntax; one the script settled rides the command as one shq argv.
 const runSlug = `${issueNumber || "no-issue"}-${String(branch).replace(/[^\w.-]+/g, "-")}`;
 
-// pr-writing.md's title rule (with an issue reference, use the issue title as it stands and
-// strip a feat: / fix: prefix) is applied by the script. Left to the Ship agent, it has opened
-// the PR under an English title of its own without reading the issue. When Load could not
-// fetch the title this stays empty and the agent settles the title as before.
-// The type list matches verify-commit.py's COMMIT_TYPES. Stripping any word would also eat
-// "WIP:" and "RFC:".
+// The script applies pr-writing.md's title rule (the issue title minus a feat: / fix: prefix);
+// the Ship agent has opened PRs under a title of its own without reading the issue. Empty when
+// Load could not fetch the title. The type list matches verify-commit.py's COMMIT_TYPES;
+// stripping any word would also eat "WIP:" and "RFC:".
 const CONVENTIONAL_PREFIX =
   /^(?:feat|fix|refactor|docs|test|chore|perf|style|ci)(?:\([^()]*\))?!?:\s*/i;
 const prTitle = String(fetched.title || "")
