@@ -30,8 +30,8 @@ interface JsonSchema {
 }
 
 // A value parsed from codex's JSON reply, or handed in by a workflow script across the vm
-// boundary: its shape is decided at run time, so it is typed as unknown at that boundary alone.
-type JsonValue = unknown;
+// boundary: its shape is decided at run time, so it is typed as `any` at that boundary alone.
+type JsonValue = any;
 
 type AgentOptions = {
   label?: string;
@@ -184,13 +184,12 @@ export function findSchemaViolation(
     if (value === null) return acceptsNull(schema) ? "" : `${here} is null`;
     if (typeof value !== "object") return `${here} is not an object`;
     const properties = schema.properties || {};
-    const obj = value as Record<string, unknown>;
     for (const key of schema.required || []) {
       const childPath = path ? `${path}.${key}` : key;
-      if (!(key in obj)) return `${childPath} is missing`;
-      if (obj[key] === null && !acceptsNull(properties[key])) return `${childPath} is null`;
+      if (!(key in value)) return `${childPath} is missing`;
+      if (value[key] === null && !acceptsNull(properties[key])) return `${childPath} is null`;
     }
-    for (const [key, child] of Object.entries(obj)) {
+    for (const [key, child] of Object.entries(value)) {
       const found = findSchemaViolation(child, properties[key], path ? `${path}.${key}` : key);
       if (found) return found;
     }
