@@ -15,7 +15,7 @@ workflow は `adrift` `assert` `audit` `build` `code` `polish` `shake` の 7 本
 - 7 本は独立して起動する。入れ子は 2 経路だけで、`assert.js` が audit を、`build.js` が code を呼ぶ
 - 入れ子の呼び方は 2 経路で揃っていない。`build.js` は `sibling` を通し、bare 名が解決できなければ `build:` 名前空間へ落とす。`assert.js` は `workflow("audit")` を直に呼ぶ
 - script が持つのは制御フローと判定だけで、git 操作もファイル読み書きも agent に渡す
-- `workflows/_lib/run-workflow.js` はテスト用の実行器で、本番サンドボックスの供給を写している。両者の食い違いの扱いは `harness-production-divergence.md` が持つ
+- `workflows/_lib/run-workflow.ts` はテスト用の実行器で、本番サンドボックスの供給を写している。両者の食い違いの扱いは `harness-production-divergence.md` が持つ
 
 ## 契約
 
@@ -40,7 +40,7 @@ workflow は `adrift` `assert` `audit` `build` `code` `polish` `shake` の 7 本
 - `workflows/build.js` の `stop`
 - `workflows/build.js` の `sibling` (入れ子の名前解決を plugin 名前空間へ落とす)
 - `workflows/build.js` の `PLAN_QUALITY` (停止理由ごとに、計画の質の問題かを持つ)
-- `workflows/_lib/run-workflow.js` の `checkWorkflowSyntax`
+- `workflows/_lib/run-workflow.ts` の `checkWorkflowSyntax`
 
 ## 由来
 

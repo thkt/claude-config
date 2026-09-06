@@ -7,13 +7,13 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "n
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readMeta } from "../run-workflow.js";
+import { readMeta } from "../run-workflow.ts";
 // T-045's own point: this file is `.js`, and the specifier below ends in `.ts`. Node's type
 // stripping resolves it the same way it resolves gate.test.ts's `.ts`-to-`.ts` imports; nothing
 // in the script evaluation form (rules/conventions/WORKFLOWS.md) constrains module resolution,
 // only the vm boundary a workflow script runs inside.
 import { runWorkflow } from "../run-workflow.ts";
-import { parseRoutingLikeConst } from "./_brace.js";
+import { parseRoutingLikeConst } from "./_brace.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 

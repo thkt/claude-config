@@ -8,8 +8,8 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkWorkflowSyntax, runWorkflow } from "../../_lib/run-workflow.js";
-import { parseStringArrayConst } from "../../_lib/tests/_brace.js";
+import { checkWorkflowSyntax, runWorkflow } from "../../_lib/run-workflow.ts";
+import { parseStringArrayConst } from "../../_lib/tests/_brace.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..", "..");
@@ -629,7 +629,7 @@ test("T-006 every adrift prompt names the repository given in args.repo", async 
 // live contract. The check sits in the stage 2 callback, ahead of the
 // `!ex.verifiable || !ex.candidates.length` branch, and the exact spelling of an expired status
 // lives in adrift.js as EXPIRED_STATUSES -- read from source via the shared parseStringArrayConst
-// (_brace.js), exactly as audit.routing.test.js's parseRoutingLikeConst reads ROUTING/FOCUS, so
+// (_brace.ts), exactly as audit.routing.test.js's parseRoutingLikeConst reads ROUTING/FOCUS, so
 // this test never hand copies the spelling.
 
 // candidates is non-empty and verifiable is true, so absent the new expired-status check this
@@ -742,7 +742,11 @@ test("T-104 a DR whose status is accepted, empty, or unrecognised reaches the re
 // (`status: "Superseded by DR-0055"`), so the check has to be a case-insensitive prefix match.
 // T-101 feeds the bare constant values, which an equality test also passes.
 test("T-105 a status carrying the successor id after the expired word keeps the DR out of the fan-out", async () => {
-  for (const status of ["Superseded by DR-0055", "DEPRECATED as of 2026-01", "Rejected (see #12)"]) {
+  for (const status of [
+    "Superseded by DR-0055",
+    "DEPRECATED as of 2026-01",
+    "Rejected (see #12)",
+  ]) {
     const { calls } = await runWorkflow(adriftJs, {
       args: { repo: "/abs/target-repo" },
       stubs: { agent: expiredStatusStub(status) },

@@ -18,11 +18,11 @@ workflow script は `export const meta` の 1 箇所しか import/export を使�
 
 ## 参照コード
 
-- `workflows/_lib/run-workflow.js` の `checkWorkflowSyntax`(`^export const meta` 以外の `export` を SyntaxError にする実装)
+- `workflows/_lib/run-workflow.ts` の `checkWorkflowSyntax`(`^export const meta` 以外の `export` を SyntaxError にする実装)
 - `workflows/audit/tests/audit.routing.test.js` の `parseNumericConst`(`audit.js` と `assert.js` のソースから `SEVERITY_RANK` を抽出し比較する)
 
 ## 根拠
 
 - #548 `audit.js` と `assert.js` の `SEVERITY_RANK` をソーステキストから抽出して比較する T-105 を追加した
 - #481 build と code の meta 整理で、workflow script が import/export できず `export const meta` の 1 箇所しか剥がされないため、定数はテスト側からソーステキストで読む前提を明記した
-- #367 `implementer` の定数をテスト側からソーステキストで読む前提を、`workflows/_lib/run-workflow.js:166` の実測 (2 つ目以降の `export` は SyntaxError になる) とともに明記した
+- #367 `implementer` の定数をテスト側からソーステキストで読む前提を、`workflows/_lib/run-workflow.ts:166` の実測 (2 つ目以降の `export` は SyntaxError になる) とともに明記した

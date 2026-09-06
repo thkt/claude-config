@@ -9,7 +9,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runWorkflow } from "../../_lib/run-workflow.js";
+import { runWorkflow } from "../../_lib/run-workflow.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const polishJs = join(here, "..", "..", "polish.js");
@@ -153,10 +153,7 @@ test("codex_available stays a boolean on every one of the four outcomes", async 
 // cleanupTarget: "the current diff" fallback the Cleanup stage silently takes on the same run.
 test("a dead Review agent leaves Review, Challenge, and Fix named as unverified in the return value", async () => {
   const { result } = await runFull(diedStub);
-  assert.ok(
-    Array.isArray(result.unverified),
-    "the final return carries an unverified list",
-  );
+  assert.ok(Array.isArray(result.unverified), "the final return carries an unverified list");
   for (const stage of ["Review", "Challenge", "Fix"]) {
     assert.ok(
       result.unverified.some((entry) => typeof entry === "string" && entry.includes(stage)),
@@ -180,9 +177,7 @@ test("a dead Review agent records that the cleanup target fell back to the curre
   assert.ok(
     unverified.some(
       (entry) =>
-        typeof entry === "string" &&
-        /cleanup target/i.test(entry) &&
-        /current diff/i.test(entry),
+        typeof entry === "string" && /cleanup target/i.test(entry) && /current diff/i.test(entry),
     ),
     "unverified also names the cleanup target's fallback to the current diff",
   );

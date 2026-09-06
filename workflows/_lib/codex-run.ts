@@ -1,21 +1,49 @@
+/// <reference types="node" />
 // Runs a workflow script (workflows/<name>.js) on Codex.
 //
 // Claude Code supplies agent() from its own subagent runtime. Codex has no equivalent, so
 // each agent() call becomes one `codex exec` child process here. The rest of the evaluation
 // form -- the vm context, the banned Date / Math globals, parallel and pipeline semantics --
-// is reused from run-workflow.js, which already reproduces what production does.
+// is reused from run-workflow.ts, which already reproduces what production does.
 import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { availableParallelism, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runWorkflow } from "./run-workflow.js";
+import { runWorkflow } from "./run-workflow.ts";
+import type { RunWorkflowStubs } from "./run-workflow.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
+// The subset of JSON Schema the workflow scripts write (workflows/build.js's obj(required,
+// properties) and its siblings). Anything else is carried through untouched.
+interface JsonSchema {
+  type?: string | string[];
+  properties?: Record<string, JsonSchema>;
+  required?: string[];
+  items?: JsonSchema;
+  description?: string;
+  anyOf?: JsonSchema[];
+  additionalProperties?: boolean;
+  [key: string]: unknown;
+}
+
+// A value parsed from codex's JSON reply, or handed in by a workflow script across the vm
+// boundary: its shape is decided at run time, so it is typed as `any` at that boundary alone.
+// oxlint-disable-next-line no-explicit-any
+type JsonValue = any;
+
+type AgentOptions = {
+  label?: string;
+  agentType?: string;
+  model?: string;
+  effort?: string;
+  schema?: JsonSchema;
+};
+
 // build.js and code.js name only haiku and sonnet. The three tiers line up with Codex's
 // current-generation coding models; one CODEX_MODEL_<TIER> variable overrides one entry.
-export const MODEL_MAP = {
+export const MODEL_MAP: Record<string, string> = {
   haiku: process.env.CODEX_MODEL_HAIKU || "gpt-5.6-luna",
   sonnet: process.env.CODEX_MODEL_SONNET || "gpt-5.6-terra",
   opus: process.env.CODEX_MODEL_OPUS || "gpt-5.6-sol",
@@ -40,26 +68,33 @@ const ATTEMPTS = 2;
 // so every optional property is made required and nullable here instead, and the nulls are
 // dropped again before the value reaches the script.
 
-const NULL_SCHEMA = { type: "null" };
-const nullable = (schema) => ({ anyOf: [schema, NULL_SCHEMA] });
+const NULL_SCHEMA: JsonSchema = { type: "null" };
+const nullable = (schema: JsonSchema): JsonSchema => ({ anyOf: [schema, NULL_SCHEMA] });
 
-const typeList = (type) => (Array.isArray(type) ? type : [type]);
+const typeList = (type: JsonSchema["type"]): string[] =>
+  Array.isArray(type) ? type : type === undefined ? [] : [type];
 
 // A schema declaring neither a type nor a shape constrains nothing, so a null under it is a
 // value rather than a violation.
-const acceptsNull = (schema) => {
+const acceptsNull = (schema: JsonSchema | undefined): boolean => {
   if (!schema || typeof schema !== "object") return true;
   if (typeList(schema.type).includes("null")) return true;
   return schema.type === undefined && !schema.properties && !schema.items;
 };
 
-const described = (schema, description) => (description ? { ...schema, description } : schema);
+const described = (schema: JsonSchema, description: string | undefined): JsonSchema =>
+  description ? { ...schema, description } : schema;
 
 // An object or array schema that also declared null keeps that branch around the rewritten form.
-const keepNullBranch = (out, includesNull, description) =>
-  includesNull ? described(nullable(out), description) : out;
+const keepNullBranch = (
+  out: JsonSchema,
+  includesNull: boolean,
+  description: string | undefined,
+): JsonSchema => (includesNull ? described(nullable(out), description) : out);
 
-export function strictify(schema) {
+export function strictify(schema: JsonSchema): JsonSchema;
+export function strictify(schema: JsonSchema | undefined): JsonSchema | undefined;
+export function strictify(schema: JsonSchema | undefined): JsonSchema | undefined {
   if (!schema || typeof schema !== "object") return schema;
 
   const types = typeList(schema.type);
@@ -67,7 +102,7 @@ export function strictify(schema) {
   const bare = types.filter((t) => t !== "null");
 
   if (bare.includes("object") || schema.properties) {
-    const properties = {};
+    const properties: Record<string, JsonSchema> = {};
     const originallyRequired = new Set(schema.required || []);
     for (const [key, value] of Object.entries(schema.properties || {})) {
       const translated = strictify(value);
@@ -91,14 +126,14 @@ export function strictify(schema) {
   }
 
   if (!typeIncludesNull) return { ...schema };
-  const scalar = { ...schema, type: bare.length === 1 ? bare[0] : bare };
+  const scalar: JsonSchema = { ...schema, type: bare.length === 1 ? bare[0] : bare };
   return described(nullable(scalar), schema.description);
 }
 
 // The inverse of the optional-to-nullable rewrite: a null standing where the original schema
 // declared an optional property is the absence the script expects, so the key is removed. A
 // null under a property the original marked required is a real value and stays.
-export function pruneNulls(value, schema) {
+export function pruneNulls(value: JsonValue, schema: JsonSchema | undefined): JsonValue {
   if (!schema || typeof schema !== "object" || value === null || typeof value !== "object") {
     return value;
   }
@@ -111,8 +146,8 @@ export function pruneNulls(value, schema) {
   const types = typeList(schema.type);
   if (types.includes("object") || schema.properties) {
     const required = new Set(schema.required || []);
-    const out = {};
-    for (const [key, child] of Object.entries(value)) {
+    const out: Record<string, JsonValue> = {};
+    for (const [key, child] of Object.entries(value as Record<string, JsonValue>)) {
       if (child === null && !required.has(key)) continue;
       out[key] = pruneNulls(child, (schema.properties || {})[key]);
     }
@@ -126,7 +161,11 @@ export function pruneNulls(value, schema) {
 // the script branches on: build.js's oversizedUnits reads u.files.length, and a null there
 // throws inside the vm as a run failure rather than a recorded degradation. This walks the
 // original schema and names the first such spot, which the caller turns into a retry.
-export function findSchemaViolation(value, schema, path = "") {
+export function findSchemaViolation(
+  value: JsonValue,
+  schema: JsonSchema | undefined,
+  path = "",
+): string {
   if (!schema || typeof schema !== "object") return "";
   const here = path || "the response";
   const types = typeList(schema.type);
@@ -150,7 +189,7 @@ export function findSchemaViolation(value, schema, path = "") {
       if (!(key in value)) return `${childPath} is missing`;
       if (value[key] === null && !acceptsNull(properties[key])) return `${childPath} is null`;
     }
-    for (const [key, child] of Object.entries(value)) {
+    for (const [key, child] of Object.entries(value as Record<string, JsonValue>)) {
       const found = findSchemaViolation(child, properties[key], path ? `${path}.${key}` : key);
       if (found) return found;
     }
@@ -167,12 +206,13 @@ export function findSchemaViolation(value, schema, path = "") {
 
 // The agent definition carries the behavior and the workflow script carries the task. The rule
 // keeps them apart so the model does not read the task as one more clause of the behavior.
-const withPreamble = (preamble, prompt) => (preamble ? `${preamble}\n\n---\n\n${prompt}` : prompt);
+const withPreamble = (preamble: string, prompt: string): string =>
+  preamble ? `${preamble}\n\n---\n\n${prompt}` : prompt;
 
 // findSchemaViolation names a required field that came back missing or null, so the retry asks
 // for that field to be filled. Asking instead for extra fields to be dropped answers a
 // violation the strict-mode schema cannot produce.
-const schemaCorrection = (reason) =>
+const schemaCorrection = (reason: string): string =>
   `\n\nThe previous attempt returned a value that did not fit the output schema (${reason}). ` +
   `Answer again with every declared field filled, using null only where the schema allows it.`;
 
@@ -184,23 +224,30 @@ const schemaCorrection = (reason) =>
 
 const WRITE_TOOLS = /\b(Edit|Write|NotebookEdit|MultiEdit)\b/;
 
-let agentIndex = null;
-const indexAgents = () => {
+interface LoadedAgent {
+  preamble: string;
+  readOnly: boolean;
+  missing?: boolean;
+}
+
+let agentIndex: Map<string, string> | null = null;
+const indexAgents = (): Map<string, string> => {
   if (agentIndex) return agentIndex;
-  agentIndex = new Map();
-  const walk = (dir) => {
+  const index = new Map<string, string>();
+  const walk = (dir: string): void => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (entry.name.endsWith(".md")) agentIndex.set(entry.name.replace(/\.md$/, ""), full);
+      else if (entry.name.endsWith(".md")) index.set(entry.name.replace(/\.md$/, ""), full);
     }
   };
   const agentsDir = join(ROOT, "agents");
   if (existsSync(agentsDir)) walk(agentsDir);
-  return agentIndex;
+  agentIndex = index;
+  return index;
 };
 
-export function loadAgent(agentType) {
+export function loadAgent(agentType: string | undefined): LoadedAgent {
   if (!agentType || agentType === "general-purpose") return { preamble: "", readOnly: false };
   const path = indexAgents().get(agentType);
   // A missing definition is not a reason to stop the run, so the stage proceeds with the
@@ -219,7 +266,33 @@ export function loadAgent(agentType) {
 
 // ---- codex exec ------------------------------------------------------------------------
 
-const runCodexOnce = ({ prompt, model, effort, schemaPath, outPath, sandbox, cwd, timeoutMs }) =>
+interface CodexRunSpec {
+  prompt: string;
+  model: string;
+  effort: string;
+  schemaPath: string;
+  outPath: string;
+  sandbox: string;
+  cwd: string;
+  timeoutMs: number;
+}
+
+interface CodexRunOutcome {
+  code: number | null;
+  stderr: string;
+  timedOut: boolean;
+}
+
+const runCodexOnce = ({
+  prompt,
+  model,
+  effort,
+  schemaPath,
+  outPath,
+  sandbox,
+  cwd,
+  timeoutMs,
+}: CodexRunSpec): Promise<CodexRunOutcome> =>
   new Promise((done) => {
     const argv = [
       "exec",
@@ -251,8 +324,8 @@ const runCodexOnce = ({ prompt, model, effort, schemaPath, outPath, sandbox, cwd
       child.kill("SIGKILL");
     }, timeoutMs);
 
-    child.stdout.on("data", () => {});
-    child.stderr.on("data", (chunk) => {
+    child.stdout?.on("data", () => {});
+    child.stderr?.on("data", (chunk) => {
       stderr += chunk;
     });
     child.on("error", (err) => {
@@ -264,16 +337,16 @@ const runCodexOnce = ({ prompt, model, effort, schemaPath, outPath, sandbox, cwd
       done({ code, stderr: stderr.slice(-4000), timedOut });
     });
 
-    child.stdin.end(prompt);
+    child.stdin?.end(prompt);
   });
 
 // ---- Runner ----------------------------------------------------------------------------
 
-const makeSlots = (limit) => {
+const makeSlots = (limit: number) => {
   let active = 0;
-  const waiting = [];
-  return async (task) => {
-    if (active >= limit) await new Promise((r) => waiting.push(r));
+  const waiting: (() => void)[] = [];
+  return async <T>(task: () => Promise<T>): Promise<T> => {
+    if (active >= limit) await new Promise<void>((r) => waiting.push(r));
     active++;
     try {
       return await task();
@@ -287,21 +360,33 @@ const makeSlots = (limit) => {
 
 // stubs.workflow and runOnCodex both need the path a name resolves to, and the same missing-name
 // message build.js's sibling() matches on, so both go through this rather than repeating either.
-const resolveWorkflowPath = (name) => {
+const resolveWorkflowPath = (name: string): string => {
   const path = join(ROOT, "workflows", `${name}.js`);
   if (!existsSync(path)) throw new Error(`workflow('${name}'): no workflow with that name`);
   return path;
 };
 
+interface CreateStubsOptions {
+  repo: string;
+  concurrency?: number;
+  onLog?: (message: string) => void;
+  tmp: string;
+}
+
 // The pool belongs to one createStubs call. stubs.workflow hands the same stubs object to the
 // nested run, so build and the code workflow it nests share one pool; two concurrent
 // runOnCodex calls would each hold their own and the cap would apply twice.
-export function createStubs({ repo, concurrency = DEFAULT_CONCURRENCY, onLog = () => {}, tmp }) {
+export function createStubs({
+  repo,
+  concurrency = DEFAULT_CONCURRENCY,
+  onLog = () => {},
+  tmp,
+}: CreateStubsOptions): RunWorkflowStubs {
   const withSlot = makeSlots(concurrency);
-  const stubs = {};
+  const stubs: RunWorkflowStubs = {};
   let serial = 0;
 
-  stubs.agent = async (prompt, opts = {}) =>
+  stubs.agent = async (prompt: string, opts: AgentOptions = {}) =>
     withSlot(async () => {
       const id = ++serial;
       const label = opts.label || opts.agentType || "agent";
@@ -310,7 +395,7 @@ export function createStubs({ repo, concurrency = DEFAULT_CONCURRENCY, onLog = (
         onLog(`[${label}] agents/${opts.agentType}.md is missing; running with no preamble.`);
       }
 
-      const model = MODEL_MAP[opts.model] || MODEL_MAP.sonnet;
+      const model = (opts.model && MODEL_MAP[opts.model]) || MODEL_MAP.sonnet;
       const effort = opts.effort || DEFAULT_EFFORT;
       const sandbox = readOnly ? "read-only" : "workspace-write";
       const schemaPath = opts.schema ? join(tmp, `schema-${id}.json`) : "";
@@ -360,8 +445,9 @@ export function createStubs({ repo, concurrency = DEFAULT_CONCURRENCY, onLog = (
           if (violation) throw new Error(violation);
           return value;
         } catch (err) {
-          onLog(`[${label}] response did not fit the schema: ${err.message}`);
-          correction = schemaCorrection(err.message);
+          const message = err instanceof Error ? err.message : String(err);
+          onLog(`[${label}] response did not fit the schema: ${message}`);
+          correction = schemaCorrection(message);
         }
       }
       // The Agent tool returns null when a subagent dies after its retries, and the workflow
@@ -372,7 +458,7 @@ export function createStubs({ repo, concurrency = DEFAULT_CONCURRENCY, onLog = (
 
   // build.js's sibling() falls back to the plugin namespace only when the message matches this
   // shape, so an unresolved name throws it verbatim rather than returning undefined.
-  stubs.workflow = async (name, wfArgs) => {
+  stubs.workflow = async (name: string, wfArgs: JsonValue) => {
     const path = resolveWorkflowPath(name);
     onLog(`[workflow] ${name}`);
     const nested = await runWorkflow(path, {
@@ -387,7 +473,21 @@ export function createStubs({ repo, concurrency = DEFAULT_CONCURRENCY, onLog = (
   return stubs;
 }
 
-async function runOnCodex(name, args, { concurrency, onLog = () => {} } = {}) {
+interface RunOnCodexArgs {
+  repo: string;
+  [key: string]: unknown;
+}
+
+interface RunOnCodexOptions {
+  concurrency?: number;
+  onLog?: (message: string) => void;
+}
+
+async function runOnCodex(
+  name: string,
+  args: RunOnCodexArgs,
+  { concurrency, onLog = () => {} }: RunOnCodexOptions = {},
+): Promise<JsonValue> {
   const path = resolveWorkflowPath(name);
   const tmp = mkdtempSync(join(process.env.TMPDIR || tmpdir(), "codex-run-"));
   try {
@@ -409,15 +509,21 @@ async function runOnCodex(name, args, { concurrency, onLog = () => {} } = {}) {
 // --args carries whatever the caller typed, so its keys are copied one by one onto a
 // null-prototype target rather than merged, which keeps a "__proto__" key a plain own
 // property instead of a write through the prototype chain.
-const mergeArgs = (target, source) => {
+const mergeArgs = (target: Record<string, unknown>, source: unknown): void => {
   if (!source || typeof source !== "object") return;
-  for (const key of Object.keys(source)) target[key] = source[key];
+  for (const key of Object.keys(source)) target[key] = (source as Record<string, unknown>)[key];
 };
 
-export function parseArgv(argv) {
+interface ParsedArgv {
+  name: string | undefined;
+  args: Record<string, unknown>;
+  concurrency: number | undefined;
+}
+
+export function parseArgv(argv: string[]): ParsedArgv {
   const [name, ...rest] = argv;
-  const args = Object.create(null);
-  let concurrency;
+  const args: Record<string, unknown> = Object.create(null);
+  let concurrency: number | undefined;
   for (let i = 0; i < rest.length; i++) {
     const flag = rest[i];
     const value = rest[i + 1];
@@ -436,16 +542,20 @@ const invokedDirectly =
   process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) {
   const { name, args, concurrency } = parseArgv(process.argv.slice(2));
-  if (!name || !args.repo) {
+  if (!name || typeof args.repo !== "string") {
     process.stderr.write(
-      "usage: node workflows/_lib/codex-run.js <workflow> --repo <abs path> " +
+      "usage: node workflows/_lib/codex-run.ts <workflow> --repo <abs path> " +
         "[--issue N] [--base B] [--concurrency N] [--args <json>]\n",
     );
     process.exit(2);
   }
-  const result = await runOnCodex(name, args, {
-    concurrency,
-    onLog: (message) => process.stderr.write(`${message}\n`),
-  });
+  const result = await runOnCodex(
+    name,
+    { ...args, repo: args.repo },
+    {
+      concurrency,
+      onLog: (message) => process.stderr.write(`${message}\n`),
+    },
+  );
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }

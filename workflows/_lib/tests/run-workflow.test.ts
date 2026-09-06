@@ -8,8 +8,8 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "n
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PRODUCTION_GLOBALS, SCRIPT_ERROR_KEYS, readMeta, runWorkflow } from "../run-workflow.js";
-import { extractBracedBody } from "./_brace.js";
+import { PRODUCTION_GLOBALS, SCRIPT_ERROR_KEYS, readMeta, runWorkflow } from "../run-workflow.ts";
+import { extractBracedBody } from "./_brace.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 // Discovery (rules/conventions/WORKFLOWS.md § Naming and file placement) reads workflows/ flat,
@@ -19,7 +19,7 @@ const workflowsDir = join(here, "..", "..");
 // runWorkflow's contract reads the source from a file path (readFileSync), so the script body is
 // written to a temporary file first. Each test uses its own temporary directory so script files
 // never collide between tests.
-const withScript = async (source, run) => {
+const withScript = async <T>(source: string, run: (path: string) => Promise<T>): Promise<T> => {
   const dir = mkdtempSync(join(tmpdir(), "run-workflow-test-"));
   const path = join(dir, "script.js");
   writeFileSync(path, source);
@@ -35,12 +35,20 @@ const withScript = async (source, run) => {
 
 // ECMA-262 SingleEscapeCharacter (https://tc39.es/ecma262/#prod-SingleEscapeCharacter). Any
 // other escaped character evaluates to itself, which the default branch below returns.
-const SINGLE_ESCAPES = { n: "\n", t: "\t", r: "\r", b: "\b", f: "\f", v: "\v", 0: "\0" };
+const SINGLE_ESCAPES: Record<string, string> = {
+  n: "\n",
+  t: "\t",
+  r: "\r",
+  b: "\b",
+  f: "\f",
+  v: "\v",
+  0: "\0",
+};
 
 // Not a raw slice of the source: code.js escapes an apostrophe inside its single-quoted
 // description (`plan\'s`), and keeping the backslash would not match what readMeta's vm
 // evaluation returns.
-const extractStringField = (body, key) => {
+const extractStringField = (body: string, key: string): string | null => {
   const marker = new RegExp(`(?:^|\\n)\\s*${key}:\\s*(['"])`);
   const m = marker.exec(body);
   if (!m) return null;
@@ -63,10 +71,11 @@ const extractStringField = (body, key) => {
 
 // phases entries carry a plain title with no quotes inside ("Load", "Pre-flight", ...), so a
 // bare quoted-string match is enough; "title" appears nowhere else in a meta body.
-const extractPhaseTitles = (body) => [...body.matchAll(/title:\s*"([^"]*)"/g)].map((m) => m[1]);
+const extractPhaseTitles = (body: string): string[] =>
+  [...body.matchAll(/title:\s*"([^"]*)"/g)].map((m) => m[1]);
 
-const extractMeta = (source) => {
-  const body = extractBracedBody(source, "export const meta = {");
+const extractMeta = (source: string) => {
+  const body = extractBracedBody(source, "export const meta = {") ?? "";
   return {
     name: extractStringField(body, "name"),
     description: extractStringField(body, "description"),
@@ -92,7 +101,7 @@ test("readMeta returns name, description, whenToUse and phases for every script 
     assert.equal(meta.description, expected.description, `${file}: description`);
     assert.equal(meta.whenToUse, expected.whenToUse, `${file}: whenToUse`);
     assert.deepEqual(
-      meta.phases.map((p) => p.title),
+      (meta.phases ?? []).map((p) => p.title),
       expected.phaseTitles,
       `${file}: phases`,
     );
@@ -117,7 +126,7 @@ return thisIdentifierIsNeverInjected("readMeta must never reach this line");
     assert.equal(meta.description, "a sample workflow script");
     assert.equal(meta.whenToUse, "used only to exercise readMeta");
     assert.deepEqual(
-      meta.phases.map((p) => p.title),
+      (meta.phases ?? []).map((p) => p.title),
       ["Only"],
     );
   });
@@ -160,7 +169,8 @@ test("T-006 a script calling Date.now dies with an Error citing resume as the re
   await withScript("return Date.now();", async (path) => {
     await assert.rejects(
       () => runWorkflow(path, {}),
-      (err) => {
+      (err: unknown) => {
+        assert.ok(err instanceof Error, "it dies with a host-realm Error");
         // A partial match would still pass after the harness swapped in its own phrasing, so this
         // matches the production message itself.
         assert.equal(
@@ -299,8 +309,7 @@ test("T-015 an error the harness throws into the script arrives in production's 
       stubs: {
         agent: () => {
           const err = new TypeError("stub-failed", { cause: new RangeError("root") });
-          err.code = "E_CUSTOM";
-          throw err;
+          throw Object.assign(err, { code: "E_CUSTOM" });
         },
       },
     });

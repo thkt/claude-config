@@ -43,7 +43,7 @@ OPERATION phase の 7 stage が全て unmatched であることは、`deploy|obs
 | --- | ------------------------ | --------- | ----------------------------------------------------------------------------------------------------- |
 | 0.1 | workspace-scaffold       | unmatched | -                                                                                                     |
 | 0.2 | workspace-detection      | unmatched | -                                                                                                     |
-| 0.3 | state-init               | unmatched | `workflows/_lib/run-workflow.js` が run ごとの状態を持つが、これは配管であって stage ではない         |
+| 0.3 | state-init               | unmatched | `workflows/_lib/run-workflow.ts` が run ごとの状態を持つが、これは配管であって stage ではない         |
 | 1.1 | intent-capture           | partial   | `/outcome` の Outcome state が intent-statement を埋める。stakeholder-map は無い                      |
 | 1.2 | market-research          | unmatched | -                                                                                                     |
 | 1.3 | feasibility              | partial   | `/challenge` が GO / NO-GO を返す。constraint-register は OUTCOME.md § Constraints                    |

@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkWorkflowSyntax, runWorkflow } from "../../_lib/run-workflow.js";
+import { checkWorkflowSyntax, runWorkflow } from "../../_lib/run-workflow.ts";
 
 // The paths this file's own static gate hands to `node --check` (see the T-041 test below),
 // read from source rather than from the runtime local: `modules` lives inside that other
@@ -222,17 +222,17 @@ test("fails closed with stopped: unit-failed when the direct implementation fail
 
 test("the static gates pass on the JA and EN code.js and on tests/*.js", () => {
   const scripts = [join(root, ".ja", "workflows", "code.js"), join(root, "workflows", "code.js")];
-  const modules = [
-    join(root, "workflows", "_lib", "run-workflow.js"),
-    join(root, "workflows", "code", "tests", "code.model.test.js"),
-  ];
+  const modules = [join(root, "workflows", "code", "tests", "code.model.test.js")];
+  // The harness is a .ts: tsc type-checks it (T-044) and oxlint reads it here, but node --check
+  // would pass a broken .ts outright (T-041), so it stays out of `modules`.
+  const typed = [join(root, "workflows", "_lib", "run-workflow.ts")];
   for (const file of scripts) {
     checkWorkflowSyntax(file);
   }
   for (const file of modules) {
     execFileSync("node", ["--check", file], { cwd: root });
   }
-  execFileSync("npx", ["oxlint", ...scripts, ...modules], { cwd: root });
+  execFileSync("npx", ["oxlint", ...scripts, ...modules, ...typed], { cwd: root });
 });
 
 // node --check reads .ts as CommonJS/ambient JS syntax, not as TypeScript: it can pass a
