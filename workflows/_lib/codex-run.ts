@@ -6,24 +6,15 @@
 // form -- the vm context, the banned Date / Math globals, parallel and pipeline semantics --
 // is reused from run-workflow.ts, which already reproduces what production does.
 import { spawn } from "node:child_process";
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { availableParallelism, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isMainModule } from "./entry-point.ts";
 import { runWorkflow } from "./run-workflow.ts";
 import type { RunWorkflowStubs } from "./run-workflow.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-// Module path resolved with realpathSync to handle symlinks correctly in invocation detection.
-const MODULE_PATH = realpathSync(fileURLToPath(import.meta.url));
 
 // The subset of JSON Schema the workflow scripts write (workflows/build.js's obj(required,
 // properties) and its siblings). Anything else is carried through untouched.
@@ -548,8 +539,7 @@ export function parseArgv(argv: string[]): ParsedArgv {
   return { name, args, concurrency };
 }
 
-const invokedDirectly = process.argv[1] && realpathSync(resolve(process.argv[1])) === MODULE_PATH;
-if (invokedDirectly) {
+if (isMainModule(import.meta.url)) {
   const { name, args, concurrency } = parseArgv(process.argv.slice(2));
   if (!name || typeof args.repo !== "string") {
     process.stderr.write(

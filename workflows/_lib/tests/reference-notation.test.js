@@ -81,9 +81,6 @@ test("T-046 the scan lists the same set of workflow script names under workflows
   );
 });
 
-// Scan for bare asset paths in a specified directory
-const scanBareAssetPathsIn = (dir, name) => bareAssetPathsIn(dir, name);
-
 test("T-047 the scan reports a fixture script carrying a bare $HOME/.claude asset path, and reports nothing once that path is rewritten through bundled()", () => {
   const dir = mkdtempSync(join(tmpdir(), "reference-notation-fixture-"));
   try {
@@ -93,7 +90,7 @@ test("T-047 the scan reports a fixture script carrying a bare $HOME/.claude asse
       'const asset = "$HOME/.claude/workflows/fixture/asset.py";\n',
     );
     assert.notDeepEqual(
-      scanBareAssetPathsIn(dir, barePathName),
+      bareAssetPathsIn(dir, barePathName),
       [],
       `${barePathName} names a bundled asset by a bare $HOME/.claude path, and the scan should report it`,
     );
@@ -104,7 +101,7 @@ test("T-047 the scan reports a fixture script carrying a bare $HOME/.claude asse
       'const asset = `${bundled("workflows/fixture/asset.py")}`;\n',
     );
     assert.deepEqual(
-      scanBareAssetPathsIn(dir, bundledName),
+      bareAssetPathsIn(dir, bundledName),
       [],
       `${bundledName} reaches the asset through bundled(), so the scan should report nothing`,
     );
