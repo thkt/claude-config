@@ -72,6 +72,7 @@
 - prefix 除去の正規表現は正準の列挙 (verify-commit.py の COMMIT_TYPES) と同じ集合に限定する。任意語だと WIP: や RFC: の先頭語が消える #623
 - 手元の gate (oxlint / oxfmt) は Python を見ないので、push 前に CI と同じ版の ruff (0.16.4) を手元で走らせる。E501 だけで CI が落ちた #623
 - PR 本文の Review focus 節で、振る舞いが変わったファイルと comment のみの変更ファイルを分けて示す #648
+- TS 化で knip.json の glob 拡張だけでは足りず、CLI 入口ファイル (entry) と静的 import されない test fixture (ignoreFiles) は明示しないと未使用 export として新規に誤検出される #653
 
 ## 棄却
 
