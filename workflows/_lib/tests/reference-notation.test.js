@@ -20,13 +20,16 @@ const BUNDLED_DEFINITION = /\$\{rel\}/;
 
 const scripts = readdirSync(workflowsDir).filter((name) => name.endsWith(".js"));
 
-const bareAssetPaths = (name) =>
-  readFileSync(join(workflowsDir, name), "utf8")
+// Generalized scan for bare asset paths in any directory
+const bareAssetPathsIn = (dir, name) =>
+  readFileSync(join(dir, name), "utf8")
     .split("\n")
     .map((text, index) => ({ line: index + 1, text }))
     .filter(({ text }) => text.includes("$HOME/.claude/"))
     .filter(({ text }) => !RUNNING_SIDE.test(text) && !BUNDLED_DEFINITION.test(text))
     .map(({ line, text }) => `${name}:${line} ${text.trim()}`);
+
+const bareAssetPaths = (name) => bareAssetPathsIn(workflowsDir, name);
 
 // A plugin distribution carries the .ja/ tree alongside the English one, and the search order
 // does not guarantee the English copy comes last, so without the exclusion an asset resolves to
@@ -78,17 +81,8 @@ test("T-046 the scan lists the same set of workflow script names under workflows
   );
 });
 
-// U-001: bareAssetPaths above is hard-wired to workflowsDir (the real en tree) and cannot be
-// pointed at an arbitrary directory yet, so the fixture-based positive control this scenario
-// needs has no scan to call. Generalizing bareAssetPaths to take a directory, and wiring both
-// existing checks above to WORKFLOW_TREE_DIRS, is Green-step work for this unit; this scaffold
-// only gives the planned assertion a name to fail against in the meantime.
-const scanBareAssetPathsIn = (_dir, _name) => {
-  throw new Error(
-    "scanBareAssetPathsIn is not implemented yet: bareAssetPaths only reads workflowsDir, " +
-      "so it cannot scan a fixture placed in a temp directory (U-001 Green step)",
-  );
-};
+// Scan for bare asset paths in a specified directory
+const scanBareAssetPathsIn = (dir, name) => bareAssetPathsIn(dir, name);
 
 test("T-047 the scan reports a fixture script carrying a bare $HOME/.claude asset path, and reports nothing once that path is rewritten through bundled()", () => {
   const dir = mkdtempSync(join(tmpdir(), "reference-notation-fixture-"));

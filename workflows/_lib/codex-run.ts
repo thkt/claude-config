@@ -6,7 +6,15 @@
 // form -- the vm context, the banned Date / Math globals, parallel and pipeline semantics --
 // is reused from run-workflow.ts, which already reproduces what production does.
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { availableParallelism, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,6 +22,8 @@ import { runWorkflow } from "./run-workflow.ts";
 import type { RunWorkflowStubs } from "./run-workflow.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+// Module path resolved with realpathSync to handle symlinks correctly in invocation detection.
+const MODULE_PATH = realpathSync(fileURLToPath(import.meta.url));
 
 // The subset of JSON Schema the workflow scripts write (workflows/build.js's obj(required,
 // properties) and its siblings). Anything else is carried through untouched.
@@ -29,8 +39,8 @@ interface JsonSchema {
 }
 
 // A value parsed from codex's JSON reply, or handed in by a workflow script across the vm
-// boundary: its shape is decided at run time, so it is typed as `any` at that boundary alone.
-type JsonValue = any;
+// boundary: its shape is decided at run time, so it is typed as unknown at that boundary alone.
+type JsonValue = unknown;
 
 type AgentOptions = {
   label?: string;
@@ -183,12 +193,13 @@ export function findSchemaViolation(
     if (value === null) return acceptsNull(schema) ? "" : `${here} is null`;
     if (typeof value !== "object") return `${here} is not an object`;
     const properties = schema.properties || {};
+    const obj = value as Record<string, unknown>;
     for (const key of schema.required || []) {
       const childPath = path ? `${path}.${key}` : key;
-      if (!(key in value)) return `${childPath} is missing`;
-      if (value[key] === null && !acceptsNull(properties[key])) return `${childPath} is null`;
+      if (!(key in obj)) return `${childPath} is missing`;
+      if (obj[key] === null && !acceptsNull(properties[key])) return `${childPath} is null`;
     }
-    for (const [key, child] of Object.entries(value)) {
+    for (const [key, child] of Object.entries(obj)) {
       const found = findSchemaViolation(child, properties[key], path ? `${path}.${key}` : key);
       if (found) return found;
     }
@@ -537,8 +548,7 @@ export function parseArgv(argv: string[]): ParsedArgv {
   return { name, args, concurrency };
 }
 
-const invokedDirectly =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const invokedDirectly = process.argv[1] && realpathSync(resolve(process.argv[1])) === MODULE_PATH;
 if (invokedDirectly) {
   const { name, args, concurrency } = parseArgv(process.argv.slice(2));
   if (!name || typeof args.repo !== "string") {
