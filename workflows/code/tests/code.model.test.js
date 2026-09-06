@@ -235,8 +235,12 @@ test("the static gates pass on the JA and EN code.js and on tests/*.js", () => {
 });
 
 // node --check reads .ts as CommonJS/ambient JS syntax, not as TypeScript: it can pass a
-// broken .ts outright (workflows/tests/node-check-scope.test.js). A .ts landing in the array
-// above would look checked without being checked, so this pins the array itself instead.
+// broken .ts outright. Measured directly against a .ts file whose types are valid but whose
+// value-level code is broken: on Node 24.18.0, `node --check` exits 0 regardless of the
+// break. On Node 26.8.0 the exit code instead depends on which break the fixture carries
+// (some still exit 0, some exit 1), so neither version can be asserted as "catches a broken
+// .ts" or "always passes one". A .ts landing in the array above would look checked without
+// being checked, so this pins the array itself instead.
 test("T-041 the file list the static gate hands to node --check contains no .ts entry", () => {
   // Positive control: without it, an extraction that finds nothing (e.g. the regex above
   // stops matching a renamed literal) would pass the empty-array assertion below for the
