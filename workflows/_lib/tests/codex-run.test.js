@@ -2,10 +2,12 @@
 // inverse, the agent-definition lookup, and the argv parse. The codex child process is never
 // spawned here, so nothing in this file reaches the network.
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   createStubs,
@@ -16,6 +18,31 @@ import {
   pruneNulls,
   strictify,
 } from "../codex-run.ts";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const TS_SCRIPT = join(HERE, "..", "codex-run.ts");
+
+function withTempDir(fn) {
+  const cwd = mkdtempSync(join(tmpdir(), "codex-run-cli-test-"));
+  try {
+    return fn(cwd);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+}
+
+// isMainModule (workflows/_lib/entry-point.ts) resolves both argv[1] and the module path with
+// realpathSync before comparing them, so a symlinked entrypoint still matches its real file and
+// the CLI's usage branch (no workflow name, no --repo) runs instead of silently exiting 0.
+test("T-050 the CLI invoked through a symlinked path to codex-run.ts with no arguments prints the usage line to stderr and exits 2", () => {
+  withTempDir((cwd) => {
+    const link = join(cwd, "codex-run-link.ts");
+    symlinkSync(TS_SCRIPT, link);
+    const result = spawnSync(process.execPath, [link], { encoding: "utf8" });
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /^usage: node workflows\/_lib\/codex-run\.ts <workflow> --repo/m);
+  });
+});
 
 // The shape workflows/build.js's obj(required, properties) produces: required is a subset of
 // properties on purpose, which is what OpenAI strict mode rejects.
