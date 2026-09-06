@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
-import { runWorkflow } from "../../_lib/run-workflow.js";
+import { runWorkflow } from "../../_lib/run-workflow.ts";
 import { bootOk, recordCallsOf, recordPayloadOf } from "./_fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));

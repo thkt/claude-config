@@ -7,7 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runWorkflow } from "../../_lib/run-workflow.js";
+import { runWorkflow } from "../../_lib/run-workflow.ts";
 import { callOf, defaultAgentStub, extractFenced, snapshotPayload } from "./_fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));

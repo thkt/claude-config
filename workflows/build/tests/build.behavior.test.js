@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runWorkflow } from "../../_lib/run-workflow.js";
+import { runWorkflow } from "../../_lib/run-workflow.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const buildJs = join(here, "..", "..", "build.js");
@@ -1519,7 +1519,7 @@ test("T-019 build's args without an implementer passes claude to the code call",
 });
 
 // U-008 seam: code's own pane logic never runs inside this test (workflow("code") is stubbed
-// at the boundary), and run-workflow.js records only the agent's {prompt, opts}. So this
+// at the boundary), and run-workflow.ts records only the agent's {prompt, opts}. So this
 // verifies build's own return value the way units_completed / unit_commits already are:
 // derived from the stub standing in for code's own return value, both on a normal completion
 // and on a stop, not read off any prompt text.

@@ -63,3 +63,13 @@ test("T-002 the type-check set contains the .ts under workflows", () => {
     `${FIXTURE} is not in the type-check set`,
   );
 });
+
+test("T-044 the type-check set contains workflows/_lib/run-workflow.ts and workflows/_lib/codex-run.ts", () => {
+  const files = listTypeCheckedFiles();
+  for (const target of ["workflows/_lib/run-workflow.ts", "workflows/_lib/codex-run.ts"]) {
+    assert.ok(
+      files.some((file) => file.endsWith(target)),
+      `${target} is not in the type-check set`,
+    );
+  }
+});

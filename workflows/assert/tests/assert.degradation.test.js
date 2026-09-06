@@ -15,7 +15,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runWorkflow } from "../../_lib/run-workflow.js";
+import { runWorkflow } from "../../_lib/run-workflow.ts";
 import { bootOk, recordCallsOf, recordPayloadOf } from "./_fixtures.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -346,7 +346,7 @@ test("T-003 a Ready run whose build was skipped does not report build as passing
 // trace on the return value (WORKFLOWS.md § Degradation recording: loss granularity). The count
 // of findings dropped this way is read off the workflow's own return value (result.dropped),
 // since mergeIssues is a function local to the vm-evaluated script body and is not otherwise
-// observable from a test (see run-workflow.js's header comment on script evaluation).
+// observable from a test (see run-workflow.ts's header comment on script evaluation).
 test("T-010 a finding whose severity is not in SEVERITY_MAP stays out of issues and is counted as dropped", async () => {
   const droppedFinding = {
     file: "a.js",

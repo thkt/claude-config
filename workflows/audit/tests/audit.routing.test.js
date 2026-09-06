@@ -5,9 +5,9 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runWorkflow } from "../../_lib/run-workflow.js";
+import { runWorkflow } from "../../_lib/run-workflow.ts";
 import { defaultAgentStub, snapshotPayload } from "./_fixtures.js";
-import { extractBracedBody, parseRoutingLikeConst } from "../../_lib/tests/_brace.js";
+import { extractBracedBody, parseRoutingLikeConst } from "../../_lib/tests/_brace.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const auditJs = join(here, "..", "..", "audit.js");

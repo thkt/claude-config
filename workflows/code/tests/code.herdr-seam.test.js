@@ -1,4 +1,4 @@
-// U-008 seam: workflows/_lib/run-workflow.js's runWorkflow records only the agent's
+// U-008 seam: workflows/_lib/run-workflow.ts's runWorkflow records only the agent's
 // {prompt, opts} (calls.agent), so a test asserting on prompt wording alone (as
 // code.pane.test.js does for U-003's pane-start / pane-close calls) cannot show that the
 // resolved pane id and the pane open/close count actually reach code.js's own return
@@ -9,7 +9,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runWorkflow } from "../../_lib/run-workflow.js";
+import { runWorkflow } from "../../_lib/run-workflow.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const codeJs = join(here, "..", "..", "code.js");

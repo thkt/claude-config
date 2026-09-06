@@ -43,7 +43,7 @@ That every one of the 7 OPERATION stages is unmatched was checked by sweeping `w
 | --- | ------------------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | 0.1 | workspace-scaffold       | unmatched | -                                                                                                                                     |
 | 0.2 | workspace-detection      | unmatched | -                                                                                                                                     |
-| 0.3 | state-init               | unmatched | `workflows/_lib/run-workflow.js` holds per-run state, but that is plumbing rather than a stage                                        |
+| 0.3 | state-init               | unmatched | `workflows/_lib/run-workflow.ts` holds per-run state, but that is plumbing rather than a stage                                        |
 | 1.1 | intent-capture           | partial   | `/outcome`'s Outcome state fills intent-statement. No stakeholder-map                                                                 |
 | 1.2 | market-research          | unmatched | -                                                                                                                                     |
 | 1.3 | feasibility              | partial   | `/challenge` returns GO / NO-GO. OUTCOME.md § Constraints is the constraint-register                                                  |

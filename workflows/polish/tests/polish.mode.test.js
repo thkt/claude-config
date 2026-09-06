@@ -8,8 +8,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runWorkflow } from "../../_lib/run-workflow.js";
-import { parseRoutingLikeConst } from "../../_lib/tests/_brace.js";
+import { runWorkflow } from "../../_lib/run-workflow.ts";
+import { parseRoutingLikeConst } from "../../_lib/tests/_brace.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const polishJs = join(here, "..", "..", "polish.js");

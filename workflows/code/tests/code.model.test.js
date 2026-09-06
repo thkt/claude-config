@@ -3,9 +3,21 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkWorkflowSyntax, runWorkflow } from "../../_lib/run-workflow.js";
+import { checkWorkflowSyntax, runWorkflow } from "../../_lib/run-workflow.ts";
+
+// The paths this file's own static gate hands to `node --check` (see the T-041 test below),
+// read from source rather than from the runtime local: `modules` lives inside that other
+// test's own closure, so nothing outside it can see the array. Extracted here so both a
+// positive control and the real file share the same extraction path.
+function tsEntriesInModulesArray(source) {
+  const match = source.match(/const modules = \[([\s\S]*?)\];/);
+  assert.ok(match, "no modules-array literal found in the given source");
+  const entries = [...match[1].matchAll(/"([^"]*\.[A-Za-z0-9]+)"\s*\)/g)].map((entry) => entry[1]);
+  return entries.filter((entry) => entry.endsWith(".ts"));
+}
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..", "..");
@@ -210,17 +222,49 @@ test("fails closed with stopped: unit-failed when the direct implementation fail
 
 test("the static gates pass on the JA and EN code.js and on tests/*.js", () => {
   const scripts = [join(root, ".ja", "workflows", "code.js"), join(root, "workflows", "code.js")];
-  const modules = [
-    join(root, "workflows", "_lib", "run-workflow.js"),
-    join(root, "workflows", "code", "tests", "code.model.test.js"),
-  ];
+  const modules = [join(root, "workflows", "code", "tests", "code.model.test.js")];
+  // Linted here, type-checked by tsc (T-044), kept out of node --check (T-041).
+  const typed = [join(root, "workflows", "_lib", "run-workflow.ts")];
   for (const file of scripts) {
     checkWorkflowSyntax(file);
   }
   for (const file of modules) {
     execFileSync("node", ["--check", file], { cwd: root });
   }
-  execFileSync("npx", ["oxlint", ...scripts, ...modules], { cwd: root });
+  execFileSync("npx", ["oxlint", ...scripts, ...modules, ...typed], { cwd: root });
+});
+
+// node --check reads .ts as CommonJS/ambient JS syntax, not as TypeScript: it can pass a
+// broken .ts outright (workflows/tests/node-check-scope.test.js). A .ts landing in the array
+// above would look checked without being checked, so this pins the array itself instead.
+test("T-041 the file list the static gate hands to node --check contains no .ts entry", () => {
+  // Positive control: without it, an extraction that finds nothing (e.g. the regex above
+  // stops matching a renamed literal) would pass the empty-array assertion below for the
+  // wrong reason.
+  const positiveControl = `
+  const modules = [
+    join(root, "workflows", "_lib", "gate.ts"),
+    join(root, "workflows", "code", "tests", "code.model.test.js"),
+  ];
+`;
+  assert.deepEqual(
+    tsEntriesInModulesArray(positiveControl),
+    ["gate.ts"],
+    "positive control: a .ts entry in the modules array is detected",
+  );
+  const masked = positiveControl.replace("gate.ts", "gate.js");
+  assert.deepEqual(
+    tsEntriesInModulesArray(masked),
+    [],
+    "positive control: the same violation goes undetected once the cue is removed",
+  );
+
+  const source = readFileSync(fileURLToPath(import.meta.url), "utf8");
+  assert.deepEqual(
+    tsEntriesInModulesArray(source),
+    [],
+    "the modules array handed to node --check carries a .ts entry",
+  );
 });
 
 // verification tells the caller whether the suite verified anything or the gates carried the

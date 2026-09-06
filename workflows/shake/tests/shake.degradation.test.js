@@ -8,12 +8,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { runWorkflow } from "../../_lib/run-workflow.js";
+import { runWorkflow } from "../../_lib/run-workflow.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const shakeJs = join(here, "..", "..", "shake.js");
 
-// T-002 uses the default pipeline injected by run-workflow.js as it stands (a copy of the
+// T-002 uses the default pipeline injected by run-workflow.ts as it stands (a copy of the
 // production contract, leaving a failed item as null in place). T-003 reproduces "the pipeline
 // dropped a target to null" deterministically by injecting a stubs.pipeline that skips the
 // dropIds targets past every stage and pushes null instead.

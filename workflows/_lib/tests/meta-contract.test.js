@@ -3,11 +3,17 @@
 // because a caller cannot recover it at run time, so these tests hold it to audit.js's FOCUS.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readMeta } from "../run-workflow.js";
-import { parseRoutingLikeConst } from "./_brace.js";
+import { readMeta } from "../run-workflow.ts";
+// T-045's own point: this file is `.js`, and the specifier below ends in `.ts`. Node's type
+// stripping resolves it the same way it resolves gate.test.ts's `.ts`-to-`.ts` imports; nothing
+// in the script evaluation form (rules/conventions/WORKFLOWS.md) constrains module resolution,
+// only the vm boundary a workflow script runs inside.
+import { runWorkflow } from "../run-workflow.ts";
+import { parseRoutingLikeConst } from "./_brace.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -137,3 +143,16 @@ test("the mode values in polish's whenToUse match the MODES entries extracted fr
   }
 });
 
+// A .js test resolving a .ts specifier is what every importer under workflows/**/tests relies
+// on, and no .ts test can observe it, so it is pinned here.
+test("T-045 a .js test importing runWorkflow from run-workflow.ts evaluates a workflow script and returns its result", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "meta-contract-ts-import-"));
+  const scriptPath = join(dir, "script.js");
+  writeFileSync(scriptPath, "return { via: 'run-workflow.ts' };");
+  try {
+    const { result } = await runWorkflow(scriptPath, {});
+    assert.deepEqual(result, { via: "run-workflow.ts" });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

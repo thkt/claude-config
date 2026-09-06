@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkWorkflowSyntax, runWorkflow } from "../../_lib/run-workflow.js";
+import { checkWorkflowSyntax, runWorkflow } from "../../_lib/run-workflow.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..", "..", "..");

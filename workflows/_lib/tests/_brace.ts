@@ -1,9 +1,9 @@
-// Shared by meta-contract.test.js and run-workflow.test.js: both need an independent, non-eval
+// Shared by meta-contract.test.js and run-workflow.test.ts: both need an independent, non-eval
 // oracle that extracts a top-level `<marker>{ ... }` object literal from workflow-script source,
 // to check against readMeta's own vm-evaluated result. Depth-counts braces with no
 // quote-awareness — the braces embedded in meta's string values (e.g. "Workflow({name:'audit'})")
 // are always balanced within the string, so an unaware count still lands on the matching close.
-export const extractBracedBody = (source, marker) => {
+export const extractBracedBody = (source: string, marker: string): string | null => {
   const idx = source.indexOf(marker);
   if (idx === -1) return null;
   const braceStart = source.indexOf("{", idx);
@@ -26,12 +26,15 @@ export const extractBracedBody = (source, marker) => {
 // null (audit.js's ROUTING and FOCUS). Read with a regular expression, not eval. Shared so the
 // row pattern has one home: audit.routing.test.js matches ROUTING against agents/reviewers/, and
 // meta-contract.test.js matches FOCUS against audit's whenToUse prose.
-export const parseRoutingLikeConst = (source, name) => {
+export const parseRoutingLikeConst = (
+  source: string,
+  name: string,
+): Record<string, string[] | null> | null => {
   const body = extractBracedBody(source, `const ${name} = {`);
   if (body === null) return null;
-  const result = {};
+  const result: Record<string, string[] | null> = {};
   const rowPattern = /(?:"([^"]+)"|(\w+))\s*:\s*(\[([^\]]*)\]|null)/g;
-  let m;
+  let m: RegExpExecArray | null;
   while ((m = rowPattern.exec(body))) {
     const key = m[1] || m[2];
     result[key] = m[3] === "null" ? null : [...m[4].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
@@ -42,7 +45,7 @@ export const parseRoutingLikeConst = (source, name) => {
 // A `const <name> = [ "a", "b", ... ]` string-array constant, read the same way as
 // parseRoutingLikeConst above: brace/bracket depth-counted from source, not eval. Shared so
 // adrift.degradation.test.js's expired-status check has the same non-eval oracle as ROUTING/FOCUS.
-export const parseStringArrayConst = (source, name) => {
+export const parseStringArrayConst = (source: string, name: string): string[] | null => {
   const marker = `const ${name} = [`;
   const idx = source.indexOf(marker);
   if (idx === -1) return null;

@@ -7,7 +7,7 @@ scenes: []
 
 ## 内容
 
-workflow script が読めるグローバルと、返り値および例外が越える境界の扱いは、本番サンドボックスと `run-workflow.js` の 2 箇所にある。片方だけを直すと、テストが通って本番が落ちるか、本番で落ちないものがテストで落ちる。どちらの向きも起きている。食い違いは実行するまで表に出ないので、供給の一覧を 1 箇所に置き、テストがその一覧を読んで両側を突き合わせる。
+workflow script が読めるグローバルと、返り値および例外が越える境界の扱いは、本番サンドボックスと `run-workflow.ts` の 2 箇所にある。片方だけを直すと、テストが通って本番が落ちるか、本番で落ちないものがテストで落ちる。どちらの向きも起きている。食い違いは実行するまで表に出ないので、供給の一覧を 1 箇所に置き、テストがその一覧を読んで両側を突き合わせる。
 
 ## 定型手順
 
@@ -18,7 +18,7 @@ workflow script が読めるグローバルと、返り値および例外が越�
 
 ## 参照コード
 
-- `workflows/_lib/run-workflow.js` の `PRODUCTION_GLOBALS` (供給する名前の一覧。同ファイルの注入側と `workflows/_lib/tests/run-workflow.test.js` が同じ定数を読む)
+- `workflows/_lib/run-workflow.ts` の `PRODUCTION_GLOBALS` (供給する名前の一覧。同ファイルの注入側と `workflows/_lib/tests/run-workflow.test.js` が同じ定数を読む)
 
 ## 根拠
 
