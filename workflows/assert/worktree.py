@@ -13,8 +13,9 @@ HEAD.
 stdout (create):  JSON {branch, path, status: "created"}
 stdout (cleanup): JSON {branch, path, status: "removed"}
 On create failure: JSON {branch, path, status: "error", reason, stderr}, exit 1
-(env failure, references/phase-4.md § Bootstrap Failure Handling). Cleanup
-is best-effort: stale-state removals are ignored and it never fails the run.
+(the caller sets worktree_ok: false from this, which workflows/assert.js's
+envFail reads as an env failure). Cleanup is best-effort: stale-state removals
+are ignored and it never fails the run.
 """
 
 import json
