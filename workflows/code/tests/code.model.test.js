@@ -223,8 +223,7 @@ test("fails closed with stopped: unit-failed when the direct implementation fail
 test("the static gates pass on the JA and EN code.js and on tests/*.js", () => {
   const scripts = [join(root, ".ja", "workflows", "code.js"), join(root, "workflows", "code.js")];
   const modules = [join(root, "workflows", "code", "tests", "code.model.test.js")];
-  // The harness is a .ts: tsc type-checks it (T-044) and oxlint reads it here, but node --check
-  // would pass a broken .ts outright (T-041), so it stays out of `modules`.
+  // Linted here, type-checked by tsc (T-044), kept out of node --check (T-041).
   const typed = [join(root, "workflows", "_lib", "run-workflow.ts")];
   for (const file of scripts) {
     checkWorkflowSyntax(file);

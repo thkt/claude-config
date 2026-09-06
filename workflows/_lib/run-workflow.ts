@@ -18,7 +18,6 @@ import vm from "node:vm";
 // Values that cross the vm boundary (a script's args, return value, and what it hands to the
 // injected globals) take their shape at run time from the script under test, so they are typed
 // as `any` at that boundary alone.
-// oxlint-disable-next-line no-explicit-any
 type ScriptValue = any;
 
 export interface RunWorkflowStubs {
@@ -53,7 +52,6 @@ interface WorkflowMeta {
   description: string;
   whenToUse?: string;
   phases?: { title: string; detail?: string }[];
-  [key: string]: unknown;
 }
 
 // The globals production supplies on top of the injected parameters, listed in

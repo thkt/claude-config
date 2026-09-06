@@ -143,10 +143,8 @@ test("the mode values in polish's whenToUse match the MODES entries extracted fr
   }
 });
 
-// T-045: run-workflow.ts's Green-step scaffold does not evaluate the script yet (it always
-// returns `undefined`), so this fails on the concrete result rather than on a module-resolution
-// or parse error -- the failure that names T-045 is the intended Red evidence for the `.js`-to-
-// `.ts` import path itself, ported behavior is out of scope for this unit's Red step.
+// A .js test resolving a .ts specifier is what every importer under workflows/**/tests relies
+// on, and no .ts test can observe it, so it is pinned here.
 test("T-045 a .js test importing runWorkflow from run-workflow.ts evaluates a workflow script and returns its result", async () => {
   const dir = mkdtempSync(join(tmpdir(), "meta-contract-ts-import-"));
   const scriptPath = join(dir, "script.js");

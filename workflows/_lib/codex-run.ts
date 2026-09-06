@@ -30,7 +30,6 @@ interface JsonSchema {
 
 // A value parsed from codex's JSON reply, or handed in by a workflow script across the vm
 // boundary: its shape is decided at run time, so it is typed as `any` at that boundary alone.
-// oxlint-disable-next-line no-explicit-any
 type JsonValue = any;
 
 type AgentOptions = {
@@ -147,7 +146,7 @@ export function pruneNulls(value: JsonValue, schema: JsonSchema | undefined): Js
   if (types.includes("object") || schema.properties) {
     const required = new Set(schema.required || []);
     const out: Record<string, JsonValue> = {};
-    for (const [key, child] of Object.entries(value as Record<string, JsonValue>)) {
+    for (const [key, child] of Object.entries(value)) {
       if (child === null && !required.has(key)) continue;
       out[key] = pruneNulls(child, (schema.properties || {})[key]);
     }
@@ -189,7 +188,7 @@ export function findSchemaViolation(
       if (!(key in value)) return `${childPath} is missing`;
       if (value[key] === null && !acceptsNull(properties[key])) return `${childPath} is null`;
     }
-    for (const [key, child] of Object.entries(value as Record<string, JsonValue>)) {
+    for (const [key, child] of Object.entries(value)) {
       const found = findSchemaViolation(child, properties[key], path ? `${path}.${key}` : key);
       if (found) return found;
     }
