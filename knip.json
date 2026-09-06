@@ -3,23 +3,21 @@
   "entry": [
     "workflows/*.js",
     ".ja/workflows/*.js",
-    "workflows/**/*.test.js",
+    "workflows/_lib/gate.ts",
+    ".ja/workflows/_lib/gate.ts",
+    "workflows/**/*.test.{js,ts}",
     "workflows/tests/index.js",
     "skills/**/tests/**/*.test.js",
     "skills/**/scripts/*.{js,mjs}",
     ".ja/skills/**/scripts/*.{js,mjs}"
   ],
   "project": [
-    "workflows/**/*.js",
-    ".ja/workflows/**/*.js",
+    "workflows/**/*.{js,ts}",
+    ".ja/workflows/**/*.{js,ts}",
     "skills/**/*.{js,mjs}",
     ".ja/skills/**/*.{js,mjs}"
   ],
-  "ignoreBinaries": [
-    "codex"
-  ],
-  "ignoreDependencies": [
-    "oxfmt",
-    "^@?textlint"
-  ]
+  "ignoreBinaries": ["codex"],
+  "ignoreDependencies": ["oxfmt", "^@?textlint"],
+  "ignoreFiles": ["workflows/tests/fixtures/**"]
 }
