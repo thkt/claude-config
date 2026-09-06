@@ -28,10 +28,17 @@ function referencesPath(content: string, retiredPath: string): boolean {
   return content.includes(retiredPath);
 }
 
+// The tree does not change while this file's tests run, and T-043 checks 2 retired paths
+// against it, so the git spawn is cached after the first call rather than repeated per path.
+let trackedFilesCache: string[] | null = null;
 function trackedFiles(): string[] {
-  return execFileSync("git", ["ls-files", "-z"], { cwd: REPO_ROOT, encoding: "utf8" })
+  trackedFilesCache ??= execFileSync("git", ["ls-files", "-z"], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+  })
     .split("\0")
     .filter(Boolean);
+  return trackedFilesCache;
 }
 
 function offendersFor(retiredPath: string): string[] {
