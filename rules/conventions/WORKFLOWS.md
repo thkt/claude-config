@@ -13,12 +13,12 @@ Conventions for workflow scripts under `workflows/`.
 
 Discovery reads `workflows/` flat and registers only the `.js` files directly under it. The prompt strings inside a script are read by an LLM, so those follow the sentence-length conventions in PROSE.md.
 
-| Target            | Rule                                                                                                                                 |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Script filename   | `workflows/<name>.js`. That `<name>` is the name `Workflow({name})` resolves                                                         |
-| Shape of the name | One English word naming the operation the workflow performs. Replace generic names like helper, utils, tools with the operation name |
-| Helper script     | Place under `workflows/<name>/`. A `.js` directly under `workflows/` registers as a workflow                                         |
-| Shared harness    | Place under `workflows/_lib/`. Limited to what tests import and to a runner that evaluates the scripts on another host               |
+| Target            | Rule                                                                                                                                                                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Script filename   | `workflows/<name>.js`. That `<name>` is the name `Workflow({name})` resolves                                                                                                                                                                                              |
+| Shape of the name | One English word naming the operation the workflow performs. Replace generic names like helper, utils, tools with the operation name                                                                                                                                      |
+| Helper script     | Place under `workflows/<name>/`. A `.js` directly under `workflows/` registers as a workflow                                                                                                                                                                              |
+| Shared harness    | Place under `workflows/_lib/`. Limited to what tests import and to a runner that evaluates the scripts on another host. `workflows/_lib/codex-run.js` is that runner, replacing `agent()` with a `codex exec` child process to run a workflow script outside Claude Code. |
 
 ## Reference notation
 
@@ -48,13 +48,13 @@ A script accepts `args` as either a string or an object. The string is shorthand
 
 A workflow script holds a top-level `return`, so it is neither ESM nor CommonJS and nothing can `import()` it to read `FOCUS` or `MODES` as live values (Script evaluation form). That is why the check below parses both sides as source text rather than importing either.
 
-| Target                                                          | Convention                                                                                                                                                             |
-| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `description`                                                   | Name the operation the workflow performs and what its script enforces deterministically, so a reader tells it apart from its siblings                                |
-| `whenToUse`                                                     | Name the situation that calls for this workflow, the sibling that fits a neighbouring situation, and what the caller supplies, in prose                              |
-| `args` shape                                                    | Write the target in prose (which repository, which scope). Naming `args` or its keys belongs in code and in this document, not in workflow prose                     |
+| Target                                                          | Convention                                                                                                                                                                                                 |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description`                                                   | Name the operation the workflow performs and what its script enforces deterministically, so a reader tells it apart from its siblings                                                                      |
+| `whenToUse`                                                     | Name the situation that calls for this workflow, the sibling that fits a neighbouring situation, and what the caller supplies, in prose                                                                    |
+| `args` shape                                                    | Write the target in prose (which repository, which scope). Naming `args` or its keys belongs in code and in this document, not in workflow prose                                                           |
 | An option `whenToUse` enumerates (audit's focus, polish's mode) | The script's own const (audit.js's `FOCUS`, polish.js's `MODES`) is canonical. A `whenToUse` listing such as "focus (a / b / ...)" or "mode (a / b / ...)" is a derived copy and follows that const's keys |
-| Keeping the copy honest                                         | `workflows/_lib/tests/meta-contract.test.js` checks both: it fails when a `whenToUse` names `args`, and when an enumerated `whenToUse` diverges from its script's const |
+| Keeping the copy honest                                         | `workflows/_lib/tests/meta-contract.test.js` checks both: it fails when a `whenToUse` names `args`, and when an enumerated `whenToUse` diverges from its script's const                                    |
 
 ## Degradation recording
 
