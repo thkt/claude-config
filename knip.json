@@ -7,17 +7,22 @@
     ".ja/workflows/_lib/gate.ts",
     "workflows/**/*.test.{js,ts}",
     "workflows/tests/index.js",
-    "skills/**/tests/**/*.test.js",
+    "hooks/**/tests/*.test.ts",
+    "hooks/_lib/hook_payload.ts",
+    "skills/**/tests/**/*.test.{js,ts}",
+    "skills/_lib/harness_hash.ts",
+    ".ja/skills/_lib/harness_hash.ts",
     "skills/**/scripts/*.{js,mjs}",
     ".ja/skills/**/scripts/*.{js,mjs}"
   ],
   "project": [
     "workflows/**/*.{js,ts}",
     ".ja/workflows/**/*.{js,ts}",
-    "skills/**/*.{js,mjs}",
-    ".ja/skills/**/*.{js,mjs}"
+    "hooks/**/*.ts",
+    "skills/**/*.{js,mjs,ts}",
+    ".ja/skills/**/*.{js,mjs,ts}"
   ],
   "ignoreBinaries": ["codex"],
   "ignoreDependencies": ["oxfmt", "^@?textlint"],
-  "ignoreFiles": ["workflows/tests/fixtures/**"]
+  "ignoreFiles": ["workflows/tests/fixtures/**", "skills/*/test/cases/**"]
 }
