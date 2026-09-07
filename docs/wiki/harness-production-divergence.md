@@ -18,12 +18,12 @@ workflow script が読めるグローバルと、返り値および例外が越�
 
 ## 参照コード
 
-- `workflows/_lib/run-workflow.ts` の `PRODUCTION_GLOBALS` (供給する名前の一覧。同ファイルの注入側と `workflows/_lib/tests/run-workflow.test.js` が同じ定数を読む)
+- `workflows/_lib/run-workflow.ts` の `PRODUCTION_GLOBALS` (供給する名前の一覧。同ファイルの注入側と `workflows/_lib/tests/run-workflow.test.ts` が同じ定数を読む)
 
 ## 根拠
 
 - #317 本番サンドボックスに `crypto` が無く、`/audit` が reviewer を 1 体も起動しないまま起動直後に落ちた。テストには `crypto` があった
-- #323 `budget` / `console` / `setTimeout` / `clearTimeout` を harness が注入しておらず、`setTimeout` を呼ぶ script はテストで ReferenceError になり本番では動いた。テストが本番より厳しい向き
+- #323 `budget`/`console`/`setTimeout`/`clearTimeout` を harness が注入しておらず、`setTimeout` を呼ぶ script はテストで ReferenceError になり本番では動いた。テストが本番より厳しい向き
 - #363 #323 の修正。供給の契約が散文にしかなく、注入側とテスト側のどちらもそこから導出されていなかったことを根本原因として記録した
-- #327 `rehome` が Map / Set / Date / RegExp / Error を型のまま vm 境界を越えさせていた。本番は返り値を JSON 化するので 5 つとも `{}` で届く。harness が本番の捨てる情報を保っていた、逆向きの同型
+- #327 `rehome` が Map/Set/Date/RegExp/Error を型のまま vm 境界を越えさせていた。本番は返り値を JSON 化するので 5 つとも `{}` で届く。harness が本番の捨てる情報を保っていた、逆向きの同型
 - #326 本番はエラーを `{name, message, stack, toString}` の 4 キーに詰め替えて境界を越えさせる。prototype が null なので `e instanceof Error` は false になる。`cause`、`errors`、独自プロパティは届かない。`budget` も prototype null で `spent` を関数のまま運ぶ。構造化クローンではなく、形ごとの手書き shim である。harness は host のエラーを Error のまま script へ渡すので、`instanceof Error` を読む script はテストで true、本番で false になる。テストが本番より緩い向き

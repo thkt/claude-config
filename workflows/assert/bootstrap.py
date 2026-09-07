@@ -10,8 +10,8 @@ stdout: JSON {project_type, install, build, install_cmd, build_cmd, reason}
   build:   pass | fail | skipped
 exit 0 on a completed run (read the verdict from JSON); exit 1 on usage / path error.
 
-Gate routing (caller, references/phase-4.md § Bootstrap Failure Handling). The
-trichotomy is encoded by (install, build) jointly, not by build alone:
+Gate routing (caller, workflows/assert.js's envFail/dynamicOk constants decide the
+path). The trichotomy is encoded by (install, build) jointly, not by build alone:
 
   install=fail  + build=skipped  -> env failure         -> Ready (caveat) path
   install=ok    + build=fail     -> build smoke broken  -> NotReady
@@ -20,7 +20,8 @@ trichotomy is encoded by (install, build) jointly, not by build alone:
 
 A build timeout that fires after the build started is reported as build=fail: a
 hanging build is indistinguishable from a broken one, and treating it as
-environmental would let it reach Ready (caveat) (references/phase-0.md 0b).
+environmental would let it reach Ready (caveat) (workflows/assert.js's envFail is
+defined from install/worktree alone and excludes build).
 """
 
 import json
@@ -33,7 +34,8 @@ from typing import NoReturn, cast
 INSTALL_TIMEOUT = 180
 BUILD_TIMEOUT = 600
 
-# First match in this order wins (references/phase-0.md).
+# First match in this order wins. This list itself is canonical; no external doc
+# defines the order.
 PROJECT_MARKERS = [
     ("package.json", "node"),
     ("Cargo.toml", "rust"),

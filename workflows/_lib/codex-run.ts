@@ -10,6 +10,7 @@ import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSy
 import { availableParallelism, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isMainModule } from "./entry-point.ts";
 import { runWorkflow } from "./run-workflow.ts";
 import type { RunWorkflowStubs } from "./run-workflow.ts";
 
@@ -537,9 +538,7 @@ export function parseArgv(argv: string[]): ParsedArgv {
   return { name, args, concurrency };
 }
 
-const invokedDirectly =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (invokedDirectly) {
+if (isMainModule(import.meta.url)) {
   const { name, args, concurrency } = parseArgv(process.argv.slice(2));
   if (!name || typeof args.repo !== "string") {
     process.stderr.write(

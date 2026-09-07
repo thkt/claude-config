@@ -12,8 +12,9 @@ branch = assert-<id>、path = .claude/worktrees/assert-<id>。git はプロセ�
 stdout (create):  JSON {branch, path, status: "created"}
 stdout (cleanup): JSON {branch, path, status: "removed"}
 作成失敗時: JSON {branch, path, status: "error", reason, stderr}、exit 1
-(env failure、references/phase-4.md § Bootstrap Failure Handling)。cleanup は
-best-effort で、古い状態の除去失敗は無視し run を失敗させない。
+(呼び出し側はこれを worktree_ok: false にし、workflows/assert.js の envFail が
+env failure として読む)。cleanup は best-effort で、古い状態の除去失敗は無視し
+run を失敗させない。
 """
 
 import json

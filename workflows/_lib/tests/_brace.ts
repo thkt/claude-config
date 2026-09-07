@@ -19,6 +19,7 @@ export const extractBracedBody = (source: string, marker: string): string | null
       }
     }
   }
+  if (end === -1) return null;
   return source.slice(braceStart + 1, end - 1);
 };
 
